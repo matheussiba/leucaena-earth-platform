@@ -3,6 +3,14 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const crypto = require('crypto');
+
+try {
+  const envFile = require('fs').readFileSync(require('path').join(__dirname, '.env'), 'utf8');
+  for (const line of envFile.split('\n')) {
+    const [key, ...val] = line.split('=');
+    if (key && val.length) process.env[key.trim()] = val.join('=').trim();
+  }
+} catch (e) { /* no .env file, use system env vars */ }
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { initDB, queryAll, queryOne, runSQL, persist } = require('./db');
@@ -11,8 +19,19 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const fs = require('fs');
+
+const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || '';
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+app.get('/', (req, res) => {
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+  const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry&callback=initGoogleMapsCallback`;
+  res.send(html.replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const connectedUsers = new Map();
