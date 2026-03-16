@@ -24,7 +24,7 @@ window.LeucenaDrawing = (function () {
         renderPolygon(feature.properties.id, feature.geometry, feature.properties, false);
       }
     } catch (e) {
-      LeucenaApp.showToast('Failed to load polygons', 'error');
+      LeucenaApp.showToast('Falha ao carregar polígonos', 'error');
     }
   }
 
@@ -73,6 +73,7 @@ window.LeucenaDrawing = (function () {
     activeMode = mode;
 
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.edit-tool-btn').forEach(b => b.classList.remove('active'));
 
     const btnMap = { select: 'tool-select', draw: 'tool-draw', edit: 'tool-edit', delete: 'tool-delete' };
     const activeBtn = document.getElementById(btnMap[mode]);
@@ -112,7 +113,7 @@ window.LeucenaDrawing = (function () {
       const cellId = LeucenaApp.getSelectedCellId();
       if (!cellId) {
         poly.setMap(null);
-        LeucenaApp.showToast('Select and lock a cell first', 'warning');
+        LeucenaApp.showToast('Selecione e bloqueie uma célula primeiro', 'warning');
         return;
       }
 
@@ -120,7 +121,7 @@ window.LeucenaDrawing = (function () {
 
       if (path.getLength() < 3) {
         poly.setMap(null);
-        LeucenaApp.showToast('Polygon needs at least 3 vertices', 'warning');
+        LeucenaApp.showToast('Polígono precisa de pelo menos 3 vértices', 'warning');
         return;
       }
 
@@ -147,10 +148,10 @@ window.LeucenaDrawing = (function () {
         const result = await res.json();
         poly.setMap(null);
         renderPolygon(result.id, geometry, result, true);
-        LeucenaApp.showToast('Polygon saved', 'success');
+        LeucenaApp.showToast('Polígono salvo', 'success');
       } catch (e) {
         poly.setMap(null);
-        LeucenaApp.showToast('Failed to save polygon', 'error');
+        LeucenaApp.showToast('Falha ao salvar polígono', 'error');
       }
     });
   }
@@ -167,7 +168,7 @@ window.LeucenaDrawing = (function () {
     if (!entry) return;
 
     if (!canEditPolygon(entry)) {
-      LeucenaApp.showToast(`This polygon belongs to ${entry.data.created_by}`, 'warning');
+      LeucenaApp.showToast(`Este polígono pertence a ${entry.data.created_by}`, 'warning');
       return;
     }
 
@@ -176,7 +177,7 @@ window.LeucenaDrawing = (function () {
     const cellData = LeucenaApp.getSelectedCellData();
 
     if (cellId !== selectedCell || !cellData || cellData.locked_by !== LeucenaApp.getUsername()) {
-      LeucenaApp.showToast('Lock the cell to edit its polygons', 'warning');
+      LeucenaApp.showToast('Bloqueie a célula para editar seus polígonos', 'warning');
       return;
     }
 
@@ -204,7 +205,7 @@ window.LeucenaDrawing = (function () {
         body: JSON.stringify({ geometry })
       });
     } catch (e) {
-      LeucenaApp.showToast('Failed to save polygon changes', 'error');
+      LeucenaApp.showToast('Falha ao salvar alterações do polígono', 'error');
     }
   }
 
@@ -213,7 +214,7 @@ window.LeucenaDrawing = (function () {
     if (!entry) return;
 
     if (!canEditPolygon(entry)) {
-      LeucenaApp.showToast(`This polygon belongs to ${entry.data.created_by}. Only they or admin can delete it.`, 'warning');
+      LeucenaApp.showToast(`Este polígono pertence a ${entry.data.created_by}. Somente ele ou o administrador pode excluí-lo.`, 'warning');
       return;
     }
 
@@ -222,7 +223,7 @@ window.LeucenaDrawing = (function () {
     const cellData = LeucenaApp.getSelectedCellData();
 
     if (cellId !== selectedCell || !cellData || cellData.locked_by !== LeucenaApp.getUsername()) {
-      LeucenaApp.showToast('Lock the cell to delete its polygons', 'warning');
+      LeucenaApp.showToast('Bloqueie a célula para excluir seus polígonos', 'warning');
       return;
     }
 
@@ -238,9 +239,9 @@ window.LeucenaDrawing = (function () {
       }
       entry.gmapsPoly.setMap(null);
       delete drawnPolygons[id];
-      LeucenaApp.showToast('Polygon deleted', 'success');
+      LeucenaApp.showToast('Polígono excluído', 'success');
     } catch (e) {
-      LeucenaApp.showToast('Failed to delete polygon', 'error');
+      LeucenaApp.showToast('Falha ao excluir polígono', 'error');
     }
   }
 

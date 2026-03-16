@@ -38,8 +38,31 @@ window.LeucenaApp = (function () {
       if (e.target === e.currentTarget) closeUnlockModal();
     });
 
+    document.getElementById('docs-btn').addEventListener('click', openDocsModal);
+    document.getElementById('docs-modal-close').addEventListener('click', closeDocsModal);
+    document.getElementById('docs-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeDocsModal();
+    });
+
+    document.getElementById('tool-home').addEventListener('click', handleHomeClick);
+
+    document.getElementById('legend-toggle').addEventListener('click', toggleLegend);
+
     setupAuthForm();
     tryRestoreSession();
+  }
+
+  // ── Docs modal ──
+
+  function openDocsModal() {
+    const now = new Date();
+    const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    document.getElementById('docs-date').textContent = `${months[now.getMonth()]} de ${now.getFullYear()}`;
+    document.getElementById('docs-modal').classList.remove('hidden');
+  }
+
+  function closeDocsModal() {
+    document.getElementById('docs-modal').classList.add('hidden');
   }
 
   // ── Auth modal ──
@@ -68,19 +91,19 @@ window.LeucenaApp = (function () {
     passcodeInput.value = '';
 
     if (mode === 'login') {
-      document.getElementById('auth-modal-title').textContent = 'Login';
-      document.getElementById('auth-modal-subtitle').textContent = 'Login to edit the map';
-      document.getElementById('auth-submit-btn').textContent = 'Login';
-      document.getElementById('auth-switch-text').textContent = "Don't have an account?";
-      document.getElementById('auth-switch-link').textContent = 'Register';
+      document.getElementById('auth-modal-title').textContent = 'Entrar';
+      document.getElementById('auth-modal-subtitle').textContent = 'Faça login para editar o mapa';
+      document.getElementById('auth-submit-btn').textContent = 'Entrar';
+      document.getElementById('auth-switch-text').textContent = 'Não tem conta?';
+      document.getElementById('auth-switch-link').textContent = 'Cadastrar';
       passcodeGroup.classList.add('hidden');
       passcodeInput.removeAttribute('required');
     } else {
-      document.getElementById('auth-modal-title').textContent = 'Register';
-      document.getElementById('auth-modal-subtitle').textContent = 'Create an account to start mapping';
-      document.getElementById('auth-submit-btn').textContent = 'Create Account';
-      document.getElementById('auth-switch-text').textContent = 'Already have an account?';
-      document.getElementById('auth-switch-link').textContent = 'Login';
+      document.getElementById('auth-modal-title').textContent = 'Cadastrar';
+      document.getElementById('auth-modal-subtitle').textContent = 'Crie uma conta para começar a mapear';
+      document.getElementById('auth-submit-btn').textContent = 'Criar Conta';
+      document.getElementById('auth-switch-text').textContent = 'Já tem conta?';
+      document.getElementById('auth-switch-link').textContent = 'Entrar';
       passcodeGroup.classList.remove('hidden');
       passcodeInput.setAttribute('required', 'required');
     }
@@ -125,7 +148,7 @@ window.LeucenaApp = (function () {
       closeAuthModal();
       onLoginSuccess();
     } catch (err) {
-      errorEl.textContent = 'Connection error. Try again.';
+      errorEl.textContent = 'Erro de conexão. Tente novamente.';
       errorEl.classList.remove('hidden');
     }
   }
@@ -161,7 +184,7 @@ window.LeucenaApp = (function () {
 
     LeucenaCollab.init(username);
     showAdminTools();
-    showToast(`Welcome, ${username}!`, 'success');
+    showToast(`Bem-vindo, ${username}!`, 'success');
 
     if (selectedCellId && selectedCellData) {
       selectCell(selectedCellId, selectedCellData);
@@ -200,15 +223,24 @@ window.LeucenaApp = (function () {
     hideAdminTools();
     deselectCell();
     enableTools(false);
-    showToast('Logged out', 'info');
+    showToast('Desconectado', 'info');
   }
 
   // ── Sidebar ──
 
+  function isEditing() {
+    return selectedCellData && selectedCellData.locked_by && selectedCellData.locked_by === username;
+  }
+
   function toggleSidebar() {
+    if (isEditing()) {
+      showToast('Saia do modo de edição primeiro. Clique em "Desbloquear".', 'warning');
+      return;
+    }
     const main = document.getElementById('main-content');
     const isOpen = main.classList.toggle('sidebar-open');
     updateToggleArrow(isOpen);
+    updateLegendVisibility(isOpen);
     if (!isOpen) {
       clearCellSelection();
     }
@@ -217,12 +249,37 @@ window.LeucenaApp = (function () {
   function closeSidebar() {
     document.getElementById('main-content').classList.remove('sidebar-open');
     updateToggleArrow(false);
+    updateLegendVisibility(false);
     clearCellSelection();
   }
 
   function updateToggleArrow(isOpen) {
     const arrow = document.querySelector('.toggle-arrow');
     if (arrow) arrow.textContent = isOpen ? '\u00AB' : '\u00BB';
+  }
+
+  // ── Legend accordion ──
+
+  let legendUserControlled = false;
+
+  function toggleLegend() {
+    legendUserControlled = true;
+    document.getElementById('map-legend').classList.toggle('collapsed');
+  }
+
+  function collapseLegendOnFirstZoom() {
+    if (legendUserControlled) return;
+    legendUserControlled = true;
+    document.getElementById('map-legend').classList.add('collapsed');
+  }
+
+  function updateLegendVisibility(sidebarOpen) {
+    const legend = document.getElementById('map-legend');
+    if (sidebarOpen) {
+      legend.classList.add('legend-hidden');
+    } else {
+      legend.classList.remove('legend-hidden');
+    }
   }
 
   // ── Map init ──
@@ -249,6 +306,7 @@ window.LeucenaApp = (function () {
       const main = document.getElementById('main-content');
       main.classList.remove('sidebar-open');
       updateToggleArrow(false);
+      updateLegendVisibility(false);
       return;
     }
 
@@ -260,9 +318,10 @@ window.LeucenaApp = (function () {
     }
 
     const main = document.getElementById('main-content');
-    if (!main.classList.contains('sidebar-open')) {
+    if (!main.classList.contains('sidebar-open') && !isEditing()) {
       main.classList.add('sidebar-open');
       updateToggleArrow(true);
+      updateLegendVisibility(true);
     }
 
     const panel = document.getElementById('cell-actions');
@@ -281,10 +340,10 @@ window.LeucenaApp = (function () {
 
     const infoEl = document.getElementById('selected-cell-info');
     infoEl.classList.remove('hidden');
-    infoEl.textContent = `Cell #${cellId} - ${formatStatus(cellData.grid_status)}`;
+    infoEl.textContent = `Célula #${cellId} - ${formatStatus(cellData.grid_status)}`;
 
     if (!isLoggedIn()) {
-      lockBtn.textContent = 'Login to Edit';
+      lockBtn.textContent = 'Faça login para Editar';
       lockBtn.disabled = false;
       lockBtn.classList.remove('hidden');
       lockBtn.onclick = () => openAuthModal('login');
@@ -298,19 +357,19 @@ window.LeucenaApp = (function () {
       unlockToolBtn.disabled = false;
       enableTools(true);
     } else if (cellData.locked_by) {
-      lockBtn.textContent = `Locked by ${cellData.locked_by}`;
+      lockBtn.textContent = `Bloqueado por ${cellData.locked_by}`;
       lockBtn.disabled = true;
       lockBtn.classList.remove('hidden');
       unlockToolBtn.disabled = true;
       enableTools(false);
     } else if (cellData.grid_status === 'no_points') {
-      lockBtn.textContent = 'No points to edit';
+      lockBtn.textContent = 'Sem pontos para editar';
       lockBtn.disabled = true;
       lockBtn.classList.remove('hidden');
       unlockToolBtn.disabled = true;
       enableTools(false);
     } else {
-      lockBtn.textContent = 'Lock & Edit';
+      lockBtn.textContent = 'Bloquear e Editar';
       lockBtn.disabled = false;
       lockBtn.classList.remove('hidden');
       lockBtn.onclick = () => lockCell(cellId);
@@ -341,9 +400,19 @@ window.LeucenaApp = (function () {
   }
 
   function enableTools(enabled) {
-    document.getElementById('tool-draw').disabled = !enabled;
-    document.getElementById('tool-edit').disabled = !enabled;
-    document.getElementById('tool-delete').disabled = !enabled;
+    const editPanel = document.getElementById('edit-tools-panel');
+    if (enabled) {
+      editPanel.classList.remove('hidden');
+    } else {
+      editPanel.classList.add('hidden');
+    }
+    const selectBtn = document.getElementById('tool-select');
+    selectBtn.disabled = enabled;
+    if (enabled) {
+      selectBtn.classList.remove('active');
+    } else {
+      selectBtn.classList.add('active');
+    }
     const pointMode = insertionMode || deletionMode;
     document.getElementById('tool-streetview').disabled = !(enabled || pointMode);
     if (!enabled && !pointMode && typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive()) {
@@ -358,7 +427,7 @@ window.LeucenaApp = (function () {
 
   function openUnlockModal() {
     if (!selectedCellId || !selectedCellData || selectedCellData.locked_by !== username) {
-      showToast('No cell locked by you', 'warning');
+      showToast('Nenhuma célula bloqueada por você', 'warning');
       return;
     }
     document.getElementById('unlock-error').classList.add('hidden');
@@ -399,7 +468,7 @@ window.LeucenaApp = (function () {
       LeucenaCollab.notifyEditingCell(null);
 
       const lockBtn = document.getElementById('lock-cell-btn');
-      lockBtn.textContent = 'Lock & Edit';
+      lockBtn.textContent = 'Bloquear e Editar';
       lockBtn.disabled = false;
       lockBtn.classList.remove('hidden');
       lockBtn.onclick = () => lockCell(cellId);
@@ -416,9 +485,9 @@ window.LeucenaApp = (function () {
         }
       }
 
-      showToast(`Cell #${cellId} unlocked - ${formatStatus(status)}`, 'success');
+      showToast(`Célula #${cellId} desbloqueada - ${formatStatus(status)}`, 'success');
     } catch (e) {
-      showToast('Failed to unlock cell', 'error');
+      showToast('Falha ao desbloquear célula', 'error');
     }
   }
 
@@ -446,23 +515,32 @@ window.LeucenaApp = (function () {
 
       document.getElementById('main-content').classList.remove('sidebar-open');
       updateToggleArrow(false);
+      updateLegendVisibility(false);
 
       const badge = document.getElementById('edit-mode-badge');
-      document.getElementById('edit-mode-text').textContent = `Editing Cell #${cellId}`;
+      document.getElementById('edit-mode-text').textContent = `Editando Célula #${cellId}`;
       badge.classList.remove('hidden');
 
-      showToast(`Cell #${cellId} locked for editing`, 'success');
+      showToast(`Célula #${cellId} bloqueada para edição`, 'success');
     } catch (e) {
-      showToast('Failed to lock cell', 'error');
+      showToast('Falha ao bloquear célula', 'error');
+    }
+  }
+
+  function handleHomeClick() {
+    if (selectedCellData && selectedCellData.locked_by === username && selectedCellId) {
+      LeucenaMap.zoomToCell(selectedCellId);
+    } else {
+      LeucenaMap.zoomToInitialView();
     }
   }
 
   function formatStatus(s) {
     const labels = {
-      not_yet_finished: 'Not yet finished',
-      mapping: 'Mapping',
-      no_points: 'No points',
-      finished: 'Finished'
+      not_yet_finished: 'Ainda não finalizado',
+      mapping: 'Mapeando',
+      no_points: 'Sem pontos',
+      finished: 'Finalizado'
     };
     return labels[s] || s;
   }
@@ -561,10 +639,10 @@ window.LeucenaApp = (function () {
     const banner = document.getElementById('insertion-banner');
     const bannerText = banner.querySelector('span:last-child');
     if (insertionMode) {
-      bannerText.textContent = 'POINT INSERTION MODE — Press H to add point, Ctrl+Z to undo';
+      bannerText.textContent = 'MODO DE INSERÇÃO DE PONTOS — Pressione H para adicionar ponto, Ctrl+Z para desfazer';
       banner.classList.remove('hidden');
     } else if (deletionMode) {
-      bannerText.textContent = 'POINT DELETION MODE — Click near a point to delete, Ctrl+Z to undo';
+      bannerText.textContent = 'MODO DE EXCLUSÃO DE PONTOS — Clique perto de um ponto para excluir, Ctrl+Z para desfazer';
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
@@ -613,7 +691,7 @@ window.LeucenaApp = (function () {
     if (!deletionMode) return;
     const nearest = LeucenaMap.findNearestPoint(latLng, 20);
     if (!nearest) {
-      showToast('No point nearby', 'info');
+      showToast('Nenhum ponto próximo', 'info');
       return;
     }
 
@@ -632,9 +710,9 @@ window.LeucenaApp = (function () {
       }
       LeucenaMap.removePointMarker(nearest.id);
       deletionHistory.push(pointData);
-      showToast(`Point #${pointData.fid} deleted`, 'info');
+      showToast(`Ponto #${pointData.fid} excluído`, 'info');
     } catch (err) {
-      showToast('Failed to delete point', 'error');
+      showToast('Falha ao excluir ponto', 'error');
     }
   }
 
@@ -643,7 +721,7 @@ window.LeucenaApp = (function () {
       if (e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         const coords = LeucenaMap.getLastCoords();
-        if (!coords) { showToast('Move your mouse over the map first', 'warning'); return; }
+        if (!coords) { showToast('Mova o mouse sobre o mapa primeiro', 'warning'); return; }
         const parts = coords.split(',').map(s => parseFloat(s.trim()));
         if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return;
         const [lat, lng] = parts;
@@ -657,27 +735,27 @@ window.LeucenaApp = (function () {
           if (!res.ok) { const err = await res.json(); showToast(err.error, 'error'); return; }
           const pt = await res.json();
           insertionHistory.push(pt.id);
-          showToast(`Point #${pt.fid} added`, 'success');
-        } catch (err) { showToast('Failed to add point', 'error'); }
+          showToast(`Ponto #${pt.fid} adicionado`, 'success');
+        } catch (err) { showToast('Falha ao adicionar ponto', 'error'); }
       }
 
       if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        if (insertionHistory.length === 0) { showToast('Nothing to undo', 'info'); return; }
+        if (insertionHistory.length === 0) { showToast('Nada para desfazer', 'info'); return; }
         const lastId = insertionHistory.pop();
         try {
           const res = await fetch(`/api/points/${lastId}`, { method: 'DELETE', headers: authHeaders() });
           if (!res.ok) { const err = await res.json(); showToast(err.error, 'error'); insertionHistory.push(lastId); return; }
           LeucenaMap.removePointMarker(lastId);
-          showToast('Last point removed (undo)', 'info');
-        } catch (err) { showToast('Failed to undo point', 'error'); insertionHistory.push(lastId); }
+          showToast('Último ponto removido (desfazer)', 'info');
+        } catch (err) { showToast('Falha ao desfazer ponto', 'error'); insertionHistory.push(lastId); }
       }
     }
 
     if (deletionMode) {
       if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        if (deletionHistory.length === 0) { showToast('Nothing to undo', 'info'); return; }
+        if (deletionHistory.length === 0) { showToast('Nada para desfazer', 'info'); return; }
         const lastPt = deletionHistory.pop();
         try {
           const res = await fetch('/api/points', {
@@ -687,8 +765,8 @@ window.LeucenaApp = (function () {
           });
           if (!res.ok) { const err = await res.json(); showToast(err.error, 'error'); deletionHistory.push(lastPt); return; }
           const pt = await res.json();
-          showToast(`Point #${pt.fid} restored`, 'success');
-        } catch (err) { showToast('Failed to restore point', 'error'); deletionHistory.push(lastPt); }
+          showToast(`Ponto #${pt.fid} restaurado`, 'success');
+        } catch (err) { showToast('Falha ao restaurar ponto', 'error'); deletionHistory.push(lastPt); }
       }
     }
   }
@@ -713,6 +791,7 @@ window.LeucenaApp = (function () {
     openAuthModal,
     isDeletionMode,
     isPointModeActive,
-    handleDeletionClick
+    handleDeletionClick,
+    collapseLegendOnFirstZoom
   };
 })();

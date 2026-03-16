@@ -10,11 +10,11 @@ window.LeucenaCollab = (function () {
 
     socket.on('connect', () => {
       socket.emit('user:join', { username });
-      LeucenaApp.showToast('Connected to server', 'success');
+      LeucenaApp.showToast('Conectado ao servidor', 'success');
     });
 
     socket.on('disconnect', () => {
-      LeucenaApp.showToast('Disconnected from server. Reconnecting...', 'warning');
+      LeucenaApp.showToast('Desconectado do servidor. Reconectando...', 'warning');
     });
 
     socket.on('users:updated', (users) => {
@@ -24,7 +24,7 @@ window.LeucenaCollab = (function () {
 
     socket.on('cell:locked', (data) => {
       if (data.username !== username) {
-        LeucenaApp.showToast(`${data.username} started editing Cell #${data.cellId}`, 'info');
+        LeucenaApp.showToast(`${data.username} começou a editar Célula #${data.cellId}`, 'info');
       }
       if (typeof LeucenaMap !== 'undefined') {
         LeucenaMap.onCellLocked(data.cellId, data.username);
@@ -34,7 +34,7 @@ window.LeucenaCollab = (function () {
     socket.on('cell:unlocked', (data) => {
       const who = data.username || data.previousUser;
       if (who !== username) {
-        LeucenaApp.showToast(`${who} finished editing Cell #${data.cellId}`, 'info');
+        LeucenaApp.showToast(`${who} terminou de editar Célula #${data.cellId}`, 'info');
       }
       if (typeof LeucenaMap !== 'undefined') {
         LeucenaMap.onCellUnlocked(data.cellId);
@@ -96,7 +96,7 @@ window.LeucenaCollab = (function () {
     for (const user of users) {
       const el = document.createElement('div');
       el.className = 'user-item';
-      const cellInfo = user.editingCell ? `Cell #${user.editingCell}` : 'Idle';
+      const cellInfo = user.editingCell ? `Célula #${user.editingCell}` : 'Ocioso';
       el.innerHTML = `
         <span class="online-dot"></span>
         <span>${user.username}</span>

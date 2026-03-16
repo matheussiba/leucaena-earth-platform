@@ -663,6 +663,96 @@ html, body {
   min-height: 0;
 }
 
+/* ── Floating Edit Tools (bottom-left on map) ── */
+.edit-tools-panel {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 160;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+}
+
+.edit-tool-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bar-btn-bg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.edit-tool-btn svg {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+.edit-tool-btn:hover {
+  background: rgba(71, 85, 105, 0.8);
+  color: white;
+}
+
+.edit-tool-btn.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* ── Map Controls Right (zoom + home group) ── */
+.map-controls-right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 160;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.map-ctrl-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bar-btn-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.map-ctrl-btn svg {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+.map-ctrl-btn:hover {
+  background: rgba(71, 85, 105, 0.8);
+  color: white;
+}
+
 /* ── Street View ── */
 #streetview-container {
   height: 280px;
@@ -864,6 +954,169 @@ html, body {
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Map Legend (accordion) ── */
+.map-legend {
+  position: absolute;
+  bottom: 56px;
+  left: 12px;
+  z-index: 150;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  min-width: 170px;
+  pointer-events: auto;
+  overflow: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.map-legend.legend-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.legend-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.legend-toggle:hover {
+  color: var(--text-primary);
+}
+
+.legend-arrow {
+  transition: transform 0.2s;
+}
+
+.map-legend.collapsed .legend-arrow {
+  transform: rotate(180deg);
+}
+
+.legend-body {
+  padding: 0 14px 10px;
+  transition: max-height 0.2s ease, opacity 0.2s;
+  max-height: 200px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.map-legend.collapsed .legend-body {
+  max-height: 0;
+  opacity: 0;
+  padding-bottom: 0;
+}
+
+.legend-category {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 8px;
+  margin-bottom: 2px;
+}
+
+.legend-category:first-child {
+  margin-top: 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-color.legend-hollow {
+  background: transparent !important;
+  border: 3px solid;
+}
+
+.legend-color.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin: 0 2px;
+}
+
+.legend-color.legend-mask {
+  border-radius: 3px;
+}
+
+/* ── Documentation Modal ── */
+.modal-card-docs {
+  width: 640px;
+  max-width: 90vw;
+  max-height: 85vh;
+  padding: 32px 36px;
+  text-align: left;
+  overflow-y: auto;
+}
+
+.docs-content h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-align: center;
+  color: var(--accent);
+}
+
+.docs-content h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.docs-content p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+
+.docs-content ul {
+  margin: 8px 0 8px 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.docs-content a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.docs-content em {
+  font-style: italic;
+}
 
 /* ── Responsive ── */
 @media (max-width: 768px) {

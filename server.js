@@ -53,7 +53,7 @@ function getUsernameFromToken(req) {
 
 function requireAuth(req, res, next) {
   const username = getUsernameFromToken(req);
-  if (!username) return res.status(401).json({ error: 'Login required' });
+  if (!username) return res.status(401).json({ error: 'Login necessário' });
   req.username = username;
   next();
 }
@@ -96,7 +96,7 @@ function findGridForPoint(lng, lat) {
 
 function validateFinished(cellId) {
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [cellId]);
-  if (!cell) return { valid: false, error: 'Cell not found' };
+  if (!cell) return { valid: false, error: 'Célula não encontrada' };
 
   const cellGeom = JSON.parse(cell.geometry);
   const cellRing = cellGeom.coordinates[0];
@@ -125,7 +125,7 @@ function validateFinished(cellId) {
   if (uncovered.length > 0) {
     return {
       valid: false,
-      error: `Cannot mark as finished: ${uncovered.length} valid point(s) are not covered by any Leucaena mask. Draw polygons over all valid points first.`
+      error: `Não é possível marcar como finalizado: ${uncovered.length} ponto(s) válido(s) não estão cobertos por nenhuma máscara de Leucena. Desenhe polígonos sobre todos os pontos válidos primeiro.`
     };
   }
   return { valid: true };
@@ -145,17 +145,17 @@ function getNextPasscode() {
 
 app.post('/api/auth/register', (req, res) => {
   const { username, password, passcode } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-  if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'Username must be 2-30 characters' });
-  if (password.length < 3) return res.status(400).json({ error: 'Password must be at least 3 characters' });
+  if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
+  if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
+  if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
 
   const expectedPasscode = getNextPasscode();
   if (!passcode || passcode.trim() !== expectedPasscode) {
-    return res.status(403).json({ error: 'Invalid passcode. Please request one via email.' });
+    return res.status(403).json({ error: 'Código de acesso inválido. Solicite um por e-mail.' });
   }
 
   const existing = queryOne('SELECT id FROM users WHERE username = ?', [username]);
-  if (existing) return res.status(409).json({ error: 'Username already taken' });
+  if (existing) return res.status(409).json({ error: 'Nome de usuário já em uso' });
 
   const hash = hashPassword(password);
   const now = new Date().toISOString();
@@ -168,13 +168,13 @@ app.post('/api/auth/register', (req, res) => {
 
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+  if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
 
   const user = queryOne('SELECT * FROM users WHERE username = ?', [username]);
-  if (!user) return res.status(401).json({ error: 'Invalid username or password' });
+  if (!user) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
   const hash = hashPassword(password);
-  if (user.password_hash !== hash) return res.status(401).json({ error: 'Invalid username or password' });
+  if (user.password_hash !== hash) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
   const token = uuidv4();
   sessions.set(token, username);
@@ -183,7 +183,7 @@ app.post('/api/auth/login', (req, res) => {
 
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
-  if (!username) return res.status(401).json({ error: 'Not logged in' });
+  if (!username) return res.status(401).json({ error: 'Não autenticado' });
   res.json({ username });
 });
 
@@ -222,14 +222,14 @@ app.put('/api/grid/:id/status', requireAuth, (req, res) => {
   const username = req.username;
   const valid = ['not_yet_finished', 'mapping', 'no_points', 'finished'];
   if (!valid.includes(status)) {
-    return res.status(400).json({ error: `Invalid status. Must be one of: ${valid.join(', ')}` });
+    return res.status(400).json({ error: `Status inválido. Deve ser um dos seguintes: ${valid.join(', ')}` });
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
-  if (!cell) return res.status(404).json({ error: 'Cell not found' });
+  if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
 
   if (cell.locked_by && cell.locked_by !== username && !isAdmin(username)) {
-    return res.status(409).json({ error: `Cell is locked by ${cell.locked_by}` });
+    return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
   const now = new Date().toISOString();
@@ -251,14 +251,14 @@ app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
   const username = req.username;
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
-  if (!cell) return res.status(404).json({ error: 'Cell not found' });
+  if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
 
   if (cell.grid_status === 'no_points') {
-    return res.status(400).json({ error: 'This cell has no points. Nothing to edit.' });
+    return res.status(400).json({ error: 'Esta célula não possui pontos. Nada para editar.' });
   }
 
   if (cell.locked_by && cell.locked_by !== username) {
-    return res.status(409).json({ error: `Cell is already locked by ${cell.locked_by}` });
+    return res.status(409).json({ error: `Célula já está bloqueada por ${cell.locked_by}` });
   }
 
   const now = new Date().toISOString();
@@ -285,10 +285,10 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
   const username = req.username;
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
-  if (!cell) return res.status(404).json({ error: 'Cell not found' });
+  if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
 
   if (cell.locked_by && cell.locked_by !== username) {
-    return res.status(409).json({ error: `Cell is locked by ${cell.locked_by}, not ${username}` });
+    return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}, não por ${username}` });
   }
 
   const now = new Date().toISOString();
@@ -342,19 +342,19 @@ app.post('/api/polygons', requireAuth, (req, res) => {
   const { grid_cell_id, geometry } = req.body;
   const username = req.username;
   if (!geometry || !grid_cell_id) {
-    return res.status(400).json({ error: 'geometry and grid_cell_id required' });
+    return res.status(400).json({ error: 'geometry e grid_cell_id obrigatórios' });
   }
 
   const coords = geometry.coordinates && geometry.coordinates[0];
   const vertexCount = coords ? coords.length - 1 : 0;
   if (vertexCount < 3) {
-    return res.status(400).json({ error: 'Polygon must have at least 3 vertices' });
+    return res.status(400).json({ error: 'Polígono deve ter pelo menos 3 vértices' });
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(grid_cell_id)]);
-  if (!cell) return res.status(404).json({ error: 'Grid cell not found' });
+  if (!cell) return res.status(404).json({ error: 'Célula do grid não encontrada' });
   if (cell.locked_by && cell.locked_by !== username) {
-    return res.status(409).json({ error: `Cell locked by ${cell.locked_by}` });
+    return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
   const id = uuidv4();
@@ -376,15 +376,15 @@ app.put('/api/polygons/:id', requireAuth, (req, res) => {
   const username = req.username;
 
   const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
-  if (!poly) return res.status(404).json({ error: 'Polygon not found' });
+  if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
 
   if (poly.created_by !== username && !isAdmin(username)) {
-    return res.status(403).json({ error: `This polygon belongs to ${poly.created_by}` });
+    return res.status(403).json({ error: `Este polígono pertence a ${poly.created_by}` });
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [poly.grid_cell_id]);
   if (cell && cell.locked_by && cell.locked_by !== username) {
-    return res.status(409).json({ error: `Cell locked by ${cell.locked_by}` });
+    return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
   const now = new Date().toISOString();
@@ -400,15 +400,15 @@ app.delete('/api/polygons/:id', requireAuth, (req, res) => {
   const username = req.username;
 
   const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
-  if (!poly) return res.status(404).json({ error: 'Polygon not found' });
+  if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
 
   if (poly.created_by !== username && !isAdmin(username)) {
-    return res.status(403).json({ error: `This polygon belongs to ${poly.created_by}` });
+    return res.status(403).json({ error: `Este polígono pertence a ${poly.created_by}` });
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [poly.grid_cell_id]);
   if (cell && cell.locked_by && cell.locked_by !== username) {
-    return res.status(409).json({ error: `Cell locked by ${cell.locked_by}` });
+    return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
   runSQL('DELETE FROM polygons WHERE id = ?', [id]);
@@ -434,7 +434,7 @@ app.post('/api/points', requireAuth, (req, res) => {
   const username = req.username;
 
   if (lat == null || lng == null) {
-    return res.status(400).json({ error: 'lat and lng required' });
+    return res.status(400).json({ error: 'lat e lng obrigatórios' });
   }
 
   const geometry = { type: 'Point', coordinates: [lng, lat] };
@@ -478,11 +478,11 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
   const username = req.username;
 
   if (!isAdmin(username)) {
-    return res.status(403).json({ error: 'Only admin can delete points' });
+    return res.status(403).json({ error: 'Somente administradores podem excluir pontos' });
   }
 
   const point = queryOne('SELECT * FROM occurrence_points WHERE id = ?', [Number(id)]);
-  if (!point) return res.status(404).json({ error: 'Point not found' });
+  if (!point) return res.status(404).json({ error: 'Ponto não encontrado' });
 
   const ptGeom = JSON.parse(point.geometry);
   const [ptLng, ptLat] = ptGeom.coordinates;
@@ -516,7 +516,7 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
 app.put('/api/points/:id/validity', requireAuth, (req, res) => {
   const { id } = req.params;
   const point = queryOne('SELECT * FROM occurrence_points WHERE id = ?', [Number(id)]);
-  if (!point) return res.status(404).json({ error: 'Point not found' });
+  if (!point) return res.status(404).json({ error: 'Ponto não encontrado' });
 
   const newValid = point.not_valid ? 0 : 1;
   runSQL('UPDATE occurrence_points SET not_valid = ? WHERE id = ?', [newValid, Number(id)]);

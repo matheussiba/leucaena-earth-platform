@@ -1,74 +1,118 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leucena Mapping Platform</title>
+  <title>Mapeamento de Leucena</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-  <!-- Auth Modal -->
+  <!-- Modal de Login -->
   <div id="auth-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <button id="auth-modal-close" class="modal-close">&times;</button>
-      <h2 id="auth-modal-title">Login</h2>
-      <p id="auth-modal-subtitle" class="modal-subtitle">Login to edit the map</p>
+      <h2 id="auth-modal-title">Entrar</h2>
+      <p id="auth-modal-subtitle" class="modal-subtitle">Faça login para editar o mapa</p>
       <div id="auth-error" class="auth-error hidden"></div>
       <form id="auth-form">
-        <input type="text" id="auth-username" placeholder="Username" required autocomplete="username" minlength="2" maxlength="30">
-        <input type="password" id="auth-password" placeholder="Password" required autocomplete="current-password" minlength="3">
+        <input type="text" id="auth-username" placeholder="Usuário" required autocomplete="username" minlength="2" maxlength="30">
+        <input type="password" id="auth-password" placeholder="Senha" required autocomplete="current-password" minlength="3">
         <div id="passcode-group" class="hidden">
-          <input type="text" id="auth-passcode" placeholder="Passcode" autocomplete="off" maxlength="10">
-          <p class="passcode-hint">If you don't have a passcode, please email <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p>
+          <input type="text" id="auth-passcode" placeholder="Código de acesso" autocomplete="off" maxlength="10">
+          <p class="passcode-hint">Se não possui o código, envie um e-mail para <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p>
         </div>
-        <button type="submit" id="auth-submit-btn">Login</button>
+        <button type="submit" id="auth-submit-btn">Entrar</button>
       </form>
       <p class="auth-switch">
-        <span id="auth-switch-text">Don't have an account?</span>
-        <a href="#" id="auth-switch-link">Register</a>
+        <span id="auth-switch-text">Não tem conta?</span>
+        <a href="#" id="auth-switch-link">Cadastrar</a>
       </p>
     </div>
   </div>
 
-  <!-- Unlock Confirmation Modal -->
+  <!-- Modal de Desbloqueio -->
   <div id="unlock-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-small">
-      <h2>Unlock Cell</h2>
-      <p class="modal-subtitle">What is the status of this cell?</p>
+      <h2>Desbloquear Célula</h2>
+      <p class="modal-subtitle">Qual é o status desta célula?</p>
       <div id="unlock-error" class="auth-error hidden"></div>
       <div class="unlock-options">
         <button class="btn btn-primary btn-full" id="unlock-finished">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-          Finished
+          Finalizado
         </button>
         <button class="btn btn-secondary btn-full" id="unlock-not-finished">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          Not finished yet
+          Ainda não finalizado
         </button>
-        <button class="btn btn-danger btn-full" id="unlock-cancel">Cancel</button>
+        <button class="btn btn-danger btn-full" id="unlock-cancel">Cancelar</button>
       </div>
     </div>
   </div>
 
-  <!-- Add Points Confirmation Modal -->
+  <!-- Modal de Adicionar Pontos -->
   <div id="addpoints-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-small">
-      <h2>Add Points Mode</h2>
-      <p class="modal-subtitle">You are about to enter point insertion mode. While active, pressing <strong>H</strong> will add a Leucaena point at the cursor location.</p>
-      <p class="modal-subtitle">Are you sure you want to continue?</p>
+      <h2>Modo de Inserção de Pontos</h2>
+      <p class="modal-subtitle">Você está prestes a entrar no modo de inserção de pontos. Enquanto ativo, pressione <strong>H</strong> para adicionar um ponto de Leucena na posição do cursor.</p>
+      <p class="modal-subtitle">Deseja continuar?</p>
       <div class="unlock-options">
-        <button class="btn btn-primary btn-full" id="addpoints-yes">Yes, start adding points</button>
-        <button class="btn btn-danger btn-full" id="addpoints-cancel">Cancel</button>
+        <button class="btn btn-primary btn-full" id="addpoints-yes">Sim, iniciar inserção de pontos</button>
+        <button class="btn btn-danger btn-full" id="addpoints-cancel">Cancelar</button>
       </div>
     </div>
   </div>
 
-  <!-- Main App (always visible) -->
+  <!-- Modal de Documentação -->
+  <div id="docs-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-docs">
+      <button id="docs-modal-close" class="modal-close">&times;</button>
+      <div class="docs-content">
+        <h2>Documentação</h2>
+
+        <h3>Título do Projeto</h3>
+        <p><em>Revelando a distribuição espacial e a biomassa aérea de <strong>Leucaena leucocephala</strong> no Estado de São Paulo usando sensoriamento remoto e inteligência artificial</em></p>
+
+        <h3>Pesquisador</h3>
+        <p>Matheus Siqueira Barros<br>Doutorando</p>
+
+        <h3>Orientador</h3>
+        <p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidade de São Paulo</p>
+
+        <h3>Descrição do Projeto</h3>
+        <p>Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, Brasil. O projeto combina imagens ópticas de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com técnicas de inteligência artificial para detectar áreas dominadas por essa espécie e estimar sua biomassa.</p>
+        <p>Embora <em>Leucaena leucocephala</em> seja conhecida por seu rápido crescimento e capacidade de fixação de nitrogênio, ela também apresenta comportamento invasor e efeitos alelopáticos que podem ameaçar ecossistemas nativos. Compreender sua distribuição e sua contribuição para os estoques de carbono é fundamental para o planejamento de restauração ecológica e para avaliações de estoque de carbono.</p>
+        <p>O projeto desenvolve métodos de aprendizado profundo, especialmente redes neurais convolucionais (CNNs), para realizar a fusão de dados LiDAR e ópticos e mapear áreas dominadas por <em>Leucaena</em> em escala estadual. A estimativa da biomassa será apoiada por modelos estatísticos derivados de métricas estruturais do LiDAR e medições de campo obtidas por métodos destrutivos.</p>
+        <p>Os resultados visam apoiar estratégias de restauração ecológica, manejo de espécies invasoras e políticas de mitigação das mudanças climáticas.</p>
+
+        <h3>Objetivo da Plataforma</h3>
+        <p>Esta plataforma foi desenvolvida para apoiar a pesquisa permitindo:</p>
+        <ul>
+          <li>Mapeamento colaborativo de manchas de <em>Leucaena leucocephala</em></li>
+          <li>Digitalização de máscaras da copa por colaboradores</li>
+          <li>Validação entre pontos e polígonos mapeados</li>
+          <li>Rastreamento das contribuições de cada participante</li>
+          <li>Exportação dos dados mapeados para análises posteriores</li>
+        </ul>
+
+        <h3>Contribuidores do Projeto</h3>
+        <p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p>
+
+        <h3>Contato</h3>
+        <p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p>
+
+        <h3>Local</h3>
+        <p>Piracicaba – São Paulo – Brasil<br><span id="docs-date"></span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Principal -->
   <div id="app">
-    <!-- Top Bar -->
+    <!-- Barra Superior -->
     <header id="top-bar">
       <div class="top-bar-left">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
@@ -76,131 +120,178 @@
           <path d="M2 17l10 5 10-5"/>
           <path d="M2 12l10 5 10-5"/>
         </svg>
-        <span class="app-title">Leucena Mapping</span>
+        <span class="app-title">Mapeamento de Leucena</span>
       </div>
       <div class="top-bar-center">
-        <span id="selected-cell-info" class="cell-info-badge hidden">No cell selected</span>
+        <span id="selected-cell-info" class="cell-info-badge hidden">Nenhuma célula selecionada</span>
         <div id="edit-mode-badge" class="edit-mode-badge hidden">
           <span class="edit-pulse"></span>
-          <span id="edit-mode-text">Editing Cell #--</span>
+          <span id="edit-mode-text">Editando Célula #--</span>
         </div>
       </div>
       <div class="top-bar-right">
+        <button class="btn btn-secondary btn-small" id="docs-btn" title="Documentação">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Doc
+        </button>
         <div class="dropdown" id="export-dropdown">
           <button class="btn btn-secondary" id="export-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
+            Exportar
           </button>
           <div class="dropdown-menu" id="export-menu">
-            <div id="export-login-warn" class="export-login-warn hidden">Login to download</div>
-            <a href="#" id="export-geojson">Polygons (GeoJSON)</a>
-            <a href="#" id="export-grid">Grid Status (GeoJSON)</a>
-            <a href="#" id="export-points">Occurrence Points (GeoJSON)</a>
+            <div id="export-login-warn" class="export-login-warn hidden">Faça login para baixar</div>
+            <a href="#" id="export-geojson">Polígonos (GeoJSON)</a>
+            <a href="#" id="export-grid">Status dos Grids (GeoJSON)</a>
+            <a href="#" id="export-points">Pontos de Ocorrência (GeoJSON)</a>
           </div>
         </div>
-        <!-- Logged-out state -->
+        <!-- Deslogado -->
         <button class="btn btn-primary" id="login-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          Login
+          Entrar
         </button>
-        <!-- Logged-in state -->
+        <!-- Logado -->
         <div class="user-badge hidden" id="user-badge">
           <div class="user-avatar" id="user-avatar"></div>
           <span id="user-display-name"></span>
         </div>
-        <button class="btn btn-secondary btn-small hidden" id="logout-btn">Logout</button>
-        <button class="btn btn-icon" id="toggle-users-btn" title="Online users">
+        <button class="btn btn-secondary btn-small hidden" id="logout-btn">Sair</button>
+        <button class="btn btn-icon" id="toggle-users-btn" title="Usuários online">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           <span class="user-count-badge" id="user-count">0</span>
         </button>
       </div>
     </header>
 
-    <!-- Point Insertion Mode Banner -->
+    <!-- Banner do Modo de Inserção de Pontos -->
     <div id="insertion-banner" class="insertion-banner hidden">
       <span class="insertion-pulse"></span>
-      <span>POINT INSERTION MODE — Press H to add point, Ctrl+Z to undo</span>
+      <span>MODO DE INSERÇÃO DE PONTOS — Pressione H para adicionar ponto, Ctrl+Z para desfazer</span>
     </div>
 
     <div id="main-content">
-      <!-- Sidebar Toggle -->
-      <button id="sidebar-toggle" class="sidebar-toggle" title="Toggle sidebar">
+      <!-- Botão do Painel Lateral -->
+      <button id="sidebar-toggle" class="sidebar-toggle" title="Alternar painel lateral">
         <span class="toggle-arrow">&raquo;</span>
       </button>
       <div id="sidebar-overlay" class="sidebar-overlay"></div>
-      <!-- Sidebar -->
+      <!-- Painel Lateral -->
       <aside id="sidebar">
-        <!-- Status Filter -->
+        <!-- Filtro de Status -->
         <div class="sidebar-section">
-          <h3>Status Filter</h3>
+          <h3>Filtro de Status</h3>
           <label class="filter-item">
             <input type="checkbox" data-status="not_yet_finished" checked>
             <span class="status-dot" style="background: #7c3aed;"></span>
-            Not yet finished
+            Ainda não finalizado
           </label>
           <label class="filter-item">
             <input type="checkbox" data-status="mapping" checked>
             <span class="status-dot" style="background: #eab308; border: 2px solid #eab308;"></span>
-            Mapping
+            Mapeando
           </label>
           <label class="filter-item">
             <input type="checkbox" data-status="no_points" checked>
             <span class="status-dot" style="background: #6b7280;"></span>
-            No points
+            Sem pontos
           </label>
           <label class="filter-item">
             <input type="checkbox" data-status="finished" checked>
             <span class="status-dot" style="background: #22c55e;"></span>
-            Finished
+            Finalizado
           </label>
         </div>
 
-        <!-- Layers -->
+        <!-- Camadas -->
         <div class="sidebar-section">
-          <h3>Layers</h3>
+          <h3>Camadas</h3>
           <label class="filter-item">
             <input type="checkbox" id="toggle-grid" checked>
-            Grid Cells
+            Células do Grid
           </label>
           <label class="filter-item">
             <input type="checkbox" id="toggle-points" checked>
-            Occurrence Points
+            Pontos de Ocorrência
           </label>
           <label class="filter-item">
             <input type="checkbox" id="toggle-polygons" checked>
-            Mapped Polygons
+            Polígonos Mapeados
           </label>
         </div>
 
-        <!-- Cell Actions (shown when a cell is selected) -->
+        <!-- Informações da Célula -->
         <div class="sidebar-section hidden" id="cell-actions">
-          <h3>Cell Info</h3>
-          <p class="cell-id-label">Cell #<span id="cell-id-display"></span></p>
+          <h3>Informações da Célula</h3>
+          <p class="cell-id-label">Célula #<span id="cell-id-display"></span></p>
           <div class="cell-detail">
             <span class="cell-detail-label">Status:</span>
             <span id="cell-status-display" class="cell-detail-value">--</span>
           </div>
           <div class="cell-detail">
-            <span class="cell-detail-label">Worked by:</span>
+            <span class="cell-detail-label">Trabalhado por:</span>
             <span id="cell-worked-by" class="cell-detail-value">--</span>
           </div>
           <div class="cell-detail">
-            <span class="cell-detail-label">Finished by:</span>
+            <span class="cell-detail-label">Finalizado por:</span>
             <span id="cell-finished-by" class="cell-detail-value">--</span>
           </div>
-          <button class="btn btn-primary btn-full" id="lock-cell-btn">Lock & Edit</button>
+          <button class="btn btn-primary btn-full" id="lock-cell-btn">Bloquear e Editar</button>
         </div>
 
-        <!-- Online Users -->
+        <!-- Usuários Online -->
         <div class="sidebar-section" id="users-panel">
-          <h3>Online Users</h3>
+          <h3>Usuários Online</h3>
           <div id="users-list"></div>
         </div>
       </aside>
 
-      <!-- Map + Street View -->
+      <!-- Mapa + Street View -->
       <div id="map-container">
         <div id="map"></div>
+        <!-- Ferramentas de edição flutuantes (só visíveis em modo de edição) -->
+        <div id="edit-tools-panel" class="edit-tools-panel hidden">
+          <button class="edit-tool-btn" id="tool-draw" title="Desenhar Polígono">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+          </button>
+          <button class="edit-tool-btn" id="tool-edit" title="Editar Polígono">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="edit-tool-btn" id="tool-delete" title="Excluir Polígono">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>
+        <!-- Controles de mapa flutuantes (direita central) -->
+        <div id="map-controls-right" class="map-controls-right">
+          <button id="tool-zoom-in" class="map-ctrl-btn" title="Zoom +">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button id="tool-home" class="map-ctrl-btn" title="Visão inicial">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </button>
+          <button id="tool-zoom-out" class="map-ctrl-btn" title="Zoom -">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <!-- Legenda do Mapa (accordion) -->
+        <div id="map-legend" class="map-legend">
+          <button id="legend-toggle" class="legend-toggle">
+            <span class="legend-toggle-label">Legenda</span>
+            <svg id="legend-arrow" class="legend-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="legend-body" class="legend-body">
+            <div class="legend-category">Células</div>
+            <div class="legend-item"><span class="legend-color" style="background:#7c3aed;"></span> Ainda não finalizado</div>
+            <div class="legend-item"><span class="legend-color legend-hollow" style="border-color:#eab308;"></span> Mapeando</div>
+            <div class="legend-item"><span class="legend-color" style="background:#d4d4d8;"></span> Sem pontos</div>
+            <div class="legend-item"><span class="legend-color" style="background:#22c55e;"></span> Finalizado</div>
+            <div class="legend-category">Pontos de Leucena</div>
+            <div class="legend-item"><span class="legend-color legend-dot" style="background:#facc15;"></span> Ponto válido</div>
+            <div class="legend-item"><span class="legend-color legend-dot" style="background:#ef4444;"></span> Ponto inválido</div>
+            <div class="legend-category">Máscara de Leucena</div>
+            <div class="legend-item"><span class="legend-color legend-hollow legend-mask" style="border-color:#84cc16;"></span> Polígono mapeado</div>
+          </div>
+        </div>
         <div id="streetview-container" class="hidden">
           <div id="streetview-header">
             <span>Street View</span>
@@ -211,51 +302,38 @@
       </div>
     </div>
 
-    <!-- Toolbar -->
+    <!-- Barra de Ferramentas -->
     <footer id="toolbar">
       <div class="toolbar-group">
-        <button class="tool-btn active" id="tool-select" title="Select / Pan">
+        <button class="tool-btn active" id="tool-select" title="Selecionar / Mover">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
-          Select
+          Selecionar
         </button>
         <div class="toolbar-separator"></div>
-        <button class="tool-btn" id="tool-draw" title="Draw Polygon" disabled>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-          Draw
-        </button>
-        <button class="tool-btn" id="tool-edit" title="Edit Polygon" disabled>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit
-        </button>
-        <button class="tool-btn" id="tool-delete" title="Delete Polygon" disabled>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-          Delete
-        </button>
-        <div class="toolbar-separator"></div>
-        <button class="tool-btn" id="tool-unlock" title="Unlock current cell" disabled>
+        <button class="tool-btn" id="tool-unlock" title="Desbloquear célula atual" disabled>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>
-          Unlock
+          Desbloquear
         </button>
         <div class="toolbar-separator"></div>
-        <button class="tool-btn" id="tool-streetview" title="Open Street View" disabled>
+        <button class="tool-btn" id="tool-streetview" title="Abrir Street View" disabled>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
           Street View
         </button>
         <div class="toolbar-separator"></div>
-        <button class="tool-btn" id="tool-maptype" title="Toggle Satellite / Map">
+        <button class="tool-btn" id="tool-maptype" title="Alternar Satélite / Mapa">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
-          Map
+          Mapa
         </button>
-        <label class="toolbar-checkbox" id="label-toggle" title="Show labels">
+        <label class="toolbar-checkbox" id="label-toggle" title="Mostrar rótulos">
           <input type="checkbox" id="tool-labels">
-          <span>Labels</span>
+          <span>Rótulos</span>
         </label>
         <div class="toolbar-separator hidden" id="insertion-sep"></div>
-        <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="insertion-toggle" title="Add Leucaena points">
+        <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="insertion-toggle" title="Adicionar pontos de Leucena">
           <input type="checkbox" id="tool-insertion">
           <span>Add Points</span>
         </label>
-        <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="deletion-toggle" title="Remove Leucaena points (admin)">
+        <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="deletion-toggle" title="Remover pontos de Leucena (admin)">
           <input type="checkbox" id="tool-deletion">
           <span>- Pts</span>
         </label>
@@ -263,7 +341,7 @@
       <div class="toolbar-group toolbar-right">
         <div class="coords-container">
           <span id="coords-display" class="coords">--</span>
-          <span class="coords-hint">Hold Right-click on the map to copy coordinates</span>
+          <span class="coords-hint">Clique direito no mapa para copiar coordenadas</span>
         </div>
       </div>
     </footer>
