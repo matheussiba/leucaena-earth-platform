@@ -1,0 +1,102 @@
+const initSqlJs = require('sql.js');
+const fs = require('fs');
+const path = require('path');
+
+const DB_PATH = path.join(__dirname, 'data', 'leucena.db');
+
+let db = null;
+
+async function initDB() {
+  const SQL = await initSqlJs();
+
+  if (fs.existsSync(DB_PATH)) {
+    const buffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(buffer);
+  } else {
+    db = new SQL.Database();
+  }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS grid_cells (
+      id INTEGER PRIMARY KEY,
+      fid INTEGER,
+      geometry TEXT NOT NULL,
+      grid_status TEXT NOT NULL DEFAULT 'not_yet_finished',
+      locked_by TEXT,
+      locked_at TEXT,
+      updated_at TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS polygons (
+      id TEXT PRIMARY KEY,
+      grid_cell_id INTEGER,
+      geometry TEXT NOT NULL,
+      created_by TEXT,
+      created_at TEXT,
+      updated_at TEXT,
+      FOREIGN KEY (grid_cell_id) REFERENCES grid_cells(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS occurrence_points (
+      id INTEGER PRIMARY KEY,
+      fid INTEGER,
+      geometry TEXT NOT NULL,
+      not_valid INTEGER
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TEXT
+    )
+  `);
+
+  try { db.run('ALTER TABLE grid_cells ADD COLUMN worked_by TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE grid_cells ADD COLUMN finished_by TEXT'); } catch (e) { /* already exists */ }
+
+  persist();
+  return db;
+}
+
+function persist() {
+  if (!db) return;
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  fs.writeFileSync(DB_PATH, buffer);
+}
+
+function getDB() {
+  if (!db) throw new Error('Database not initialized. Call initDB() first.');
+  return db;
+}
+
+function queryAll(sql, params = []) {
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  const results = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+
+function queryOne(sql, params = []) {
+  const rows = queryAll(sql, params);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+function runSQL(sql, params = []) {
+  db.run(sql, params);
+  persist();
+}
+
+module.exports = { initDB, getDB, persist, queryAll, queryOne, runSQL, DB_PATH };

@@ -1,0 +1,18 @@
+{
+  "name": "leucena-mapping",
+  "version": "1.0.0",
+  "description": "Collaborative online mapping platform for Leucaena occurrence mapping",
+  "main": "server.js",
+  "scripts": {
+    "seed": "node seed.js",
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "socket.io": "^4.7.0",
+    "sql.js": "^1.11.0",
+    "uuid": "^10.0.0"
+  }
+}
