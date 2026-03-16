@@ -37,7 +37,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 const connectedUsers = new Map();
 const sessions = new Map();
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000;
-const ADMIN_USERNAME = 'msb';
+const ADMIN_USERNAMES = ['msb', 'mpf'];
+function isAdmin(username) { return ADMIN_USERNAMES.includes(username); }
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password + '***REDACTED_SALT***').digest('hex');
@@ -133,8 +134,9 @@ function validateFinished(cellId) {
 // ── Auth ──
 
 function getNextPasscode() {
-  const row = queryOne('SELECT COUNT(*) as cnt FROM users');
-  const n = row.cnt;
+  const adminList = ADMIN_USERNAMES.map(u => `'${u}'`).join(',');
+  const row = queryOne(`SELECT COUNT(*) as cnt FROM users WHERE username NOT IN (${adminList})`);
+  const n = row.cnt + 1;
   if (n < 1) return '0001';
   const thousands = Math.ceil(n / 2);
   const hundreds = Math.floor(n / 2);
@@ -226,7 +228,7 @@ app.put('/api/grid/:id/status', requireAuth, (req, res) => {
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
   if (!cell) return res.status(404).json({ error: 'Cell not found' });
 
-  if (cell.locked_by && cell.locked_by !== username && username !== ADMIN_USERNAME) {
+  if (cell.locked_by && cell.locked_by !== username && !isAdmin(username)) {
     return res.status(409).json({ error: `Cell is locked by ${cell.locked_by}` });
   }
 
@@ -250,6 +252,10 @@ app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
   if (!cell) return res.status(404).json({ error: 'Cell not found' });
+
+  if (cell.grid_status === 'no_points') {
+    return res.status(400).json({ error: 'This cell has no points. Nothing to edit.' });
+  }
 
   if (cell.locked_by && cell.locked_by !== username) {
     return res.status(409).json({ error: `Cell is already locked by ${cell.locked_by}` });
@@ -372,7 +378,7 @@ app.put('/api/polygons/:id', requireAuth, (req, res) => {
   const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
   if (!poly) return res.status(404).json({ error: 'Polygon not found' });
 
-  if (poly.created_by !== username && username !== ADMIN_USERNAME) {
+  if (poly.created_by !== username && !isAdmin(username)) {
     return res.status(403).json({ error: `This polygon belongs to ${poly.created_by}` });
   }
 
@@ -396,7 +402,7 @@ app.delete('/api/polygons/:id', requireAuth, (req, res) => {
   const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
   if (!poly) return res.status(404).json({ error: 'Polygon not found' });
 
-  if (poly.created_by !== username && username !== ADMIN_USERNAME) {
+  if (poly.created_by !== username && !isAdmin(username)) {
     return res.status(403).json({ error: `This polygon belongs to ${poly.created_by}` });
   }
 
@@ -471,7 +477,7 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
   const { id } = req.params;
   const username = req.username;
 
-  if (username !== ADMIN_USERNAME) {
+  if (!isAdmin(username)) {
     return res.status(403).json({ error: 'Only admin can delete points' });
   }
 

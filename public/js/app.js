@@ -9,6 +9,8 @@ window.LeucenaApp = (function () {
   function getUsername() { return username; }
   function getAuthToken() { return authToken; }
   function isLoggedIn() { return !!username && !!authToken; }
+  const ADMIN_USERS = ['msb', 'mpf'];
+  function isAdminUser() { return ADMIN_USERS.includes(username); }
   function getSelectedCellId() { return selectedCellId; }
   function getSelectedCellData() { return selectedCellData; }
 
@@ -31,6 +33,7 @@ window.LeucenaApp = (function () {
     document.getElementById('tool-unlock').addEventListener('click', openUnlockModal);
     document.getElementById('unlock-finished').addEventListener('click', () => confirmUnlock('finished'));
     document.getElementById('unlock-not-finished').addEventListener('click', () => confirmUnlock('not_yet_finished'));
+    document.getElementById('unlock-no-points').addEventListener('click', () => confirmUnlock('no_points'));
     document.getElementById('unlock-cancel').addEventListener('click', closeUnlockModal);
     document.getElementById('unlock-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeUnlockModal();
@@ -301,6 +304,12 @@ window.LeucenaApp = (function () {
       lockBtn.classList.remove('hidden');
       unlockToolBtn.disabled = true;
       enableTools(false);
+    } else if (cellData.grid_status === 'no_points') {
+      lockBtn.textContent = 'No points to edit';
+      lockBtn.disabled = true;
+      lockBtn.classList.remove('hidden');
+      unlockToolBtn.disabled = true;
+      enableTools(false);
     } else {
       lockBtn.textContent = 'Lock & Edit';
       lockBtn.disabled = false;
@@ -512,7 +521,7 @@ window.LeucenaApp = (function () {
     });
 
     deleteCb.addEventListener('change', () => {
-      if (!isLoggedIn() || username !== 'msb') { deleteCb.checked = false; return; }
+      if (!isLoggedIn() || !isAdminUser()) { deleteCb.checked = false; return; }
       if (deleteCb.checked) {
         setInsertionMode(false);
         setDeletionMode(true);
@@ -588,7 +597,7 @@ window.LeucenaApp = (function () {
   function showAdminTools() {
     document.getElementById('insertion-sep').classList.remove('hidden');
     document.getElementById('insertion-toggle').classList.remove('hidden');
-    if (username === 'msb') {
+    if (isAdminUser()) {
       document.getElementById('deletion-toggle').classList.remove('hidden');
     }
   }

@@ -61,6 +61,22 @@ async function initDB() {
   try { db.run('ALTER TABLE grid_cells ADD COLUMN worked_by TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE grid_cells ADD COLUMN finished_by TEXT'); } catch (e) { /* already exists */ }
 
+  const crypto = require('crypto');
+  function seedHash(pw) { return crypto.createHash('sha256').update(pw + '***REDACTED_SALT***').digest('hex'); }
+
+  const adminUsers = [
+    { username: 'msb', password: '***REDACTED***' },
+    { username: 'mpf', password: '***REDACTED***' }
+  ];
+  for (const u of adminUsers) {
+    const exists = db.exec(`SELECT id FROM users WHERE username = '${u.username}'`);
+    if (exists.length === 0 || exists[0].values.length === 0) {
+      const hash = seedHash(u.password);
+      const now = new Date().toISOString();
+      db.run('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)', [u.username, hash, now]);
+    }
+  }
+
   persist();
   return db;
 }
