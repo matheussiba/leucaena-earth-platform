@@ -33,7 +33,6 @@ window.LeucenaApp = (function () {
     document.getElementById('tool-unlock').addEventListener('click', openUnlockModal);
     document.getElementById('unlock-finished').addEventListener('click', () => confirmUnlock('finished'));
     document.getElementById('unlock-not-finished').addEventListener('click', () => confirmUnlock('not_yet_finished'));
-    document.getElementById('unlock-no-points').addEventListener('click', () => confirmUnlock('no_points'));
     document.getElementById('unlock-cancel').addEventListener('click', closeUnlockModal);
     document.getElementById('unlock-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeUnlockModal();
