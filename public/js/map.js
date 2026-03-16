@@ -49,6 +49,8 @@ window.LeucenaMap = (function () {
       map.setZoom(map.getZoom() - 1);
     });
 
+    map.addListener('zoom_changed', updateZoomButtons);
+
     svCoverageLayer = new google.maps.StreetViewCoverageLayer();
 
     map.addListener('mousemove', (e) => {
@@ -539,6 +541,14 @@ window.LeucenaMap = (function () {
     if (typeof LeucenaDrawing !== 'undefined') {
       LeucenaDrawing.setClickable(clickable);
     }
+  }
+
+  function updateZoomButtons() {
+    const zoom = map.getZoom();
+    const minZoom = initialZoom != null ? initialZoom : (map.minZoom || 0);
+    const maxZoom = map.maxZoom || 22;
+    document.getElementById('tool-zoom-out').disabled = (zoom <= minZoom);
+    document.getElementById('tool-zoom-in').disabled = (zoom >= maxZoom);
   }
 
   function showStreetViewCoverage(show) {
