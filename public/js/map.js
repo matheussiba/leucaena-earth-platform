@@ -246,7 +246,7 @@ window.LeucenaMap = (function () {
         return;
       }
       const currentData = LeucenaApp.getSelectedCellData();
-      if (currentData && currentData.locked_by === LeucenaApp.getUsername() && cellId !== LeucenaApp.getSelectedCellId()) {
+      if (currentData && currentData.locked_by && currentData.locked_by === LeucenaApp.getUsername() && cellId !== LeucenaApp.getSelectedCellId()) {
         LeucenaApp.showToast('You are editing a tile. Click "Unlock" to stop editing first.', 'warning');
         return;
       }
