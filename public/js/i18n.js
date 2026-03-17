@@ -102,7 +102,7 @@ window.LeucenaI18n = (function () {
     'legend.leucenaMask': { pt: 'Máscara de Leucena', en: 'Leucaena Mask', es: 'Máscara de Leucaena' },
     'legend.validPoint': { pt: 'Válido', en: 'Valid', es: 'Válido' },
     'legend.invalidPoint': { pt: 'Inválido', en: 'Invalid', es: 'Inválido' },
-    'legend.doubtPoint': { pt: 'Dúvida', en: 'Doubt', es: 'Duda' },
+    'legend.doubtPoint': { pt: 'Incerto', en: 'Uncertain', es: 'Incierto' },
     'legend.layerStrokes': { pt: 'Contorno = Base de Dados', en: 'Stroke = Data Source', es: 'Contorno = Base de Datos' },
     'legend.mappedPolygon': { pt: 'Polígono mapeado', en: 'Mapped polygon', es: 'Polígono mapeado' },
 
@@ -154,7 +154,7 @@ window.LeucenaI18n = (function () {
     'toast.validityFail': { pt: 'Falha ao atualizar validade do ponto', en: 'Failed to update point validity', es: 'Error al actualizar validez del punto' },
     'toast.markedInvalid': { pt: 'Ponto marcado como inválido', en: 'Point marked as invalid', es: 'Punto marcado como inválido' },
     'toast.markedValid': { pt: 'Ponto marcado como válido', en: 'Point marked as valid', es: 'Punto marcado como válido' },
-    'toast.markedDoubt': { pt: 'Ponto marcado como dúvida', en: 'Point marked as doubt', es: 'Punto marcado como duda' },
+    'toast.markedDoubt': { pt: 'Ponto marcado como incerto', en: 'Point marked as uncertain', es: 'Punto marcado como incierto' },
     'toast.panWarning': { pt: 'Você está se afastando da célula em edição. Clique em "Desbloquear" para parar de editar.', en: 'You are moving away from the editing cell. Click "Unlock" to stop editing.', es: 'Se está alejando de la celda en edición. Haga clic en "Desbloquear" para dejar de editar.' },
 
     // ── Toast messages (drawing.js) ──
@@ -191,7 +191,7 @@ window.LeucenaI18n = (function () {
     // ── Point markers ──
     'point.title': { pt: 'Ponto #{0}', en: 'Point #{0}', es: 'Punto #{0}' },
     'point.titleInvalid': { pt: 'Ponto #{0} (inválido)', en: 'Point #{0} (invalid)', es: 'Punto #{0} (inválido)' },
-    'point.titleDoubt': { pt: 'Ponto #{0} (dúvida)', en: 'Point #{0} (doubt)', es: 'Punto #{0} (duda)' }
+    'point.titleDoubt': { pt: 'Ponto #{0} (incerto)', en: 'Point #{0} (uncertain)', es: 'Punto #{0} (incierto)' }
   };
 
   function t(key, ...args) {
