@@ -189,9 +189,9 @@
           </button>
           <div class="dropdown-menu" id="export-menu">
             <div id="export-login-warn" class="export-login-warn hidden" data-i18n="topbar.loginToDownload">Faça login para baixar</div>
-            <a href="#" id="export-geojson" data-i18n="topbar.polygonsGeoJSON">Polígonos (GeoJSON)</a>
-            <a href="#" id="export-grid" data-i18n="topbar.gridGeoJSON">Status dos Grids (GeoJSON)</a>
             <a href="#" id="export-points" data-i18n="topbar.pointsGeoJSON">Pontos de Ocorrência (GeoJSON)</a>
+            <a href="#" id="export-grid" data-i18n="topbar.gridGeoJSON">Grade SP (GeoJSON)</a>
+            <a href="#" id="export-geojson" data-i18n="topbar.polygonsGeoJSON">Máscaras de Leucena (GeoJSON)</a>
           </div>
         </div>
         <!-- Deslogado -->
@@ -226,46 +226,77 @@
       <div id="sidebar-overlay" class="sidebar-overlay"></div>
       <!-- Painel Lateral -->
       <aside id="sidebar">
-        <!-- Filtro de Status -->
+        <!-- Filtros -->
         <div class="sidebar-section">
-          <h3 data-i18n="sidebar.statusFilter">Filtro de Status</h3>
-          <label class="filter-item">
-            <input type="checkbox" data-status="not_yet_finished" checked>
-            <span class="status-dot" style="background: #7c3aed;"></span>
-            <span data-i18n="status.not_yet_finished">Ainda não finalizado</span>
-          </label>
-          <label class="filter-item">
-            <input type="checkbox" data-status="mapping" checked>
-            <span class="status-dot" style="background: #eab308; border: 2px solid #eab308;"></span>
-            <span data-i18n="status.mapping">Mapeando</span>
-          </label>
-          <label class="filter-item">
-            <input type="checkbox" data-status="no_points" checked>
-            <span class="status-dot" style="background: #6b7280;"></span>
-            <span data-i18n="status.no_points">Sem pontos</span>
-          </label>
-          <label class="filter-item">
-            <input type="checkbox" data-status="finished" checked>
-            <span class="status-dot" style="background: #22c55e;"></span>
-            <span data-i18n="status.finished">Finalizado</span>
-          </label>
-        </div>
+          <h3 data-i18n="sidebar.filters">Filtros</h3>
 
-        <!-- Camadas -->
-        <div class="sidebar-section">
-          <h3 data-i18n="sidebar.layers">Camadas</h3>
-          <label class="filter-item">
-            <input type="checkbox" id="toggle-grid" checked>
-            <span data-i18n="sidebar.gridCells">Células do Grid</span>
-          </label>
-          <label class="filter-item">
-            <input type="checkbox" id="toggle-points" checked>
-            <span data-i18n="sidebar.occurrencePoints">Pontos de Ocorrência</span>
-          </label>
-          <label class="filter-item">
-            <input type="checkbox" id="toggle-polygons" checked>
-            <span data-i18n="sidebar.mappedPolygons">Polígonos Mapeados</span>
-          </label>
+          <!-- Células da Grade -->
+          <div class="filter-group">
+            <label class="filter-item filter-item-parent">
+              <input type="checkbox" id="toggle-grid" checked>
+              <span data-i18n="sidebar.gridCellsSection">Células da Grade</span>
+            </label>
+            <div class="filter-subgroup">
+              <label class="filter-item">
+                <input type="checkbox" data-status="not_yet_finished" checked>
+                <span class="status-dot" style="background: #7c3aed;"></span>
+                <span data-i18n="status.not_yet_finished">Ainda não finalizado</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" data-status="mapping" checked>
+                <span class="status-dot" style="background: #eab308; border: 2px solid #eab308;"></span>
+                <span data-i18n="status.mapping">Mapeando</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" data-status="no_points" checked>
+                <span class="status-dot" style="background: #6b7280;"></span>
+                <span data-i18n="status.no_points">Sem pontos</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" data-status="finished" checked>
+                <span class="status-dot" style="background: #22c55e;"></span>
+                <span data-i18n="status.finished">Finalizado</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Pontos de Ocorrência -->
+          <div class="filter-group">
+            <label class="filter-item filter-item-parent">
+              <input type="checkbox" id="toggle-points" checked>
+              <span data-i18n="sidebar.occurrencePoints">Pontos de Ocorrência</span>
+            </label>
+            <div class="filter-subgroup">
+              <label class="filter-item">
+                <input type="checkbox" id="layer-crowdmapping" data-layer="crowdmapping" checked>
+                <span data-i18n="sidebar.layerCrowdmapping">Crowdmapping</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" id="layer-inaturalist" data-layer="inaturalist" checked>
+                <span data-i18n="sidebar.layerInaturalist">iNaturalist</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" id="layer-gbif" data-layer="gbif" checked>
+                <span data-i18n="sidebar.layerGbif">GBIF</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" id="layer-insthorus" data-layer="insthorus" checked>
+                <span data-i18n="sidebar.layerInsthorus">Instituto Horus</span>
+              </label>
+              <label class="filter-item">
+                <input type="checkbox" id="layer-specieslink" data-layer="specieslink" checked>
+                <span data-i18n="sidebar.layerSpecieslink">SpeciesLink</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Máscaras de Leucenas -->
+          <div class="filter-group">
+            <label class="filter-item filter-item-parent">
+              <input type="checkbox" id="toggle-polygons" checked>
+              <span data-i18n="sidebar.leucenaMasks">Máscaras de Leucenas</span>
+            </label>
+          </div>
         </div>
 
         <!-- Informações da Célula -->
@@ -390,11 +421,11 @@
         <div class="toolbar-separator hidden" id="insertion-sep"></div>
         <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="insertion-toggle" title="Adicionar pontos de Leucena">
           <input type="checkbox" id="tool-insertion">
-          <span data-i18n="tool.addPoints">Add Points</span>
+          <span data-i18n="tool.addPoints">Add Pontos</span>
         </label>
         <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="deletion-toggle" title="Remover pontos de Leucena (admin)">
           <input type="checkbox" id="tool-deletion">
-          <span data-i18n="tool.delPoints">- Pts</span>
+          <span data-i18n="tool.delPoints">Remover Pontos</span>
         </label>
       </div>
       <div class="toolbar-group toolbar-right">

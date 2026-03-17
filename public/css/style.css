@@ -515,6 +515,32 @@ html, body {
   font-weight: 600;
 }
 
+.filter-group {
+  margin-bottom: 14px;
+}
+
+.filter-group:last-child {
+  margin-bottom: 0;
+}
+
+.filter-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 0 6px 0;
+  letter-spacing: 0.3px;
+}
+
+.filter-subgroup {
+  margin-left: 20px;
+  padding-left: 4px;
+  border-left: 2px solid var(--border);
+}
+
+.filter-subgroup .filter-item {
+  padding: 2px 0;
+}
+
 .filter-item {
   display: flex;
   align-items: center;
@@ -527,6 +553,11 @@ html, body {
 }
 
 .filter-item:hover { color: var(--text-primary); }
+
+.filter-item-parent {
+  font-weight: 500;
+  color: var(--text-primary);
+}
 
 .filter-item input[type="checkbox"] {
   accent-color: var(--accent);

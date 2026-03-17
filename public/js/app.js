@@ -520,12 +520,8 @@ window.LeucenaApp = (function () {
       editPanel.classList.add('hidden');
     }
     const selectBtn = document.getElementById('tool-select');
-    selectBtn.disabled = enabled;
-    if (enabled) {
-      selectBtn.classList.remove('active');
-    } else {
-      selectBtn.classList.add('active');
-    }
+    selectBtn.disabled = false;
+    selectBtn.classList.add('active');
     const pointMode = insertionMode || deletionMode;
     document.getElementById('tool-streetview').disabled = !(enabled || pointMode);
     if (!enabled && !pointMode && typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive()) {
@@ -902,6 +898,7 @@ window.LeucenaApp = (function () {
     isDeletionMode,
     isPointModeActive,
     handleDeletionClick,
-    collapseLegendOnFirstZoom
+    collapseLegendOnFirstZoom,
+    isEditing
   };
 })();

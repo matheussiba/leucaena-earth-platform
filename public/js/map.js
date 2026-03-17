@@ -4,7 +4,9 @@ window.LeucenaMap = (function () {
   const gridPolygons = {};
   const gridData = {};
   const pointMarkersById = {};
+  const POINT_LAYERS = ['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink'];
   let activeFilters = new Set(['not_yet_finished', 'mapping', 'no_points', 'finished']);
+  let visiblePointLayers = new Set(POINT_LAYERS);
   let showGrid = true;
   let showPoints = true;
   let showPolygons = true;
@@ -138,6 +140,7 @@ window.LeucenaMap = (function () {
   }
 
   function deselectFromMap() {
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isEditing && LeucenaApp.isEditing()) return;
     const main = document.getElementById('main-content');
     main.classList.remove('sidebar-open');
     const arrow = document.querySelector('.toggle-arrow');
@@ -353,7 +356,7 @@ window.LeucenaMap = (function () {
 
         const marker = new google.maps.Marker({
           position: { lat, lng },
-          map: showPoints ? map : null,
+          map: isPointLayerVisible(layer) ? map : null,
           icon: getPointIcon(status, layer),
           title: getPointTitle(feature.properties.fid, status),
           zIndex: 5
@@ -512,29 +515,71 @@ window.LeucenaMap = (function () {
     });
   }
 
+  function syncGridParent() {
+    const parent = document.getElementById('toggle-grid');
+    const children = document.querySelectorAll('[data-status]');
+    const checkedCount = Array.from(children).filter(c => c.checked).length;
+    parent.checked = checkedCount > 0;
+    parent.indeterminate = checkedCount > 0 && checkedCount < children.length;
+    showGrid = checkedCount > 0;
+  }
+
+  function syncPointsParent() {
+    const parent = document.getElementById('toggle-points');
+    const children = document.querySelectorAll('[data-layer]');
+    const checkedCount = Array.from(children).filter(c => c.checked).length;
+    parent.checked = checkedCount > 0;
+    parent.indeterminate = checkedCount > 0 && checkedCount < children.length;
+    showPoints = checkedCount > 0;
+  }
+
   function setupFilters() {
-    document.querySelectorAll('[data-status]').forEach(cb => {
+    const statusCheckboxes = document.querySelectorAll('[data-status]');
+    statusCheckboxes.forEach(cb => {
       cb.addEventListener('change', function () {
         const status = this.dataset.status;
-        if (this.checked) {
-          activeFilters.add(status);
-        } else {
-          activeFilters.delete(status);
-        }
+        if (this.checked) activeFilters.add(status);
+        else activeFilters.delete(status);
+        syncGridParent();
         refreshGridVisibility();
       });
     });
 
     document.getElementById('toggle-grid').addEventListener('change', function () {
-      showGrid = this.checked;
+      const checked = this.checked;
+      this.indeterminate = false;
+      showGrid = checked;
+      statusCheckboxes.forEach(cb => {
+        cb.checked = checked;
+        if (checked) activeFilters.add(cb.dataset.status);
+        else activeFilters.delete(cb.dataset.status);
+      });
       refreshGridVisibility();
     });
 
+    const layerCheckboxes = document.querySelectorAll('[data-layer]');
+    layerCheckboxes.forEach(cb => {
+      cb.addEventListener('change', function () {
+        const layer = this.dataset.layer;
+        if (this.checked) visiblePointLayers.add(layer);
+        else visiblePointLayers.delete(layer);
+        syncPointsParent();
+        refreshPointVisibility();
+      });
+    });
+
     document.getElementById('toggle-points').addEventListener('change', function () {
-      showPoints = this.checked;
-      for (const entry of Object.values(pointMarkersById)) {
-        entry.marker.setMap(showPoints ? map : null);
+      const checked = this.checked;
+      this.indeterminate = false;
+      showPoints = checked;
+      if (checked) {
+        POINT_LAYERS.forEach(l => visiblePointLayers.add(l));
+        layerCheckboxes.forEach(cb => { cb.checked = true; });
+      } else {
+        visiblePointLayers.clear();
+        layerCheckboxes.forEach(cb => { cb.checked = false; });
       }
+      refreshPointVisibility();
     });
 
     document.getElementById('toggle-polygons').addEventListener('change', function () {
@@ -617,7 +662,7 @@ window.LeucenaMap = (function () {
 
     const marker = new google.maps.Marker({
       position: { lat, lng },
-      map: showPoints ? map : null,
+      map: isPointLayerVisible(layer) ? map : null,
       icon: getPointIcon(status, layer),
       title: getPointTitle(fid, status),
       zIndex: 5
@@ -638,6 +683,18 @@ window.LeucenaMap = (function () {
 
     pointMarkersById[id] = { marker, data: { id, fid, status, layer, not_valid: status } };
     return marker;
+  }
+
+  function isPointLayerVisible(layer) {
+    const key = (layer || 'crowdmapping').toLowerCase();
+    return showPoints && visiblePointLayers.has(key);
+  }
+
+  function refreshPointVisibility() {
+    for (const entry of Object.values(pointMarkersById)) {
+      const layer = entry.data.layer || 'crowdmapping';
+      entry.marker.setMap(isPointLayerVisible(layer) ? map : null);
+    }
   }
 
   function removePointMarker(pointId) {
