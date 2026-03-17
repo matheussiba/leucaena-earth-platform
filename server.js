@@ -85,13 +85,26 @@ function pointInPolygon(point, ring) {
 
 function findGridForPoint(lng, lat) {
   const cells = queryAll('SELECT id, geometry, grid_status FROM grid_cells');
+  let bestCell = null;
+  let bestArea = Infinity;
   for (const cell of cells) {
     const geom = JSON.parse(cell.geometry);
-    if (pointInPolygon([lng, lat], geom.coordinates[0])) {
-      return cell;
+    const rings = geom.type === 'MultiPolygon'
+      ? geom.coordinates.map(p => p[0])
+      : [geom.coordinates[0]];
+    for (const ring of rings) {
+      if (pointInPolygon([lng, lat], ring)) {
+        const xs = ring.map(c => c[0]);
+        const ys = ring.map(c => c[1]);
+        const area = (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
+        if (area < bestArea) {
+          bestArea = area;
+          bestCell = cell;
+        }
+      }
     }
   }
-  return null;
+  return bestCell;
 }
 
 function validateFinished(cellId) {
@@ -99,14 +112,16 @@ function validateFinished(cellId) {
   if (!cell) return { valid: false, error: 'Célula não encontrada' };
 
   const cellGeom = JSON.parse(cell.geometry);
-  const cellRing = cellGeom.coordinates[0];
+  const cellRings = cellGeom.type === 'MultiPolygon'
+    ? cellGeom.coordinates.map(p => p[0])
+    : [cellGeom.coordinates[0]];
 
   const allPoints = queryAll('SELECT * FROM occurrence_points');
   const validPointsInCell = allPoints.filter(p => {
-    if (p.not_valid === 1) return false;
+    if (p.status !== 0) return false;
     const geom = JSON.parse(p.geometry);
     const [lng, lat] = geom.coordinates;
-    return pointInPolygon([lng, lat], cellRing);
+    return cellRings.some(ring => pointInPolygon([lng, lat], ring));
   });
 
   if (validPointsInCell.length === 0) return { valid: true };
@@ -198,13 +213,15 @@ app.post('/api/auth/logout', (req, res) => {
 // ── REST API ──
 
 app.get('/api/grid', (req, res) => {
-  const cells = queryAll('SELECT id, fid, geometry, grid_status, locked_by, locked_at, updated_at, worked_by, finished_by FROM grid_cells');
+  const cells = queryAll('SELECT id, fid, grid_id, geometry, grid_status, numpoints, locked_by, locked_at, updated_at, worked_by, finished_by FROM grid_cells');
   const features = cells.map(c => ({
     type: 'Feature',
     properties: {
       id: c.id,
       fid: c.fid,
+      grid_id: c.grid_id || String(c.fid),
       grid_status: c.grid_status,
+      numpoints: c.numpoints || 0,
       locked_by: c.locked_by,
       locked_at: c.locked_at,
       updated_at: c.updated_at,
@@ -423,7 +440,7 @@ app.get('/api/points', (req, res) => {
   const points = queryAll('SELECT * FROM occurrence_points');
   const features = points.map(p => ({
     type: 'Feature',
-    properties: { id: p.id, fid: p.fid, not_valid: p.not_valid },
+    properties: { id: p.id, fid: p.fid, not_valid: p.status || 0, status: p.status || 0, layer: p.layer || 'crowdmapping' },
     geometry: JSON.parse(p.geometry)
   }));
   res.json({ type: 'FeatureCollection', features });
@@ -438,14 +455,15 @@ app.post('/api/points', requireAuth, (req, res) => {
   }
 
   const geometry = { type: 'Point', coordinates: [lng, lat] };
-  const notValid = req.body.not_valid != null ? (req.body.not_valid ? 1 : 0) : 0;
+  const pointStatus = req.body.status != null ? req.body.status : (req.body.not_valid != null ? (req.body.not_valid ? 1 : 0) : 0);
+  const pointLayer = req.body.layer || 'crowdmapping';
 
   const maxFid = queryOne('SELECT MAX(fid) as maxFid FROM occurrence_points');
   const newFid = (maxFid && maxFid.maxFid != null) ? maxFid.maxFid + 1 : 1;
 
   runSQL(
-    'INSERT INTO occurrence_points (fid, geometry, not_valid) VALUES (?, ?, ?)',
-    [newFid, JSON.stringify(geometry), notValid]
+    'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, ?, ?, ?)',
+    [newFid, JSON.stringify(geometry), pointStatus, pointLayer, pointStatus]
   );
 
   const inserted = queryOne('SELECT * FROM occurrence_points WHERE fid = ?', [newFid]);
@@ -463,7 +481,9 @@ app.post('/api/points', requireAuth, (req, res) => {
   const pointData = {
     id: inserted.id,
     fid: newFid,
-    not_valid: 0,
+    not_valid: pointStatus,
+    status: pointStatus,
+    layer: pointLayer,
     geometry,
     grid_cell_id: gridCell ? gridCell.id : null
   };
@@ -493,11 +513,13 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
   let gridStatusChanged = null;
   if (gridCell) {
     const cellGeom = JSON.parse(gridCell.geometry);
-    const cellRing = cellGeom.coordinates[0];
+    const cellRings = cellGeom.type === 'MultiPolygon'
+      ? cellGeom.coordinates.map(p => p[0])
+      : [cellGeom.coordinates[0]];
     const remaining = queryAll('SELECT * FROM occurrence_points');
     const pointsInCell = remaining.filter(p => {
       const g = JSON.parse(p.geometry);
-      return pointInPolygon([g.coordinates[0], g.coordinates[1]], cellRing);
+      return cellRings.some(ring => pointInPolygon([g.coordinates[0], g.coordinates[1]], ring));
     });
     if (pointsInCell.length === 0 && gridCell.grid_status !== 'no_points') {
       const now = new Date().toISOString();
@@ -518,12 +540,13 @@ app.put('/api/points/:id/validity', requireAuth, (req, res) => {
   const point = queryOne('SELECT * FROM occurrence_points WHERE id = ?', [Number(id)]);
   if (!point) return res.status(404).json({ error: 'Ponto não encontrado' });
 
-  const newValid = point.not_valid ? 0 : 1;
-  runSQL('UPDATE occurrence_points SET not_valid = ? WHERE id = ?', [newValid, Number(id)]);
+  const currentStatus = point.status || 0;
+  const newStatus = (currentStatus + 1) % 3; // 0→1→2→0
+  runSQL('UPDATE occurrence_points SET status = ?, not_valid = ? WHERE id = ?', [newStatus, newStatus, Number(id)]);
 
-  io.emit('point:validityChanged', { id: Number(id), not_valid: newValid });
+  io.emit('point:validityChanged', { id: Number(id), not_valid: newStatus, status: newStatus });
   persist();
-  res.json({ id: Number(id), not_valid: newValid });
+  res.json({ id: Number(id), not_valid: newStatus, status: newStatus });
 });
 
 // ── Export ──
@@ -557,7 +580,9 @@ app.get('/api/export/grid-status', (req, res) => {
       properties: {
         id: c.id,
         fid: c.fid,
+        grid_id: c.grid_id || String(c.fid),
         grid_status: c.grid_status,
+        numpoints: c.numpoints || 0,
         worked_by: c.worked_by || null,
         finished_by: c.finished_by || null,
         updated_at: c.updated_at
@@ -576,7 +601,7 @@ app.get('/api/export/points', (req, res) => {
     type: 'FeatureCollection',
     features: points.map(p => ({
       type: 'Feature',
-      properties: { id: p.id, fid: p.fid, not_valid: p.not_valid },
+      properties: { id: p.id, fid: p.fid, status: p.status || 0, layer: p.layer || 'crowdmapping' },
       geometry: JSON.parse(p.geometry)
     }))
   };

@@ -16,7 +16,7 @@ window.LeucenaStreetView = (function () {
     if (active) {
       btn.classList.add('active');
       LeucenaMap.showStreetViewCoverage(true);
-      LeucenaApp.showToast('Clique no mapa para abrir Street View. Linhas azuis mostram a cobertura disponível.', 'info');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.svClickHint'), 'info');
     } else {
       btn.classList.remove('active');
       LeucenaMap.showStreetViewCoverage(false);
@@ -51,7 +51,7 @@ window.LeucenaStreetView = (function () {
           panorama.setPosition(data.location.latLng);
         }
       } else {
-        LeucenaApp.showToast('Street View não disponível neste local', 'warning');
+        LeucenaApp.showToast(LeucenaI18n.t('toast.svNotAvailable'), 'warning');
       }
     });
   }

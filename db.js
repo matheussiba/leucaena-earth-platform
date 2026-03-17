@@ -20,8 +20,10 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS grid_cells (
       id INTEGER PRIMARY KEY,
       fid INTEGER,
+      grid_id TEXT,
       geometry TEXT NOT NULL,
       grid_status TEXT NOT NULL DEFAULT 'not_yet_finished',
+      numpoints INTEGER DEFAULT 0,
       locked_by TEXT,
       locked_at TEXT,
       updated_at TEXT
@@ -45,7 +47,9 @@ async function initDB() {
       id INTEGER PRIMARY KEY,
       fid INTEGER,
       geometry TEXT NOT NULL,
-      not_valid INTEGER
+      not_valid INTEGER DEFAULT 0,
+      layer TEXT DEFAULT 'crowdmapping',
+      status INTEGER DEFAULT 0
     )
   `);
 
@@ -60,6 +64,15 @@ async function initDB() {
 
   try { db.run('ALTER TABLE grid_cells ADD COLUMN worked_by TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE grid_cells ADD COLUMN finished_by TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE grid_cells ADD COLUMN grid_id TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE grid_cells ADD COLUMN numpoints INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE occurrence_points ADD COLUMN layer TEXT DEFAULT \'crowdmapping\''); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE occurrence_points ADD COLUMN status INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+
+  // Migrate not_valid → status for existing rows that haven't been migrated
+  try {
+    db.run('UPDATE occurrence_points SET status = not_valid WHERE status IS NULL OR (status = 0 AND not_valid = 1)');
+  } catch (e) { /* ignore */ }
 
   const crypto = require('crypto');
   function seedHash(pw) { return crypto.createHash('sha256').update(pw + '***REDACTED_SALT***').digest('hex'); }

@@ -24,7 +24,7 @@ window.LeucenaDrawing = (function () {
         renderPolygon(feature.properties.id, feature.geometry, feature.properties, false);
       }
     } catch (e) {
-      LeucenaApp.showToast('Falha ao carregar polígonos', 'error');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyLoadFail'), 'error');
     }
   }
 
@@ -113,7 +113,7 @@ window.LeucenaDrawing = (function () {
       const cellId = LeucenaApp.getSelectedCellId();
       if (!cellId) {
         poly.setMap(null);
-        LeucenaApp.showToast('Selecione e bloqueie uma célula primeiro', 'warning');
+        LeucenaApp.showToast(LeucenaI18n.t('toast.selectCellFirst'), 'warning');
         return;
       }
 
@@ -121,7 +121,7 @@ window.LeucenaDrawing = (function () {
 
       if (path.getLength() < 3) {
         poly.setMap(null);
-        LeucenaApp.showToast('Polígono precisa de pelo menos 3 vértices', 'warning');
+        LeucenaApp.showToast(LeucenaI18n.t('toast.min3Vertices'), 'warning');
         return;
       }
 
@@ -148,10 +148,10 @@ window.LeucenaDrawing = (function () {
         const result = await res.json();
         poly.setMap(null);
         renderPolygon(result.id, geometry, result, true);
-        LeucenaApp.showToast('Polígono salvo', 'success');
+        LeucenaApp.showToast(LeucenaI18n.t('toast.polySaved'), 'success');
       } catch (e) {
         poly.setMap(null);
-        LeucenaApp.showToast('Falha ao salvar polígono', 'error');
+        LeucenaApp.showToast(LeucenaI18n.t('toast.polySaveFail'), 'error');
       }
     });
   }
@@ -168,7 +168,7 @@ window.LeucenaDrawing = (function () {
     if (!entry) return;
 
     if (!canEditPolygon(entry)) {
-      LeucenaApp.showToast(`Este polígono pertence a ${entry.data.created_by}`, 'warning');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyBelongs', entry.data.created_by), 'warning');
       return;
     }
 
@@ -177,7 +177,7 @@ window.LeucenaDrawing = (function () {
     const cellData = LeucenaApp.getSelectedCellData();
 
     if (cellId !== selectedCell || !cellData || cellData.locked_by !== LeucenaApp.getUsername()) {
-      LeucenaApp.showToast('Bloqueie a célula para editar seus polígonos', 'warning');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.lockCellToEdit'), 'warning');
       return;
     }
 
@@ -205,7 +205,7 @@ window.LeucenaDrawing = (function () {
         body: JSON.stringify({ geometry })
       });
     } catch (e) {
-      LeucenaApp.showToast('Falha ao salvar alterações do polígono', 'error');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
     }
   }
 
@@ -214,7 +214,7 @@ window.LeucenaDrawing = (function () {
     if (!entry) return;
 
     if (!canEditPolygon(entry)) {
-      LeucenaApp.showToast(`Este polígono pertence a ${entry.data.created_by}. Somente ele ou o administrador pode excluí-lo.`, 'warning');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyBelongsAdmin', entry.data.created_by), 'warning');
       return;
     }
 
@@ -223,7 +223,7 @@ window.LeucenaDrawing = (function () {
     const cellData = LeucenaApp.getSelectedCellData();
 
     if (cellId !== selectedCell || !cellData || cellData.locked_by !== LeucenaApp.getUsername()) {
-      LeucenaApp.showToast('Bloqueie a célula para excluir seus polígonos', 'warning');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.lockCellToDelete'), 'warning');
       return;
     }
 
@@ -239,9 +239,9 @@ window.LeucenaDrawing = (function () {
       }
       entry.gmapsPoly.setMap(null);
       delete drawnPolygons[id];
-      LeucenaApp.showToast('Polígono excluído', 'success');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleted'), 'success');
     } catch (e) {
-      LeucenaApp.showToast('Falha ao excluir polígono', 'error');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleteFail'), 'error');
     }
   }
 

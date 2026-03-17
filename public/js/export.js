@@ -48,7 +48,7 @@ window.LeucenaExport = (function () {
 
   async function downloadFile(url, filename) {
     try {
-      LeucenaApp.showToast('Preparando exportação...', 'info');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.exportPreparing'), 'info');
       const res = await fetch(url);
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
@@ -59,9 +59,9 @@ window.LeucenaExport = (function () {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
-      LeucenaApp.showToast('Exportação concluída', 'success');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.exportDone'), 'success');
     } catch (e) {
-      LeucenaApp.showToast('Falha na exportação', 'error');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.exportFail'), 'error');
     }
   }
 

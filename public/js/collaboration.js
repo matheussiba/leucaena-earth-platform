@@ -10,11 +10,11 @@ window.LeucenaCollab = (function () {
 
     socket.on('connect', () => {
       socket.emit('user:join', { username });
-      LeucenaApp.showToast('Conectado ao servidor', 'success');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.connected'), 'success');
     });
 
     socket.on('disconnect', () => {
-      LeucenaApp.showToast('Desconectado do servidor. Reconectando...', 'warning');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.reconnecting'), 'warning');
     });
 
     socket.on('users:updated', (users) => {
@@ -24,7 +24,9 @@ window.LeucenaCollab = (function () {
 
     socket.on('cell:locked', (data) => {
       if (data.username !== username) {
-        LeucenaApp.showToast(`${data.username} começou a editar Célula #${data.cellId}`, 'info');
+        const gd = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getGridData(data.cellId) : null;
+        const displayId = (gd && gd.grid_id) || data.cellId;
+        LeucenaApp.showToast(LeucenaI18n.t('toast.userStartedEditing', data.username, displayId), 'info');
       }
       if (typeof LeucenaMap !== 'undefined') {
         LeucenaMap.onCellLocked(data.cellId, data.username);
@@ -34,7 +36,9 @@ window.LeucenaCollab = (function () {
     socket.on('cell:unlocked', (data) => {
       const who = data.username || data.previousUser;
       if (who !== username) {
-        LeucenaApp.showToast(`${who} terminou de editar Célula #${data.cellId}`, 'info');
+        const gd = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getGridData(data.cellId) : null;
+        const displayId = (gd && gd.grid_id) || data.cellId;
+        LeucenaApp.showToast(LeucenaI18n.t('toast.userFinishedEditing', who, displayId), 'info');
       }
       if (typeof LeucenaMap !== 'undefined') {
         LeucenaMap.onCellUnlocked(data.cellId);
@@ -49,7 +53,7 @@ window.LeucenaCollab = (function () {
 
     socket.on('point:validityChanged', (data) => {
       if (typeof LeucenaMap !== 'undefined') {
-        LeucenaMap.updatePointAppearance(data.id, data.not_valid);
+        LeucenaMap.updatePointAppearance(data.id, data.status != null ? data.status : data.not_valid);
       }
     });
 
@@ -96,7 +100,12 @@ window.LeucenaCollab = (function () {
     for (const user of users) {
       const el = document.createElement('div');
       el.className = 'user-item';
-      const cellInfo = user.editingCell ? `Célula #${user.editingCell}` : 'Ocioso';
+      let editDisplay = user.editingCell;
+      if (user.editingCell && typeof LeucenaMap !== 'undefined') {
+        const gd = LeucenaMap.getGridData(user.editingCell);
+        if (gd && gd.grid_id) editDisplay = gd.grid_id;
+      }
+      const cellInfo = user.editingCell ? LeucenaI18n.t('collab.cell', editDisplay) : LeucenaI18n.t('collab.idle');
       el.innerHTML = `
         <span class="online-dot"></span>
         <span>${user.username}</span>

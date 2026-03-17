@@ -97,23 +97,12 @@ window.LeucenaMap = (function () {
     mapBtn.addEventListener('click', () => {
       isSatellite = !isSatellite;
       applyMapType();
-      mapBtn.textContent = '';
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('width', '18');
-      svg.setAttribute('height', '18');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      svg.setAttribute('fill', 'none');
-      svg.setAttribute('stroke', 'currentColor');
-      svg.setAttribute('stroke-width', '2');
+      const label = document.getElementById('maptype-label');
       if (isSatellite) {
-        svg.innerHTML = '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>';
-        mapBtn.appendChild(svg);
-        mapBtn.appendChild(document.createTextNode(' Mapa'));
+        label.textContent = LeucenaI18n.t('tool.map');
         mapBtn.classList.remove('active');
       } else {
-        svg.innerHTML = '<path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>';
-        mapBtn.appendChild(svg);
-        mapBtn.appendChild(document.createTextNode(' Satélite'));
+        label.textContent = LeucenaI18n.t('tool.satellite');
         mapBtn.classList.add('active');
       }
       labelToggle.style.display = isSatellite ? 'flex' : 'none';
@@ -136,7 +125,7 @@ window.LeucenaMap = (function () {
   function handleRightClick(e) {
     const coordsText = `${e.latLng.lat().toFixed(6)}, ${e.latLng.lng().toFixed(6)}`;
     navigator.clipboard.writeText(coordsText).then(() => {
-      LeucenaApp.showToast('Coordenadas copiadas: ' + coordsText, 'success');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.coordsCopied', coordsText), 'success');
     }).catch(() => {
       const ta = document.createElement('textarea');
       ta.value = coordsText;
@@ -144,7 +133,7 @@ window.LeucenaMap = (function () {
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      LeucenaApp.showToast('Coordenadas copiadas: ' + coordsText, 'success');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.coordsCopied', coordsText), 'success');
     });
   }
 
@@ -166,6 +155,13 @@ window.LeucenaMap = (function () {
     });
   }
 
+  function getGeometryRings(geometry) {
+    if (geometry.type === 'MultiPolygon') {
+      return geometry.coordinates.map(p => p[0]);
+    }
+    return [geometry.coordinates[0]];
+  }
+
   async function loadGrid() {
     try {
       const res = await fetch('/api/grid');
@@ -175,8 +171,11 @@ window.LeucenaMap = (function () {
         const props = feature.properties;
         gridData[props.id] = props;
         createGridPolygon(props.id, feature.geometry, props);
-        for (const coord of feature.geometry.coordinates[0]) {
-          gridBounds.extend({ lat: coord[1], lng: coord[0] });
+        const rings = getGeometryRings(feature.geometry);
+        for (const ring of rings) {
+          for (const coord of ring) {
+            gridBounds.extend({ lat: coord[1], lng: coord[0] });
+          }
         }
       }
       map.fitBounds(gridBounds);
@@ -197,7 +196,7 @@ window.LeucenaMap = (function () {
         });
       });
     } catch (e) {
-      LeucenaApp.showToast('Falha ao carregar grid', 'error');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.gridLoadFail'), 'error');
     }
   }
 
@@ -233,11 +232,12 @@ window.LeucenaMap = (function () {
   }
 
   function createGridPolygon(cellId, geometry, props) {
-    const coords = geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+    const rings = getGeometryRings(geometry);
+    const paths = rings.map(ring => ring.map(c => ({ lat: c[1], lng: c[0] })));
     const style = getStyleForCell(props, cellId);
 
     const poly = new google.maps.Polygon({
-      paths: coords,
+      paths: paths,
       ...style,
       map: shouldShowCell(props) ? map : null,
       clickable: true,
@@ -266,7 +266,7 @@ window.LeucenaMap = (function () {
       }
       const currentData = LeucenaApp.getSelectedCellData();
       if (currentData && currentData.locked_by && currentData.locked_by === LeucenaApp.getUsername() && cellId !== LeucenaApp.getSelectedCellId()) {
-        LeucenaApp.showToast('Você está editando uma célula. Clique em "Desbloquear" para parar de editar.', 'warning');
+        LeucenaApp.showToast(LeucenaI18n.t('toast.editingWarning'), 'warning');
         return;
       }
       LeucenaApp.selectCell(cellId, gridData[cellId]);
@@ -348,13 +348,14 @@ window.LeucenaMap = (function () {
       for (const feature of fc.features) {
         const [lng, lat] = feature.geometry.coordinates;
         const pointId = feature.properties.id;
-        const isInvalid = feature.properties.not_valid === 1;
+        const status = feature.properties.status || 0;
+        const layer = feature.properties.layer || 'crowdmapping';
 
         const marker = new google.maps.Marker({
           position: { lat, lng },
           map: showPoints ? map : null,
-          icon: getPointIcon(isInvalid),
-          title: `Ponto #${feature.properties.fid}${isInvalid ? ' (inválido)' : ''}`,
+          icon: getPointIcon(status, layer),
+          title: getPointTitle(feature.properties.fid, status),
           zIndex: 5
         });
 
@@ -377,24 +378,38 @@ window.LeucenaMap = (function () {
         };
       }
     } catch (e) {
-      LeucenaApp.showToast('Falha ao carregar pontos', 'error');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.pointsLoadFail'), 'error');
     }
   }
 
-  function getPointIcon(isInvalid) {
-    return {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 5,
-      fillColor: isInvalid ? '#ef4444' : '#facc15',
-      fillOpacity: 0.9,
-      strokeColor: isInvalid ? '#991b1b' : '#854d0e',
-      strokeWeight: 1.5
-    };
+  function getPointTitle(fid, status) {
+    if (status === 1) return LeucenaI18n.t('point.titleInvalid', fid);
+    if (status === 2) return LeucenaI18n.t('point.titleDoubt', fid);
+    return LeucenaI18n.t('point.title', fid);
+  }
+
+  const LAYER_STROKE_COLORS = {
+    crowdmapping: '#DE9958',
+    inaturalist:  '#505752',
+    gbif:         '#2B526D',
+    insthorus:    '#000000',
+    specieslink:  '#7F2E74'
+  };
+
+  function getPointIcon(status, layer) {
+    if (status === 1) {
+      return { path: google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#ef4444', fillOpacity: 0.9, strokeColor: '#991b1b', strokeWeight: 0.8 };
+    }
+    if (status === 2) {
+      return { path: google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#ef4444', fillOpacity: 0.9, strokeColor: '#ffffff', strokeWeight: 0.8 };
+    }
+    const strokeColor = LAYER_STROKE_COLORS[layer] || '#000000';
+    return { path: google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#84cc16', fillOpacity: 0.9, strokeColor, strokeWeight: 0.8 };
   }
 
   async function togglePointValidity(pointId) {
     if (!LeucenaApp.isLoggedIn()) {
-      LeucenaApp.showToast('Faça login para alterar a validade do ponto', 'warning');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.loginToToggle'), 'warning');
       return;
     }
 
@@ -409,23 +424,26 @@ window.LeucenaMap = (function () {
         return;
       }
       const result = await res.json();
-      updatePointAppearance(pointId, result.not_valid);
-      LeucenaApp.showToast(
-        result.not_valid ? 'Ponto marcado como inválido' : 'Ponto marcado como válido',
-        'info'
-      );
+      updatePointAppearance(pointId, result.status);
+      const statusMessages = {
+        0: LeucenaI18n.t('toast.markedValid'),
+        1: LeucenaI18n.t('toast.markedInvalid'),
+        2: LeucenaI18n.t('toast.markedDoubt')
+      };
+      LeucenaApp.showToast(statusMessages[result.status] || statusMessages[0], 'info');
     } catch (e) {
-      LeucenaApp.showToast('Falha ao atualizar validade do ponto', 'error');
+      LeucenaApp.showToast(LeucenaI18n.t('toast.validityFail'), 'error');
     }
   }
 
-  function updatePointAppearance(pointId, notValid) {
+  function updatePointAppearance(pointId, newStatus) {
     const entry = pointMarkersById[pointId];
     if (!entry) return;
-    entry.data.not_valid = notValid;
-    const isInvalid = notValid === 1;
-    entry.marker.setIcon(getPointIcon(isInvalid));
-    entry.marker.setTitle(`Ponto #${entry.data.fid}${isInvalid ? ' (inválido)' : ''}`);
+    entry.data.status = newStatus;
+    entry.data.not_valid = newStatus;
+    const layer = entry.data.layer || 'crowdmapping';
+    entry.marker.setIcon(getPointIcon(newStatus, layer));
+    entry.marker.setTitle(getPointTitle(entry.data.fid, newStatus));
   }
 
   function zoomToCell(cellId) {
@@ -476,7 +494,7 @@ window.LeucenaMap = (function () {
       if (!bounds.contains(center)) {
         if (!panWarningShown) {
           panWarningShown = true;
-          LeucenaApp.showToast('Você está se afastando da célula em edição. Clique em "Desbloquear" para parar de editar.', 'warning', 5000);
+          LeucenaApp.showToast(LeucenaI18n.t('toast.panWarning'), 'warning', 5000);
           setTimeout(() => { panWarningShown = false; }, 6000);
         }
       }
@@ -561,7 +579,9 @@ window.LeucenaMap = (function () {
     const poly = gridPolygons[cellId];
     if (!poly) return null;
     const bounds = new google.maps.LatLngBounds();
-    poly.getPath().forEach(p => bounds.extend(p));
+    poly.getPaths().forEach(path => {
+      path.forEach(p => bounds.extend(p));
+    });
     return bounds;
   }
 
@@ -589,16 +609,17 @@ window.LeucenaMap = (function () {
   }
 
   function addPointMarker(pointData) {
-    const { id, fid, geometry, not_valid } = pointData;
+    const { id, fid, geometry } = pointData;
+    const status = pointData.status || 0;
+    const layer = pointData.layer || 'crowdmapping';
     if (pointMarkersById[id]) return pointMarkersById[id].marker;
     const [lng, lat] = geometry.coordinates;
-    const isInvalid = not_valid === 1;
 
     const marker = new google.maps.Marker({
       position: { lat, lng },
       map: showPoints ? map : null,
-      icon: getPointIcon(isInvalid),
-      title: `Ponto #${fid}${isInvalid ? ' (inválido)' : ''}`,
+      icon: getPointIcon(status, layer),
+      title: getPointTitle(fid, status),
       zIndex: 5
     });
 
@@ -615,7 +636,7 @@ window.LeucenaMap = (function () {
 
     marker.setClickable(false);
 
-    pointMarkersById[id] = { marker, data: { id, fid, not_valid } };
+    pointMarkersById[id] = { marker, data: { id, fid, status, layer, not_valid: status } };
     return marker;
   }
 
