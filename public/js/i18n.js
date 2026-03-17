@@ -115,6 +115,10 @@ window.LeucenaI18n = (function () {
     'guide.leucenaDesc': { pt: 'Identificação visual, história e por que é invasora', en: 'Visual identification, history and why it is invasive', es: 'Identificación visual, historia y por qué es invasora' },
     'guide.howto': { pt: 'Como mapear', en: 'How to map', es: 'Cómo mapear' },
     'guide.howtoDesc': { pt: 'Passo a passo para contribuir com o mapeamento', en: 'Step by step to contribute to the mapping', es: 'Paso a paso para contribuir con el mapeo' },
+    'guide.media': { pt: 'Mídia', en: 'Media', es: 'Medios' },
+    'guide.mediaDesc': { pt: 'Notícias e referências sobre erradicação de leucena', en: 'News and references on leucaena eradication', es: 'Noticias y referencias sobre erradicación de leucaena' },
+    'guide.mediaNews': { pt: 'Notícias e reportagens', en: 'News and reports', es: 'Noticias y reportajes' },
+    'guide.mediaRefs': { pt: 'Referências científicas (Instituto Hórus)', en: 'Scientific references (Instituto Hórus)', es: 'Referencias científicas (Instituto Hórus)' },
 
     // ── Edit badge ──
     'edit.badge': { pt: 'Editando Célula #{0}', en: 'Editing Cell #{0}', es: 'Editando Celda #{0}' },
@@ -249,17 +253,21 @@ window.LeucenaI18n = (function () {
   function translateGuideModal() {
     const leucenaPage = document.getElementById('guide-leucena-content');
     const howtoPage = document.getElementById('guide-howto-content');
+    const mediaPage = document.getElementById('guide-media-content');
     if (!leucenaPage || !howtoPage) return;
 
     if (currentLang === 'en') {
       leucenaPage.innerHTML = getLeucenaContentEN();
       howtoPage.innerHTML = getHowtoContentEN();
+      if (mediaPage) mediaPage.innerHTML = getMediaContentEN();
     } else if (currentLang === 'es') {
       leucenaPage.innerHTML = getLeucenaContentES();
       howtoPage.innerHTML = getHowtoContentES();
+      if (mediaPage) mediaPage.innerHTML = getMediaContentES();
     } else {
       leucenaPage.innerHTML = getLeucenaContentPT();
       howtoPage.innerHTML = getHowtoContentPT();
+      if (mediaPage) mediaPage.innerHTML = getMediaContentPT();
     }
   }
 
@@ -317,6 +325,124 @@ window.LeucenaI18n = (function () {
 
   function getHowtoContentES() {
     return `<h2>Cómo mapear</h2><h3>1. Cree su cuenta</h3><p>Haga clic en <strong>"Iniciar Sesión"</strong> en la esquina superior derecha y luego en <strong>"Registrarse"</strong>. Necesitará un <strong>código de acceso</strong> — solicítelo por correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p><h3>2. Seleccione una celda de la grilla</h3><p>El mapa está dividido en <strong>celdas (cuadrados)</strong>. Haga clic en una celda para ver su información. Los colores indican el estado:</p><ul><li><strong style="color:#7c3aed">Púrpura</strong> — Aún no finalizado</li><li><strong style="color:#eab308">Amarillo (hueco)</strong> — Alguien está mapeando ahora</li><li><strong style="color:#9ca3af">Gris</strong> — Sin puntos de ocurrencia</li><li><strong style="color:#22c55e">Verde</strong> — Finalizado</li></ul><h3>3. Bloquee la celda para edición</h3><p>Haga clic en <strong>"Bloquear y Editar"</strong> para reservar la celda.</p><h3>4. Dibuje las máscaras de Leucaena</h3><p>Use los botones de edición en la parte inferior del mapa:</p><ul><li><strong>Dibujar</strong> — Inicie un polígono con clics (mínimo 3 vértices).</li><li><strong>Editar</strong> — Arrastre vértices de polígonos existentes.</li><li><strong>Eliminar</strong> — Haga clic en un polígono para eliminarlo.</li></ul><h3>5. Use Street View para confirmar</h3><p>Haga clic en <strong>"Street View"</strong> y luego en el mapa para abrir la vista de calle y confirmar visualmente la leucaena.</p><h3>6. Valide los puntos</h3><p>Los puntos <strong>amarillos</strong> son válidos. Use <strong>"Seleccionar"</strong> y haga clic en un punto para marcarlo como <strong>inválido (rojo)</strong>.</p><h3>7. Finalice la celda</h3><p>Haga clic en <strong>"Desbloquear"</strong> y elija <strong>"Finalizado"</strong>. El sistema verificará que todos los puntos válidos tengan una máscara sobre ellos.</p><div class="guide-tip"><strong>Consejo:</strong> Use el botón <strong>Home</strong> (ícono de casa) para recentrar en la celda o volver a la vista general.</div>`;
+  }
+
+  // ── Media content (news links + references) ──
+
+  const MEDIA_LINKS = [
+    { title: 'Comissão aprova projeto que prevê a erradicação da leucena no país (Câmara)', url: 'https://www.camara.leg.br/noticias/1250692-comissao-aprova-projeto-que-preve-a-erradicacao-no-pais-da-leucena,-planta-exotica-invasora' },
+    { title: 'Leucena: árvore invasora trazida do México que será erradicada de Campo Grande (G1)', url: 'https://g1.globo.com/ms/mato-grosso-do-sul/noticia/2025/06/06/leucena-a-arvore-invasora-trazida-do-mexico-para-alimentar-gado-que-vai-ser-erradicada-de-campo-grande.ghtml' },
+    { title: 'Programa de controle e erradicação de Leucena em Salto (Prefeitura Salto)', url: 'https://salto.sp.gov.br/programa-de-controle-e-erradicacao-de-leucena-e-implantado-em-salto/' },
+    { title: 'PCJ quer controlar árvores invasoras (Piracicaba)', url: 'https://piracicaba.sp.gov.br/noticias/pcj-quer-controlar-arvores-invasoras/' },
+    { title: 'Projeto prevê a erradicação da leucena no país (Câmara)', url: 'https://www.camara.leg.br/noticias/1250689-projeto-preve-a-erradicacao-no-pais-da-leucena-planta-exotica-invasora' },
+    { title: 'Itu inicia erradicação de árvore invasora (Itu)', url: 'https://itu.sp.gov.br/itu-inicia-erradicacao-de-arvore-invasora-que-ameaca-a-biodiversidade/' },
+    { title: 'Câmara de Sumaré aprova projeto para erradicar árvore invasora (Sumaré)', url: 'https://www.camarasumare.sp.gov.br/noticias/camara-de-sumare-aprova-projeto-para-erradicar-arvore-invasora' },
+    { title: 'Leucena: substituição de espécie invasora em Pompeia (Pompeia)', url: 'https://www.pompeia.sp.gov.br/noticia/3183/leucena/' },
+    { title: 'Prefeitura cria plano para eliminar árvore exótica e invasora da capital (Campo Grande News)', url: 'https://www.campograndenews.com.br/meio-ambiente/prefeitura-cria-plano-para-eliminar-arvore-exotica-e-invasora-da-capital' }
+  ];
+
+  function getMediaLinksHTML() {
+    return MEDIA_LINKS.map(function (l) {
+      return '<li><a href="' + l.url + '" target="_blank" rel="noopener noreferrer">' + l.title + '</a></li>';
+    }).join('');
+  }
+
+  function getMediaRefsHTML() {
+    var refs = [
+      '1976 – Efeito de densidades de semeadura e níveis de adubação nitrogenada no estabelecimento de Leucaena leucocephala (Lam) de Wit. VILELA, E.; PEDREIRA, J. V. S.',
+      '2021 – Variáveis climáticas influenciam a riqueza, composição e distribuição de plantas exóticas invasoras? ALMEIDA, T. S.; ALMEIDA, R. P. S.; FABRICANTE, J. R.',
+      '2019 – Exotic invasive flora evaluation on different environments and preservation conditions from a caatinga area, Petrolina, PE. ALVES, J. S.; FABRICANTE, J. R.',
+      '2006 – Terrestrial vascular floras of Brazils Oceanic Archipelagos. In: Ilhas oceânicas brasileiras - da pesquisa ao manejo. ALVES, R. J. V.',
+      '2020 – Invasão biológica no Parque Nacional Serra de Itabaiana, Sergipe, Brasil. ARAÚJO, K. C. T. de; FABRICANTE, J. R.',
+      '2021 – Invasão biológica na Área de Proteção Ambiental Morro do Urubu, Aracaju, Sergipe, Brasil. ARAÚJO, K.; CRUZ, A. B. S.; FABRICANTE, J. R.',
+      '2012 – Avaliação do potencial invasivo de espécies não-nativas utilizadas em plantio de restauração de matas ciliares. ASSIS, G.B.',
+      '2010 – Análisis de riesgo y propuesta de categorizacíon de especies introducidas para Colombia. BAPTISTE, M. P.; CASTAÑO, N.; LÓPEZ, D. C.; GUTIÉRREZ, F. P.; GIL, D. L.; LASSO, C. A.',
+      '2010 – Plantas invasoras em Roraima. In: Roraima - homem, ambiente e ecologia. BARBOSA, J. B. F.',
+      '2012 – Invasão biológica na Mata Atlântica como resultado do processo histórico de ocupação no Morro das Andorinhas, Niterói (RJ). BARROS, A. A. M.; MACHADO, D. N. S.',
+      '2001 – Problem plants of South Africa. BROMILOW, C.',
+      '2014 – Exóticas invasoras nas rodovias BR 277, PR 508, PR 407, Paraná, Brasil. CARVALHO J.; FERREIRA, A. M.; BELÃO, M.; BOÇON, R.',
+      '2006 – Invasion of alien plants in the caatinga biome. CAVALCANTE, A.; MAJOR, I.',
+      '2011 – Plano de manejo da Área de Proteção Ambiental Praia Mole. CEPEMAR SERVIÇOS DE CONSULTORIA EM MEIO AMBIENTE',
+      '2007 – Plano de manejo do Parque Estadual Paulo César Vinha. CEPEMAR SERVIÇOS DE CONSULTORIA EM MEIO AMBIENTE',
+      '2007 – Plano de manejo da Área de Proteção Ambiental de Setiba. CEPEMAR SERVIÇOS DE CONSULTORIA EM MEIO AMBIENTE LTDA',
+      '2020 – Espécies vegetais nos quintais do entorno do Parque Estadual Sumaúma: invasões biológicas e a conservação da biodiversidade. CRUZ, I. A.; MAGALHÃES, L. C. S.; SILVA-FORSBERG M. C.',
+      '1999 – Introdução e seleção de espécies arbóreas forrageiras exóticas na região semi-árida do estado de Sergipe. DRUMOND, M. A.; FILHO, O. M. de C.; OLIVEIRA, V. R. de.',
+      '1942 – Indigene versus alien in the development of arid Hawaiian vegetation. EGLER, F. E.',
+      '2005 – Recuperação ambiental e contaminação biológica: aspectos ecológicos e legais. ESPÍNDOLA, M. B.; BECHARA, F. C.; BAZZO, M. S.; REIS, A.',
+      '2018 – Plano de manejo da Unidade de Conservação Monumento Natural Estadual Lapa Nova de Vazante, MG. ESPÍRITO SANTO, I. F.; SANTOS, C. F. S.; FREITAS, J. R. S. R.; et al.',
+      '2012 – Exotic and invasive plants of the caatingas of the São Francisco river. FABRICANTE, J. A.; SIQUEIRA-FILHO, J. A.',
+      '2021 – Invasive alien plants in Sergipe, northeastern Brazil. FABRICANTE, J. R.; ARAÚJO, K. C. T.; ALMEIDA, T. S.; SANTOS, J. P. B.; REIS, D. O.',
+      '2021 – Invasão biológica em sítios de restinga no nordeste brasileiro. FABRICANTE, J. R.; CRUZ, A. B. S.; REIS, F. M.; ALMEIDA, T. S.',
+      '2015 – Non-native and invasive alien plants on fluvial islands in the São Francisco River, northeastern Brazil. FABRICANTE, J. R.; ZILLER, S. R.; ARAÚJO, K. C. T.; FURTADO, M. D. G.; BASSO, F. A.',
+      '2015 – Plano de manejo da Área de Proteção Ambiental do Planalto Central. GEO LÓGICA CONSULTORIA AMBIENTAL',
+      '2016 – Plano de manejo da Floresta Nacional de Carajás. GONÇALVES, A. R.; FERNANDES, C. H.; MARTINS, F. D.; et al.',
+      '2018 – Plano de manejo da Estação Ecológica de Marília. GOVERNO DO ESTADO DE SÃO PAULO',
+      '2001 – Alien weeds and invasive plants - A complete guide to declared weeds and invaders in South Africa. HENDERSON, L.',
+      '1995 – Protocols for plant introductions with particular reference to forestry. HUGHES, C. E.',
+      '2008 – Análises de risco - Instituto Hórus, Brasil. INSTITUTO HÓRUS DE DESENVOLVIMENTO E CONSERVAÇÃO AMBIENTAL',
+      '2014 – Remanescentes naturais da Fazenda Santa Carlota, Cajuru - SP. IVANAUSKAS, N. M.; BERTANI, D. F.; MATTOS, I. F. A.; KANASHIRO, M. M.; FRANCO, G. A. D. C.; CORDEIRO, I.; BERNACCI, L. C.; MEIRA NETO, J. A. A.',
+      '2017 – Diagnóstico e propostas de manejo da vegetação da Estação Ecológica de Marília, SP. IVANAUSKAS, N. M.; FRANCO, G. A. D. C.; DURIGAN, G.; MATTOS, I. F. A.; TONIATO, M. T. Z.; KANASHIRO, M. M.; PILON, N. A. L.; UDULUTSCH, R. G.',
+      '2006 – Invasive alien species (IAS): concerns and status in the Philippines. JOSHI, R. C.',
+      '2009 – Las especies invasoras: un reto para la restauración ecológica. LEÓN, O. A. RÍOS, O. V.',
+      '2013 – Plano de manejo da Floresta Nacional de Goytacazes. LORENSI, C. J.; DE OLIVEIRA, L. W. D. R.; MACHADO, J. A.; et al.',
+      '2003 – Árvores exóticas no Brasil: madeireiras, ornamentais e aromáticas. LORENZI, H.; SOUZA, H. M.; TORRES, M. A. V.; BACHER, L. B.',
+      '2020 – Exotic plants in a rocky outcrop area in the municipality of Niterói, Rio de Janeiro state, Brazil. MACHADO, D. N. S.; BARROS, A. A. M.; RIBAS, L. A.',
+      '2022 – Desafio ambiental: invasão biológica da leucena leucocephala na Ilha dos Franceses, em Itapemirim -ES. MACHADO, P. P.; CONTARINI, L. C.; ROCHA, L. S.; JUNIOR, J. L. L. F.; MILANEZE, L. A.; SILVA, M. A. P.; RABELLO, H.',
+      '2015 – Espécies exóticas na comunidade vegetal do Parque Estadual Sumaúma. MAGALHÃES, L. C. S',
+      '2012 – Plano de manejo da Reserva de Desenvolvimento Sustentável Concha D\'Ostra. MAKOTO MEIO AMBIENTE SUSTENTABILIDADE LTDA.',
+      '2001 – Human dimensions of invasive alien species in Sri Lanka. MARAMBE, B.; BAMBARADENIYA, C.; KUMARA, D. K. P.; PALLEWATTA, N.',
+      '2004 – Invasive alien species in Japan: the status quo and the new regulation. MITO, T.; UESUGI, T.',
+      '2006 – Espécies vegetais exóticas invasoras em florestas no Rio Grande do Sul. MONDIN, C. A.',
+      '2002 – Weeds of pastures and natural areas of Hawaii and their management. MOTOOKA, P.; CASTRO, L.; NELSON, D.; NAGAI, G.; CHING, L.',
+      '2016 – Plano de manejo da Estação Ecológica de Corumbá. MOURA, C. J. R.; BUSATO, L. C.; GAMA, M. J. E. C.; et al.',
+      '2019 – Mapeamento de espécies invasoras em três unidades de conservação no Espírito Santo, Brasil. NUNES, S. T.; COSTALONGA, S.; PINTO, F. P.',
+      '2001 – Informe sobre las especies exóticas en Venezuela. OJASTI, J.; JIMÉNEZ, E. G.; OTAHOLA, E. S.; ROMÁN, L. B. G.',
+      '2015 – Invasão biológica vegetal de espécies exóticas no Parque Municipal do Mindu na cidade de Manaus - AM. OLIVEIRA, R. A.',
+      '2015 – Lista nacional de plantas invasoras en Cuba - 2015. OVIEDO PRIETO, R.; GONZÁLEZ-OLIVA, L.',
+      '1999 – PIER Database. PIER',
+      '2009 – Plano de manejo do Parque Nacional da Chapada dos Guimarães. PIRES, F. A. O.; MOTA, L. C.; BARCELLOS, E. M. B.; et al.',
+      '2001 – Subsídios para a elaboração do Plano de Manejo do Horto Florestal do Litoral Norte. PROGRAMA RS RURAL',
+      '2006 – Manual de identificación y manejo de malezas en las islas de Galápagos. RENTERÍA, J. L.; ATKINSON, R.; GUERRERO, A. M.; MADER, J.',
+      '1999 – Commercial forestry and agroforestry as sources of invasive alien trees and shrubs. RICHARDSON, D. M.',
+      '2021 – Plano de manejo da Área de Relevante Interesse Ecológico Mata de Santa Genebra. SANTAROSA, P. L.; DE SOUZA, C. F.; DA SILVA GABRIEL, C. A. J.; et al.',
+      '2016 – Plano de manejo da Área de Relevante Interesse Ecológico Floresta da Cicuta. SARDELLA, F. F.; NAZARETH, V. M.; ALVES, S. L.; et al.',
+      '2022 – Invasão biológica na vegetação de restinga do sítio aeroportuário de Vitória, Espírito Santo, Brasil. SEKI, M. S.; MUZZOLON-JÚNIOR, R.; CAPUCHO, G.; VIEIRA, R. S.',
+      '2023 – Plano de trabalho: avaliação do impacto das invasões biológicas no Monumento Natural (MONA) Pico do Ibituruna. SETE SOLUÇÕES E TECNOLOGIA AMBIENTAL LTDA.',
+      '2023 – Plano de trabalho: avaliação do impacto das invasões biológicas no Monumento Natural (MONA) Rio Piranga. SETE SOLUÇÕES E TECNOLOGIA AMBIENTAL LTDA.',
+      '2023 – Plano de trabalho: avaliação do impacto das invasões biológicas no Parque Estadual de Sete Salões (PESS). SETE SOLUÇÕES E TECNOLOGIA AMBIENTAL LTDA.',
+      '2023 – Plano de trabalho: avaliação do impacto das invasões biológicas no Parque Estadual do Rio Doce (PERD). SETE SOLUÇÕES E TECNOLOGIA AMBIENTAL LTDA.',
+      '2018 – Flora exótica invasora dos ecossistemas de Sergipe. SILVA, F. O.',
+      '2002 – Monitoramento de áreas restauradas no interior do estado de São Paulo, Brasil. SIQUEIRA, L. P.',
+      '1985 – Impact of alien plants on Hawaii\'s native biota. SMITH, C.',
+      '1992 – Fire and alien plants in Hawai: research and management implications for native ecosystems. SMITH, C. W.; TUNISON, J. T.',
+      '2002 – Análise da colonização vegetal espontânea em ambientes modificados por medidas físicas na recuperação de áreas degradadas. TREVISOL, R. G.; NEVES, L. G.; SILVA, R. T.; VALCARCEL, R.',
+      '2021 – Assessment of non-native plants. UNIVERSITY OF FLORIDA',
+      '2008 – Prejuízos causados pelas espécies exóticas invasoras na Floresta Nacional de Pacotuba. XAVIER, T. M. T.; MORENO, M. R.',
+      '2025 – Widespread negative effects of Leucaena leucocephala (white-popinac) invasion on regenerating areas of the Atlantic Forest. ZARDETTO, J.; SIMIONI, W.; SIQUEIRA, T.',
+      '2001 – Viewing invasive species removal in a whole-ecosystem context. ZAVALETA, E.; HOBBS, R. J.; MOONEY, H. A.',
+      '2011 – An overview of invasive plants in Brazil. ZENNI, R. D.; ZILLER, S. R.',
+      '20xx – Subsídios para o controle de Leucaena leucocephala, espécie exótica invasora, na Ilha de Fernando de Noronha. Thayná Jeremias Mello. <a href="https://www.gov.br/icmbio/pt-br/assuntos/pesquisa/projetos-apoiados/Subsdios_para_o_controle_de_Leucaena_leucocephala_espcie_extica_invasora_na_Ilha_de_Fernando_de_Noronha.pdf" target="_blank" rel="noopener noreferrer">PDF</a>',
+      '2022 – Uma proposta de erradicação da espécie exótica invasora denominada Leucena em uma área do município de Itapira-SP e o favorecimento da biodiversidade local. Anderson Martelli. <a href="https://www.periodicos.unimontes.br/index.php/verdegrande/article/view/5075/5865" target="_blank" rel="noopener noreferrer">Link</a>'
+    ];
+    return '<div class="guide-refs-list">' + refs.map(function (r) { return '<div class="guide-ref-item">' + r + '</div>'; }).join('') + '</div>';
+  }
+
+  function getMediaContentPT() {
+    var newsTitle = T['guide.mediaNews'].pt;
+    var refsTitle = T['guide.mediaRefs'].pt;
+    return '<h2>Mídia</h2><h3>' + newsTitle + '</h3><ul class="guide-media-links">' + getMediaLinksHTML() + '</ul><h3>' + refsTitle + '</h3><p>Referências: <a href="https://bd.institutohorus.org.br/especies/72" target="_blank" rel="noopener noreferrer">Base de Dados Instituto Hórus – <em>Leucaena leucocephala</em></a></p>' + getMediaRefsHTML();
+  }
+
+  function getMediaContentEN() {
+    var newsTitle = T['guide.mediaNews'].en;
+    var refsTitle = T['guide.mediaRefs'].en;
+    return '<h2>Media</h2><h3>' + newsTitle + '</h3><ul class="guide-media-links">' + getMediaLinksHTML() + '</ul><h3>' + refsTitle + '</h3><p>References: <a href="https://bd.institutohorus.org.br/especies/72" target="_blank" rel="noopener noreferrer">Instituto Hórus Database – <em>Leucaena leucocephala</em></a></p>' + getMediaRefsHTML();
+  }
+
+  function getMediaContentES() {
+    var newsTitleES = T['guide.mediaNews'].es;
+    var refsTitle = T['guide.mediaRefs'].es;
+    return '<h2>Medios</h2><h3>' + newsTitleES + '</h3><ul class="guide-media-links">' + getMediaLinksHTML() + '</ul><h3>' + refsTitle + '</h3><p>Referencias: <a href="https://bd.institutohorus.org.br/especies/72" target="_blank" rel="noopener noreferrer">Base de Datos Instituto Hórus – <em>Leucaena leucocephala</em></a></p>' + getMediaRefsHTML();
   }
 
   // ── Docs content per language ──

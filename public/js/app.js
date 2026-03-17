@@ -56,8 +56,10 @@ window.LeucenaApp = (function () {
     });
     document.getElementById('guide-go-leucena').addEventListener('click', () => showGuidePage('leucena'));
     document.getElementById('guide-go-howto').addEventListener('click', () => showGuidePage('howto'));
+    document.getElementById('guide-go-media').addEventListener('click', () => showGuidePage('media'));
     document.getElementById('guide-back-leucena').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-howto').addEventListener('click', () => showGuidePage('main'));
+    document.getElementById('guide-back-media').addEventListener('click', () => showGuidePage('main'));
 
     document.getElementById('tool-home').addEventListener('click', handleHomeClick);
 
@@ -164,6 +166,8 @@ window.LeucenaApp = (function () {
     document.getElementById('guide-main').classList.add('hidden');
     document.getElementById('guide-leucena').classList.add('hidden');
     document.getElementById('guide-howto').classList.add('hidden');
+    const mediaEl = document.getElementById('guide-media');
+    if (mediaEl) mediaEl.classList.add('hidden');
     document.getElementById('guide-' + page).classList.remove('hidden');
   }
 

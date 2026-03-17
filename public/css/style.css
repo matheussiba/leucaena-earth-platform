@@ -1235,7 +1235,7 @@ html, body {
 
 .guide-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-top: 20px;
 }
@@ -1393,6 +1393,57 @@ html, body {
 
 .guide-tip strong {
   color: var(--info);
+}
+
+.guide-content-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.guide-media-links {
+  list-style: none;
+  padding-left: 0;
+  margin: 8px 0 16px;
+}
+
+.guide-media-links li {
+  margin-bottom: 6px;
+}
+
+.guide-media-links a {
+  color: var(--info);
+  text-decoration: none;
+}
+
+.guide-media-links a:hover {
+  text-decoration: underline;
+}
+
+.guide-refs-list {
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0,0,0,0.2);
+  border-radius: var(--radius);
+}
+
+.guide-ref-item {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.guide-ref-item a {
+  color: var(--info);
+  text-decoration: none;
+}
+
+.guide-ref-item a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 600px) {
