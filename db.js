@@ -106,6 +106,12 @@ async function initDB() {
     }
   }
 
+  const delExists = db.exec("SELECT id FROM users WHERE username = 'deleted'");
+  if (delExists.length === 0 || delExists[0].values.length === 0) {
+    const now = new Date().toISOString();
+    db.run("INSERT INTO users (username, password_hash, created_at) VALUES ('deleted', 'nologin', ?)", [now]);
+  }
+
   persist();
   return db;
 }
