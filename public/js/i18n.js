@@ -231,6 +231,9 @@ window.LeucenaI18n = (function () {
     'toast.lockCellToDelete': { pt: 'Bloqueie a célula para excluir seus polígonos', en: 'Lock the cell to delete its polygons', es: 'Bloquee la celda para eliminar sus polígonos' },
     'toast.polyDeleted': { pt: 'Polígono excluído', en: 'Polygon deleted', es: 'Polígono eliminado' },
     'toast.polyDeleteFail': { pt: 'Falha ao excluir polígono', en: 'Failed to delete polygon', es: 'Error al eliminar polígono' },
+    'toast.polyRestored': { pt: 'Polígono restaurado (Ctrl+Z)', en: 'Polygon restored (Ctrl+Z)', es: 'Polígono restaurado (Ctrl+Z)' },
+    'toast.polyRestoreFail': { pt: 'Falha ao restaurar polígono', en: 'Failed to restore polygon', es: 'Error al restaurar polígono' },
+    'toast.drawCancelled': { pt: 'Desenho cancelado', en: 'Drawing cancelled', es: 'Dibujo cancelado' },
 
     // ── Toast messages (streetview.js) ──
     'toast.svClickHint': { pt: 'Clique no mapa para abrir Street View. Linhas azuis mostram a cobertura disponível.', en: 'Click on the map to open Street View. Blue lines show available coverage.', es: 'Haga clic en el mapa para abrir Street View. Las líneas azules muestran la cobertura disponible.' },
