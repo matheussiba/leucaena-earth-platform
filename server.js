@@ -13,7 +13,7 @@ try {
 } catch (e) { /* no .env file, use system env vars */ }
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { initDB, queryAll, queryOne, runSQL, persist } = require('./db');
+const { initDB, queryAll, queryOne, runSQL, persist, DB_PATH } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -350,6 +350,17 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
 app.get('/api/admin/passcode', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   res.json({ passcode: getNextPasscode() });
+});
+
+app.get('/api/admin/db-info', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const dataPath = process.env.DATA_PATH || path.join(__dirname, 'data');
+  res.json({
+    dbPath: DB_PATH,
+    dataPath,
+    hasPersistentDisk: !!process.env.DATA_PATH,
+    hint: process.env.DATA_PATH ? 'Persistent disk configured. DB should survive deploys.' : 'No DATA_PATH set. Add a Render Persistent Disk (mount /data) and set env DATA_PATH=/data to keep the DB across deploys.'
+  });
 });
 
 // ── REST API ──
