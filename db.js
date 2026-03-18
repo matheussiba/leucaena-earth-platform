@@ -4,14 +4,22 @@ const path = require('path');
 
 const dataDir = process.env.DATA_PATH || path.join(__dirname, 'data');
 const DB_PATH = path.join(dataDir, 'leucena.db');
+const BUNDLED_DB = path.join(__dirname, 'data', 'leucena.db');
 
 let db = null;
 
 async function initDB() {
   const SQL = await initSqlJs();
 
+  fs.mkdirSync(dataDir, { recursive: true });
+
   if (fs.existsSync(DB_PATH)) {
     const buffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(buffer);
+  } else if (process.env.DATA_PATH && fs.existsSync(BUNDLED_DB)) {
+    console.log('Persistent disk empty — copying bundled DB to', DB_PATH);
+    const buffer = fs.readFileSync(BUNDLED_DB);
+    fs.writeFileSync(DB_PATH, buffer);
     db = new SQL.Database(buffer);
   } else {
     db = new SQL.Database();
