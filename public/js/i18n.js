@@ -144,6 +144,10 @@ window.LeucenaI18n = (function () {
     'admin.newPassword': { pt: 'Nova senha para "{0}":', en: 'New password for "{0}":', es: 'Nueva contraseña para "{0}":' },
     'admin.passwordChanged': { pt: 'Senha alterada com sucesso', en: 'Password changed successfully', es: 'Contraseña cambiada exitosamente' },
     'admin.userDeleted': { pt: 'Usuário excluído', en: 'User deleted', es: 'Usuario eliminado' },
+    'admin.editProfile': { pt: 'Perfil', en: 'Profile', es: 'Perfil' },
+    'admin.editFullName': { pt: 'Nome completo para "{0}":', en: 'Full name for "{0}":', es: 'Nombre completo para "{0}":' },
+    'admin.editDescription': { pt: 'Descrição para "{0}":', en: 'Description for "{0}":', es: 'Descripción para "{0}":' },
+    'admin.profileUpdated': { pt: 'Perfil atualizado', en: 'Profile updated', es: 'Perfil actualizado' },
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
@@ -151,9 +155,15 @@ window.LeucenaI18n = (function () {
     'profile.fullName': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
     'profile.description': { pt: 'Descrição', en: 'Description', es: 'Descripción' },
     'profile.photo': { pt: 'Foto', en: 'Photo', es: 'Foto' },
-    'profile.save': { pt: 'Salvar', en: 'Save', es: 'Guardar' },
+    'profile.save': { pt: 'Salvar perfil', en: 'Save profile', es: 'Guardar perfil' },
     'profile.saved': { pt: 'Perfil atualizado', en: 'Profile updated', es: 'Perfil actualizado' },
     'profile.photoTooBig': { pt: 'Foto deve ter no máximo ~200 KB', en: 'Photo must be at most ~200 KB', es: 'La foto debe tener como máximo ~200 KB' },
+    'profile.changePassword': { pt: 'Alterar senha', en: 'Change password', es: 'Cambiar contraseña' },
+    'profile.newPasswordPlaceholder': { pt: 'Nova senha (mínimo 3 caracteres)', en: 'New password (min. 3 characters)', es: 'Nueva contraseña (mín. 3 caracteres)' },
+    'profile.changePasswordBtn': { pt: 'Alterar', en: 'Change', es: 'Cambiar' },
+    'profile.pwTooShort': { pt: 'A senha deve ter pelo menos 3 caracteres', en: 'Password must have at least 3 characters', es: 'La contraseña debe tener al menos 3 caracteres' },
+    'profile.pwChanged': { pt: 'Senha alterada com sucesso', en: 'Password changed successfully', es: 'Contraseña cambiada exitosamente' },
+    'profile.fullNamePlaceholder': { pt: 'Seu nome completo', en: 'Your full name', es: 'Su nombre completo' },
     'about.idealizadores': { pt: 'Idealizadores', en: 'Project Leaders', es: 'Creadores' },
     'about.colaboradores': { pt: 'Colaboradores', en: 'Collaborators', es: 'Colaboradores' },
 

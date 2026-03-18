@@ -82,6 +82,7 @@ window.LeucenaApp = (function () {
     document.getElementById('profile-form').addEventListener('submit', saveProfile);
     document.getElementById('profile-description').addEventListener('input', updateProfileCharCount);
     document.getElementById('profile-photo-input').addEventListener('change', handleProfilePhotoSelect);
+    document.getElementById('profile-change-pw-btn').addEventListener('click', changeOwnPassword);
 
     trackPageView();
 
@@ -370,12 +371,34 @@ window.LeucenaApp = (function () {
         preview.textContent = (p.full_name || username).toString().charAt(0).toUpperCase();
       }
       document.getElementById('profile-photo-input').value = '';
+      document.getElementById('profile-new-password').value = '';
     } catch (e) { /* ignore */ }
     document.getElementById('profile-modal').classList.remove('hidden');
   }
 
   function closeProfileModal() {
     document.getElementById('profile-modal').classList.add('hidden');
+  }
+
+  async function changeOwnPassword() {
+    const pwInput = document.getElementById('profile-new-password');
+    const pw = pwInput.value;
+    if (!pw || pw.length < 3) {
+      showToast(LeucenaI18n.t('profile.pwTooShort'), 'warning');
+      return;
+    }
+    try {
+      const res = await fetch('/api/profile/password', {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: pw })
+      });
+      if (res.ok) {
+        showToast(LeucenaI18n.t('profile.pwChanged'), 'success');
+        pwInput.value = '';
+      } else {
+        const err = await res.json();
+        showToast(err.error, 'error');
+      }
+    } catch (e) { showToast('Erro de conexão', 'error'); }
   }
 
   function updateProfileCharCount() {
@@ -1063,10 +1086,24 @@ window.LeucenaApp = (function () {
             <div class="admin-user-date">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
           </div>
           <div class="admin-user-actions">
+            <button class="admin-profile-btn">${t('admin.editProfile')}</button>
             <button class="admin-pw-btn">${t('admin.changePassword')}</button>
             ${!isAdm ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
           </div>
         `;
+
+        const profileBtn = row.querySelector('.admin-profile-btn');
+        profileBtn.addEventListener('click', async () => {
+          const newName = prompt(t('admin.editFullName', user.username), user.full_name || '');
+          if (newName === null) return;
+          const newDesc = prompt(t('admin.editDescription', user.username), user.description || '');
+          if (newDesc === null) return;
+          const r = await fetch(`/api/admin/users/${user.id}/profile`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ full_name: newName, description: newDesc })
+          });
+          if (r.ok) { showToast(t('admin.profileUpdated'), 'success'); }
+          else { const err = await r.json(); showToast(err.error, 'error'); }
+        });
 
         const pwBtn = row.querySelector('.admin-pw-btn');
         pwBtn.addEventListener('click', async () => {

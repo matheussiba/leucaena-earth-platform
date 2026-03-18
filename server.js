@@ -245,6 +245,31 @@ app.put('/api/profile', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.put('/api/profile/password', requireAuth, (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+  const hash = hashPassword(password);
+  runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, req.username]);
+  persist();
+  res.json({ success: true });
+});
+
+app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const { full_name, description, photo } = req.body || {};
+  if (description != null && typeof description === 'string' && description.length > 400) {
+    return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
+  }
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  runSQL(
+    'UPDATE users SET full_name = ?, description = ?, photo = ? WHERE id = ?',
+    [full_name !== undefined ? (full_name || null) : user.full_name, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, Number(req.params.id)]
+  );
+  persist();
+  res.json({ success: true });
+});
+
 app.get('/api/quem-somos', (req, res) => {
   const adminList = ADMIN_USERNAMES.map(u => `'${u}'`).join(',');
   const polygonCounts = queryAll(
@@ -276,7 +301,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo FROM users WHERE username != 'deleted'");
   const passcode = getNextPasscode();
   res.json({ users, nextPasscode: passcode });
 });

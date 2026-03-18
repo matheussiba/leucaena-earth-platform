@@ -427,6 +427,27 @@ html, body {
   max-width: 200px;
 }
 
+.profile-separator {
+  border-top: 1px solid var(--border);
+  margin: 16px 0 4px 0;
+}
+
+.profile-pw-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.profile-pw-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
 .user-count-badge {
   position: absolute;
   top: -2px;
