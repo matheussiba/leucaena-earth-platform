@@ -89,7 +89,7 @@
     <div class="modal-card modal-card-small">
       <button id="profile-modal-close" class="modal-close">&times;</button>
       <h2 data-i18n="profile.title">Meu perfil</h2>
-      <p class="modal-subtitle" data-i18n="profile.subtitle">Estas informações aparecem na seção &quot;Quem Somos&quot; (idealizadores ou colaboradores com 5+ máscaras).</p>
+      <p class="modal-subtitle" data-i18n="profile.subtitle">Estas informações aparecem na seção &quot;Quem Somos&quot; (idealizadores ou colaboradores com 10+ máscaras).</p>
       <div id="profile-error" class="auth-error hidden"></div>
       <form id="profile-form">
         <label class="profile-label" data-i18n="profile.fullName">Nome completo</label>
@@ -102,11 +102,13 @@
           <div class="profile-photo-preview" id="profile-photo-preview"></div>
           <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp,image/gif">
         </div>
-        <div class="profile-separator"></div>
-        <label class="profile-label" data-i18n="profile.changePassword">Alterar senha</label>
-        <div class="profile-pw-row">
-          <input type="password" id="profile-new-password" minlength="3" data-i18n-placeholder="profile.newPasswordPlaceholder" placeholder="Nova senha (mínimo 3 caracteres)">
-          <button type="button" class="btn btn-secondary btn-small" id="profile-change-pw-btn" data-i18n="profile.changePasswordBtn">Alterar</button>
+        <div id="profile-pw-section">
+          <div class="profile-separator"></div>
+          <label class="profile-label" data-i18n="profile.changePassword">Alterar senha</label>
+          <div class="profile-pw-row">
+            <input type="password" id="profile-new-password" minlength="3" data-i18n-placeholder="profile.newPasswordPlaceholder" placeholder="Nova senha (mínimo 3 caracteres)">
+            <button type="button" class="btn btn-secondary btn-small" id="profile-change-pw-btn" data-i18n="profile.changePasswordBtn">Alterar</button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary btn-full" data-i18n="profile.save">Salvar perfil</button>
       </form>

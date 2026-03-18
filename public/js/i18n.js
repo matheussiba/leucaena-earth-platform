@@ -148,10 +148,11 @@ window.LeucenaI18n = (function () {
     'admin.editFullName': { pt: 'Nome completo para "{0}":', en: 'Full name for "{0}":', es: 'Nombre completo para "{0}":' },
     'admin.editDescription': { pt: 'Descrição para "{0}":', en: 'Description for "{0}":', es: 'Descripción para "{0}":' },
     'admin.profileUpdated': { pt: 'Perfil atualizado', en: 'Profile updated', es: 'Perfil actualizado' },
+    'admin.editProfileTitle': { pt: 'Editar perfil de {0}', en: 'Edit profile of {0}', es: 'Editar perfil de {0}' },
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
-    'profile.subtitle': { pt: 'Estas informações aparecem na seção "Quem Somos" (idealizadores ou colaboradores com 5+ máscaras).', en: 'This information appears in the "About Us" section (project leaders or collaborators with 5+ masks).', es: 'Esta información aparece en la sección "Quiénes Somos" (creadores o colaboradores con 5+ máscaras).' },
+    'profile.subtitle': { pt: 'Estas informações aparecem na seção "Quem Somos" (idealizadores ou colaboradores com 10+ máscaras).', en: 'This information appears in the "About Us" section (project leaders or collaborators with 10+ masks).', es: 'Esta información aparece en la sección "Quiénes Somos" (creadores o colaboradores con 10+ máscaras).' },
     'profile.fullName': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
     'profile.description': { pt: 'Descrição', en: 'Description', es: 'Descripción' },
     'profile.photo': { pt: 'Foto', en: 'Photo', es: 'Foto' },

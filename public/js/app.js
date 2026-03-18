@@ -350,34 +350,62 @@ window.LeucenaApp = (function () {
   }
 
   let profilePhotoDataUrl = null;
+  let adminEditingUser = null;
 
-  async function openProfileModal() {
+  async function openProfileModal(targetUser) {
     if (!isLoggedIn()) return;
     document.getElementById('profile-error').classList.add('hidden');
     profilePhotoDataUrl = null;
-    try {
-      const res = await fetch('/api/profile', { headers: authHeaders() });
-      if (!res.ok) return;
-      const p = await res.json();
-      document.getElementById('profile-full-name').value = p.full_name || '';
-      document.getElementById('profile-description').value = p.description || '';
+
+    const titleEl = document.getElementById('profile-modal').querySelector('h2');
+    const pwSection = document.getElementById('profile-pw-section');
+    const t = LeucenaI18n.t;
+
+    if (targetUser) {
+      adminEditingUser = targetUser;
+      titleEl.textContent = t('admin.editProfileTitle', targetUser.username);
+      if (pwSection) pwSection.style.display = 'none';
+      document.getElementById('profile-full-name').value = targetUser.full_name || '';
+      document.getElementById('profile-description').value = targetUser.description || '';
       updateProfileCharCount();
       const preview = document.getElementById('profile-photo-preview');
-      if (p.photo) {
-        preview.innerHTML = '<img src="' + p.photo + '" alt="">';
-        profilePhotoDataUrl = p.photo;
+      if (targetUser.photo) {
+        preview.innerHTML = '<img src="' + targetUser.photo + '" alt="">';
+        profilePhotoDataUrl = targetUser.photo;
       } else {
         preview.innerHTML = '';
-        preview.textContent = (p.full_name || username).toString().charAt(0).toUpperCase();
+        preview.textContent = (targetUser.full_name || targetUser.username).toString().charAt(0).toUpperCase();
       }
       document.getElementById('profile-photo-input').value = '';
-      document.getElementById('profile-new-password').value = '';
-    } catch (e) { /* ignore */ }
+    } else {
+      adminEditingUser = null;
+      titleEl.textContent = t('profile.title');
+      if (pwSection) pwSection.style.display = '';
+      try {
+        const res = await fetch('/api/profile', { headers: authHeaders() });
+        if (!res.ok) return;
+        const p = await res.json();
+        document.getElementById('profile-full-name').value = p.full_name || '';
+        document.getElementById('profile-description').value = p.description || '';
+        updateProfileCharCount();
+        const preview = document.getElementById('profile-photo-preview');
+        if (p.photo) {
+          preview.innerHTML = '<img src="' + p.photo + '" alt="">';
+          profilePhotoDataUrl = p.photo;
+        } else {
+          preview.innerHTML = '';
+          preview.textContent = (p.full_name || username).toString().charAt(0).toUpperCase();
+        }
+        document.getElementById('profile-photo-input').value = '';
+        document.getElementById('profile-new-password').value = '';
+      } catch (e) { /* ignore */ }
+    }
     document.getElementById('profile-modal').classList.remove('hidden');
   }
 
   function closeProfileModal() {
     document.getElementById('profile-modal').classList.add('hidden');
+    adminEditingUser = null;
   }
 
   async function changeOwnPassword() {
@@ -435,7 +463,10 @@ window.LeucenaApp = (function () {
       return;
     }
     try {
-      const res = await fetch('/api/profile', {
+      const url = adminEditingUser
+        ? `/api/admin/users/${adminEditingUser.id}/profile`
+        : '/api/profile';
+      const res = await fetch(url, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ full_name: full_name || null, description: description || null, photo: profilePhotoDataUrl })
@@ -446,9 +477,10 @@ window.LeucenaApp = (function () {
         errorEl.classList.remove('hidden');
         return;
       }
+      const wasAdmin = !!adminEditingUser;
       closeProfileModal();
-      loadUserProfile();
-      showToast(LeucenaI18n.t('profile.saved'), 'success');
+      if (!wasAdmin) loadUserProfile();
+      showToast(wasAdmin ? LeucenaI18n.t('admin.profileUpdated') : LeucenaI18n.t('profile.saved'), 'success');
     } catch (err) {
       errorEl.textContent = 'Erro de conexão.';
       errorEl.classList.remove('hidden');
@@ -1093,16 +1125,14 @@ window.LeucenaApp = (function () {
         `;
 
         const profileBtn = row.querySelector('.admin-profile-btn');
-        profileBtn.addEventListener('click', async () => {
-          const newName = prompt(t('admin.editFullName', user.username), user.full_name || '');
-          if (newName === null) return;
-          const newDesc = prompt(t('admin.editDescription', user.username), user.description || '');
-          if (newDesc === null) return;
-          const r = await fetch(`/api/admin/users/${user.id}/profile`, {
-            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ full_name: newName, description: newDesc })
+        profileBtn.addEventListener('click', () => {
+          openProfileModal({
+            id: user.id,
+            username: user.username,
+            full_name: user.full_name || '',
+            description: user.description || '',
+            photo: user.photo || null
           });
-          if (r.ok) { showToast(t('admin.profileUpdated'), 'success'); }
-          else { const err = await r.json(); showToast(err.error, 'error'); }
         });
 
         const pwBtn = row.querySelector('.admin-pw-btn');

@@ -283,7 +283,7 @@ app.get('/api/quem-somos', (req, res) => {
     .filter(u => isAdmin(u.username))
     .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }));
   const colaboradores = allUsers
-    .filter(u => !isAdmin(u.username) && (countByUser[u.username] || 0) >= 5)
+    .filter(u => !isAdmin(u.username) && (countByUser[u.username] || 0) >= 10)
     .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }));
 
   res.json({ idealizadores, colaboradores });
