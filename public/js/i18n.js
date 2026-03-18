@@ -235,6 +235,11 @@ window.LeucenaI18n = (function () {
     'toast.polyRestoreFail': { pt: 'Falha ao restaurar polígono', en: 'Failed to restore polygon', es: 'Error al restaurar polígono' },
     'toast.drawCancelled': { pt: 'Desenho cancelado', en: 'Drawing cancelled', es: 'Dibujo cancelado' },
 
+    // ── Tool hint badges ──
+    'badge.draw': { pt: 'Finalizar: clique direito ou Enter | Desfazer vértice: Ctrl+Z', en: 'Finish: right-click or Enter | Undo vertex: Ctrl+Z', es: 'Finalizar: clic derecho o Enter | Deshacer vértice: Ctrl+Z' },
+    'badge.delete': { pt: 'Desfazer exclusão: Ctrl+Z', en: 'Undo delete: Ctrl+Z', es: 'Deshacer eliminación: Ctrl+Z' },
+    'badge.edit': { pt: 'Desfazer edição: Ctrl+Z', en: 'Undo edit: Ctrl+Z', es: 'Deshacer edición: Ctrl+Z' },
+
     // ── Toast messages (streetview.js) ──
     'toast.svClickHint': { pt: 'Clique no mapa para abrir Street View. Linhas azuis mostram a cobertura disponível.', en: 'Click on the map to open Street View. Blue lines show available coverage.', es: 'Haga clic en el mapa para abrir Street View. Las líneas azules muestran la cobertura disponible.' },
     'toast.svNotAvailable': { pt: 'Street View não disponível neste local', en: 'Street View not available at this location', es: 'Street View no disponible en esta ubicación' },

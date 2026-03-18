@@ -125,7 +125,13 @@ window.LeucenaMap = (function () {
     }
   }
 
+  let rightDownTime = 0;
+
   function handleRightClick(e) {
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'draw') return;
+    const held = Date.now() - rightDownTime;
+    if (held < 2000) return;
+
     const coordsText = `${e.latLng.lat().toFixed(6)}, ${e.latLng.lng().toFixed(6)}`;
     navigator.clipboard.writeText(coordsText).then(() => {
       LeucenaApp.showToast(LeucenaI18n.t('toast.coordsCopied', coordsText), 'success');
@@ -154,8 +160,12 @@ window.LeucenaMap = (function () {
   function setupRightClickCopy() {
     map.addListener('rightclick', handleRightClick);
 
-    document.getElementById('map').addEventListener('contextmenu', (e) => {
+    const mapDiv = document.getElementById('map');
+    mapDiv.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+    });
+    mapDiv.addEventListener('mousedown', (e) => {
+      if (e.button === 2) rightDownTime = Date.now();
     });
   }
 

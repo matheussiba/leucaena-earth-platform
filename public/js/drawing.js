@@ -5,6 +5,7 @@ window.LeucenaDrawing = (function () {
   let holeTargetId = null;
 
   const deleteUndoStack = [];
+  const editUndoStack = [];
   let manualDrawState = null;
 
   const POLY_STYLE = {
@@ -30,6 +31,12 @@ window.LeucenaDrawing = (function () {
 
   function setupUndoHandler() {
     document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && activeMode === 'draw' && manualDrawState) {
+        e.preventDefault();
+        completeManualDraw();
+        return;
+      }
+
       if (!(e.key === 'z' && (e.ctrlKey || e.metaKey))) return;
 
       if (activeMode === 'draw' && manualDrawState) {
@@ -40,6 +47,10 @@ window.LeucenaDrawing = (function () {
         e.preventDefault();
         e.stopPropagation();
         undoDeletePolygon();
+      } else if (activeMode === 'edit' && editUndoStack.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        undoEditPolygon();
       }
     });
   }
@@ -145,7 +156,9 @@ window.LeucenaDrawing = (function () {
     activeMode = mode;
 
     deleteUndoStack.length = 0;
+    editUndoStack.length = 0;
     cleanupManualDraw();
+    updateToolBadge(mode);
 
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.edit-tool-btn').forEach(b => b.classList.remove('active'));
@@ -364,9 +377,16 @@ window.LeucenaDrawing = (function () {
       completeManualDraw();
     });
 
+    const rightClickListener = map.addListener('rightclick', (e) => {
+      if (activeMode !== 'draw') return;
+      if (vertices.length >= 3) {
+        completeManualDraw();
+      }
+    });
+
     manualDrawState = {
       vertices, vertexMarkers, previewPoly, guideLine,
-      clickListener, moveListener, dblClickListener,
+      clickListener, moveListener, dblClickListener, rightClickListener,
       removeLastVertex, prevDblClickZoom
     };
   }
@@ -426,7 +446,7 @@ window.LeucenaDrawing = (function () {
   function cleanupManualDraw() {
     if (!manualDrawState) return;
     const { vertexMarkers, previewPoly, guideLine,
-            clickListener, moveListener, dblClickListener, prevDblClickZoom } = manualDrawState;
+            clickListener, moveListener, dblClickListener, rightClickListener, prevDblClickZoom } = manualDrawState;
 
     vertexMarkers.forEach(m => m.setMap(null));
     if (previewPoly) previewPoly.setMap(null);
@@ -434,6 +454,7 @@ window.LeucenaDrawing = (function () {
     if (clickListener) google.maps.event.removeListener(clickListener);
     if (moveListener) google.maps.event.removeListener(moveListener);
     if (dblClickListener) google.maps.event.removeListener(dblClickListener);
+    if (rightClickListener) google.maps.event.removeListener(rightClickListener);
 
     const map = LeucenaMap.getMap();
     if (map && prevDblClickZoom !== undefined) {
@@ -494,7 +515,64 @@ window.LeucenaDrawing = (function () {
     }
   }
 
-  // ── End undo ──
+  // ── Edit undo ──
+
+  function saveEditSnapshot(id) {
+    const entry = drawnPolygons[id];
+    if (!entry) return;
+    const coords = pathsToGeoJSONCoords(entry.gmapsPoly);
+    editUndoStack.push({ id, geometry: { type: 'Polygon', coordinates: coords } });
+  }
+
+  async function undoEditPolygon() {
+    if (editUndoStack.length === 0) {
+      LeucenaApp.showToast(LeucenaI18n.t('toast.nothingToUndo'), 'info');
+      return;
+    }
+    const snapshot = editUndoStack.pop();
+    const entry = drawnPolygons[snapshot.id];
+    if (!entry) return;
+
+    const paths = geojsonRingsToPaths(snapshot.geometry.coordinates);
+    entry.gmapsPoly.setPaths(paths);
+    entry.data.geometry = snapshot.geometry;
+    attachPathListeners(snapshot.id, entry.gmapsPoly);
+
+    try {
+      await fetch(`/api/polygons/${snapshot.id}`, {
+        method: 'PUT',
+        headers: LeucenaApp.authHeaders(),
+        body: JSON.stringify({ geometry: snapshot.geometry })
+      });
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyRestored'), 'success');
+    } catch (e) {
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
+    }
+  }
+
+  // ── Tool badges ──
+
+  function updateToolBadge(mode) {
+    const badge = document.getElementById('tool-hint-badge');
+    if (!badge) return;
+    const t = LeucenaI18n.t;
+
+    if (mode === 'draw') {
+      badge.textContent = t('badge.draw');
+      badge.className = 'tool-hint-badge tool-hint-draw';
+      badge.classList.remove('hidden');
+    } else if (mode === 'delete') {
+      badge.textContent = t('badge.delete');
+      badge.className = 'tool-hint-badge tool-hint-delete';
+      badge.classList.remove('hidden');
+    } else if (mode === 'edit') {
+      badge.textContent = t('badge.edit');
+      badge.className = 'tool-hint-badge tool-hint-edit';
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
 
   function canEditPolygon(entry) {
     const username = LeucenaApp.getUsername();
@@ -525,6 +603,7 @@ window.LeucenaDrawing = (function () {
     entry.gmapsPoly.setEditable(!isEditable);
 
     if (!isEditable) {
+      saveEditSnapshot(id);
       attachPathListeners(id, entry.gmapsPoly);
     }
   }
@@ -597,6 +676,7 @@ window.LeucenaDrawing = (function () {
 
   function deactivate() {
     deleteUndoStack.length = 0;
+    editUndoStack.length = 0;
     cleanupManualDraw();
     setMode('select');
   }
