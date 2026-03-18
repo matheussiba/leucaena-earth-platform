@@ -92,6 +92,8 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN full_name TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN description TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN photo TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN login_count INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN total_time_ms INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
 
   // Migrate not_valid → status for existing rows that haven't been migrated
   try {

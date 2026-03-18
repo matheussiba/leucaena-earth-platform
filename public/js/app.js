@@ -1076,6 +1076,15 @@ window.LeucenaApp = (function () {
     return code.split('').map(d => toRoman(parseInt(d))).join('.');
   }
 
+  function formatDuration(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m`;
+    return `${totalSec}s`;
+  }
+
   async function openAdminUsersModal() {
     if (!isAdminUser()) return;
     const t = LeucenaI18n.t;
@@ -1115,14 +1124,40 @@ window.LeucenaApp = (function () {
 
       const listEl = document.getElementById('admin-users-list');
       listEl.innerHTML = '';
+
+      const exportRow = document.createElement('div');
+      exportRow.className = 'admin-export-row';
+      exportRow.innerHTML = `<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>`;
+      listEl.appendChild(exportRow);
+      document.getElementById('admin-export-csv').addEventListener('click', async () => {
+        try {
+          const r = await fetch('/api/admin/users/export-csv', { headers: authHeaders() });
+          if (!r.ok) { showToast('Export failed', 'error'); return; }
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'leucena_users_stats.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) { showToast('Export failed', 'error'); }
+      });
+
       for (const user of data.users) {
         const isAdm = ADMIN_USERS.includes(user.username);
+        const totalMs = user.total_time_ms || 0;
+        const timeStr = formatDuration(totalMs);
         const row = document.createElement('div');
         row.className = 'admin-user-row';
         row.innerHTML = `
           <div class="admin-user-info">
             <span class="admin-user-name">${user.username}${isAdm ? '<span class="admin-user-badge">Admin</span>' : ''}</span>
             <div class="admin-user-date">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
+            <div class="admin-user-stats">
+              <span title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
+              <span title="${t('admin.logins')}">🔑 ${user.login_count || 0}</span>
+              <span title="${t('admin.timeOnline')}">⏱ ${timeStr}</span>
+            </div>
           </div>
           <div class="admin-user-actions">
             <button class="admin-profile-btn">${t('admin.editProfile')}</button>

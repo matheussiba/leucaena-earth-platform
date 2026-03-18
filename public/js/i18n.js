@@ -151,6 +151,10 @@ window.LeucenaI18n = (function () {
     'admin.editDescription': { pt: 'Descrição para "{0}":', en: 'Description for "{0}":', es: 'Descripción para "{0}":' },
     'admin.profileUpdated': { pt: 'Perfil atualizado', en: 'Profile updated', es: 'Perfil actualizado' },
     'admin.editProfileTitle': { pt: 'Editar perfil de {0}', en: 'Edit profile of {0}', es: 'Editar perfil de {0}' },
+    'admin.masks': { pt: 'Máscaras', en: 'Masks', es: 'Máscaras' },
+    'admin.logins': { pt: 'Logins', en: 'Logins', es: 'Logins' },
+    'admin.timeOnline': { pt: 'Tempo Online', en: 'Time Online', es: 'Tiempo Online' },
+    'admin.exportCsv': { pt: 'Exportar CSV', en: 'Export CSV', es: 'Exportar CSV' },
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },

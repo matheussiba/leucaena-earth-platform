@@ -217,6 +217,8 @@ app.post('/api/auth/login', (req, res) => {
   const hash = hashPassword(password);
   if (user.password_hash !== hash) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
+  runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1 WHERE username = ?', [username]);
+
   const token = uuidv4();
   sessions.set(token, username);
   res.json({ token, username });
@@ -309,9 +311,35 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, login_count, total_time_ms FROM users WHERE username != 'deleted'");
+  const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
+  const maskMap = {};
+  for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;
+  for (const u of users) u.mask_count = maskMap[u.username] || 0;
   const passcode = getNextPasscode();
   res.json({ users, nextPasscode: passcode });
+});
+
+app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const users = queryAll("SELECT id, username, created_at, full_name, description, login_count, total_time_ms FROM users WHERE username != 'deleted'");
+  const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
+  const maskMap = {};
+  for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;
+
+  const header = 'username,full_name,description,masks_created,login_count,total_time_hours,created_at';
+  const rows = users.map(u => {
+    const masks = maskMap[u.username] || 0;
+    const hours = ((u.total_time_ms || 0) / 3600000).toFixed(2);
+    const fullName = (u.full_name || '').replace(/"/g, '""');
+    const desc = (u.description || '').replace(/"/g, '""').replace(/\n/g, ' ');
+    return `${u.username},"${fullName}","${desc}",${masks},${u.login_count || 0},${hours},${u.created_at || ''}`;
+  });
+
+  const csv = header + '\n' + rows.join('\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename=leucena_users_stats.csv');
+  res.send('\uFEFF' + csv);
 });
 
 app.put('/api/admin/users/:id/password', requireAuth, (req, res) => {
@@ -825,6 +853,12 @@ io.on('connection', (socket) => {
         io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: user.username });
       }
       if (locked.length > 0) persist();
+
+      const sessionMs = Date.now() - new Date(user.joinedAt).getTime();
+      if (sessionMs > 0 && sessionMs < 86400000) {
+        runSQL('UPDATE users SET total_time_ms = COALESCE(total_time_ms, 0) + ? WHERE username = ?', [sessionMs, user.username]);
+      }
+
       connectedUsers.delete(socket.id);
       io.emit('users:updated', Array.from(connectedUsers.values()));
       console.log(`User disconnected: ${user.username}`);
