@@ -217,7 +217,51 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  res.json({ username });
+  const user = queryOne('SELECT username, full_name, description, photo FROM users WHERE username = ?', [username]);
+  res.json({ username, full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null });
+});
+
+// ── Profile (for Quem Somos) ──
+
+app.get('/api/profile', requireAuth, (req, res) => {
+  const user = queryOne('SELECT username, full_name, description, photo FROM users WHERE username = ?', [req.username]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  res.json({ username: user.username, full_name: user.full_name || null, description: user.description || null, photo: user.photo || null });
+});
+
+app.put('/api/profile', requireAuth, (req, res) => {
+  const { full_name, description, photo } = req.body || {};
+  if (description != null && typeof description === 'string' && description.length > 400) {
+    return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
+  }
+  if (photo != null && typeof photo === 'string' && photo.length > 500000) {
+    return res.status(400).json({ error: 'Foto muito grande' });
+  }
+  runSQL(
+    'UPDATE users SET full_name = ?, description = ?, photo = ? WHERE username = ?',
+    [full_name || null, description != null ? description : null, photo != null ? photo : null, req.username]
+  );
+  persist();
+  res.json({ success: true });
+});
+
+app.get('/api/quem-somos', (req, res) => {
+  const adminList = ADMIN_USERNAMES.map(u => `'${u}'`).join(',');
+  const polygonCounts = queryAll(
+    "SELECT created_by AS username, COUNT(*) AS cnt FROM polygons WHERE created_by IS NOT NULL AND created_by != 'deleted' GROUP BY created_by"
+  );
+  const countByUser = {};
+  polygonCounts.forEach(r => { countByUser[r.username] = r.cnt; });
+
+  const allUsers = queryAll('SELECT username, full_name, description, photo FROM users WHERE username != ?', ['deleted']);
+  const idealizadores = allUsers
+    .filter(u => isAdmin(u.username))
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }));
+  const colaboradores = allUsers
+    .filter(u => !isAdmin(u.username) && (countByUser[u.username] || 0) >= 5)
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }));
+
+  res.json({ idealizadores, colaboradores });
 });
 
 app.post('/api/auth/logout', (req, res) => {

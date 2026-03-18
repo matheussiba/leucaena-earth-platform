@@ -58,7 +58,10 @@ window.LeucenaApp = (function () {
     document.getElementById('guide-go-howto').addEventListener('click', () => showGuidePage('howto'));
     document.getElementById('guide-go-media').addEventListener('click', () => showGuidePage('media'));
     document.getElementById('guide-go-collaborate').addEventListener('click', () => showGuidePage('collaborate'));
-    document.getElementById('guide-go-about').addEventListener('click', () => showGuidePage('about'));
+    document.getElementById('guide-go-about').addEventListener('click', () => {
+      loadQuemSomosContent();
+      showGuidePage('about');
+    });
     document.getElementById('guide-back-leucena').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-howto').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-media').addEventListener('click', () => showGuidePage('main'));
@@ -70,6 +73,15 @@ window.LeucenaApp = (function () {
     document.getElementById('admin-users-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeAdminUsersModal();
     });
+
+    document.getElementById('user-badge').addEventListener('click', openProfileModal);
+    document.getElementById('profile-modal-close').addEventListener('click', closeProfileModal);
+    document.getElementById('profile-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeProfileModal();
+    });
+    document.getElementById('profile-form').addEventListener('submit', saveProfile);
+    document.getElementById('profile-description').addEventListener('input', updateProfileCharCount);
+    document.getElementById('profile-photo-input').addEventListener('change', handleProfilePhotoSelect);
 
     trackPageView();
 
@@ -298,14 +310,174 @@ window.LeucenaApp = (function () {
     document.getElementById('user-badge').classList.remove('hidden');
     document.getElementById('logout-btn').classList.remove('hidden');
     document.getElementById('user-display-name').textContent = username;
-    document.getElementById('user-avatar').textContent = username.charAt(0).toUpperCase();
+    const avatarEl = document.getElementById('user-avatar');
+    avatarEl.innerHTML = '';
+    avatarEl.textContent = username.charAt(0).toUpperCase();
 
     LeucenaCollab.init(username);
     showAdminTools();
+    loadUserProfile();
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
 
     if (selectedCellId && selectedCellData) {
       selectCell(selectedCellId, selectedCellData);
+    }
+  }
+
+  function applyProfileToUI(profile) {
+    const nameEl = document.getElementById('user-display-name');
+    const avatarEl = document.getElementById('user-avatar');
+    const displayName = profile && profile.full_name ? profile.full_name : username;
+    nameEl.textContent = displayName;
+    if (profile && profile.photo) {
+      avatarEl.innerHTML = '<img src="' + profile.photo + '" alt="">';
+    } else {
+      avatarEl.innerHTML = '';
+      avatarEl.textContent = (displayName || username).toString().charAt(0).toUpperCase();
+    }
+  }
+
+  async function loadUserProfile() {
+    if (!isLoggedIn()) return;
+    try {
+      const res = await fetch('/api/profile', { headers: authHeaders() });
+      if (res.ok) {
+        const profile = await res.json();
+        applyProfileToUI(profile);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  let profilePhotoDataUrl = null;
+
+  async function openProfileModal() {
+    if (!isLoggedIn()) return;
+    document.getElementById('profile-error').classList.add('hidden');
+    profilePhotoDataUrl = null;
+    try {
+      const res = await fetch('/api/profile', { headers: authHeaders() });
+      if (!res.ok) return;
+      const p = await res.json();
+      document.getElementById('profile-full-name').value = p.full_name || '';
+      document.getElementById('profile-description').value = p.description || '';
+      updateProfileCharCount();
+      const preview = document.getElementById('profile-photo-preview');
+      if (p.photo) {
+        preview.innerHTML = '<img src="' + p.photo + '" alt="">';
+        profilePhotoDataUrl = p.photo;
+      } else {
+        preview.innerHTML = '';
+        preview.textContent = (p.full_name || username).toString().charAt(0).toUpperCase();
+      }
+      document.getElementById('profile-photo-input').value = '';
+    } catch (e) { /* ignore */ }
+    document.getElementById('profile-modal').classList.remove('hidden');
+  }
+
+  function closeProfileModal() {
+    document.getElementById('profile-modal').classList.add('hidden');
+  }
+
+  function updateProfileCharCount() {
+    const n = document.getElementById('profile-description').value.length;
+    document.getElementById('profile-char-n').textContent = n;
+  }
+
+  function handleProfilePhotoSelect(e) {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    if (file.size > 200000) {
+      showToast(LeucenaI18n.t('profile.photoTooBig'), 'warning');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      profilePhotoDataUrl = reader.result;
+      const preview = document.getElementById('profile-photo-preview');
+      preview.innerHTML = '<img src="' + profilePhotoDataUrl + '" alt="">';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function saveProfile(e) {
+    e.preventDefault();
+    const full_name = document.getElementById('profile-full-name').value.trim() || null;
+    const description = document.getElementById('profile-description').value.trim() || null;
+    const errorEl = document.getElementById('profile-error');
+    errorEl.classList.add('hidden');
+    if (description && description.length > 400) {
+      errorEl.textContent = 'Descrição deve ter no máximo 400 caracteres.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ full_name: full_name || null, description: description || null, photo: profilePhotoDataUrl })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        errorEl.textContent = err.error || 'Erro ao salvar';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      closeProfileModal();
+      loadUserProfile();
+      showToast(LeucenaI18n.t('profile.saved'), 'success');
+    } catch (err) {
+      errorEl.textContent = 'Erro de conexão.';
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  async function loadQuemSomosContent() {
+    const container = document.getElementById('guide-about-content');
+    if (!container) return;
+    const t = LeucenaI18n.t;
+    container.innerHTML = '<p class="guide-loading">Carregando...</p>';
+    try {
+      const res = await fetch('/api/quem-somos');
+      if (!res.ok) {
+        container.innerHTML = '<p>Não foi possível carregar.</p>';
+        return;
+      }
+      const data = await res.json();
+
+      function cardHtml(person) {
+        const name = person.full_name || person.username;
+        const desc = person.description || '';
+        const thumb = person.photo
+          ? '<img src="' + person.photo + '" alt="">'
+          : name.toString().charAt(0).toUpperCase();
+        return '<div class="about-card"><div class="about-card-thumb">' + thumb + '</div><div class="about-card-info"><div class="about-card-name">' + escapeHtml(name) + '</div><div class="about-card-desc">' + escapeHtml(desc) + '</div></div></div>';
+      }
+
+      function escapeHtml(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      const lang = typeof LeucenaI18n !== 'undefined' && LeucenaI18n.getLang ? LeucenaI18n.getLang() : 'pt';
+      let html = '<h2>' + (lang === 'en' ? 'About Us' : lang === 'es' ? 'Quiénes Somos' : 'Quem Somos') + '</h2>';
+      if (data.idealizadores && data.idealizadores.length > 0) {
+        html += '<div class="about-section-title">' + t('about.idealizadores') + '</div><div class="about-cards">';
+        data.idealizadores.forEach(p => { html += cardHtml(p); });
+        html += '</div>';
+      }
+      if (data.colaboradores && data.colaboradores.length > 0) {
+        html += '<div class="about-section-title">' + t('about.colaboradores') + '</div><div class="about-cards">';
+        data.colaboradores.forEach(p => { html += cardHtml(p); });
+        html += '</div>';
+      }
+      if (!data.idealizadores.length && !data.colaboradores.length) {
+        html += '<p class="text-muted">Nenhum perfil publicado ainda.</p>';
+      }
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = '<p>Erro ao carregar.</p>';
     }
   }
 

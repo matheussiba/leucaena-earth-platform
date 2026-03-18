@@ -145,6 +145,18 @@ window.LeucenaI18n = (function () {
     'admin.passwordChanged': { pt: 'Senha alterada com sucesso', en: 'Password changed successfully', es: 'Contraseña cambiada exitosamente' },
     'admin.userDeleted': { pt: 'Usuário excluído', en: 'User deleted', es: 'Usuario eliminado' },
 
+    // ── Profile (Quem Somos) ──
+    'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
+    'profile.subtitle': { pt: 'Estas informações aparecem na seção "Quem Somos" (idealizadores ou colaboradores com 5+ máscaras).', en: 'This information appears in the "About Us" section (project leaders or collaborators with 5+ masks).', es: 'Esta información aparece en la sección "Quiénes Somos" (creadores o colaboradores con 5+ máscaras).' },
+    'profile.fullName': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
+    'profile.description': { pt: 'Descrição', en: 'Description', es: 'Descripción' },
+    'profile.photo': { pt: 'Foto', en: 'Photo', es: 'Foto' },
+    'profile.save': { pt: 'Salvar', en: 'Save', es: 'Guardar' },
+    'profile.saved': { pt: 'Perfil atualizado', en: 'Profile updated', es: 'Perfil actualizado' },
+    'profile.photoTooBig': { pt: 'Foto deve ter no máximo ~200 KB', en: 'Photo must be at most ~200 KB', es: 'La foto debe tener como máximo ~200 KB' },
+    'about.idealizadores': { pt: 'Idealizadores', en: 'Project Leaders', es: 'Creadores' },
+    'about.colaboradores': { pt: 'Colaboradores', en: 'Collaborators', es: 'Colaboradores' },
+
     // ── Edit badge ──
     'edit.badge': { pt: 'Editando Célula #{0}', en: 'Editing Cell #{0}', es: 'Editando Celda #{0}' },
     'edit.cellInfo': { pt: 'Célula #{0} - {1}', en: 'Cell #{0} - {1}', es: 'Celda #{0} - {1}' },
@@ -288,20 +300,18 @@ window.LeucenaI18n = (function () {
       howtoPage.innerHTML = getHowtoContentEN();
       if (mediaPage) mediaPage.innerHTML = getMediaContentEN();
       if (collabPage) collabPage.innerHTML = getCollaborateContentEN();
-      if (aboutPage) aboutPage.innerHTML = getAboutContentEN();
     } else if (currentLang === 'es') {
       leucenaPage.innerHTML = getLeucenaContentES();
       howtoPage.innerHTML = getHowtoContentES();
       if (mediaPage) mediaPage.innerHTML = getMediaContentES();
       if (collabPage) collabPage.innerHTML = getCollaborateContentES();
-      if (aboutPage) aboutPage.innerHTML = getAboutContentES();
     } else {
       leucenaPage.innerHTML = getLeucenaContentPT();
       howtoPage.innerHTML = getHowtoContentPT();
       if (mediaPage) mediaPage.innerHTML = getMediaContentPT();
       if (collabPage) collabPage.innerHTML = getCollaborateContentPT();
-      if (aboutPage) aboutPage.innerHTML = getAboutContentPT();
     }
+    // aboutPage (Quem Somos) is filled dynamically via API when user opens it
   }
 
   function translateDocsModal() {

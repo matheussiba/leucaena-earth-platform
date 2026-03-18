@@ -84,6 +84,29 @@
     </div>
   </div>
 
+  <!-- Modal Meu Perfil (para Quem Somos) -->
+  <div id="profile-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-small">
+      <button id="profile-modal-close" class="modal-close">&times;</button>
+      <h2 data-i18n="profile.title">Meu perfil</h2>
+      <p class="modal-subtitle" data-i18n="profile.subtitle">Estas informações aparecem na seção &quot;Quem Somos&quot; (idealizadores ou colaboradores com 5+ máscaras).</p>
+      <div id="profile-error" class="auth-error hidden"></div>
+      <form id="profile-form">
+        <label class="profile-label" data-i18n="profile.fullName">Nome completo</label>
+        <input type="text" id="profile-full-name" maxlength="120" placeholder="Ex.: Matheus Siqueira Barros">
+        <label class="profile-label" data-i18n="profile.description">Descrição</label>
+        <textarea id="profile-description" rows="4" maxlength="400" placeholder="Uma breve descrição sobre você e sua atuação no projeto..."></textarea>
+        <span class="profile-char-count"><span id="profile-char-n">0</span>/400</span>
+        <label class="profile-label" data-i18n="profile.photo">Foto</label>
+        <div class="profile-photo-row">
+          <div class="profile-photo-preview" id="profile-photo-preview"></div>
+          <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp,image/gif">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" data-i18n="profile.save">Salvar</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal Guia (Comece por aqui) -->
   <div id="guide-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-guide">
@@ -242,10 +265,10 @@
           <span data-i18n="auth.login">Entrar</span>
         </button>
         <!-- Logado -->
-        <div class="user-badge hidden" id="user-badge">
+        <button type="button" class="user-badge user-badge-clickable hidden" id="user-badge" title="Meu perfil">
           <div class="user-avatar" id="user-avatar"></div>
           <span id="user-display-name"></span>
-        </div>
+        </button>
         <button class="btn btn-secondary btn-small hidden" id="admin-users-btn" title="Gerenciar Usuários">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
