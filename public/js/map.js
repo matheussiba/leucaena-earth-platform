@@ -5,8 +5,8 @@ window.LeucenaMap = (function () {
   const gridData = {};
   const pointMarkersById = {};
   const POINT_LAYERS = ['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink'];
-  let activeFilters = new Set(['not_yet_finished', 'mapping', 'no_points', 'finished']);
-  let visiblePointLayers = new Set(POINT_LAYERS);
+  let activeFilters = new Set(['not_yet_finished', 'in_use', 'mapping', 'no_points', 'finished']);
+  let visiblePointLayers = new Set(['crowdmapping']);
   let showGrid = true;
   let showPoints = true;
   let showPolygons = true;
@@ -19,10 +19,11 @@ window.LeucenaMap = (function () {
   const SELECTED_STROKE = '#00FFFF';
 
   const STATUS_STYLES = {
-    not_yet_finished: { fill: '#7c3aed', stroke: '#7c3aed', fillOpacity: 0.20, strokeWeight: 1.5 },
-    mapping:          { fill: 'transparent', stroke: '#eab308', fillOpacity: 0.0,  strokeWeight: 10 },
-    no_points:        { fill: '#d4d4d8', stroke: '#9ca3af', fillOpacity: 0.50, strokeWeight: 1.5 },
-    finished:         { fill: '#22c55e', stroke: '#16a34a', fillOpacity: 0.20, strokeWeight: 1.5 }
+    no_points:        { fill: '#d4d4d8', stroke: '#9ca3af', fillOpacity: 0.50, strokeWeight: 1.5, zIndex: 0 },
+    mapping:          { fill: '#FFFF59', stroke: '#a16207', fillOpacity: 0.50, strokeWeight: 1.5, zIndex: 1 },
+    not_yet_finished: { fill: '#7c3aed', stroke: '#7c3aed', fillOpacity: 0.20, strokeWeight: 1.5, zIndex: 2 },
+    finished:         { fill: '#22c55e', stroke: '#94FB54', fillOpacity: 0.50, strokeWeight: 1.5, zIndex: 3 },
+    in_use:           { fill: 'transparent', stroke: '#eab308', fillOpacity: 0.0,  strokeWeight: 10, zIndex: 4 }
   };
 
   const LOCKED_STROKE = '#fde047';
@@ -198,6 +199,7 @@ window.LeucenaMap = (function () {
           }
         });
       });
+      updateFilterCounts();
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.gridLoadFail'), 'error');
     }
@@ -206,6 +208,7 @@ window.LeucenaMap = (function () {
   function getStyleForCell(props, cellId) {
     const base = STATUS_STYLES[props.grid_status] || STATUS_STYLES.not_yet_finished;
     const isSelected = cellId !== undefined && cellId === selectedCellId;
+    const z = base.zIndex !== undefined ? base.zIndex : 0;
 
     if (props.locked_by) {
       return {
@@ -213,7 +216,8 @@ window.LeucenaMap = (function () {
         strokeWeight: base.strokeWeight,
         strokeOpacity: 0.9,
         fillColor: base.fill,
-        fillOpacity: 0.0
+        fillOpacity: 0.0,
+        zIndex: z
       };
     }
     if (isSelected) {
@@ -222,7 +226,8 @@ window.LeucenaMap = (function () {
         strokeWeight: 5,
         strokeOpacity: 1.0,
         fillColor: base.fill,
-        fillOpacity: base.fillOpacity
+        fillOpacity: base.fillOpacity,
+        zIndex: z
       };
     }
     return {
@@ -230,7 +235,8 @@ window.LeucenaMap = (function () {
       strokeWeight: base.strokeWeight,
       strokeOpacity: 0.8,
       fillColor: base.fill,
-      fillOpacity: base.fillOpacity
+      fillOpacity: base.fillOpacity,
+      zIndex: z
     };
   }
 
@@ -243,8 +249,7 @@ window.LeucenaMap = (function () {
       paths: paths,
       ...style,
       map: shouldShowCell(props) ? map : null,
-      clickable: true,
-      zIndex: 0
+      clickable: true
     });
 
     poly.addListener('mousemove', (e) => {
@@ -337,6 +342,7 @@ window.LeucenaMap = (function () {
         gridData[cellId].finished_by = extra.finished_by;
       }
       updateCellAppearance(cellId, gridData[cellId]);
+      updateFilterCounts();
     }
   }
 
@@ -380,6 +386,7 @@ window.LeucenaMap = (function () {
           data: feature.properties
         };
       }
+      updateFilterCounts();
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.pointsLoadFail'), 'error');
     }
@@ -463,6 +470,22 @@ window.LeucenaMap = (function () {
     google.maps.event.addListenerOnce(map, 'idle', () => {
       map.setZoom(map.getZoom() + 1);
       restrictPanToCell(cellId);
+    });
+  }
+
+  function zoomToCellViewOnly(cellId) {
+    const bounds = getCellBounds(cellId);
+    if (!bounds) return;
+    map.setOptions({ restriction: null });
+    releasePanRestriction();
+    const center = bounds.getCenter();
+    const container = document.getElementById('map');
+    const padH = Math.round(container.offsetWidth * 0.20);
+    const padV = Math.round(container.offsetHeight * 0.20);
+    map.fitBounds(bounds, { top: padV, right: padH, bottom: padV, left: padH });
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      map.setCenter(center);
+      map.setZoom(map.getZoom() + 1);
     });
   }
 
@@ -588,6 +611,8 @@ window.LeucenaMap = (function () {
         LeucenaDrawing.setVisible(showPolygons);
       }
     });
+
+    syncPointsParent();
   }
 
   function refreshGridVisibility() {
@@ -595,6 +620,39 @@ window.LeucenaMap = (function () {
       const props = gridData[cellId];
       poly.setMap(shouldShowCell(props) ? map : null);
     }
+  }
+
+  function updateFilterCounts() {
+    const statusCounts = { not_yet_finished: 0, in_use: 0, mapping: 0, no_points: 0, finished: 0 };
+    let gridTotal = 0;
+    for (const props of Object.values(gridData)) {
+      gridTotal++;
+      if (statusCounts[props.grid_status] !== undefined) statusCounts[props.grid_status]++;
+    }
+    const setText = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = '(' + n + ')'; };
+    setText('count-grid-total', gridTotal);
+    setText('count-not_yet_finished', statusCounts.not_yet_finished);
+    setText('count-in_use', statusCounts.in_use);
+    setText('count-mapping', statusCounts.mapping);
+    setText('count-no_points', statusCounts.no_points);
+    setText('count-finished', statusCounts.finished);
+
+    const layerCounts = { crowdmapping: 0, inaturalist: 0, gbif: 0, insthorus: 0, specieslink: 0 };
+    let pointsTotal = 0;
+    for (const entry of Object.values(pointMarkersById)) {
+      pointsTotal++;
+      const l = entry.data.layer || 'crowdmapping';
+      if (layerCounts[l] !== undefined) layerCounts[l]++;
+    }
+    setText('count-points-total', pointsTotal);
+    setText('count-crowdmapping', layerCounts.crowdmapping);
+    setText('count-inaturalist', layerCounts.inaturalist);
+    setText('count-gbif', layerCounts.gbif);
+    setText('count-insthorus', layerCounts.insthorus);
+    setText('count-specieslink', layerCounts.specieslink);
+
+    const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : 0;
+    setText('count-polygons-total', polyCount);
   }
 
   function setFeaturesClickable(clickable) {
@@ -682,6 +740,7 @@ window.LeucenaMap = (function () {
     marker.setClickable(false);
 
     pointMarkersById[id] = { marker, data: { id, fid, status, layer, not_valid: status } };
+    updateFilterCounts();
     return marker;
   }
 
@@ -702,6 +761,7 @@ window.LeucenaMap = (function () {
     if (!entry) return;
     entry.marker.setMap(null);
     delete pointMarkersById[pointId];
+    updateFilterCounts();
   }
 
   function getLastCoords() { return lastCoords; }
@@ -770,6 +830,7 @@ window.LeucenaMap = (function () {
     getShowPolygons,
     showStreetViewCoverage,
     zoomToCell,
+    zoomToCellViewOnly,
     restrictPanToCell,
     releasePanRestriction,
     updatePointAppearance,
@@ -783,6 +844,7 @@ window.LeucenaMap = (function () {
     getLastCoords,
     findNearestPoint,
     getPointData,
-    zoomToInitialView
+    zoomToInitialView,
+    updateFilterCounts
   };
 })();

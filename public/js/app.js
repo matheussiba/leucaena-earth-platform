@@ -754,10 +754,13 @@ window.LeucenaApp = (function () {
 
   function enableTools(enabled) {
     const editPanel = document.getElementById('edit-tools-panel');
+    const unlockBtn = document.getElementById('tool-unlock');
     if (enabled) {
       editPanel.classList.remove('hidden');
+      unlockBtn.classList.remove('hidden');
     } else {
       editPanel.classList.add('hidden');
+      unlockBtn.classList.add('hidden');
     }
     const selectBtn = document.getElementById('tool-select');
     selectBtn.disabled = false;
@@ -804,12 +807,14 @@ window.LeucenaApp = (function () {
         unlockErr.classList.remove('hidden');
         return;
       }
+      const data = await res.json();
+      const finalStatus = data.status || status;
       closeUnlockModal();
 
       if (selectedCellData) {
         selectedCellData.locked_by = null;
-        selectedCellData.grid_status = status;
-        if (status === 'finished') selectedCellData.finished_by = username;
+        selectedCellData.grid_status = finalStatus;
+        if (finalStatus === 'finished') selectedCellData.finished_by = username;
       }
 
       LeucenaMap.updateCellAppearance(cellId, selectedCellData || {});
@@ -828,13 +833,13 @@ window.LeucenaApp = (function () {
       LeucenaDrawing.deactivate();
 
       if (selectedCellData) {
-        document.getElementById('cell-status-display').textContent = formatStatus(status);
-        if (status === 'finished') {
+        document.getElementById('cell-status-display').textContent = formatStatus(finalStatus);
+        if (finalStatus === 'finished') {
           document.getElementById('cell-finished-by').textContent = username;
         }
       }
 
-      showToast(LeucenaI18n.t('toast.cellUnlocked', cellId, formatStatus(status)), 'success');
+      showToast(LeucenaI18n.t('toast.cellUnlocked', cellId, formatStatus(finalStatus)), 'success');
     } catch (e) {
       showToast(LeucenaI18n.t('toast.unlockFail'), 'error');
     }
@@ -854,7 +859,7 @@ window.LeucenaApp = (function () {
       const result = await res.json();
 
       selectedCellData.locked_by = username;
-      selectedCellData.grid_status = 'mapping';
+      selectedCellData.grid_status = 'in_use';
       if (result.worked_by) selectedCellData.worked_by = result.worked_by;
 
       selectCell(cellId, selectedCellData);
@@ -1280,6 +1285,7 @@ window.LeucenaApp = (function () {
     isPointModeActive,
     handleDeletionClick,
     collapseLegendOnFirstZoom,
-    isEditing
+    isEditing,
+    isAdminUser
   };
 })();

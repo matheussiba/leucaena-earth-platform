@@ -127,13 +127,21 @@ function validateFinished(cellId) {
   if (validPointsInCell.length === 0) return { valid: true };
 
   const polys = queryAll('SELECT * FROM polygons WHERE grid_cell_id = ?', [cellId]);
-  const polyRings = polys.map(p => JSON.parse(p.geometry).coordinates[0]);
+
+  function isPointCoveredByPoly(lng, lat, polyGeom) {
+    const coords = polyGeom.coordinates;
+    if (!pointInPolygon([lng, lat], coords[0])) return false;
+    for (let i = 1; i < coords.length; i++) {
+      if (pointInPolygon([lng, lat], coords[i])) return false;
+    }
+    return true;
+  }
 
   const uncovered = [];
   for (const pt of validPointsInCell) {
     const geom = JSON.parse(pt.geometry);
     const [lng, lat] = geom.coordinates;
-    const covered = polyRings.some(ring => pointInPolygon([lng, lat], ring));
+    const covered = polys.some(p => isPointCoveredByPoly(lng, lat, JSON.parse(p.geometry)));
     if (!covered) uncovered.push(pt.id);
   }
 
@@ -390,7 +398,7 @@ app.put('/api/grid/:id/status', requireAuth, (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const username = req.username;
-  const valid = ['not_yet_finished', 'mapping', 'no_points', 'finished'];
+  const valid = ['not_yet_finished', 'in_use', 'mapping', 'no_points', 'finished'];
   if (!valid.includes(status)) {
     return res.status(400).json({ error: `Status inválido. Deve ser um dos seguintes: ${valid.join(', ')}` });
   }
@@ -439,12 +447,12 @@ app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
   }
 
   runSQL(
-    'UPDATE grid_cells SET locked_by = ?, locked_at = ?, grid_status = \'mapping\', worked_by = ?, updated_at = ? WHERE id = ?',
+    'UPDATE grid_cells SET locked_by = ?, locked_at = ?, grid_status = \'in_use\', worked_by = ?, updated_at = ? WHERE id = ?',
     [username, now, workedBy.join(','), now, Number(id)]
   );
 
   io.emit('cell:locked', { cellId: Number(id), username });
-  io.emit('cell:statusChanged', { cellId: Number(id), status: 'mapping', username });
+  io.emit('cell:statusChanged', { cellId: Number(id), status: 'in_use', username });
   persist();
   res.json({ success: true, worked_by: workedBy.join(',') });
 });
@@ -462,7 +470,7 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
   }
 
   const now = new Date().toISOString();
-  const newStatus = status || 'not_yet_finished';
+  let newStatus = status || 'not_yet_finished';
   let finishedBy = cell.finished_by;
 
   if (newStatus === 'finished') {
@@ -473,6 +481,13 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
     finishedBy = username;
   }
 
+  if (newStatus === 'not_yet_finished') {
+    const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [Number(id)]);
+    if (masks.length > 0) {
+      newStatus = 'mapping';
+    }
+  }
+
   runSQL(
     'UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, finished_by = ?, updated_at = ? WHERE id = ?',
     [newStatus, finishedBy, now, Number(id)]
@@ -481,7 +496,7 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
   io.emit('cell:unlocked', { cellId: Number(id), username });
   io.emit('cell:statusChanged', { cellId: Number(id), status: newStatus, username, finished_by: finishedBy });
   persist();
-  res.json({ success: true });
+  res.json({ success: true, status: newStatus });
 });
 
 // ── Polygons ──
@@ -799,12 +814,17 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
+      const now = new Date().toISOString();
       const locked = queryAll('SELECT id FROM grid_cells WHERE locked_by = ?', [user.username]);
       for (const cell of locked) {
-        runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, updated_at = ? WHERE id = ?',
-          [new Date().toISOString(), cell.id]);
+        const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [cell.id]);
+        const newStatus = masks.length > 0 ? 'mapping' : 'not_yet_finished';
+        runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
+          [newStatus, now, cell.id]);
         io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username });
+        io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: user.username });
       }
+      if (locked.length > 0) persist();
       connectedUsers.delete(socket.id);
       io.emit('users:updated', Array.from(connectedUsers.values()));
       console.log(`User disconnected: ${user.username}`);

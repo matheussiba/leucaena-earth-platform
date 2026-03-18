@@ -97,20 +97,28 @@ window.LeucenaCollab = (function () {
   function renderUsersList(users) {
     const container = document.getElementById('users-list');
     container.innerHTML = '';
+    const isAdmin = typeof LeucenaApp !== 'undefined' && LeucenaApp.isAdminUser && LeucenaApp.isAdminUser();
     for (const user of users) {
       const el = document.createElement('div');
       el.className = 'user-item';
+      if (isAdmin && user.editingCell) el.classList.add('user-item-zoomable');
       let editDisplay = user.editingCell;
       if (user.editingCell && typeof LeucenaMap !== 'undefined') {
         const gd = LeucenaMap.getGridData(user.editingCell);
         if (gd && gd.grid_id) editDisplay = gd.grid_id;
       }
       const cellInfo = user.editingCell ? LeucenaI18n.t('collab.cell', editDisplay) : LeucenaI18n.t('collab.idle');
+      const zoomHint = isAdmin && user.editingCell ? LeucenaI18n.t('collab.dblclickToZoom') : '';
+      if (zoomHint) el.title = zoomHint;
       el.innerHTML = `
         <span class="online-dot"></span>
         <span>${user.username}</span>
         <span class="user-cell-info">${cellInfo}</span>
       `;
+      if (isAdmin && user.editingCell && typeof LeucenaMap !== 'undefined' && LeucenaMap.zoomToCellViewOnly) {
+        const cellId = user.editingCell;
+        el.addEventListener('dblclick', () => LeucenaMap.zoomToCellViewOnly(cellId));
+      }
       container.appendChild(el);
     }
   }
