@@ -871,6 +871,8 @@ window.LeucenaApp = (function () {
       updateToggleArrow(false);
       updateLegendVisibility(false);
 
+      document.getElementById('selected-cell-info').classList.add('hidden');
+
       const badge = document.getElementById('edit-mode-badge');
       const displayId = selectedCellData.grid_id || cellId;
       document.getElementById('edit-mode-text').textContent = LeucenaI18n.t('edit.badge', displayId);

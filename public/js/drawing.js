@@ -553,24 +553,17 @@ window.LeucenaDrawing = (function () {
   // ── Tool badges ──
 
   function updateToolBadge(mode) {
-    const badge = document.getElementById('tool-hint-badge');
-    if (!badge) return;
+    const hint = document.getElementById('tool-hint-text');
+    if (!hint) return;
     const t = LeucenaI18n.t;
 
-    if (mode === 'draw') {
-      badge.textContent = t('badge.draw');
-      badge.className = 'tool-hint-badge tool-hint-draw';
-      badge.classList.remove('hidden');
-    } else if (mode === 'delete') {
-      badge.textContent = t('badge.delete');
-      badge.className = 'tool-hint-badge tool-hint-delete';
-      badge.classList.remove('hidden');
-    } else if (mode === 'edit') {
-      badge.textContent = t('badge.edit');
-      badge.className = 'tool-hint-badge tool-hint-edit';
-      badge.classList.remove('hidden');
+    if (mode === 'draw' || mode === 'delete' || mode === 'edit') {
+      hint.textContent = mode === 'draw' ? t('badge.draw')
+                       : mode === 'delete' ? t('badge.delete')
+                       : t('badge.edit');
+      hint.classList.remove('hidden');
     } else {
-      badge.classList.add('hidden');
+      hint.classList.add('hidden');
     }
   }
 

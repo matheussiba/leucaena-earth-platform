@@ -236,9 +236,9 @@ window.LeucenaI18n = (function () {
     'toast.drawCancelled': { pt: 'Desenho cancelado', en: 'Drawing cancelled', es: 'Dibujo cancelado' },
 
     // ── Tool hint badges ──
-    'badge.draw': { pt: 'Finalizar: clique direito ou Enter | Desfazer vértice: Ctrl+Z', en: 'Finish: right-click or Enter | Undo vertex: Ctrl+Z', es: 'Finalizar: clic derecho o Enter | Deshacer vértice: Ctrl+Z' },
-    'badge.delete': { pt: 'Desfazer exclusão: Ctrl+Z', en: 'Undo delete: Ctrl+Z', es: 'Deshacer eliminación: Ctrl+Z' },
-    'badge.edit': { pt: 'Desfazer edição: Ctrl+Z', en: 'Undo edit: Ctrl+Z', es: 'Deshacer edición: Ctrl+Z' },
+    'badge.draw': { pt: 'Clique direito ou Enter = finalizar · Ctrl+Z = desfazer', en: 'Right-click or Enter = finish · Ctrl+Z = undo', es: 'Clic derecho o Enter = finalizar · Ctrl+Z = deshacer' },
+    'badge.delete': { pt: 'Ctrl+Z = restaurar polígono', en: 'Ctrl+Z = restore polygon', es: 'Ctrl+Z = restaurar polígono' },
+    'badge.edit': { pt: 'Ctrl+Z = desfazer edição', en: 'Ctrl+Z = undo edit', es: 'Ctrl+Z = deshacer edición' },
 
     // ── Toast messages (streetview.js) ──
     'toast.svClickHint': { pt: 'Clique no mapa para abrir Street View. Linhas azuis mostram a cobertura disponível.', en: 'Click on the map to open Street View. Blue lines show available coverage.', es: 'Haga clic en el mapa para abrir Street View. Las líneas azules muestran la cobertura disponible.' },
