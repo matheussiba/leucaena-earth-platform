@@ -405,7 +405,9 @@ window.LeucenaApp = (function () {
 
   function closeProfileModal() {
     document.getElementById('profile-modal').classList.add('hidden');
+    const wasAdminEditing = !!adminEditingUser;
     adminEditingUser = null;
+    if (wasAdminEditing) openAdminUsersModal();
   }
 
   async function changeOwnPassword() {
@@ -1126,6 +1128,7 @@ window.LeucenaApp = (function () {
 
         const profileBtn = row.querySelector('.admin-profile-btn');
         profileBtn.addEventListener('click', () => {
+          closeAdminUsersModal();
           openProfileModal({
             id: user.id,
             username: user.username,
