@@ -46,15 +46,15 @@ window.LeucenaI18n = (function () {
     // ── Add Points modal ──
     'addPts.title': { pt: 'Modo de Inserção de Pontos', en: 'Point Insertion Mode', es: 'Modo de Inserción de Puntos' },
     'addPts.desc': {
-      pt: 'Você está prestes a entrar no modo de inserção de pontos. Enquanto ativo, pressione <strong>H</strong> para adicionar um ponto de Leucena na posição do cursor.',
-      en: 'You are about to enter point insertion mode. While active, press <strong>H</strong> to add a Leucaena point at the cursor position.',
-      es: 'Está a punto de entrar en el modo de inserción de puntos. Mientras esté activo, presione <strong>H</strong> para agregar un punto de Leucaena en la posición del cursor.'
+      pt: 'Você está prestes a entrar no modo de inserção de pontos. Enquanto ativo, pressione <strong>L</strong> para adicionar um ponto de Leucena na posição do cursor.',
+      en: 'You are about to enter point insertion mode. While active, press <strong>L</strong> to add a Leucaena point at the cursor position.',
+      es: 'Está a punto de entrar en el modo de inserción de puntos. Mientras esté activo, presione <strong>L</strong> para agregar un punto de Leucaena en la posición del cursor.'
     },
     'addPts.confirm': { pt: 'Deseja continuar?', en: 'Do you want to continue?', es: '¿Desea continuar?' },
     'addPts.yes': { pt: 'Sim, iniciar inserção de pontos', en: 'Yes, start inserting points', es: 'Sí, comenzar inserción de puntos' },
 
     // ── Insertion/Deletion banners ──
-    'banner.insertion': { pt: 'MODO DE INSERÇÃO DE PONTOS — Pressione H para adicionar ponto, Ctrl+Z para desfazer', en: 'POINT INSERTION MODE — Press H to add point, Ctrl+Z to undo', es: 'MODO DE INSERCIÓN DE PUNTOS — Presione H para agregar punto, Ctrl+Z para deshacer' },
+    'banner.insertion': { pt: 'MODO DE INSERÇÃO DE PONTOS — Pressione L para adicionar ponto, Ctrl+Z para desfazer', en: 'POINT INSERTION MODE — Press L to add point, Ctrl+Z to undo', es: 'MODO DE INSERCIÓN DE PUNTOS — Presione L para agregar punto, Ctrl+Z para deshacer' },
     'banner.deletion': { pt: 'MODO DE EXCLUSÃO DE PONTOS — Clique perto de um ponto para excluir, Ctrl+Z para desfazer', en: 'POINT DELETION MODE — Click near a point to delete, Ctrl+Z to undo', es: 'MODO DE ELIMINACIÓN DE PUNTOS — Haga clic cerca de un punto para eliminar, Ctrl+Z para deshacer' },
 
     // ── Sidebar ──
@@ -130,6 +130,20 @@ window.LeucenaI18n = (function () {
     'guide.mediaDesc': { pt: 'Notícias e referências sobre erradicação de leucena', en: 'News and references on leucaena eradication', es: 'Noticias y referencias sobre erradicación de leucaena' },
     'guide.mediaNews': { pt: 'Notícias e reportagens', en: 'News and reports', es: 'Noticias y reportajes' },
     'guide.mediaRefs': { pt: 'Referências científicas (Instituto Hórus)', en: 'Scientific references (Instituto Hórus)', es: 'Referencias científicas (Instituto Hórus)' },
+    'guide.collaborate': { pt: 'Seja Colaborador', en: 'Become a Collaborator', es: 'Sea Colaborador' },
+    'guide.collaborateDesc': { pt: 'Como se cadastrar e contribuir com o mapeamento', en: 'How to register and contribute to the mapping', es: 'Cómo registrarse y contribuir con el mapeo' },
+    'guide.about': { pt: 'Quem Somos', en: 'About Us', es: 'Quiénes Somos' },
+    'guide.aboutDesc': { pt: 'Conheça os idealizadores e colaboradores do projeto', en: 'Meet the creators and collaborators of the project', es: 'Conozca a los creadores y colaboradores del proyecto' },
+
+    // ── Admin ──
+    'admin.usersTitle': { pt: 'Gerenciar Usuários', en: 'Manage Users', es: 'Gestionar Usuarios' },
+    'admin.nextPasscode': { pt: 'Próximo código de acesso:', en: 'Next access code:', es: 'Próximo código de acceso:' },
+    'admin.changePassword': { pt: 'Alterar Senha', en: 'Change Password', es: 'Cambiar Contraseña' },
+    'admin.deleteUser': { pt: 'Excluir', en: 'Delete', es: 'Eliminar' },
+    'admin.confirmDelete': { pt: 'Tem certeza que deseja excluir o usuário "{0}"? As máscaras serão transferidas para o usuário "deleted".', en: 'Are you sure you want to delete user "{0}"? Masks will be transferred to the "deleted" user.', es: '¿Está seguro de que desea eliminar al usuario "{0}"? Las máscaras serán transferidas al usuario "deleted".' },
+    'admin.newPassword': { pt: 'Nova senha para "{0}":', en: 'New password for "{0}":', es: 'Nueva contraseña para "{0}":' },
+    'admin.passwordChanged': { pt: 'Senha alterada com sucesso', en: 'Password changed successfully', es: 'Contraseña cambiada exitosamente' },
+    'admin.userDeleted': { pt: 'Usuário excluído', en: 'User deleted', es: 'Usuario eliminado' },
 
     // ── Edit badge ──
     'edit.badge': { pt: 'Editando Célula #{0}', en: 'Editing Cell #{0}', es: 'Editando Celda #{0}' },
@@ -265,20 +279,28 @@ window.LeucenaI18n = (function () {
     const leucenaPage = document.getElementById('guide-leucena-content');
     const howtoPage = document.getElementById('guide-howto-content');
     const mediaPage = document.getElementById('guide-media-content');
+    const collabPage = document.getElementById('guide-collaborate-content');
+    const aboutPage = document.getElementById('guide-about-content');
     if (!leucenaPage || !howtoPage) return;
 
     if (currentLang === 'en') {
       leucenaPage.innerHTML = getLeucenaContentEN();
       howtoPage.innerHTML = getHowtoContentEN();
       if (mediaPage) mediaPage.innerHTML = getMediaContentEN();
+      if (collabPage) collabPage.innerHTML = getCollaborateContentEN();
+      if (aboutPage) aboutPage.innerHTML = getAboutContentEN();
     } else if (currentLang === 'es') {
       leucenaPage.innerHTML = getLeucenaContentES();
       howtoPage.innerHTML = getHowtoContentES();
       if (mediaPage) mediaPage.innerHTML = getMediaContentES();
+      if (collabPage) collabPage.innerHTML = getCollaborateContentES();
+      if (aboutPage) aboutPage.innerHTML = getAboutContentES();
     } else {
       leucenaPage.innerHTML = getLeucenaContentPT();
       howtoPage.innerHTML = getHowtoContentPT();
       if (mediaPage) mediaPage.innerHTML = getMediaContentPT();
+      if (collabPage) collabPage.innerHTML = getCollaborateContentPT();
+      if (aboutPage) aboutPage.innerHTML = getAboutContentPT();
     }
   }
 
@@ -468,6 +490,107 @@ window.LeucenaI18n = (function () {
 
   function getDocsES(month, year) {
     return `<h2>Documentación</h2><h3>Título del Proyecto</h3><p><em>Revelando la distribución espacial y la biomasa aérea de <strong>Leucaena leucocephala</strong> en el Estado de São Paulo usando teledetección e inteligencia artificial</em></p><h3>Investigador</h3><p>Matheus Siqueira Barros<br>Doctorando</p><h3>Director</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidad de São Paulo</p><h3>Descripción del Proyecto</h3><p>Esta investigación estudia la distribución espacial y la biomasa aérea de la especie invasora <em>Leucaena leucocephala</em> en todo el estado de São Paulo, Brasil. El proyecto combina imágenes ópticas de muy alta resolución espacial (25 cm de GSD) y datos LiDAR con técnicas de inteligencia artificial para detectar áreas dominadas por esta especie y estimar su biomasa.</p><p>El proyecto desarrolla métodos de aprendizaje profundo, especialmente redes neuronales convolucionales (CNNs), para fusionar datos LiDAR y ópticos y mapear áreas dominadas por <em>Leucaena</em> a escala estatal.</p><h3>Objetivo de la Plataforma</h3><p>Esta plataforma fue desarrollada para apoyar la investigación permitiendo:</p><ul><li>Mapeo colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalización de máscaras de copa por colaboradores</li><li>Validación entre puntos y polígonos mapeados</li><li>Seguimiento de las contribuciones de cada participante</li><li>Exportación de los datos mapeados para análisis posteriores</li></ul><h3>Colaboradores</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contacto</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Ubicación</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>`;
+  }
+
+  // ── Collaborate content ──
+
+  function getCollaborateContentPT() {
+    return `<h2>Seja Colaborador</h2>
+<p>Você pode contribuir com o mapeamento de <em>Leucaena leucocephala</em> no estado de São Paulo. Veja como:</p>
+<h3>1. Solicite o código de acesso</h3>
+<p>Envie um e-mail para <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a> solicitando seu código de acesso.</p>
+<h3>2. Crie sua conta</h3>
+<p>Clique em <strong>"Entrar"</strong> no canto superior direito, depois em <strong>"Cadastrar"</strong>. Informe um nome de usuário, senha e o código de acesso recebido.</p>
+<h3>3. Comece a mapear!</h3>
+<p>Selecione uma célula do grid, clique em <strong>"Bloquear e Editar"</strong> e comece a desenhar máscaras de leucena usando as ferramentas de edição.</p>
+<h3>Requisitos</h3>
+<ul>
+<li>Navegador atualizado (Chrome, Firefox, Edge)</li>
+<li>Conexão com internet</li>
+<li>Disposição para contribuir com ciência cidadã!</li>
+</ul>`;
+  }
+
+  function getCollaborateContentEN() {
+    return `<h2>Become a Collaborator</h2>
+<p>You can contribute to the mapping of <em>Leucaena leucocephala</em> in the state of São Paulo. Here's how:</p>
+<h3>1. Request the access code</h3>
+<p>Send an email to <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a> requesting your access code.</p>
+<h3>2. Create your account</h3>
+<p>Click <strong>"Sign In"</strong> in the upper right corner, then <strong>"Register"</strong>. Enter a username, password, and the access code you received.</p>
+<h3>3. Start mapping!</h3>
+<p>Select a grid cell, click <strong>"Lock & Edit"</strong> and start drawing Leucaena masks using the editing tools.</p>
+<h3>Requirements</h3>
+<ul>
+<li>Updated browser (Chrome, Firefox, Edge)</li>
+<li>Internet connection</li>
+<li>Willingness to contribute to citizen science!</li>
+</ul>`;
+  }
+
+  function getCollaborateContentES() {
+    return `<h2>Sea Colaborador</h2>
+<p>Puede contribuir con el mapeo de <em>Leucaena leucocephala</em> en el estado de São Paulo. Así es como:</p>
+<h3>1. Solicite el código de acceso</h3>
+<p>Envíe un correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a> solicitando su código de acceso.</p>
+<h3>2. Cree su cuenta</h3>
+<p>Haga clic en <strong>"Iniciar Sesión"</strong> en la esquina superior derecha, luego en <strong>"Registrarse"</strong>. Ingrese un nombre de usuario, contraseña y el código de acceso recibido.</p>
+<h3>3. ¡Empiece a mapear!</h3>
+<p>Seleccione una celda del grid, haga clic en <strong>"Bloquear y Editar"</strong> y comience a dibujar máscaras de leucaena usando las herramientas de edición.</p>
+<h3>Requisitos</h3>
+<ul>
+<li>Navegador actualizado (Chrome, Firefox, Edge)</li>
+<li>Conexión a internet</li>
+<li>¡Disposición para contribuir con ciencia ciudadana!</li>
+</ul>`;
+  }
+
+  // ── About content ──
+
+  function makeAboutCard(initials, name, desc) {
+    return `<div class="about-card"><div class="about-card-thumb">${initials}</div><div class="about-card-info"><div class="about-card-name">${name}</div><div class="about-card-desc">${desc}</div></div></div>`;
+  }
+
+  function getAboutContentPT() {
+    return `<h2>Quem Somos</h2>
+<div class="about-section-title">Idealizadores</div>
+<div class="about-cards">
+${makeAboutCard('MF', 'Dr. Matheus Pinheiro Ferreira', 'Supervisor do projeto – ESALQ/USP. Especialista em sensoriamento remoto e geotecnologias aplicadas ao monitoramento ambiental.')}
+${makeAboutCard('MB', 'Matheus Siqueira Barros', 'Doutorando – ESALQ/USP. Responsável pelo desenvolvimento da plataforma e pela pesquisa sobre mapeamento e biomassa de <em>Leucaena leucocephala</em> usando sensoriamento remoto e inteligência artificial.')}
+</div>
+<div class="about-section-title">Colaboradores</div>
+<div class="about-cards">
+${makeAboutCard('JA', 'Judith Zuleika Bertolucci Alves', 'Colaboradora no mapeamento de manchas de leucena.')}
+${makeAboutCard('RM', 'Rafael Perin Menassi', 'Colaborador no mapeamento de manchas de leucena.')}
+</div>`;
+  }
+
+  function getAboutContentEN() {
+    return `<h2>About Us</h2>
+<div class="about-section-title">Project Leaders</div>
+<div class="about-cards">
+${makeAboutCard('MF', 'Dr. Matheus Pinheiro Ferreira', 'Project supervisor – ESALQ/USP. Specialist in remote sensing and geotechnologies applied to environmental monitoring.')}
+${makeAboutCard('MB', 'Matheus Siqueira Barros', 'PhD Candidate – ESALQ/USP. Responsible for the platform development and research on mapping and biomass of <em>Leucaena leucocephala</em> using remote sensing and artificial intelligence.')}
+</div>
+<div class="about-section-title">Collaborators</div>
+<div class="about-cards">
+${makeAboutCard('JA', 'Judith Zuleika Bertolucci Alves', 'Collaborator in leucaena patch mapping.')}
+${makeAboutCard('RM', 'Rafael Perin Menassi', 'Collaborator in leucaena patch mapping.')}
+</div>`;
+  }
+
+  function getAboutContentES() {
+    return `<h2>Quiénes Somos</h2>
+<div class="about-section-title">Creadores</div>
+<div class="about-cards">
+${makeAboutCard('MF', 'Dr. Matheus Pinheiro Ferreira', 'Supervisor del proyecto – ESALQ/USP. Especialista en teledetección y geotecnologías aplicadas al monitoreo ambiental.')}
+${makeAboutCard('MB', 'Matheus Siqueira Barros', 'Doctorando – ESALQ/USP. Responsable del desarrollo de la plataforma y de la investigación sobre mapeo y biomasa de <em>Leucaena leucocephala</em> usando teledetección e inteligencia artificial.')}
+</div>
+<div class="about-section-title">Colaboradores</div>
+<div class="about-cards">
+${makeAboutCard('JA', 'Judith Zuleika Bertolucci Alves', 'Colaboradora en el mapeo de manchas de leucaena.')}
+${makeAboutCard('RM', 'Rafael Perin Menassi', 'Colaborador en el mapeo de manchas de leucaena.')}
+</div>`;
   }
 
   return { t, tHtml, getLang, setLang, translatePage };

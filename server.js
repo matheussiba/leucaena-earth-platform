@@ -146,16 +146,34 @@ function validateFinished(cellId) {
   return { valid: true };
 }
 
+// ── View counter ──
+
+app.post('/api/stats/view', (req, res) => {
+  runSQL("UPDATE site_stats SET value = value + 1 WHERE key = 'view_count'");
+  res.json({ success: true });
+});
+
+app.get('/api/stats/views', (req, res) => {
+  const username = getUsernameFromToken(req);
+  if (!username || !isAdmin(username)) {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  const row = queryOne("SELECT value FROM site_stats WHERE key = 'view_count'");
+  res.json({ views: row ? row.value : 0 });
+});
+
 // ── Auth ──
 
 function getNextPasscode() {
   const adminList = ADMIN_USERNAMES.map(u => `'${u}'`).join(',');
-  const row = queryOne(`SELECT COUNT(*) as cnt FROM users WHERE username NOT IN (${adminList})`);
-  const n = row.cnt + 1;
-  if (n < 1) return '0001';
-  const thousands = Math.ceil(n / 2);
-  const hundreds = Math.floor(n / 2);
-  return String(thousands * 1000 + hundreds * 100 + 1).padStart(4, '0');
+  const row = queryOne(`SELECT COUNT(*) as cnt FROM users WHERE username NOT IN (${adminList}) AND username != 'deleted'`);
+  const n = row.cnt;
+  const d0 = Math.floor(n / 4);
+  const rem = n % 4;
+  const d1 = d0 + (rem >= 1 ? 1 : 0);
+  const d2 = d0 + (rem >= 2 ? 1 : 0);
+  const d3 = d0 + (rem >= 3 ? 1 : 0);
+  return `${d1}${d2}${d3}${d0}`;
 }
 
 app.post('/api/auth/register', (req, res) => {
@@ -208,6 +226,61 @@ app.post('/api/auth/logout', (req, res) => {
     sessions.delete(header.slice(7));
   }
   res.json({ success: true });
+});
+
+// ── Admin: user management ──
+
+app.get('/api/admin/users', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const users = queryAll("SELECT id, username, created_at FROM users WHERE username != 'deleted'");
+  const passcode = getNextPasscode();
+  res.json({ users, nextPasscode: passcode });
+});
+
+app.put('/api/admin/users/:id/password', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const { password } = req.body;
+  if (!password || password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  const hash = hashPassword(password);
+  runSQL('UPDATE users SET password_hash = ? WHERE id = ?', [hash, Number(req.params.id)]);
+  persist();
+  res.json({ success: true });
+});
+
+app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (isAdmin(user.username)) return res.status(400).json({ error: 'Não é possível excluir um administrador' });
+
+  const deletedExists = queryOne("SELECT id FROM users WHERE username = 'deleted'");
+  if (!deletedExists) {
+    const hash = hashPassword('__system_deleted__');
+    const now = new Date().toISOString();
+    runSQL("INSERT INTO users (username, password_hash, created_at) VALUES ('deleted', ?, ?)", [hash, now]);
+  }
+
+  runSQL("UPDATE polygons SET created_by = 'deleted' WHERE created_by = ?", [user.username]);
+  runSQL("UPDATE grid_cells SET worked_by = REPLACE(worked_by, ?, 'deleted') WHERE worked_by LIKE ?",
+    [user.username, `%${user.username}%`]);
+  runSQL("UPDATE grid_cells SET finished_by = 'deleted' WHERE finished_by = ?", [user.username]);
+  runSQL("UPDATE grid_cells SET locked_by = NULL, locked_at = NULL WHERE locked_by = ?", [user.username]);
+
+  for (const [token, uname] of sessions.entries()) {
+    if (uname === user.username) sessions.delete(token);
+  }
+
+  runSQL('DELETE FROM users WHERE id = ?', [Number(req.params.id)]);
+  persist();
+  io.emit('users:updated', Array.from(connectedUsers.values()));
+  res.json({ success: true });
+});
+
+app.get('/api/admin/passcode', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  res.json({ passcode: getNextPasscode() });
 });
 
 // ── REST API ──

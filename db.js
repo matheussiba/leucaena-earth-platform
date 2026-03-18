@@ -2,7 +2,8 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'data', 'leucena.db');
+const dataDir = process.env.DATA_PATH || path.join(__dirname, 'data');
+const DB_PATH = path.join(dataDir, 'leucena.db');
 
 let db = null;
 
@@ -61,6 +62,18 @@ async function initDB() {
       created_at TEXT
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS site_stats (
+      key TEXT PRIMARY KEY,
+      value INTEGER DEFAULT 0
+    )
+  `);
+
+  const viewRow = db.exec("SELECT value FROM site_stats WHERE key = 'view_count'");
+  if (viewRow.length === 0 || viewRow[0].values.length === 0) {
+    db.run("INSERT OR IGNORE INTO site_stats (key, value) VALUES ('view_count', 0)");
+  }
 
   try { db.run('ALTER TABLE grid_cells ADD COLUMN worked_by TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE grid_cells ADD COLUMN finished_by TEXT'); } catch (e) { /* already exists */ }

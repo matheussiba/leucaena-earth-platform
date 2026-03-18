@@ -57,7 +57,7 @@
   <div id="addpoints-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-small">
       <h2 data-i18n="addPts.title">Modo de Inserção de Pontos</h2>
-      <p class="modal-subtitle" data-i18n-html="addPts.desc">Você está prestes a entrar no modo de inserção de pontos. Enquanto ativo, pressione <strong>H</strong> para adicionar um ponto de Leucena na posição do cursor.</p>
+      <p class="modal-subtitle" data-i18n-html="addPts.desc">Você está prestes a entrar no modo de inserção de pontos. Enquanto ativo, pressione <strong>L</strong> para adicionar um ponto de Leucena na posição do cursor.</p>
       <p class="modal-subtitle" data-i18n="addPts.confirm">Deseja continuar?</p>
       <div class="unlock-options">
         <button class="btn btn-primary btn-full" id="addpoints-yes" data-i18n="addPts.yes">Sim, iniciar inserção de pontos</button>
@@ -71,6 +71,16 @@
     <div class="modal-card modal-card-docs">
       <button id="docs-modal-close" class="modal-close">&times;</button>
       <div class="docs-content" id="docs-inner-content"></div>
+    </div>
+  </div>
+
+  <!-- Modal Admin: Editor de Usuários -->
+  <div id="admin-users-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-docs">
+      <button id="admin-users-close" class="modal-close">&times;</button>
+      <h2 data-i18n="admin.usersTitle">Gerenciar Usuários</h2>
+      <div id="admin-passcode-display" class="admin-passcode-box"></div>
+      <div id="admin-users-list" class="admin-users-list"></div>
     </div>
   </div>
 
@@ -115,6 +125,20 @@
             <span class="guide-card-title" data-i18n="guide.media">Mídia</span>
             <span class="guide-card-desc" data-i18n="guide.mediaDesc">Notícias e referências sobre erradicação de leucena</span>
           </button>
+          <button class="guide-card" id="guide-go-collaborate">
+            <div class="guide-card-icon" style="color:#f59e0b;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            </div>
+            <span class="guide-card-title" data-i18n="guide.collaborate">Seja Colaborador</span>
+            <span class="guide-card-desc" data-i18n="guide.collaborateDesc">Como se cadastrar e contribuir com o mapeamento</span>
+          </button>
+          <button class="guide-card" id="guide-go-about">
+            <div class="guide-card-icon" style="color:#8b5cf6;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <span class="guide-card-title" data-i18n="guide.about">Quem Somos</span>
+            <span class="guide-card-desc" data-i18n="guide.aboutDesc">Conheça os idealizadores e colaboradores do projeto</span>
+          </button>
         </div>
       </div>
 
@@ -143,6 +167,24 @@
           <span data-i18n="guide.back">Voltar</span>
         </button>
         <div class="guide-content guide-content-scroll" id="guide-media-content"></div>
+      </div>
+
+      <!-- Página: Seja Colaborador -->
+      <div id="guide-collaborate" class="guide-page hidden">
+        <button class="guide-back" id="guide-back-collaborate">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          <span data-i18n="guide.back">Voltar</span>
+        </button>
+        <div class="guide-content guide-content-scroll" id="guide-collaborate-content"></div>
+      </div>
+
+      <!-- Página: Quem Somos -->
+      <div id="guide-about" class="guide-page hidden">
+        <button class="guide-back" id="guide-back-about">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          <span data-i18n="guide.back">Voltar</span>
+        </button>
+        <div class="guide-content guide-content-scroll" id="guide-about-content"></div>
       </div>
     </div>
   </div>
@@ -204,6 +246,13 @@
           <div class="user-avatar" id="user-avatar"></div>
           <span id="user-display-name"></span>
         </div>
+        <button class="btn btn-secondary btn-small hidden" id="admin-users-btn" title="Gerenciar Usuários">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
+        <span class="view-counter hidden" id="view-counter" title="Visualizações do site">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span id="view-count">0</span>
+        </span>
         <button class="btn btn-secondary btn-small hidden" id="logout-btn" data-i18n="auth.logout">Sair</button>
         <button class="btn btn-icon" id="toggle-users-btn" title="Usuários online">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -215,7 +264,7 @@
     <!-- Banner do Modo de Inserção de Pontos -->
     <div id="insertion-banner" class="insertion-banner hidden">
       <span class="insertion-pulse"></span>
-      <span>MODO DE INSERÇÃO DE PONTOS — Pressione H para adicionar ponto, Ctrl+Z para desfazer</span>
+      <span>MODO DE INSERÇÃO DE PONTOS — Pressione L para adicionar ponto, Ctrl+Z para desfazer</span>
     </div>
 
     <div id="main-content">

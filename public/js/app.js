@@ -57,9 +57,21 @@ window.LeucenaApp = (function () {
     document.getElementById('guide-go-leucena').addEventListener('click', () => showGuidePage('leucena'));
     document.getElementById('guide-go-howto').addEventListener('click', () => showGuidePage('howto'));
     document.getElementById('guide-go-media').addEventListener('click', () => showGuidePage('media'));
+    document.getElementById('guide-go-collaborate').addEventListener('click', () => showGuidePage('collaborate'));
+    document.getElementById('guide-go-about').addEventListener('click', () => showGuidePage('about'));
     document.getElementById('guide-back-leucena').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-howto').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-media').addEventListener('click', () => showGuidePage('main'));
+    document.getElementById('guide-back-collaborate').addEventListener('click', () => showGuidePage('main'));
+    document.getElementById('guide-back-about').addEventListener('click', () => showGuidePage('main'));
+
+    document.getElementById('admin-users-btn').addEventListener('click', openAdminUsersModal);
+    document.getElementById('admin-users-close').addEventListener('click', closeAdminUsersModal);
+    document.getElementById('admin-users-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeAdminUsersModal();
+    });
+
+    trackPageView();
 
     document.getElementById('tool-home').addEventListener('click', handleHomeClick);
 
@@ -163,11 +175,10 @@ window.LeucenaApp = (function () {
   }
 
   function showGuidePage(page) {
-    document.getElementById('guide-main').classList.add('hidden');
-    document.getElementById('guide-leucena').classList.add('hidden');
-    document.getElementById('guide-howto').classList.add('hidden');
-    const mediaEl = document.getElementById('guide-media');
-    if (mediaEl) mediaEl.classList.add('hidden');
+    ['guide-main', 'guide-leucena', 'guide-howto', 'guide-media', 'guide-collaborate', 'guide-about'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
     document.getElementById('guide-' + page).classList.remove('hidden');
   }
 
@@ -782,6 +793,8 @@ window.LeucenaApp = (function () {
     document.getElementById('insertion-toggle').classList.remove('hidden');
     if (isAdminUser()) {
       document.getElementById('deletion-toggle').classList.remove('hidden');
+      document.getElementById('admin-users-btn').classList.remove('hidden');
+      loadViewCount();
     }
   }
 
@@ -789,8 +802,134 @@ window.LeucenaApp = (function () {
     document.getElementById('insertion-sep').classList.add('hidden');
     document.getElementById('insertion-toggle').classList.add('hidden');
     document.getElementById('deletion-toggle').classList.add('hidden');
+    document.getElementById('admin-users-btn').classList.add('hidden');
+    document.getElementById('view-counter').classList.add('hidden');
     if (insertionMode) setInsertionMode(false);
     if (deletionMode) setDeletionMode(false);
+  }
+
+  // ── View counter ──
+
+  function trackPageView() {
+    fetch('/api/stats/view', { method: 'POST' }).catch(() => {});
+  }
+
+  async function loadViewCount() {
+    try {
+      const res = await fetch('/api/stats/views', { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('view-count').textContent = data.views;
+        document.getElementById('view-counter').classList.remove('hidden');
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // ── Admin user management ──
+
+  function toRoman(n) {
+    if (n === 0) return 'X';
+    const vals = [10, 9, 5, 4, 1];
+    const syms = ['X', 'IX', 'V', 'IV', 'I'];
+    let result = '';
+    for (let i = 0; i < vals.length; i++) {
+      while (n >= vals[i]) { result += syms[i]; n -= vals[i]; }
+    }
+    return result;
+  }
+
+  function passcodeToRoman(code) {
+    return code.split('').map(d => toRoman(parseInt(d))).join('.');
+  }
+
+  async function openAdminUsersModal() {
+    if (!isAdminUser()) return;
+    const t = LeucenaI18n.t;
+    const modal = document.getElementById('admin-users-modal');
+    modal.classList.remove('hidden');
+
+    try {
+      const res = await fetch('/api/admin/users', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const pcBox = document.getElementById('admin-passcode-display');
+      const romanCode = passcodeToRoman(data.nextPasscode);
+      pcBox.innerHTML = `<strong>${t('admin.nextPasscode')}</strong> <span id="passcode-value" style="letter-spacing:2px;font-family:monospace;">****</span>`;
+
+      const pcVal = document.getElementById('passcode-value');
+      let holdTimer = null;
+      pcBox.addEventListener('contextmenu', (e) => e.preventDefault());
+      pcBox.addEventListener('mousedown', (e) => {
+        if (e.button === 2) {
+          holdTimer = setTimeout(() => {
+            pcVal.textContent = romanCode;
+            pcVal.style.color = 'var(--accent)';
+          }, 3000);
+        }
+      });
+      pcBox.addEventListener('mouseup', () => {
+        clearTimeout(holdTimer);
+        pcVal.textContent = '****';
+        pcVal.style.color = '';
+      });
+      pcBox.addEventListener('mouseleave', () => {
+        clearTimeout(holdTimer);
+        pcVal.textContent = '****';
+        pcVal.style.color = '';
+      });
+
+      const listEl = document.getElementById('admin-users-list');
+      listEl.innerHTML = '';
+      for (const user of data.users) {
+        const isAdm = ADMIN_USERS.includes(user.username);
+        const row = document.createElement('div');
+        row.className = 'admin-user-row';
+        row.innerHTML = `
+          <div class="admin-user-info">
+            <span class="admin-user-name">${user.username}${isAdm ? '<span class="admin-user-badge">Admin</span>' : ''}</span>
+            <div class="admin-user-date">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
+          </div>
+          <div class="admin-user-actions">
+            <button class="admin-pw-btn">${t('admin.changePassword')}</button>
+            ${!isAdm ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
+          </div>
+        `;
+
+        const pwBtn = row.querySelector('.admin-pw-btn');
+        pwBtn.addEventListener('click', async () => {
+          const newPw = prompt(t('admin.newPassword', user.username));
+          if (!newPw || newPw.length < 3) return;
+          const r = await fetch(`/api/admin/users/${user.id}/password`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: newPw })
+          });
+          if (r.ok) { showToast(t('admin.passwordChanged'), 'success'); }
+          else { const err = await r.json(); showToast(err.error, 'error'); }
+        });
+
+        const delBtn = row.querySelector('.admin-del-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', async () => {
+            if (!confirm(t('admin.confirmDelete', user.username))) return;
+            const r = await fetch(`/api/admin/users/${user.id}`, {
+              method: 'DELETE', headers: authHeaders()
+            });
+            if (r.ok) {
+              showToast(t('admin.userDeleted'), 'success');
+              row.remove();
+            } else { const err = await r.json(); showToast(err.error, 'error'); }
+          });
+        }
+
+        listEl.appendChild(row);
+      }
+    } catch (e) {
+      showToast('Failed to load users', 'error');
+    }
+  }
+
+  function closeAdminUsersModal() {
+    document.getElementById('admin-users-modal').classList.add('hidden');
   }
 
   async function handleDeletionClick(latLng) {
@@ -824,7 +963,7 @@ window.LeucenaApp = (function () {
 
   async function handlePointModeKey(e) {
     if (insertionMode) {
-      if (e.key === 'h' || e.key === 'H') {
+      if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
         const coords = LeucenaMap.getLastCoords();
         if (!coords) { showToast(LeucenaI18n.t('toast.moveMouseFirst'), 'warning'); return; }
