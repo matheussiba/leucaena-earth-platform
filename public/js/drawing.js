@@ -291,6 +291,9 @@ window.LeucenaDrawing = (function () {
     const prevDblClickZoom = map.get('disableDoubleClickZoom');
     map.setOptions({ disableDoubleClickZoom: true });
 
+    LeucenaMap.setGridClickable(false);
+    LeucenaDrawing.setClickable(false);
+
     const previewPoly = new google.maps.Polygon({
       paths: [],
       ...POLY_STYLE,
@@ -308,20 +311,6 @@ window.LeucenaDrawing = (function () {
       map: map,
       clickable: false,
       zIndex: 11
-    });
-
-    const clickCapture = new google.maps.Polygon({
-      paths: [
-        { lat: -85, lng: -180 },
-        { lat: -85, lng: 180 },
-        { lat: 85, lng: 180 },
-        { lat: 85, lng: -180 }
-      ],
-      fillOpacity: 0,
-      strokeOpacity: 0,
-      clickable: true,
-      zIndex: 900,
-      map: map
     });
 
     function updatePreview() {
@@ -356,7 +345,8 @@ window.LeucenaDrawing = (function () {
       return true;
     }
 
-    const clickListener = clickCapture.addListener('click', (e) => {
+    const clickListener = map.addListener('click', (e) => {
+      if (activeMode !== 'draw') return;
       addVertex(e.latLng);
     });
 
@@ -368,13 +358,14 @@ window.LeucenaDrawing = (function () {
       }
     });
 
-    const dblClickListener = clickCapture.addListener('dblclick', (e) => {
+    const dblClickListener = map.addListener('dblclick', (e) => {
+      if (activeMode !== 'draw') return;
       if (vertices.length > 0) removeLastVertex();
       completeManualDraw();
     });
 
     manualDrawState = {
-      vertices, vertexMarkers, previewPoly, guideLine, clickCapture,
+      vertices, vertexMarkers, previewPoly, guideLine,
       clickListener, moveListener, dblClickListener,
       removeLastVertex, prevDblClickZoom
     };
@@ -434,13 +425,12 @@ window.LeucenaDrawing = (function () {
 
   function cleanupManualDraw() {
     if (!manualDrawState) return;
-    const { vertexMarkers, previewPoly, guideLine, clickCapture,
+    const { vertexMarkers, previewPoly, guideLine,
             clickListener, moveListener, dblClickListener, prevDblClickZoom } = manualDrawState;
 
     vertexMarkers.forEach(m => m.setMap(null));
     if (previewPoly) previewPoly.setMap(null);
     if (guideLine) guideLine.setMap(null);
-    if (clickCapture) clickCapture.setMap(null);
     if (clickListener) google.maps.event.removeListener(clickListener);
     if (moveListener) google.maps.event.removeListener(moveListener);
     if (dblClickListener) google.maps.event.removeListener(dblClickListener);
@@ -449,6 +439,8 @@ window.LeucenaDrawing = (function () {
     if (map && prevDblClickZoom !== undefined) {
       map.setOptions({ disableDoubleClickZoom: prevDblClickZoom });
     }
+
+    LeucenaMap.setGridClickable(true);
 
     manualDrawState = null;
   }

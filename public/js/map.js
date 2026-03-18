@@ -664,6 +664,12 @@ window.LeucenaMap = (function () {
     }
   }
 
+  function setGridClickable(clickable) {
+    for (const poly of Object.values(gridPolygons)) {
+      poly.setOptions({ clickable });
+    }
+  }
+
   function updateZoomButtons() {
     const zoom = map.getZoom();
     const minZoom = initialZoom != null ? initialZoom : (map.minZoom || 0);
@@ -838,6 +844,7 @@ window.LeucenaMap = (function () {
     setSelectedCell,
     setFeaturesClickable,
     setGridsHollow,
+    setGridClickable,
     setMapBorder,
     addPointMarker,
     removePointMarker,
