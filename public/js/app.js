@@ -74,7 +74,7 @@ window.LeucenaApp = (function () {
       if (e.target === e.currentTarget) closeAdminUsersModal();
     });
 
-    document.getElementById('user-badge').addEventListener('click', openProfileModal);
+    document.getElementById('user-badge').addEventListener('click', () => openProfileModal());
     document.getElementById('profile-modal-close').addEventListener('click', closeProfileModal);
     document.getElementById('profile-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeProfileModal();
