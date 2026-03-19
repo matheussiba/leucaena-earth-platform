@@ -45,6 +45,12 @@ app.get('/', (req, res) => {
   }
 });
 
+app.get('/landing', (req, res) => {
+  const mapUrl = req.protocol + '://' + req.get('host');
+  const html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
+  res.send(html.replace(/__MAP_URL__/g, mapUrl));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const connectedUsers = new Map();
