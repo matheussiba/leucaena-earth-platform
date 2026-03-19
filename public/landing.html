@@ -176,9 +176,10 @@
 
     /* ── Map Preview ── */
     #map-preview { background: linear-gradient(180deg, #0d1424, var(--bg)); text-align: center; }
-    .map-frame { margin-top: 60px; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); position: relative; box-shadow: 0 24px 80px rgba(0,0,0,0.4); max-width: 1000px; margin-left: auto; margin-right: auto; padding: 60px 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; background: linear-gradient(145deg, #111827 0%, #0d1424 50%, #111827 100%); }
-    .map-frame img { width: 200px; height: auto; filter: drop-shadow(0 8px 32px rgba(34,197,94,0.15)); }
-    .map-frame .btn-primary { font-size: 20px; padding: 20px 48px; }
+    .map-frame { margin-top: 60px; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); position: relative; box-shadow: 0 24px 80px rgba(0,0,0,0.4); max-width: 1000px; margin-left: auto; margin-right: auto; aspect-ratio: 16/9; }
+    .map-frame img { width: 100%; height: 100%; object-fit: cover; filter: blur(2.5px) brightness(0.85); }
+    .map-frame-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,15,26,0.25); }
+    .map-frame-overlay .btn-primary { font-size: 20px; padding: 20px 48px; }
 
     /* ── News ── */
     #news { background: linear-gradient(180deg, var(--bg), #0d1424); }
@@ -240,9 +241,7 @@
       .hero-logo { width: 90px; height: 90px; }
       .news-grid { grid-template-columns: 1fr; }
       .footer-inner { grid-template-columns: 1fr; gap: 24px; }
-      .map-frame .btn-primary { font-size: 16px; padding: 14px 28px; }
-      .map-frame { padding: 40px 24px; }
-      .map-frame img { width: 150px; }
+      .map-frame-overlay .btn-primary { font-size: 16px; padding: 14px 28px; }
       section { padding: 64px 20px; }
       .nav-cta { padding: 8px 16px; font-size: 13px; }
       .nav-cta span.cta-text { display: none; }
@@ -392,11 +391,13 @@
         <h2 class="section-title" data-i18n-land="map.title"></h2>
         <p class="section-desc" style="margin:0 auto;" data-i18n-land="map.desc"></p>
         <div class="map-frame">
-          <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth Map" loading="lazy">
-          <a href="__MAP_URL__" class="btn-primary">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-            <span data-i18n-land="map.cta"></span>
-          </a>
+          <img src="/img/leucaena-earth-preview.png" alt="Leucaena Earth — Mapa interativo" loading="lazy">
+          <div class="map-frame-overlay">
+            <a href="__MAP_URL__" class="btn-primary">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+              <span data-i18n-land="map.cta"></span>
+            </a>
+          </div>
         </div>
       </div>
     </section>
