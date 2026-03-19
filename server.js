@@ -26,10 +26,23 @@ const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || '';
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+const MAP_HOSTS = ['map.leucaena.earth', 'localhost', '127.0.0.1'];
+
+function isMapHost(req) {
+  const host = (req.hostname || req.headers.host || '').split(':')[0];
+  return MAP_HOSTS.some(h => host === h) || host.endsWith('.onrender.com');
+}
+
 app.get('/', (req, res) => {
-  const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-  const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry&callback=initGoogleMapsCallback`;
-  res.send(html.replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl));
+  if (isMapHost(req)) {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry&callback=initGoogleMapsCallback`;
+    res.send(html.replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl));
+  } else {
+    const mapUrl = `https://map.leucaena.earth`;
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
+    res.send(html.replace(/__MAP_URL__/g, mapUrl));
+  }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -278,6 +291,21 @@ app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
   );
   persist();
   res.json({ success: true });
+});
+
+app.get('/api/landing-stats', (req, res) => {
+  try {
+    const cells = queryOne('SELECT COUNT(*) as cnt FROM grid_cells');
+    const masks = queryOne('SELECT COUNT(*) as cnt FROM polygons');
+    const points = queryOne('SELECT COUNT(*) as cnt FROM occurrence_points');
+    const collabs = queryOne("SELECT COUNT(DISTINCT username) as cnt FROM users WHERE username != 'deleted'");
+    res.json({
+      cells: cells ? cells.cnt : 0,
+      masks: masks ? masks.cnt : 0,
+      points: points ? points.cnt : 0,
+      collabs: collabs ? collabs.cnt : 0
+    });
+  } catch (e) { res.json({ cells: 0, masks: 0, points: 0, collabs: 0 }); }
 });
 
 app.get('/api/quem-somos', (req, res) => {

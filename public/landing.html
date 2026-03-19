@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leucaena Earth — Mapeamento Colaborativo de Leucena</title>
+  <meta name="description" content="Plataforma colaborativa de mapeamento de Leucaena leucocephala no Estado de São Paulo usando sensoriamento remoto e inteligência artificial.">
+  <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+  <link rel="shortcut icon" href="/img/favicon.ico">
+  <link rel="apple-touch-icon" href="/img/leucaena-earth-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0f1a;
+      --bg-card: #111827;
+      --bg-glass: rgba(17, 24, 39, 0.6);
+      --green: #22c55e;
+      --green-dim: #15803d;
+      --green-glow: rgba(34, 197, 94, 0.15);
+      --lime: #84cc16;
+      --text: #f1f5f9;
+      --text-dim: #94a3b8;
+      --text-muted: #64748b;
+      --border: rgba(255,255,255,0.08);
+      --radius: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 40px;
+      background: rgba(10, 15, 26, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+
+    nav.scrolled { padding: 10px 40px; background: rgba(10, 15, 26, 0.95); }
+
+    .nav-brand {
+      display: flex; align-items: center; gap: 12px;
+      text-decoration: none; color: var(--text);
+    }
+
+    .nav-logo { width: 36px; height: 36px; border-radius: 10px; }
+
+    .nav-title {
+      font-weight: 700; font-size: 18px;
+      background: linear-gradient(135deg, #22c55e 0%, #84cc16 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .nav-links { display: flex; gap: 32px; align-items: center; }
+    .nav-links a {
+      color: var(--text-dim); text-decoration: none; font-size: 14px;
+      font-weight: 500; transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 24px; border-radius: 50px; font-weight: 600;
+      font-size: 14px; text-decoration: none; transition: all 0.3s;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white; border: none; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
+    }
+    .nav-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(34, 197, 94, 0.4);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+      padding: 120px 24px 80px; position: relative; overflow: hidden;
+    }
+
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 197, 94, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(132, 204, 22, 0.05), transparent);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 50px;
+      background: var(--green-glow); border: 1px solid rgba(34, 197, 94, 0.25);
+      color: var(--green); font-size: 13px; font-weight: 600;
+      margin-bottom: 32px; letter-spacing: 0.5px;
+    }
+
+    .hero-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50% { opacity: 0.6; box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+    }
+
+    .hero-logo {
+      width: 120px; height: 120px; border-radius: 28px;
+      margin-bottom: 40px; filter: drop-shadow(0 8px 40px rgba(34, 197, 94, 0.2));
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 72px); font-weight: 900;
+      line-height: 1.05; margin-bottom: 24px; max-width: 800px;
+      letter-spacing: -2px;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, #22c55e 0%, #84cc16 50%, #facc15 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 20px); color: var(--text-dim);
+      max-width: 600px; margin-bottom: 48px; line-height: 1.7;
+    }
+
+    .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 36px; border-radius: 50px; font-weight: 700;
+      font-size: 16px; text-decoration: none; transition: all 0.3s;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white; border: none; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(34, 197, 94, 0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(34, 197, 94, 0.5);
+    }
+
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 36px; border-radius: 50px; font-weight: 600;
+      font-size: 16px; text-decoration: none; transition: all 0.3s;
+      background: transparent; color: var(--text);
+      border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .hero-stats {
+      display: flex; gap: 48px; margin-top: 64px;
+      padding-top: 48px; border-top: 1px solid var(--border);
+    }
+
+    .hero-stat { text-align: center; }
+    .hero-stat-num {
+      font-size: 32px; font-weight: 800;
+      background: linear-gradient(135deg, #22c55e, #84cc16);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── Sections ── */
+    section { padding: 100px 24px; position: relative; }
+
+    .section-inner {
+      max-width: 1100px; margin: 0 auto;
+    }
+
+    .section-label {
+      display: inline-block; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 2px;
+      color: var(--green); margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 44px); font-weight: 800;
+      line-height: 1.15; margin-bottom: 20px; letter-spacing: -1px;
+    }
+
+    .section-desc {
+      font-size: 17px; color: var(--text-dim);
+      max-width: 650px; line-height: 1.7;
+    }
+
+    /* ── About ── */
+    #about { background: linear-gradient(180deg, var(--bg) 0%, #0d1424 100%); }
+
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 48px; margin-top: 60px; align-items: start;
+    }
+
+    .about-card {
+      padding: 36px; border-radius: var(--radius);
+      background: var(--bg-card); border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    .about-card:hover {
+      border-color: rgba(34,197,94,0.2);
+      box-shadow: 0 8px 40px rgba(34,197,94,0.06);
+      transform: translateY(-4px);
+    }
+
+    .about-card-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--green-glow); margin-bottom: 20px;
+    }
+
+    .about-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+    .about-card p { color: var(--text-dim); font-size: 15px; line-height: 1.7; }
+    .about-card ul { color: var(--text-dim); font-size: 15px; line-height: 1.8; padding-left: 20px; }
+
+    /* ── Map Preview ── */
+    #map-preview {
+      background: linear-gradient(180deg, #0d1424 0%, var(--bg) 100%);
+      text-align: center;
+    }
+
+    .map-frame {
+      margin-top: 60px; border-radius: 20px; overflow: hidden;
+      border: 1px solid var(--border); position: relative;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+      aspect-ratio: 16/9; max-width: 1000px; margin-left: auto; margin-right: auto;
+    }
+
+    .map-frame img {
+      width: 100%; height: 100%; object-fit: cover;
+      filter: brightness(0.9);
+    }
+
+    .map-frame-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(10, 15, 26, 0.5);
+      backdrop-filter: blur(2px);
+    }
+
+    .map-frame-overlay .btn-primary { font-size: 20px; padding: 20px 48px; }
+
+    /* ── Photos ── */
+    .photos-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+      margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto;
+    }
+    .photos-grid figure {
+      border-radius: var(--radius); overflow: hidden;
+      border: 1px solid var(--border); position: relative;
+    }
+    .photos-grid img { width: 100%; height: 260px; object-fit: cover; display: block; }
+    .photos-grid figcaption {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 12px 16px; font-size: 13px; color: var(--text-dim);
+      background: linear-gradient(transparent, rgba(10,15,26,0.9));
+    }
+
+    /* ── Team ── */
+    #team {
+      background: linear-gradient(180deg, var(--bg) 0%, #0d1424 100%);
+      text-align: center;
+    }
+
+    .team-grid {
+      display: flex; flex-wrap: wrap; gap: 24px;
+      justify-content: center; margin-top: 48px;
+    }
+
+    .team-card {
+      width: 220px; padding: 32px 20px; border-radius: var(--radius);
+      background: var(--bg-card); border: 1px solid var(--border);
+      text-align: center; transition: all 0.3s;
+    }
+    .team-card:hover {
+      border-color: rgba(34,197,94,0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 40px rgba(34,197,94,0.06);
+    }
+
+    .team-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      margin: 0 auto 16px; overflow: hidden;
+      background: linear-gradient(135deg, var(--green-dim), var(--lime));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 700; color: white;
+      border: 3px solid var(--border);
+    }
+    .team-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .team-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .team-role {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--green); margin-bottom: 8px;
+    }
+    .team-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Collaborate ── */
+    #collaborate { text-align: center; }
+
+    .collab-steps {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 32px; margin-top: 48px;
+    }
+
+    .collab-step {
+      padding: 32px 24px; border-radius: var(--radius);
+      background: var(--bg-card); border: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .collab-step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--green-glow); color: var(--green);
+      font-weight: 800; font-size: 16px; margin-bottom: 16px;
+      border: 1px solid rgba(34,197,94,0.2);
+    }
+    .collab-step h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .collab-step p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    /* ── CTA ── */
+    .cta-section {
+      text-align: center; padding: 120px 24px;
+      background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(34, 197, 94, 0.08), transparent);
+    }
+
+    .cta-section h2 {
+      font-size: clamp(30px, 5vw, 52px); font-weight: 900;
+      margin-bottom: 20px; letter-spacing: -1.5px;
+    }
+
+    .cta-section p {
+      font-size: 18px; color: var(--text-dim);
+      max-width: 500px; margin: 0 auto 40px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 40px 24px; text-align: center;
+      border-top: 1px solid var(--border);
+    }
+    footer p { font-size: 13px; color: var(--text-muted); }
+    footer a { color: var(--green); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    .footer-row {
+      display: flex; justify-content: center; gap: 24px;
+      flex-wrap: wrap; margin-bottom: 16px;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      nav { padding: 12px 20px; }
+      .nav-links { display: none; }
+      .about-grid { grid-template-columns: 1fr; }
+      .collab-steps { grid-template-columns: 1fr; }
+      .hero-stats { gap: 24px; flex-wrap: wrap; justify-content: center; }
+      .photos-grid { grid-template-columns: 1fr; }
+      .hero-logo { width: 90px; height: 90px; }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 { letter-spacing: -1px; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav id="main-nav">
+    <a href="#" class="nav-brand">
+      <img src="/img/leucaena-earth-logo.png" alt="Leucaena" class="nav-logo">
+      <span class="nav-title">leucaena.earth</span>
+    </a>
+    <div class="nav-links">
+      <a href="#about">O Projeto</a>
+      <a href="#species">A Espécie</a>
+      <a href="#team">Equipe</a>
+      <a href="#collaborate">Colabore</a>
+    </div>
+    <a href="__MAP_URL__" class="nav-cta">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+      Abrir Mapa
+    </a>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Plataforma ativa — mapeamento em andamento
+    </div>
+    <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="hero-logo">
+    <h1>Mapeando a <span class="gradient">Leucena</span> no Estado de São Paulo</h1>
+    <p class="hero-sub">Plataforma colaborativa de ciência cidadã que combina sensoriamento remoto e inteligência artificial para mapear a espécie invasora <em>Leucaena leucocephala</em>.</p>
+    <div class="hero-actions">
+      <a href="__MAP_URL__" class="btn-primary">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+        Acessar o Mapa
+      </a>
+      <a href="#about" class="btn-secondary">Saiba mais</a>
+    </div>
+    <div class="hero-stats" id="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-cells">—</div><div class="hero-stat-label">Células no grid</div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-masks">—</div><div class="hero-stat-label">Máscaras mapeadas</div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-points">—</div><div class="hero-stat-label">Pontos de ocorrência</div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-collabs">—</div><div class="hero-stat-label">Colaboradores</div></div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about">
+    <div class="section-inner">
+      <span class="section-label">O Projeto</span>
+      <h2 class="section-title">Revelando a distribuição espacial da Leucena</h2>
+      <p class="section-desc">Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, combinando imagens de altíssima resolução (25 cm) e dados LiDAR com inteligência artificial.</p>
+      <div class="about-grid">
+        <div class="about-card">
+          <div class="about-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          </div>
+          <h3>Sensoriamento Remoto</h3>
+          <p>Imagens ópticas de altíssima resolução espacial (25 cm de GSD) combinadas com dados LiDAR para detectar áreas dominadas pela espécie invasora.</p>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <h3>Inteligência Artificial</h3>
+          <p>Redes neurais convolucionais (CNNs) realizam a fusão de dados LiDAR e ópticos para mapear áreas dominadas por <em>Leucaena</em> em escala estadual.</p>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          </div>
+          <h3>Ciência Cidadã</h3>
+          <p>Colaboradores ao redor do mundo digitalizam máscaras da copa e validam pontos de ocorrência, contribuindo diretamente para a pesquisa científica.</p>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <h3>Dados Abertos</h3>
+          <p>Os dados mapeados podem ser exportados para análises posteriores, contribuindo com a comunidade científica e tomadores de decisão em políticas ambientais.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Species -->
+  <section id="species">
+    <div class="section-inner" style="text-align:center;">
+      <span class="section-label">A Espécie</span>
+      <h2 class="section-title">Uma das 100 piores espécies invasoras do mundo</h2>
+      <p class="section-desc" style="margin:0 auto 16px;">
+        <em>Leucaena leucocephala</em>, da família Fabaceae, foi introduzida no Brasil na década de 1940 e hoje ameaça a biodiversidade nativa em todo o estado de São Paulo.
+      </p>
+      <div class="photos-grid">
+        <figure>
+          <img src="/img/leucena-tree.jpg" alt="Árvore de Leucena" loading="lazy">
+          <figcaption>Leucena em área urbana — porte típico da espécie</figcaption>
+        </figure>
+        <figure>
+          <img src="/img/leucena-detail.jpg" alt="Detalhes da Leucena" loading="lazy">
+          <figcaption>Flores esféricas brancas, folhas bipinadas e vagens</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- Map Preview -->
+  <section id="map-preview">
+    <div class="section-inner">
+      <span class="section-label">A Plataforma</span>
+      <h2 class="section-title">Mapeamento interativo e colaborativo</h2>
+      <p class="section-desc" style="margin:0 auto;">Edite células do grid, desenhe máscaras, valide pontos e acompanhe o progresso da comunidade em tempo real.</p>
+      <div class="map-frame">
+        <img src="/img/leucena-splash.png" alt="Preview do mapa" loading="lazy" style="object-fit:contain;background:#111827;">
+        <div class="map-frame-overlay">
+          <a href="__MAP_URL__" class="btn-primary">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+            Abrir Mapa Interativo
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Team -->
+  <section id="team">
+    <div class="section-inner">
+      <span class="section-label">Equipe</span>
+      <h2 class="section-title">Quem está por trás do projeto</h2>
+      <p class="section-desc" style="margin: 0 auto;">Pesquisadores da ESALQ/USP e colaboradores voluntários que tornam esse mapeamento possível.</p>
+      <div class="team-grid" id="team-grid">
+        <div style="color:var(--text-muted);font-size:14px;">Carregando equipe...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Collaborate -->
+  <section id="collaborate">
+    <div class="section-inner">
+      <span class="section-label">Colabore</span>
+      <h2 class="section-title">Seja parte da pesquisa</h2>
+      <p class="section-desc" style="margin: 0 auto 48px;">Contribua com o mapeamento de <em>Leucaena leucocephala</em> em São Paulo. É simples e faz a diferença.</p>
+      <div class="collab-steps">
+        <div class="collab-step">
+          <div class="collab-step-num">1</div>
+          <h3>Solicite o acesso</h3>
+          <p>Envie um e-mail para <a href="mailto:ms.barros@usp.br" style="color:var(--green);">ms.barros@usp.br</a> solicitando seu código de acesso à plataforma.</p>
+        </div>
+        <div class="collab-step">
+          <div class="collab-step-num">2</div>
+          <h3>Crie sua conta</h3>
+          <p>Acesse o mapa, clique em "Entrar" e depois em "Cadastrar". Informe um nome de usuário, senha e o código de acesso recebido.</p>
+        </div>
+        <div class="collab-step">
+          <div class="collab-step-num">3</div>
+          <h3>Comece a mapear</h3>
+          <p>Selecione uma célula do grid, bloqueie para edição e desenhe máscaras de leucena usando as ferramentas disponíveis.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Pronto para contribuir<br>com a <span class="gradient">ciência</span>?</h2>
+    <p>Cada máscara desenhada ajuda a entender a distribuição dessa espécie invasora.</p>
+    <a href="__MAP_URL__" class="btn-primary" style="font-size:18px;padding:18px 44px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+      Acessar o Mapa
+    </a>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-row">
+      <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>
+      <span style="color:var(--text-muted);">·</span>
+      <span style="color:var(--text-muted);">ESALQ – Universidade de São Paulo</span>
+      <span style="color:var(--text-muted);">·</span>
+      <span style="color:var(--text-muted);">Piracicaba, SP – Brasil</span>
+    </div>
+    <p>&copy; 2026 Leucaena Earth. Pesquisa e desenvolvimento por <a href="mailto:ms.barros@usp.br">Matheus Siqueira Barros</a>.</p>
+  </footer>
+
+  <script>
+    window.addEventListener('scroll', () => {
+      document.getElementById('main-nav').classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    fetch('/api/landing-stats')
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('stat-cells').textContent = (d.cells || 0).toLocaleString();
+        document.getElementById('stat-masks').textContent = (d.masks || 0).toLocaleString();
+        document.getElementById('stat-points').textContent = (d.points || 0).toLocaleString();
+        document.getElementById('stat-collabs').textContent = (d.collabs || 0).toLocaleString();
+      })
+      .catch(() => {});
+
+    fetch('/api/quem-somos')
+      .then(r => r.json())
+      .then(d => {
+        const grid = document.getElementById('team-grid');
+        grid.innerHTML = '';
+        const all = [
+          ...d.idealizadores.map(u => ({ ...u, role: 'Idealizador' })),
+          ...d.colaboradores.map(u => ({ ...u, role: 'Colaborador' }))
+        ];
+        for (const u of all) {
+          const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+          const avatarContent = u.photo
+            ? `<img src="${u.photo}" alt="${u.full_name || u.username}">`
+            : initials;
+          const card = document.createElement('div');
+          card.className = 'team-card';
+          card.innerHTML = `
+            <div class="team-avatar">${avatarContent}</div>
+            <div class="team-name">${u.full_name || u.username}</div>
+            <div class="team-role">${u.role}</div>
+            <div class="team-desc">${u.description || ''}</div>
+          `;
+          grid.appendChild(card);
+        }
+        if (all.length === 0) grid.innerHTML = '<p style="color:var(--text-muted)">Equipe será exibida em breve.</p>';
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
