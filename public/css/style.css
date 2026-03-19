@@ -6,8 +6,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0f172a;
-  transition: opacity 0.6s ease;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: opacity 0.4s ease;
 }
 
 .splash-screen.splash-fade {
