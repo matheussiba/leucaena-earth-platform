@@ -1,3 +1,26 @@
+/* ── Splash Screen ── */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+  transition: opacity 0.6s ease;
+}
+
+.splash-screen.splash-fade {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-logo {
+  max-width: min(320px, 70vw);
+  max-height: 50vh;
+  object-fit: contain;
+}
+
 /* ── Reset & Base ── */
 *, *::before, *::after {
   margin: 0;
@@ -220,6 +243,14 @@ html, body {
   gap: 10px;
 }
 
+.app-logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
 .app-title {
   font-weight: 700;
   font-size: 16px;
@@ -230,8 +261,6 @@ html, body {
 .top-bar-center {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
 }
 
@@ -809,6 +838,10 @@ html, body {
 
 /* ── Edit Mode Badge ── */
 .edit-mode-badge {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 210;
   display: flex;
   align-items: center;
@@ -826,7 +859,7 @@ html, body {
   pointer-events: none;
   flex-wrap: wrap;
   justify-content: center;
-  max-width: 400px;
+  max-width: 420px;
   text-align: center;
 }
 
@@ -1869,6 +1902,11 @@ html, body {
     padding: 0 8px;
   }
 
+  .app-logo {
+    width: 24px;
+    height: 24px;
+  }
+
   .app-title {
     font-size: 13px;
   }
@@ -2160,6 +2198,11 @@ html, body {
 @media (max-width: 480px) {
   :root {
     --sidebar-width: 100vw;
+  }
+
+  .app-logo {
+    width: 22px;
+    height: 22px;
   }
 
   .app-title {
