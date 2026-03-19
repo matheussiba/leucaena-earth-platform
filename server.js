@@ -323,9 +323,11 @@ app.get('/api/quem-somos', (req, res) => {
   polygonCounts.forEach(r => { countByUser[r.username] = r.cnt; });
 
   const allUsers = queryAll('SELECT username, full_name, description, photo FROM users WHERE username != ?', ['deleted']);
+  const adminOrder = ['mpf', 'msb'];
   const idealizadores = allUsers
     .filter(u => isAdmin(u.username))
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }));
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }))
+    .sort((a, b) => (adminOrder.indexOf(a.username) === -1 ? 99 : adminOrder.indexOf(a.username)) - (adminOrder.indexOf(b.username) === -1 ? 99 : adminOrder.indexOf(b.username)));
   const colaboradores = allUsers
     .filter(u => !isAdmin(u.username) && (countByUser[u.username] || 0) >= 10)
     .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }));
