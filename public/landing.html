@@ -128,8 +128,9 @@
 
     /* ── Hero ── */
     .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 120px 24px 80px; position: relative; overflow: hidden; }
-    .hero-bg { position: absolute; inset: 0; z-index: 0; background: url('/img/leucaena-earth-preview.png') center/cover no-repeat; filter: blur(6px); transform: scale(1.05); }
-    .hero::before { content: ''; position: absolute; inset: 0; z-index: 1; background: rgba(0,0,0,0.50); pointer-events: none; }
+    .hero-bg { position: absolute; inset: -20px; z-index: 0; }
+    .hero-bg img { width: 100%; height: 100%; object-fit: cover; filter: blur(6px); }
+    .hero::before { content: ''; position: absolute; inset: 0; z-index: 1; background: rgba(15,19,29,0.50); pointer-events: none; }
     .hero > * { position: relative; z-index: 2; }
     .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 50px; background: var(--green-glow); border: 1px solid rgba(34,197,94,0.25); color: var(--green); font-size: 13px; font-weight: 600; margin-bottom: 32px; letter-spacing: 0.5px; }
     .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse-dot 2s ease-in-out infinite; }
@@ -317,7 +318,7 @@
 
   <!-- Hero -->
   <header class="hero">
-    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-bg" aria-hidden="true"><img src="/img/leucaena-earth-preview.png" alt=""></div>
     <div class="hero-badge" aria-label="Status">
       <span class="hero-badge-dot" aria-hidden="true"></span>
       <span data-i18n-land="hero.badge"></span>
