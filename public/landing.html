@@ -36,7 +36,7 @@
   <link rel="shortcut icon" href="/img/favicon.ico">
   <link rel="apple-touch-icon" href="/img/leucaena-earth-logo.png">
 
-  <!-- Structured Data — Organization -->
+  <!-- Structured Data -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -59,18 +59,9 @@
     "keywords": ["Leucaena leucocephala", "espécie invasora", "erradicação leucena", "mapeamento colaborativo", "sensoriamento remoto", "inteligência artificial", "ciência cidadã", "São Paulo", "biodiversidade"]
   }
   </script>
-
-  <!-- Structured Data — WebSite (for Google Sitelinks Search Box) -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Leucaena Earth",
-    "url": "https://leucaena.earth"
-  }
+  { "@context": "https://schema.org", "@type": "WebSite", "name": "Leucaena Earth", "url": "https://leucaena.earth" }
   </script>
-
-  <!-- Structured Data — WebApplication -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -79,7 +70,7 @@
     "url": "https://map.leucaena.earth",
     "applicationCategory": "EnvironmentalScience",
     "operatingSystem": "Web",
-    "description": "Mapa interativo colaborativo para digitalização de máscaras de copa de Leucaena leucocephala no Estado de São Paulo. Ferramenta de ciência cidadã para apoiar erradicação de espécie exótica invasora.",
+    "description": "Mapa interativo colaborativo para digitalização de máscaras de copa de Leucaena leucocephala no Estado de São Paulo.",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL" }
   }
   </script>
@@ -89,167 +80,86 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
     :root {
-      --bg: #0a0f1a;
-      --bg-card: #111827;
-      --bg-glass: rgba(17, 24, 39, 0.6);
-      --green: #22c55e;
-      --green-dim: #15803d;
-      --green-glow: rgba(34, 197, 94, 0.15);
-      --lime: #84cc16;
-      --text: #f1f5f9;
-      --text-dim: #94a3b8;
-      --text-muted: #64748b;
-      --border: rgba(255,255,255,0.08);
-      --radius: 16px;
+      --bg: #0a0f1a; --bg-card: #111827; --green: #22c55e; --green-dim: #15803d;
+      --green-glow: rgba(34,197,94,0.15); --lime: #84cc16;
+      --text: #f1f5f9; --text-dim: #94a3b8; --text-muted: #64748b;
+      --border: rgba(255,255,255,0.08); --radius: 16px;
     }
-
     html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
 
     /* ── Nav ── */
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 40px;
-      background: rgba(10, 15, 26, 0.8);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-      transition: all 0.3s;
-    }
-    nav.scrolled { padding: 10px 40px; background: rgba(10, 15, 26, 0.95); }
-    .nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; background: rgba(10,15,26,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); transition: all 0.3s; }
+    nav.scrolled { padding: 10px 40px; background: rgba(10,15,26,0.95); }
+    .nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); flex-shrink: 0; }
     .nav-logo { width: 36px; height: 36px; border-radius: 10px; }
-    .nav-title {
-      font-weight: 700; font-size: 18px;
-      background: linear-gradient(135deg, #22c55e 0%, #84cc16 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .nav-links { display: flex; gap: 32px; align-items: center; }
-    .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
-    .nav-links a:hover { color: var(--text); }
-    .nav-cta {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 24px; border-radius: 50px; font-weight: 600;
-      font-size: 14px; text-decoration: none; transition: all 0.3s;
-      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-      color: white; border: none; cursor: pointer;
-      box-shadow: 0 4px 20px rgba(34, 197, 94, 0.3);
-    }
-    .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(34, 197, 94, 0.4); }
+    .nav-title { font-weight: 700; font-size: 18px; background: linear-gradient(135deg, #22c55e, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav-center { display: flex; gap: 28px; align-items: center; }
+    .nav-center a { color: var(--text-dim); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+    .nav-center a:hover { color: var(--text); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border-radius: 50px; font-weight: 600; font-size: 14px; text-decoration: none; transition: all 0.3s; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(34,197,94,0.3); white-space: nowrap; }
+    .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(34,197,94,0.4); }
     .nav-cta svg { flex-shrink: 0; }
 
+    /* ── Lang selector ── */
+    .lang-selector { position: relative; }
+    .lang-btn { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 50px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text-dim); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .lang-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+    .lang-btn svg { flex-shrink: 0; }
+    .lang-dropdown { display: none; position: absolute; top: calc(100% + 8px); right: 0; min-width: 150px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); z-index: 200; }
+    .lang-dropdown.open { display: block; }
+    .lang-dropdown a { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; color: var(--text-dim); text-decoration: none; font-size: 13px; font-weight: 500; transition: background 0.15s; }
+    .lang-dropdown a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .lang-dropdown a.active { color: var(--green); }
+    .lang-flag { flex-shrink: 0; }
+
+    /* ── Hamburger ── */
+    .nav-hamburger { display: none; background: none; border: none; color: var(--text); cursor: pointer; padding: 4px; }
+    .mobile-menu { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,15,26,0.97); backdrop-filter: blur(20px); z-index: 150; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { color: var(--text); text-decoration: none; font-size: 20px; font-weight: 600; transition: color 0.2s; }
+    .mobile-menu a:hover { color: var(--green); }
+    .mobile-menu-close { position: absolute; top: 20px; right: 24px; background: none; border: none; color: var(--text); cursor: pointer; }
+    .mobile-menu .mobile-lang-row { display: flex; gap: 16px; margin-top: 16px; }
+    .mobile-menu .mobile-lang-row a { font-size: 14px; padding: 8px 16px; border-radius: 50px; border: 1px solid var(--border); }
+    .mobile-menu .mobile-lang-row a.active { border-color: var(--green); color: var(--green); }
+
     /* ── Hero ── */
-    .hero {
-      min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; text-align: center;
-      padding: 120px 24px 80px; position: relative; overflow: hidden;
-    }
-    .hero::before {
-      content: ''; position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 197, 94, 0.08), transparent),
-        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(132, 204, 22, 0.05), transparent);
-      pointer-events: none;
-    }
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 16px; border-radius: 50px;
-      background: var(--green-glow); border: 1px solid rgba(34, 197, 94, 0.25);
-      color: var(--green); font-size: 13px; font-weight: 600;
-      margin-bottom: 32px; letter-spacing: 0.5px;
-    }
-    .hero-badge-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--green); animation: pulse-dot 2s ease-in-out infinite;
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
-      50% { opacity: 0.6; box-shadow: 0 0 0 8px rgba(34,197,94,0); }
-    }
-    .hero-logo {
-      width: 120px; height: 120px; border-radius: 28px;
-      margin-bottom: 40px; filter: drop-shadow(0 8px 40px rgba(34, 197, 94, 0.2));
-      animation: float 6s ease-in-out infinite;
-    }
+    .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 120px 24px 80px; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34,197,94,0.08), transparent), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(132,204,22,0.05), transparent); pointer-events: none; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 50px; background: var(--green-glow); border: 1px solid rgba(34,197,94,0.25); color: var(--green); font-size: 13px; font-weight: 600; margin-bottom: 32px; letter-spacing: 0.5px; }
+    .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%, 100% { opacity:1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); } 50% { opacity:0.6; box-shadow: 0 0 0 8px rgba(34,197,94,0); } }
+    .hero-logo { width: 120px; height: 120px; border-radius: 28px; margin-bottom: 40px; filter: drop-shadow(0 8px 40px rgba(34,197,94,0.2)); animation: float 6s ease-in-out infinite; }
     @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-    .hero h1 {
-      font-size: clamp(36px, 6vw, 72px); font-weight: 900;
-      line-height: 1.05; margin-bottom: 24px; max-width: 800px; letter-spacing: -2px;
-    }
-    .hero h1 .gradient {
-      background: linear-gradient(135deg, #22c55e 0%, #84cc16 50%, #facc15 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .hero-sub {
-      font-size: clamp(16px, 2vw, 20px); color: var(--text-dim);
-      max-width: 640px; margin-bottom: 48px; line-height: 1.7;
-    }
+    .hero h1 { font-size: clamp(36px,6vw,72px); font-weight: 900; line-height: 1.05; margin-bottom: 24px; max-width: 800px; letter-spacing: -2px; }
+    .hero h1 .gradient { background: linear-gradient(135deg, #22c55e 0%, #84cc16 50%, #facc15 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-sub { font-size: clamp(16px,2vw,20px); color: var(--text-dim); max-width: 640px; margin-bottom: 48px; line-height: 1.7; }
     .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-    .btn-primary {
-      display: inline-flex; align-items: center; gap: 10px;
-      padding: 16px 36px; border-radius: 50px; font-weight: 700;
-      font-size: 16px; text-decoration: none; transition: all 0.3s;
-      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-      color: white; border: none; cursor: pointer;
-      box-shadow: 0 4px 24px rgba(34, 197, 94, 0.35);
-    }
-    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(34, 197, 94, 0.5); }
-    .btn-secondary {
-      display: inline-flex; align-items: center; gap: 10px;
-      padding: 16px 36px; border-radius: 50px; font-weight: 600;
-      font-size: 16px; text-decoration: none; transition: all 0.3s;
-      background: transparent; color: var(--text);
-      border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
-    }
+    .btn-primary { display: inline-flex; align-items: center; gap: 10px; padding: 16px 36px; border-radius: 50px; font-weight: 700; font-size: 16px; text-decoration: none; transition: all 0.3s; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border: none; cursor: pointer; box-shadow: 0 4px 24px rgba(34,197,94,0.35); }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(34,197,94,0.5); }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 10px; padding: 16px 36px; border-radius: 50px; font-weight: 600; font-size: 16px; text-decoration: none; transition: all 0.3s; background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.15); cursor: pointer; }
     .btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.25); }
-    .hero-stats {
-      display: flex; gap: 48px; margin-top: 64px;
-      padding-top: 48px; border-top: 1px solid var(--border);
-    }
+    .hero-stats { display: flex; gap: 48px; margin-top: 64px; padding-top: 48px; border-top: 1px solid var(--border); }
     .hero-stat { text-align: center; }
-    .hero-stat-num {
-      font-size: 32px; font-weight: 800;
-      background: linear-gradient(135deg, #22c55e, #84cc16);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
+    .hero-stat-num { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #22c55e, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .hero-stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
     /* ── Sections ── */
     section { padding: 100px 24px; position: relative; }
     .section-inner { max-width: 1100px; margin: 0 auto; }
-    .section-label {
-      display: inline-block; font-size: 12px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 2px; color: var(--green); margin-bottom: 16px;
-    }
-    .section-title {
-      font-size: clamp(28px, 4vw, 44px); font-weight: 800;
-      line-height: 1.15; margin-bottom: 20px; letter-spacing: -1px;
-    }
+    .section-label { display: inline-block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--green); margin-bottom: 16px; }
+    .section-title { font-size: clamp(28px,4vw,44px); font-weight: 800; line-height: 1.15; margin-bottom: 20px; letter-spacing: -1px; }
     .section-desc { font-size: 17px; color: var(--text-dim); max-width: 650px; line-height: 1.7; }
 
     /* ── About ── */
-    #about { background: linear-gradient(180deg, var(--bg) 0%, #0d1424 100%); }
-    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 60px; align-items: start; }
-    .about-card {
-      padding: 36px; border-radius: var(--radius);
-      background: var(--bg-card); border: 1px solid var(--border); transition: all 0.3s;
-    }
+    #about { background: linear-gradient(180deg, var(--bg), #0d1424); }
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 60px; }
+    .about-card { padding: 36px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); transition: all 0.3s; }
     .about-card:hover { border-color: rgba(34,197,94,0.2); box-shadow: 0 8px 40px rgba(34,197,94,0.06); transform: translateY(-4px); }
-    .about-card-icon {
-      width: 48px; height: 48px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--green-glow); margin-bottom: 20px;
-    }
+    .about-card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--green-glow); margin-bottom: 20px; }
     .about-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
     .about-card p { color: var(--text-dim); font-size: 15px; line-height: 1.7; }
 
@@ -262,62 +172,31 @@
     .species-photos { display: flex; flex-direction: column; gap: 16px; }
     .species-photos figure { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); position: relative; }
     .species-photos img { width: 100%; height: 220px; object-fit: cover; display: block; }
-    .species-photos figcaption {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 12px 16px; font-size: 13px; color: var(--text-dim);
-      background: linear-gradient(transparent, rgba(10,15,26,0.9));
-    }
+    .species-photos figcaption { position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 16px; font-size: 13px; color: var(--text-dim); background: linear-gradient(transparent, rgba(10,15,26,0.9)); }
 
     /* ── Map Preview ── */
-    #map-preview { background: linear-gradient(180deg, #0d1424 0%, var(--bg) 100%); text-align: center; }
-    .map-frame {
-      margin-top: 60px; border-radius: 20px; overflow: hidden;
-      border: 1px solid var(--border); position: relative;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.4);
-      aspect-ratio: 16/9; max-width: 1000px; margin-left: auto; margin-right: auto;
-    }
+    #map-preview { background: linear-gradient(180deg, #0d1424, var(--bg)); text-align: center; }
+    .map-frame { margin-top: 60px; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); position: relative; box-shadow: 0 24px 80px rgba(0,0,0,0.4); aspect-ratio: 16/9; max-width: 1000px; margin-left: auto; margin-right: auto; }
     .map-frame img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.9); }
-    .map-frame-overlay {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(10, 15, 26, 0.5); backdrop-filter: blur(2px);
-    }
+    .map-frame-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,15,26,0.5); backdrop-filter: blur(2px); }
     .map-frame-overlay .btn-primary { font-size: 20px; padding: 20px 48px; }
 
     /* ── News ── */
-    #news { background: linear-gradient(180deg, var(--bg) 0%, #0d1424 100%); }
+    #news { background: linear-gradient(180deg, var(--bg), #0d1424); }
     .news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 48px; }
-    .news-card {
-      padding: 24px; border-radius: var(--radius);
-      background: var(--bg-card); border: 1px solid var(--border);
-      transition: all 0.3s; display: flex; flex-direction: column; gap: 12px;
-    }
+    .news-card { padding: 24px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); transition: all 0.3s; display: flex; flex-direction: column; gap: 12px; }
     .news-card:hover { border-color: rgba(34,197,94,0.25); transform: translateY(-3px); box-shadow: 0 8px 30px rgba(34,197,94,0.06); }
-    .news-source {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; color: var(--green);
-    }
+    .news-source { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--green); }
     .news-card h3 { font-size: 15px; font-weight: 600; line-height: 1.5; }
     .news-card a { color: var(--text); text-decoration: none; }
     .news-card a:hover { color: var(--green); }
 
     /* ── Team ── */
-    #team { background: linear-gradient(180deg, #0d1424 0%, var(--bg) 100%); text-align: center; }
+    #team { background: linear-gradient(180deg, #0d1424, var(--bg)); text-align: center; }
     .team-grid { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; margin-top: 48px; }
-    .team-card {
-      width: 220px; padding: 32px 20px; border-radius: var(--radius);
-      background: var(--bg-card); border: 1px solid var(--border);
-      text-align: center; transition: all 0.3s;
-    }
+    .team-card { width: 220px; padding: 32px 20px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); text-align: center; transition: all 0.3s; }
     .team-card:hover { border-color: rgba(34,197,94,0.2); transform: translateY(-4px); box-shadow: 0 8px 40px rgba(34,197,94,0.06); }
-    .team-avatar {
-      width: 80px; height: 80px; border-radius: 50%;
-      margin: 0 auto 16px; overflow: hidden;
-      background: linear-gradient(135deg, var(--green-dim), var(--lime));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 28px; font-weight: 700; color: white;
-      border: 3px solid var(--border);
-    }
+    .team-avatar { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 16px; overflow: hidden; background: linear-gradient(135deg, var(--green-dim), var(--lime)); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: white; border: 3px solid var(--border); }
     .team-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .team-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
     .team-role { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--green); margin-bottom: 8px; }
@@ -326,27 +205,15 @@
     /* ── Collaborate ── */
     #collaborate { text-align: center; }
     .collab-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 48px; }
-    .collab-step {
-      padding: 32px 24px; border-radius: var(--radius);
-      background: var(--bg-card); border: 1px solid var(--border); text-align: left;
-    }
-    .collab-step-num {
-      width: 40px; height: 40px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--green-glow); color: var(--green);
-      font-weight: 800; font-size: 16px; margin-bottom: 16px;
-      border: 1px solid rgba(34,197,94,0.2);
-    }
+    .collab-step { padding: 32px 24px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); text-align: left; }
+    .collab-step-num { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--green-glow); color: var(--green); font-weight: 800; font-size: 16px; margin-bottom: 16px; border: 1px solid rgba(34,197,94,0.2); }
     .collab-step h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
     .collab-step p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
     .collab-step a { color: var(--green); }
 
     /* ── CTA ── */
-    .cta-section {
-      text-align: center; padding: 120px 24px;
-      background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(34, 197, 94, 0.08), transparent);
-    }
-    .cta-section h2 { font-size: clamp(30px, 5vw, 52px); font-weight: 900; margin-bottom: 20px; letter-spacing: -1.5px; }
+    .cta-section { text-align: center; padding: 120px 24px; background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(34,197,94,0.08), transparent); }
+    .cta-section h2 { font-size: clamp(30px,5vw,52px); font-weight: 900; margin-bottom: 20px; letter-spacing: -1.5px; }
     .cta-section p { font-size: 18px; color: var(--text-dim); max-width: 500px; margin: 0 auto 40px; }
 
     /* ── Footer ── */
@@ -360,330 +227,481 @@
     .footer-bottom p { font-size: 12px; color: var(--text-muted); }
 
     /* ── Mobile ── */
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
+      .nav-center { display: none; }
+      .nav-hamburger { display: block; }
       nav { padding: 12px 20px; }
-      .nav-links { display: none; }
+    }
+    @media (max-width: 768px) {
       .about-grid { grid-template-columns: 1fr; }
       .species-content { grid-template-columns: 1fr; }
       .collab-steps { grid-template-columns: 1fr; }
-      .hero-stats { gap: 24px; flex-wrap: wrap; justify-content: center; }
+      .hero-stats { gap: 20px; flex-wrap: wrap; justify-content: center; }
+      .hero-stat-num { font-size: 24px; }
       .hero-logo { width: 90px; height: 90px; }
       .news-grid { grid-template-columns: 1fr; }
       .footer-inner { grid-template-columns: 1fr; gap: 24px; }
+      .map-frame-overlay .btn-primary { font-size: 16px; padding: 14px 28px; }
+      section { padding: 64px 20px; }
+      .nav-cta { padding: 8px 16px; font-size: 13px; }
+      .nav-cta span.cta-text { display: none; }
     }
     @media (max-width: 480px) {
       .hero h1 { letter-spacing: -1px; }
       .hero-actions { flex-direction: column; align-items: center; }
       .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+      .hero-stats { gap: 16px; }
+      .hero-stat-num { font-size: 22px; }
+      .hero-stat-label { font-size: 11px; }
+      .nav-title { font-size: 15px; }
+      .nav-logo { width: 30px; height: 30px; }
     }
   </style>
 </head>
 <body>
 
   <!-- Nav -->
-  <nav id="main-nav" aria-label="Navegação principal">
+  <nav id="main-nav" aria-label="Main navigation">
     <a href="#" class="nav-brand">
-      <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth — Mapeamento de Leucena" class="nav-logo" width="36" height="36">
+      <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="nav-logo" width="36" height="36">
       <span class="nav-title">leucaena.earth</span>
     </a>
-    <div class="nav-links">
-      <a href="#about">O Projeto</a>
-      <a href="#species">A Espécie</a>
-      <a href="#news">Na Mídia</a>
-      <a href="#team">Equipe</a>
-      <a href="#collaborate">Colabore</a>
+    <div class="nav-center" id="nav-center">
+      <a href="#about" data-i18n-land="nav.project"></a>
+      <a href="#species" data-i18n-land="nav.species"></a>
+      <a href="#news" data-i18n-land="nav.news"></a>
+      <a href="#team" data-i18n-land="nav.team"></a>
+      <a href="#collaborate" data-i18n-land="nav.collaborate"></a>
     </div>
-    <a href="__MAP_URL__" class="nav-cta" aria-label="Abrir mapa interativo de mapeamento de Leucena">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-      Abrir Mapa
-    </a>
+    <div class="nav-right">
+      <div class="lang-selector">
+        <button class="lang-btn" id="land-lang-btn" aria-label="Language">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          <span id="land-lang-label">PT</span>
+        </button>
+        <div class="lang-dropdown" id="land-lang-menu">
+          <a href="#" class="land-lang-opt" data-lang="pt"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#009c3b"/><polygon points="10,1.5 18.5,7 10,12.5 1.5,7" fill="#ffdf00"/><circle cx="10" cy="7" r="2.8" fill="#002776"/></svg> Português</a>
+          <a href="#" class="land-lang-opt" data-lang="en"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#012169"/><path d="M0,0 L20,14 M20,0 L0,14" stroke="white" stroke-width="2.5"/><path d="M0,0 L20,14 M20,0 L0,14" stroke="#C8102E" stroke-width="1.2"/><path d="M10,0 V14 M0,7 H20" stroke="white" stroke-width="3.5"/><path d="M10,0 V14 M0,7 H20" stroke="#C8102E" stroke-width="2"/></svg> English</a>
+          <a href="#" class="land-lang-opt" data-lang="es"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#c60b1e"/><rect y="3.5" width="20" height="7" fill="#ffc400"/></svg> Español</a>
+        </div>
+      </div>
+      <a href="__MAP_URL__" class="nav-cta" aria-label="Open interactive map">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+        <span class="cta-text" data-i18n-land="nav.openMap"></span>
+      </a>
+      <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
   </nav>
+
+  <!-- Mobile menu -->
+  <div class="mobile-menu" id="mobile-menu">
+    <button class="mobile-menu-close" id="mobile-menu-close" aria-label="Close">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <a href="#about" class="mobile-nav-link" data-i18n-land="nav.project"></a>
+    <a href="#species" class="mobile-nav-link" data-i18n-land="nav.species"></a>
+    <a href="#news" class="mobile-nav-link" data-i18n-land="nav.news"></a>
+    <a href="#team" class="mobile-nav-link" data-i18n-land="nav.team"></a>
+    <a href="#collaborate" class="mobile-nav-link" data-i18n-land="nav.collaborate"></a>
+    <a href="__MAP_URL__" class="mobile-nav-link" style="color:var(--green);" data-i18n-land="nav.openMap"></a>
+    <div class="mobile-lang-row">
+      <a href="#" class="mobile-lang-opt" data-lang="pt">PT</a>
+      <a href="#" class="mobile-lang-opt" data-lang="en">EN</a>
+      <a href="#" class="mobile-lang-opt" data-lang="es">ES</a>
+    </div>
+  </div>
 
   <!-- Hero -->
   <header class="hero">
-    <div class="hero-badge" aria-label="Status da plataforma">
+    <div class="hero-badge" aria-label="Status">
       <span class="hero-badge-dot" aria-hidden="true"></span>
-      Plataforma ativa — mapeamento em andamento
+      <span data-i18n-land="hero.badge"></span>
     </div>
-    <img src="/img/leucaena-earth-logo.png" alt="Logo do projeto Leucaena Earth" class="hero-logo" width="120" height="120">
-    <h1>Mapeando a <span class="gradient">Leucena</span> no Estado de São Paulo</h1>
-    <p class="hero-sub">Plataforma colaborativa de ciência cidadã que combina <strong>sensoriamento remoto</strong> e <strong>inteligência artificial</strong> para mapear a espécie exótica invasora <em>Leucaena leucocephala</em> e apoiar programas de <strong>erradicação</strong> em todo o Brasil.</p>
+    <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="hero-logo" width="120" height="120">
+    <h1 data-i18n-land-html="hero.title"></h1>
+    <p class="hero-sub" data-i18n-land-html="hero.sub"></p>
     <div class="hero-actions">
       <a href="__MAP_URL__" class="btn-primary">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-        Acessar o Mapa Interativo
+        <span data-i18n-land="hero.cta"></span>
       </a>
-      <a href="#about" class="btn-secondary">Saiba mais sobre o projeto</a>
+      <a href="#about" class="btn-secondary" data-i18n-land="hero.learnMore"></a>
     </div>
-    <div class="hero-stats" id="hero-stats" aria-label="Estatísticas do projeto">
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-cells">—</div><div class="hero-stat-label">Células no grid</div></div>
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-masks">—</div><div class="hero-stat-label">Máscaras mapeadas</div></div>
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-points">—</div><div class="hero-stat-label">Pontos de ocorrência</div></div>
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-collabs">—</div><div class="hero-stat-label">Colaboradores</div></div>
+    <div class="hero-stats" id="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-cells">—</div><div class="hero-stat-label" data-i18n-land="stats.cells"></div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-masks">—</div><div class="hero-stat-label" data-i18n-land="stats.masks"></div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-points">—</div><div class="hero-stat-label" data-i18n-land="stats.points"></div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-collabs">—</div><div class="hero-stat-label" data-i18n-land="stats.collabs"></div></div>
     </div>
   </header>
 
   <main>
     <!-- About -->
-    <section id="about" aria-labelledby="about-title">
+    <section id="about">
       <div class="section-inner">
-        <span class="section-label">O Projeto de Pesquisa</span>
-        <h2 class="section-title" id="about-title">Revelando a distribuição espacial e biomassa aérea da Leucena</h2>
-        <p class="section-desc">Esta pesquisa da <strong>ESALQ/USP</strong> investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, combinando imagens de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com inteligência artificial para gerar dados que apoiam a <strong>erradicação e controle</strong> dessa espécie.</p>
+        <span class="section-label" data-i18n-land="about.label"></span>
+        <h2 class="section-title" data-i18n-land-html="about.title"></h2>
+        <p class="section-desc" data-i18n-land-html="about.desc"></p>
         <div class="about-grid">
           <article class="about-card">
-            <div class="about-card-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-            </div>
-            <h3>Sensoriamento Remoto</h3>
-            <p>Imagens ópticas de altíssima resolução espacial (25 cm de GSD) combinadas com dados LiDAR para detectar e mapear áreas dominadas pela espécie invasora <em>Leucaena leucocephala</em> em escala estadual.</p>
+            <div class="about-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+            <h3 data-i18n-land="about.card1.title"></h3>
+            <p data-i18n-land-html="about.card1.desc"></p>
           </article>
           <article class="about-card">
-            <div class="about-card-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            </div>
-            <h3>Inteligência Artificial e Deep Learning</h3>
-            <p>Redes neurais convolucionais (CNNs) realizam a fusão de dados LiDAR e ópticos para classificar e segmentar áreas dominadas por leucena com alta precisão.</p>
+            <div class="about-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+            <h3 data-i18n-land="about.card2.title"></h3>
+            <p data-i18n-land-html="about.card2.desc"></p>
           </article>
           <article class="about-card">
-            <div class="about-card-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-            </div>
-            <h3>Ciência Cidadã e Crowdmapping</h3>
-            <p>Colaboradores em todo o Brasil digitalizam máscaras da copa e validam pontos de ocorrência, contribuindo diretamente para a pesquisa e fornecendo dados para prefeituras e órgãos ambientais.</p>
+            <div class="about-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+            <h3 data-i18n-land="about.card3.title"></h3>
+            <p data-i18n-land-html="about.card3.desc"></p>
           </article>
           <article class="about-card">
-            <div class="about-card-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" aria-hidden="true"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
-            </div>
-            <h3>Apoio à Erradicação e Políticas Públicas</h3>
-            <p>Os dados mapeados são compartilhados com prefeituras e órgãos ambientais que trabalham na erradicação da leucena, apoiando planos de manejo e políticas de conservação da biodiversidade nativa.</p>
+            <div class="about-card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+            <h3 data-i18n-land="about.card4.title"></h3>
+            <p data-i18n-land-html="about.card4.desc"></p>
           </article>
         </div>
       </div>
     </section>
 
     <!-- Species -->
-    <section id="species" aria-labelledby="species-title">
+    <section id="species">
       <div class="section-inner">
-        <span class="section-label">A Espécie Invasora</span>
-        <h2 class="section-title" id="species-title"><em>Leucaena leucocephala</em> — Uma das 100 piores espécies invasoras do mundo</h2>
+        <span class="section-label" data-i18n-land="species.label"></span>
+        <h2 class="section-title" data-i18n-land-html="species.title"></h2>
         <div class="species-content">
-          <div class="species-text">
-            <h3>Identificação da Leucena</h3>
-            <p><em>Leucaena leucocephala</em>, conhecida como <strong>leucena</strong> (ou <em>white leadtree</em> em inglês), é uma árvore ou arbusto tropical da família Fabaceae. Suas características mais marcantes:</p>
-            <ul>
-              <li><strong>Folhas bipinadas</strong> — muitos folíolos pequenos e alinhados, com aparência de "pena"</li>
-              <li><strong>Flores esféricas brancas</strong> — inflorescências em formato de "pompom"</li>
-              <li><strong>Vagens achatadas</strong> — marrons quando maduras, com várias sementes</li>
-              <li><strong>Porte médio</strong> — geralmente entre 5 e 15 metros de altura</li>
-            </ul>
-            <h3>Origem e Introdução no Brasil</h3>
-            <p>Originária da América Central e do México, a leucena foi amplamente introduzida em regiões tropicais do mundo todo, incluindo o Brasil, a partir da década de 1940, como forrageira, para reflorestamento e fixação de nitrogênio no solo.</p>
-            <h3>Impacto Ambiental e Necessidade de Erradicação</h3>
-            <p>A leucena é classificada pela <strong>IUCN como uma das 100 piores espécies invasoras do mundo</strong>. Seu crescimento rápido (até 3 m/ano), produção massiva de sementes, efeitos alelopáticos e formação de monoculturas impedem a regeneração da vegetação nativa. No Estado de São Paulo, é encontrada em áreas urbanas, margens de rodovias, terrenos baldios e bordas de fragmentos florestais — razão pela qual diversas <strong>prefeituras</strong> já iniciaram programas de <strong>erradicação e controle</strong>.</p>
-          </div>
+          <div class="species-text" id="species-text-content"></div>
           <div class="species-photos">
-            <figure>
-              <img src="/img/leucena-tree.jpg" alt="Árvore de Leucena (Leucaena leucocephala) em área urbana de São Paulo" loading="lazy" width="500" height="220">
-              <figcaption>Leucena em área urbana — porte típico da espécie invasora</figcaption>
-            </figure>
-            <figure>
-              <img src="/img/leucena-detail.jpg" alt="Flores esféricas brancas, folhas bipinadas e vagens de Leucaena leucocephala" loading="lazy" width="500" height="220">
-              <figcaption>Flores esféricas brancas, folhas bipinadas e vagens da leucena</figcaption>
-            </figure>
+            <figure><img src="/img/leucena-tree.jpg" alt="Leucaena leucocephala" loading="lazy" width="500" height="220"><figcaption data-i18n-land="species.photo1"></figcaption></figure>
+            <figure><img src="/img/leucena-detail.jpg" alt="Leucaena leucocephala flowers" loading="lazy" width="500" height="220"><figcaption data-i18n-land="species.photo2"></figcaption></figure>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Map Preview -->
-    <section id="map-preview" aria-labelledby="map-title">
+    <section id="map-preview">
       <div class="section-inner">
-        <span class="section-label">A Plataforma de Mapeamento</span>
-        <h2 class="section-title" id="map-title">Mapeamento interativo e colaborativo de Leucena</h2>
-        <p class="section-desc" style="margin:0 auto;">Edite células do grid, desenhe máscaras de copa arbórea, valide pontos de ocorrência e acompanhe o progresso da comunidade em tempo real. Seus dados ajudam a ciência e apoiam a erradicação.</p>
+        <span class="section-label" data-i18n-land="map.label"></span>
+        <h2 class="section-title" data-i18n-land="map.title"></h2>
+        <p class="section-desc" style="margin:0 auto;" data-i18n-land="map.desc"></p>
         <div class="map-frame">
-          <img src="/img/leucena-splash.png" alt="Preview do mapa interativo de mapeamento de Leucaena leucocephala" loading="lazy" style="object-fit:contain;background:#111827;">
+          <img src="/img/leucena-splash.png" alt="Map preview" loading="lazy" style="object-fit:contain;background:#111827;">
           <div class="map-frame-overlay">
             <a href="__MAP_URL__" class="btn-primary">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-              Abrir Mapa Interativo
+              <span data-i18n-land="map.cta"></span>
             </a>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- News / Media -->
-    <section id="news" aria-labelledby="news-title">
+    <!-- News -->
+    <section id="news">
       <div class="section-inner">
-        <span class="section-label">Na Mídia</span>
-        <h2 class="section-title" id="news-title">Erradicação de Leucena no Brasil — Notícias</h2>
-        <p class="section-desc">A leucena é tema de projetos de lei, planos de erradicação municipais e reportagens em todo o Brasil. Prefeituras e câmaras municipais já estão agindo.</p>
+        <span class="section-label" data-i18n-land="news.label"></span>
+        <h2 class="section-title" data-i18n-land="news.title"></h2>
+        <p class="section-desc" data-i18n-land="news.desc"></p>
         <div class="news-grid">
-          <article class="news-card">
-            <span class="news-source">Câmara dos Deputados</span>
-            <h3><a href="https://www.camara.leg.br/noticias/1250692-comissao-aprova-projeto-que-preve-a-erradicacao-no-pais-da-leucena,-planta-exotica-invasora" target="_blank" rel="noopener noreferrer">Comissão aprova projeto que prevê a erradicação da leucena no país</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">G1 / Globo</span>
-            <h3><a href="https://g1.globo.com/ms/mato-grosso-do-sul/noticia/2025/06/06/leucena-a-arvore-invasora-trazida-do-mexico-para-alimentar-gado-que-vai-ser-erradicada-de-campo-grande.ghtml" target="_blank" rel="noopener noreferrer">Leucena: árvore invasora trazida do México que será erradicada de Campo Grande</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">Prefeitura de Salto</span>
-            <h3><a href="https://salto.sp.gov.br/programa-de-controle-e-erradicacao-de-leucena-e-implantado-em-salto/" target="_blank" rel="noopener noreferrer">Programa de controle e erradicação de Leucena é implantado em Salto</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">Prefeitura de Piracicaba</span>
-            <h3><a href="https://piracicaba.sp.gov.br/noticias/pcj-quer-controlar-arvores-invasoras/" target="_blank" rel="noopener noreferrer">PCJ quer controlar árvores invasoras na bacia hidrográfica</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">Prefeitura de Itu</span>
-            <h3><a href="https://itu.sp.gov.br/itu-inicia-erradicacao-de-arvore-invasora-que-ameaca-a-biodiversidade/" target="_blank" rel="noopener noreferrer">Itu inicia erradicação de árvore invasora que ameaça a biodiversidade</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">Câmara de Sumaré</span>
-            <h3><a href="https://www.camarasumare.sp.gov.br/noticias/camara-de-sumare-aprova-projeto-para-erradicar-arvore-invasora" target="_blank" rel="noopener noreferrer">Câmara de Sumaré aprova projeto para erradicar árvore invasora</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">Prefeitura de Pompeia</span>
-            <h3><a href="https://www.pompeia.sp.gov.br/noticia/3183/leucena/" target="_blank" rel="noopener noreferrer">Leucena: substituição de espécie invasora na cidade de Pompeia</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">Campo Grande News</span>
-            <h3><a href="https://www.campograndenews.com.br/meio-ambiente/prefeitura-cria-plano-para-eliminar-arvore-exotica-e-invasora-da-capital" target="_blank" rel="noopener noreferrer">Prefeitura cria plano para eliminar árvore exótica e invasora da capital</a></h3>
-          </article>
-          <article class="news-card">
-            <span class="news-source">Câmara dos Deputados</span>
-            <h3><a href="https://www.camara.leg.br/noticias/1250689-projeto-preve-a-erradicacao-no-pais-da-leucena-planta-exotica-invasora" target="_blank" rel="noopener noreferrer">Projeto de lei prevê a erradicação no país da leucena, planta exótica invasora</a></h3>
-          </article>
+          <article class="news-card"><span class="news-source">Câmara dos Deputados</span><h3><a href="https://www.camara.leg.br/noticias/1250692-comissao-aprova-projeto-que-preve-a-erradicacao-no-pais-da-leucena,-planta-exotica-invasora" target="_blank" rel="noopener noreferrer">Comissão aprova projeto que prevê a erradicação da leucena no país</a></h3></article>
+          <article class="news-card"><span class="news-source">G1 / Globo</span><h3><a href="https://g1.globo.com/ms/mato-grosso-do-sul/noticia/2025/06/06/leucena-a-arvore-invasora-trazida-do-mexico-para-alimentar-gado-que-vai-ser-erradicada-de-campo-grande.ghtml" target="_blank" rel="noopener noreferrer">Leucena: árvore invasora trazida do México que será erradicada de Campo Grande</a></h3></article>
+          <article class="news-card"><span class="news-source">Prefeitura de Salto</span><h3><a href="https://salto.sp.gov.br/programa-de-controle-e-erradicacao-de-leucena-e-implantado-em-salto/" target="_blank" rel="noopener noreferrer">Programa de controle e erradicação de Leucena é implantado em Salto</a></h3></article>
+          <article class="news-card"><span class="news-source">Prefeitura de Piracicaba</span><h3><a href="https://piracicaba.sp.gov.br/noticias/pcj-quer-controlar-arvores-invasoras/" target="_blank" rel="noopener noreferrer">PCJ quer controlar árvores invasoras na bacia hidrográfica</a></h3></article>
+          <article class="news-card"><span class="news-source">Prefeitura de Itu</span><h3><a href="https://itu.sp.gov.br/itu-inicia-erradicacao-de-arvore-invasora-que-ameaca-a-biodiversidade/" target="_blank" rel="noopener noreferrer">Itu inicia erradicação de árvore invasora que ameaça a biodiversidade</a></h3></article>
+          <article class="news-card"><span class="news-source">Câmara de Sumaré</span><h3><a href="https://www.camarasumare.sp.gov.br/noticias/camara-de-sumare-aprova-projeto-para-erradicar-arvore-invasora" target="_blank" rel="noopener noreferrer">Câmara de Sumaré aprova projeto para erradicar árvore invasora</a></h3></article>
+          <article class="news-card"><span class="news-source">Prefeitura de Pompeia</span><h3><a href="https://www.pompeia.sp.gov.br/noticia/3183/leucena/" target="_blank" rel="noopener noreferrer">Leucena: substituição de espécie invasora na cidade de Pompeia</a></h3></article>
+          <article class="news-card"><span class="news-source">Campo Grande News</span><h3><a href="https://www.campograndenews.com.br/meio-ambiente/prefeitura-cria-plano-para-eliminar-arvore-exotica-e-invasora-da-capital" target="_blank" rel="noopener noreferrer">Prefeitura cria plano para eliminar árvore exótica e invasora da capital</a></h3></article>
+          <article class="news-card"><span class="news-source">Câmara dos Deputados</span><h3><a href="https://www.camara.leg.br/noticias/1250689-projeto-preve-a-erradicacao-no-pais-da-leucena-planta-exotica-invasora" target="_blank" rel="noopener noreferrer">Projeto de lei prevê a erradicação no país da leucena, planta exótica invasora</a></h3></article>
         </div>
       </div>
     </section>
 
     <!-- Team -->
-    <section id="team" aria-labelledby="team-title">
+    <section id="team">
       <div class="section-inner">
-        <span class="section-label">Equipe</span>
-        <h2 class="section-title" id="team-title">Quem está por trás do projeto</h2>
-        <p class="section-desc" style="margin: 0 auto;">Pesquisadores da ESALQ — Universidade de São Paulo — e colaboradores voluntários que tornam esse mapeamento de leucena possível.</p>
-        <div class="team-grid" id="team-grid">
-          <div style="color:var(--text-muted);font-size:14px;">Carregando equipe...</div>
-        </div>
+        <span class="section-label" data-i18n-land="team.label"></span>
+        <h2 class="section-title" data-i18n-land="team.title"></h2>
+        <p class="section-desc" style="margin:0 auto;" data-i18n-land-html="team.desc"></p>
+        <div class="team-grid" id="team-grid"><div style="color:var(--text-muted);font-size:14px;">Loading...</div></div>
       </div>
     </section>
 
     <!-- Collaborate -->
-    <section id="collaborate" aria-labelledby="collab-title">
+    <section id="collaborate">
       <div class="section-inner">
-        <span class="section-label">Colabore com a Pesquisa</span>
-        <h2 class="section-title" id="collab-title">Seja parte do mapeamento de Leucena</h2>
-        <p class="section-desc" style="margin: 0 auto 48px;">Contribua com o mapeamento e erradicação de <em>Leucaena leucocephala</em> no Estado de São Paulo. É simples, gratuito e faz a diferença para a biodiversidade.</p>
+        <span class="section-label" data-i18n-land="collab.label"></span>
+        <h2 class="section-title" data-i18n-land="collab.title"></h2>
+        <p class="section-desc" style="margin:0 auto 48px;" data-i18n-land-html="collab.desc"></p>
         <div class="collab-steps">
-          <article class="collab-step">
-            <div class="collab-step-num">1</div>
-            <h3>Solicite o acesso</h3>
-            <p>Envie um e-mail para <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a> solicitando seu código de acesso à plataforma de mapeamento de leucena.</p>
-          </article>
-          <article class="collab-step">
-            <div class="collab-step-num">2</div>
-            <h3>Crie sua conta</h3>
-            <p>Acesse o <a href="__MAP_URL__">mapa interativo</a>, clique em "Entrar" e depois em "Cadastrar". Informe um nome de usuário, senha e o código de acesso.</p>
-          </article>
-          <article class="collab-step">
-            <div class="collab-step-num">3</div>
-            <h3>Comece a mapear</h3>
-            <p>Selecione uma célula do grid, bloqueie para edição e desenhe máscaras de copa de leucena. Seus dados ajudam prefeituras e a comunidade científica.</p>
-          </article>
+          <article class="collab-step"><div class="collab-step-num">1</div><h3 data-i18n-land="collab.step1.title"></h3><p data-i18n-land-html="collab.step1.desc"></p></article>
+          <article class="collab-step"><div class="collab-step-num">2</div><h3 data-i18n-land="collab.step2.title"></h3><p data-i18n-land-html="collab.step2.desc"></p></article>
+          <article class="collab-step"><div class="collab-step-num">3</div><h3 data-i18n-land="collab.step3.title"></h3><p data-i18n-land-html="collab.step3.desc"></p></article>
         </div>
       </div>
     </section>
   </main>
 
   <!-- CTA -->
-  <section class="cta-section" aria-label="Chamada para ação">
-    <h2>Pronto para contribuir com a<br><span class="gradient">erradicação da leucena</span>?</h2>
-    <p>Cada máscara desenhada ajuda a entender a distribuição dessa espécie invasora e apoia ações de erradicação em todo o estado.</p>
+  <section class="cta-section">
+    <h2 data-i18n-land-html="cta.title"></h2>
+    <p data-i18n-land="cta.desc"></p>
     <a href="__MAP_URL__" class="btn-primary" style="font-size:18px;padding:18px 44px;">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-      Acessar o Mapa Agora
+      <span data-i18n-land="cta.btn"></span>
     </a>
   </section>
 
   <!-- Footer -->
-  <footer aria-label="Rodapé">
+  <footer>
     <div class="footer-inner">
       <div class="footer-brand">
-        <a href="#" class="nav-brand" style="margin-bottom:8px;">
-          <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="nav-logo" width="36" height="36">
-          <span class="nav-title">leucaena.earth</span>
-        </a>
-        <p>Plataforma de mapeamento colaborativo de <em>Leucaena leucocephala</em> no Estado de São Paulo. Projeto de pesquisa de doutorado na ESALQ — Universidade de São Paulo. Apoiando programas de erradicação de espécies exóticas invasoras e a conservação da biodiversidade.</p>
+        <a href="#" class="nav-brand" style="margin-bottom:8px;"><img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="nav-logo" width="36" height="36"><span class="nav-title">leucaena.earth</span></a>
+        <p data-i18n-land-html="footer.desc"></p>
       </div>
       <div class="footer-col">
-        <h4>Navegação</h4>
-        <a href="#about">O Projeto</a>
-        <a href="#species">A Espécie</a>
-        <a href="#news">Na Mídia</a>
-        <a href="#team">Equipe</a>
-        <a href="#collaborate">Colabore</a>
-        <a href="__MAP_URL__">Mapa Interativo</a>
+        <h4 data-i18n-land="footer.navTitle"></h4>
+        <a href="#about" data-i18n-land="nav.project"></a>
+        <a href="#species" data-i18n-land="nav.species"></a>
+        <a href="#news" data-i18n-land="nav.news"></a>
+        <a href="#team" data-i18n-land="nav.team"></a>
+        <a href="#collaborate" data-i18n-land="nav.collaborate"></a>
+        <a href="__MAP_URL__" data-i18n-land="nav.interactiveMap"></a>
       </div>
       <div class="footer-col">
-        <h4>Referências</h4>
+        <h4 data-i18n-land="footer.refsTitle"></h4>
         <a href="https://bd.institutohorus.org.br/especies/72" target="_blank" rel="noopener noreferrer">Instituto Hórus</a>
         <a href="https://www.esalq.usp.br" target="_blank" rel="noopener noreferrer">ESALQ/USP</a>
         <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; 2026 Leucaena Earth — Pesquisa e desenvolvimento por Matheus Siqueira Barros · ESALQ/USP · Piracicaba, SP, Brasil</p>
+      <p>&copy; 2026 Leucaena Earth — Matheus Siqueira Barros · ESALQ/USP · Piracicaba, SP, Brasil</p>
     </div>
   </footer>
 
   <script>
-    window.addEventListener('scroll', () => {
-      document.getElementById('main-nav').classList.toggle('scrolled', window.scrollY > 50);
+  (function() {
+    /* ── i18n ── */
+    const T = {
+      'nav.project':     { pt: 'O Projeto', en: 'The Project', es: 'El Proyecto' },
+      'nav.species':     { pt: 'A Espécie', en: 'The Species', es: 'La Especie' },
+      'nav.news':        { pt: 'Na Mídia', en: 'In the Media', es: 'En los Medios' },
+      'nav.team':        { pt: 'Equipe', en: 'Team', es: 'Equipo' },
+      'nav.collaborate': { pt: 'Colabore', en: 'Collaborate', es: 'Colabore' },
+      'nav.openMap':     { pt: 'Abrir Mapa', en: 'Open Map', es: 'Abrir Mapa' },
+      'nav.interactiveMap': { pt: 'Mapa Interativo', en: 'Interactive Map', es: 'Mapa Interactivo' },
+
+      'hero.badge': { pt: 'Plataforma ativa — mapeamento em andamento', en: 'Platform active — mapping in progress', es: 'Plataforma activa — mapeo en progreso' },
+      'hero.title': {
+        pt: 'Mapeando a <span class="gradient">Leucena</span> no Estado de São Paulo',
+        en: 'Mapping <span class="gradient">Leucaena</span> in the State of São Paulo',
+        es: 'Mapeando la <span class="gradient">Leucaena</span> en el Estado de São Paulo'
+      },
+      'hero.sub': {
+        pt: 'Desenvolvido na <strong>ESALQ — Universidade de São Paulo</strong>, em Piracicaba, este projeto combina <strong>sensoriamento remoto</strong> e <strong>inteligência artificial</strong> para mapear a espécie exótica invasora <em>Leucaena leucocephala</em>. A primeira fase concentra-se no Estado de São Paulo, estabelecendo a base metodológica para futuras expansões.',
+        en: 'Developed at <strong>ESALQ — University of São Paulo</strong>, in Piracicaba, Brazil, this project combines <strong>remote sensing</strong> and <strong>artificial intelligence</strong> to map the invasive alien species <em>Leucaena leucocephala</em>. The first phase focuses on the State of São Paulo, establishing the methodological foundation for future expansions.',
+        es: 'Desarrollado en la <strong>ESALQ — Universidad de São Paulo</strong>, en Piracicaba, Brasil, este proyecto combina <strong>teledetección</strong> e <strong>inteligencia artificial</strong> para mapear la especie exótica invasora <em>Leucaena leucocephala</em>. La primera fase se concentra en el Estado de São Paulo, estableciendo la base metodológica para futuras expansiones.'
+      },
+      'hero.cta':       { pt: 'Acessar o Mapa Interativo', en: 'Access the Interactive Map', es: 'Acceder al Mapa Interactivo' },
+      'hero.learnMore': { pt: 'Saiba mais sobre o projeto', en: 'Learn more about the project', es: 'Más sobre el proyecto' },
+
+      'stats.cells':  { pt: 'Células no grid', en: 'Grid cells', es: 'Celdas del grid' },
+      'stats.masks':  { pt: 'Máscaras mapeadas', en: 'Mapped masks', es: 'Máscaras mapeadas' },
+      'stats.points': { pt: 'Pontos de ocorrência', en: 'Occurrence points', es: 'Puntos de ocurrencia' },
+      'stats.collabs':{ pt: 'Colaboradores', en: 'Contributors', es: 'Colaboradores' },
+
+      'about.label': { pt: 'O Projeto de Pesquisa', en: 'The Research Project', es: 'El Proyecto de Investigación' },
+      'about.title': {
+        pt: 'Revelando a distribuição espacial da <em>Leucaena leucocephala</em>',
+        en: 'Revealing the spatial distribution of <em>Leucaena leucocephala</em>',
+        es: 'Revelando la distribución espacial de <em>Leucaena leucocephala</em>'
+      },
+      'about.desc': {
+        pt: 'Este projeto de pesquisa, conduzido na <strong>ESALQ/USP</strong> em Piracicaba, investiga a distribuição espacial e a biomassa aérea de <em>Leucaena leucocephala</em> no Estado de São Paulo. Combinando imagens de altíssima resolução (25 cm de GSD) e dados LiDAR com métodos de inteligência artificial, a pesquisa gera subsídios para programas de <strong>erradicação e controle</strong> dessa espécie. São Paulo constitui a área-piloto do projeto, cuja abordagem foi concebida para ser replicável em outras regiões.',
+        en: 'This research project, conducted at <strong>ESALQ/USP</strong> in Piracicaba, Brazil, investigates the spatial distribution and aboveground biomass of <em>Leucaena leucocephala</em> in the State of São Paulo. By combining very high resolution imagery (25 cm GSD) and LiDAR data with artificial intelligence methods, the research provides essential data for <strong>eradication and control</strong> programs. São Paulo serves as the pilot area, with a methodology designed to be replicable across other regions.',
+        es: 'Este proyecto de investigación, realizado en la <strong>ESALQ/USP</strong> en Piracicaba, Brasil, investiga la distribución espacial y la biomasa aérea de <em>Leucaena leucocephala</em> en el Estado de São Paulo. Combinando imágenes de muy alta resolución (25 cm de GSD) y datos LiDAR con métodos de inteligencia artificial, la investigación genera insumos para programas de <strong>erradicación y control</strong>. São Paulo constituye el área piloto, con una metodología diseñada para ser replicable en otras regiones.'
+      },
+      'about.card1.title': { pt: 'Sensoriamento Remoto', en: 'Remote Sensing', es: 'Teledetección' },
+      'about.card1.desc': {
+        pt: 'Imagens ópticas de altíssima resolução espacial (25 cm de GSD) combinadas com dados LiDAR para detectar e mapear áreas dominadas por <em>Leucaena leucocephala</em>.',
+        en: 'Very high spatial resolution optical imagery (25 cm GSD) combined with LiDAR data to detect and map areas dominated by <em>Leucaena leucocephala</em>.',
+        es: 'Imágenes ópticas de muy alta resolución espacial (25 cm de GSD) combinadas con datos LiDAR para detectar y mapear áreas dominadas por <em>Leucaena leucocephala</em>.'
+      },
+      'about.card2.title': { pt: 'Inteligência Artificial', en: 'Artificial Intelligence', es: 'Inteligencia Artificial' },
+      'about.card2.desc': {
+        pt: 'Redes neurais convolucionais (CNNs) e métodos de deep learning realizam a fusão de dados LiDAR e ópticos para classificar e segmentar áreas de leucena com alta precisão.',
+        en: 'Convolutional neural networks (CNNs) and deep learning methods fuse LiDAR and optical data to classify and segment leucaena areas with high accuracy.',
+        es: 'Redes neuronales convolucionales (CNNs) y métodos de deep learning fusionan datos LiDAR y ópticos para clasificar y segmentar áreas de leucaena con alta precisión.'
+      },
+      'about.card3.title': { pt: 'Ciência Cidadã', en: 'Citizen Science', es: 'Ciencia Ciudadana' },
+      'about.card3.desc': {
+        pt: 'Colaboradores voluntários digitalizam máscaras da copa e validam pontos de ocorrência, contribuindo diretamente para a pesquisa e fornecendo dados para prefeituras e órgãos ambientais.',
+        en: 'Volunteer contributors digitize canopy masks and validate occurrence points, directly contributing to the research and providing data for municipalities and environmental agencies.',
+        es: 'Colaboradores voluntarios digitalizan máscaras de copa y validan puntos de ocurrencia, contribuyendo directamente a la investigación y proporcionando datos a municipios y organismos ambientales.'
+      },
+      'about.card4.title': { pt: 'Apoio à Erradicação', en: 'Eradication Support', es: 'Apoyo a la Erradicación' },
+      'about.card4.desc': {
+        pt: 'Os dados mapeados são disponibilizados para prefeituras e órgãos ambientais que trabalham na erradicação da leucena, apoiando planos de manejo e políticas de conservação da biodiversidade.',
+        en: 'Mapped data is shared with municipalities and environmental agencies working on leucaena eradication, supporting management plans and biodiversity conservation policies.',
+        es: 'Los datos mapeados se comparten con municipios y organismos ambientales que trabajan en la erradicación de la leucaena, apoyando planes de manejo y políticas de conservación de la biodiversidad.'
+      },
+
+      'species.label': { pt: 'A Espécie Invasora', en: 'The Invasive Species', es: 'La Especie Invasora' },
+      'species.title': {
+        pt: '<em>Leucaena leucocephala</em> — Uma das 100 piores espécies invasoras do mundo',
+        en: '<em>Leucaena leucocephala</em> — One of the 100 worst invasive species in the world',
+        es: '<em>Leucaena leucocephala</em> — Una de las 100 peores especies invasoras del mundo'
+      },
+      'species.photo1': { pt: 'Leucena em área urbana — porte típico da espécie invasora', en: 'Leucaena in an urban area — typical invasive species form', es: 'Leucaena en área urbana — porte típico de la especie invasora' },
+      'species.photo2': { pt: 'Flores esféricas brancas, folhas bipinadas e vagens', en: 'White spherical flowers, bipinnate leaves and seed pods', es: 'Flores esféricas blancas, hojas bipinnadas y vainas' },
+
+      'map.label': { pt: 'A Plataforma', en: 'The Platform', es: 'La Plataforma' },
+      'map.title': { pt: 'Mapeamento interativo e colaborativo', en: 'Interactive and collaborative mapping', es: 'Mapeo interactivo y colaborativo' },
+      'map.desc': { pt: 'Edite células do grid, desenhe máscaras de copa, valide pontos de ocorrência e acompanhe o progresso em tempo real.', en: 'Edit grid cells, draw canopy masks, validate occurrence points and track progress in real time.', es: 'Edite celdas del grid, dibuje máscaras de copa, valide puntos de ocurrencia y siga el progreso en tiempo real.' },
+      'map.cta': { pt: 'Abrir Mapa Interativo', en: 'Open Interactive Map', es: 'Abrir Mapa Interactivo' },
+
+      'news.label': { pt: 'Na Mídia', en: 'In the Media', es: 'En los Medios' },
+      'news.title': { pt: 'Erradicação de Leucena no Brasil — Notícias', en: 'Leucaena Eradication in Brazil — News', es: 'Erradicación de Leucaena en Brasil — Noticias' },
+      'news.desc': { pt: 'A leucena é tema de projetos de lei, planos de erradicação municipais e reportagens em todo o Brasil.', en: 'Leucaena is the subject of bills, municipal eradication plans and media reports across Brazil.', es: 'La leucaena es tema de proyectos de ley, planes de erradicación municipales y reportajes en todo Brasil.' },
+
+      'team.label': { pt: 'Equipe', en: 'Team', es: 'Equipo' },
+      'team.title': { pt: 'Quem está por trás do projeto', en: 'Who is behind the project', es: 'Quién está detrás del proyecto' },
+      'team.desc': {
+        pt: 'Pesquisadores da <strong>ESALQ — Universidade de São Paulo</strong> e colaboradores voluntários que tornam este mapeamento possível.',
+        en: 'Researchers from <strong>ESALQ — University of São Paulo</strong> and volunteer contributors who make this mapping possible.',
+        es: 'Investigadores de la <strong>ESALQ — Universidad de São Paulo</strong> y colaboradores voluntarios que hacen posible este mapeo.'
+      },
+
+      'collab.label': { pt: 'Colabore com a Pesquisa', en: 'Contribute to the Research', es: 'Colabore con la Investigación' },
+      'collab.title': { pt: 'Seja parte do mapeamento', en: 'Be part of the mapping', es: 'Sea parte del mapeo' },
+      'collab.desc': {
+        pt: 'Contribua com o mapeamento de <em>Leucaena leucocephala</em> no Estado de São Paulo. É simples, gratuito e faz a diferença para a biodiversidade.',
+        en: 'Contribute to the mapping of <em>Leucaena leucocephala</em> in the State of São Paulo. It is simple, free and makes a difference for biodiversity.',
+        es: 'Contribuya al mapeo de <em>Leucaena leucocephala</em> en el Estado de São Paulo. Es simple, gratuito y marca la diferencia para la biodiversidad.'
+      },
+      'collab.step1.title': { pt: 'Solicite o acesso', en: 'Request access', es: 'Solicite acceso' },
+      'collab.step1.desc': { pt: 'Envie um e-mail para <a href="mailto:ms.barros@usp.br" style="color:var(--green)">ms.barros@usp.br</a> solicitando seu código de acesso.', en: 'Send an email to <a href="mailto:ms.barros@usp.br" style="color:var(--green)">ms.barros@usp.br</a> requesting your access code.', es: 'Envíe un correo a <a href="mailto:ms.barros@usp.br" style="color:var(--green)">ms.barros@usp.br</a> solicitando su código de acceso.' },
+      'collab.step2.title': { pt: 'Crie sua conta', en: 'Create your account', es: 'Cree su cuenta' },
+      'collab.step2.desc': { pt: 'Acesse o mapa, clique em "Entrar" e depois em "Cadastrar". Informe usuário, senha e código de acesso.', en: 'Access the map, click "Sign In" then "Register". Enter a username, password and access code.', es: 'Acceda al mapa, haga clic en "Entrar" y luego en "Registrar". Ingrese usuario, contraseña y código de acceso.' },
+      'collab.step3.title': { pt: 'Comece a mapear', en: 'Start mapping', es: 'Empiece a mapear' },
+      'collab.step3.desc': { pt: 'Selecione uma célula, bloqueie para edição e desenhe máscaras de copa de leucena. Seus dados ajudam prefeituras e a ciência.', en: 'Select a cell, lock for editing and draw leucaena canopy masks. Your data helps municipalities and science.', es: 'Seleccione una celda, bloquee para edición y dibuje máscaras de copa de leucaena. Sus datos ayudan a municipios y a la ciencia.' },
+
+      'cta.title': {
+        pt: 'Pronto para contribuir com a<br><span class="gradient">ciência</span>?',
+        en: 'Ready to contribute to<br><span class="gradient">science</span>?',
+        es: '¿Listo para contribuir con la<br><span class="gradient">ciencia</span>?'
+      },
+      'cta.desc': { pt: 'Cada máscara desenhada ajuda a entender a distribuição dessa espécie invasora e apoia ações de erradicação.', en: 'Each drawn mask helps understand the distribution of this invasive species and supports eradication efforts.', es: 'Cada máscara dibujada ayuda a entender la distribución de esta especie invasora y apoya acciones de erradicación.' },
+      'cta.btn': { pt: 'Acessar o Mapa', en: 'Access the Map', es: 'Acceder al Mapa' },
+
+      'footer.navTitle': { pt: 'Navegação', en: 'Navigation', es: 'Navegación' },
+      'footer.refsTitle': { pt: 'Referências', en: 'References', es: 'Referencias' },
+      'footer.desc': {
+        pt: 'Plataforma de mapeamento colaborativo de <em>Leucaena leucocephala</em> no Estado de São Paulo. Projeto de pesquisa de doutorado na ESALQ — Universidade de São Paulo.',
+        en: 'Collaborative mapping platform for <em>Leucaena leucocephala</em> in the State of São Paulo. PhD research project at ESALQ — University of São Paulo.',
+        es: 'Plataforma de mapeo colaborativo de <em>Leucaena leucocephala</em> en el Estado de São Paulo. Proyecto de investigación doctoral en ESALQ — Universidad de São Paulo.'
+      }
+    };
+
+    const speciesText = {
+      pt: '<h3>Identificação</h3><p><em>Leucaena leucocephala</em>, conhecida como <strong>leucena</strong>, é uma árvore tropical da família Fabaceae. Folhas bipinadas, flores esféricas brancas, vagens achatadas e porte de 5 a 15 metros.</p><h3>Origem</h3><p>Originária da América Central e do México, foi introduzida no Brasil na década de 1940 como forrageira e para fixação de nitrogênio.</p><h3>Impacto e Erradicação</h3><p>Classificada pela <strong>IUCN como uma das 100 piores espécies invasoras do mundo</strong>. Crescimento rápido (até 3 m/ano), produção massiva de sementes e efeitos alelopáticos impedem a regeneração nativa. Diversas prefeituras no Brasil já mantêm programas de erradicação.</p>',
+      en: '<h3>Identification</h3><p><em>Leucaena leucocephala</em>, known as <strong>white leadtree</strong>, is a tropical tree in the Fabaceae family. Bipinnate leaves, white spherical flowers, flat seed pods, and a height of 5 to 15 meters.</p><h3>Origin</h3><p>Native to Central America and Mexico, it was introduced in Brazil in the 1940s as fodder and for nitrogen fixation.</p><h3>Impact and Eradication</h3><p>Classified by the <strong>IUCN as one of the 100 worst invasive species in the world</strong>. Rapid growth (up to 3 m/year), massive seed production and allelopathic effects prevent native vegetation regeneration. Several municipalities in Brazil already maintain eradication programs.</p>',
+      es: '<h3>Identificación</h3><p><em>Leucaena leucocephala</em>, conocida como <strong>leucaena</strong>, es un árbol tropical de la familia Fabaceae. Hojas bipinnadas, flores esféricas blancas, vainas aplanadas y porte de 5 a 15 metros.</p><h3>Origen</h3><p>Originaria de América Central y México, fue introducida en Brasil en la década de 1940 como forrajera y para fijación de nitrógeno.</p><h3>Impacto y Erradicación</h3><p>Clasificada por la <strong>UICN como una de las 100 peores especies invasoras del mundo</strong>. Crecimiento rápido (hasta 3 m/año), producción masiva de semillas y efectos alelopáticos impiden la regeneración nativa. Varios municipios en Brasil ya mantienen programas de erradicación.</p>'
+    };
+
+    const teamRoles = { pt: { i: 'Idealizador', c: 'Colaborador' }, en: { i: 'Founder', c: 'Contributor' }, es: { i: 'Idealizador', c: 'Colaborador' } };
+
+    function detectLang() {
+      const saved = localStorage.getItem('leucena_lang');
+      if (saved) return saved;
+      const nav = (navigator.language || '').toLowerCase();
+      if (nav.startsWith('pt')) return 'pt';
+      if (nav.startsWith('es')) return 'es';
+      return 'en';
+    }
+
+    let lang = detectLang();
+
+    function applyLang() {
+      document.querySelectorAll('[data-i18n-land]').forEach(el => {
+        const key = el.getAttribute('data-i18n-land');
+        if (T[key] && T[key][lang]) el.textContent = T[key][lang];
+      });
+      document.querySelectorAll('[data-i18n-land-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-land-html');
+        if (T[key] && T[key][lang]) el.innerHTML = T[key][lang];
+      });
+      document.getElementById('species-text-content').innerHTML = speciesText[lang] || speciesText.en;
+      document.getElementById('land-lang-label').textContent = lang.toUpperCase();
+      document.querySelectorAll('.land-lang-opt').forEach(a => a.classList.toggle('active', a.dataset.lang === lang));
+      document.querySelectorAll('.mobile-lang-opt').forEach(a => a.classList.toggle('active', a.dataset.lang === lang));
+      document.documentElement.lang = lang === 'pt' ? 'pt-BR' : lang === 'es' ? 'es' : 'en';
+      if (teamData) renderTeam();
+    }
+
+    function setLang(l) { lang = l; localStorage.setItem('leucena_lang', l); applyLang(); }
+
+    /* Lang button */
+    document.getElementById('land-lang-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.getElementById('land-lang-menu').classList.toggle('open');
     });
+    document.querySelectorAll('.land-lang-opt').forEach(a => {
+      a.addEventListener('click', (e) => { e.preventDefault(); setLang(a.dataset.lang); document.getElementById('land-lang-menu').classList.remove('open'); });
+    });
+    document.querySelectorAll('.mobile-lang-opt').forEach(a => {
+      a.addEventListener('click', (e) => { e.preventDefault(); setLang(a.dataset.lang); });
+    });
+    document.addEventListener('click', () => document.getElementById('land-lang-menu').classList.remove('open'));
 
-    fetch('/api/landing-stats')
-      .then(r => r.json())
-      .then(d => {
-        const fmt = n => (n || 0).toLocaleString('pt-BR');
-        document.getElementById('stat-cells').textContent = fmt(d.cells);
-        document.getElementById('stat-masks').textContent = fmt(d.masks);
-        document.getElementById('stat-points').textContent = fmt(d.points);
-        document.getElementById('stat-collabs').textContent = fmt(d.collabs);
-      })
-      .catch(() => {});
+    /* Mobile menu */
+    document.getElementById('nav-hamburger').addEventListener('click', () => document.getElementById('mobile-menu').classList.add('open'));
+    document.getElementById('mobile-menu-close').addEventListener('click', () => document.getElementById('mobile-menu').classList.remove('open'));
+    document.querySelectorAll('.mobile-nav-link').forEach(a => a.addEventListener('click', () => document.getElementById('mobile-menu').classList.remove('open')));
 
-    fetch('/api/quem-somos')
-      .then(r => r.json())
-      .then(d => {
-        const grid = document.getElementById('team-grid');
-        grid.innerHTML = '';
-        const all = [
-          ...d.idealizadores.map(u => ({ ...u, role: 'Idealizador' })),
-          ...d.colaboradores.map(u => ({ ...u, role: 'Colaborador' }))
-        ];
-        for (const u of all) {
-          const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-          const avatarContent = u.photo
-            ? '<img src="' + u.photo + '" alt="' + (u.full_name || u.username) + '">'
-            : initials;
-          const card = document.createElement('article');
-          card.className = 'team-card';
-          card.innerHTML =
-            '<div class="team-avatar">' + avatarContent + '</div>' +
-            '<div class="team-name">' + (u.full_name || u.username) + '</div>' +
-            '<div class="team-role">' + u.role + '</div>' +
-            '<div class="team-desc">' + (u.description || '') + '</div>';
-          grid.appendChild(card);
-        }
-        if (all.length === 0) grid.innerHTML = '<p style="color:var(--text-muted)">Equipe será exibida em breve.</p>';
-      })
-      .catch(() => {});
+    /* Scroll nav */
+    window.addEventListener('scroll', () => document.getElementById('main-nav').classList.toggle('scrolled', window.scrollY > 50));
+
+    /* Stats */
+    fetch('/api/landing-stats').then(r => r.json()).then(d => {
+      const fmt = n => (n || 0).toLocaleString(lang === 'pt' ? 'pt-BR' : lang === 'es' ? 'es' : 'en');
+      document.getElementById('stat-cells').textContent = fmt(d.cells);
+      document.getElementById('stat-masks').textContent = fmt(d.masks);
+      document.getElementById('stat-points').textContent = fmt(d.points);
+      document.getElementById('stat-collabs').textContent = fmt(d.collabs);
+    }).catch(() => {});
+
+    /* Team */
+    let teamData = null;
+    function renderTeam() {
+      if (!teamData) return;
+      const grid = document.getElementById('team-grid');
+      grid.innerHTML = '';
+      const roles = teamRoles[lang] || teamRoles.en;
+      const all = [
+        ...teamData.idealizadores.map(u => ({ ...u, role: roles.i })),
+        ...teamData.colaboradores.map(u => ({ ...u, role: roles.c }))
+      ];
+      for (const u of all) {
+        const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        const av = u.photo ? '<img src="' + u.photo + '" alt="' + (u.full_name || u.username) + '">' : initials;
+        const card = document.createElement('article');
+        card.className = 'team-card';
+        card.innerHTML = '<div class="team-avatar">' + av + '</div><div class="team-name">' + (u.full_name || u.username) + '</div><div class="team-role">' + u.role + '</div><div class="team-desc">' + (u.description || '') + '</div>';
+        grid.appendChild(card);
+      }
+      if (all.length === 0) grid.innerHTML = '<p style="color:var(--text-muted)">—</p>';
+    }
+    fetch('/api/quem-somos').then(r => r.json()).then(d => { teamData = d; renderTeam(); }).catch(() => {});
+
+    applyLang();
+  })();
   </script>
 </body>
 </html>

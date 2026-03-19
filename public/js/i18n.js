@@ -1,9 +1,18 @@
 window.LeucenaI18n = (function () {
-  let currentLang = localStorage.getItem('leucena_lang') || 'pt';
+  function detectLang() {
+    const saved = localStorage.getItem('leucena_lang');
+    if (saved) return saved;
+    const nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
+    if (nav.startsWith('pt')) return 'pt';
+    if (nav.startsWith('es')) return 'es';
+    return 'en';
+  }
+
+  let currentLang = detectLang();
 
   const T = {
     // ── App title ──
-    'app.title': { pt: 'Mapeamento de Leucena', en: 'Leucaena Mapping', es: 'Mapeo de Leucaena' },
+    'app.title': { pt: 'leucaena.earth', en: 'leucaena.earth', es: 'leucaena.earth' },
     'app.startHere': { pt: 'Comece por aqui', en: 'Start here', es: 'Comience aquí' },
 
     // ── Auth ──
@@ -106,7 +115,7 @@ window.LeucenaI18n = (function () {
     'tool.home': { pt: 'Visão inicial', en: 'Initial view', es: 'Vista inicial' },
     'tool.zoomIn': { pt: 'Zoom +', en: 'Zoom +', es: 'Zoom +' },
     'tool.zoomOut': { pt: 'Zoom -', en: 'Zoom -', es: 'Zoom -' },
-    'coords.hint': { pt: 'Clique direito no mapa para copiar coordenadas', en: 'Right-click on map to copy coordinates', es: 'Clic derecho en el mapa para copiar coordenadas' },
+    'coords.hint': { pt: 'Aperte o botão direito do mouse<br>no mapa por 2s para copiar coordenadas', en: 'Hold right mouse button on the map<br>for 2s to copy coordinates', es: 'Mantenga el botón derecho del ratón<br>en el mapa por 2s para copiar coordenadas' },
 
     // ── Legend ──
     'legend.title': { pt: 'Legenda', en: 'Legend', es: 'Leyenda' },

@@ -245,8 +245,10 @@
     <!-- Barra Superior -->
     <header id="top-bar">
       <div class="top-bar-left">
-        <img src="/img/leucaena-earth-logo.png" alt="Leucaena" class="app-logo">
-        <span class="app-title" data-i18n="app.title">Mapeamento de Leucena</span>
+        <a href="https://leucaena.earth" class="app-brand-link" title="leucaena.earth">
+          <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="app-logo">
+          <span class="app-title">leucaena.earth</span>
+        </a>
         <button class="guide-start-btn" id="guide-btn" title="Comece por aqui">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <span data-i18n="app.startHere">Comece por aqui</span>
@@ -545,7 +547,7 @@
       <div class="toolbar-group toolbar-right">
         <div class="coords-container">
           <span id="coords-display" class="coords">--</span>
-          <span class="coords-hint" data-i18n="coords.hint">Clique direito no mapa para copiar coordenadas</span>
+          <span class="coords-hint" data-i18n-html="coords.hint">Aperte o botão direito do mouse<br>no mapa por 2s para copiar coordenadas</span>
         </div>
       </div>
     </footer>
