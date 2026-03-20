@@ -279,20 +279,20 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  const user = queryOne('SELECT username, full_name, description, photo FROM users WHERE username = ?', [username]);
-  res.json({ username, full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null });
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar FROM users WHERE username = ?', [username]);
+  res.json({ username, full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null });
 });
 
 // ── Profile (for Quem Somos) ──
 
 app.get('/api/profile', requireAuth, (req, res) => {
-  const user = queryOne('SELECT username, full_name, description, photo FROM users WHERE username = ?', [req.username]);
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar FROM users WHERE username = ?', [req.username]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-  res.json({ username: user.username, full_name: user.full_name || null, description: user.description || null, photo: user.photo || null });
+  res.json({ username: user.username, full_name: user.full_name || null, description: user.description || null, photo: user.photo || null, linkedin: user.linkedin || null, scholar: user.scholar || null });
 });
 
 app.put('/api/profile', requireAuth, (req, res) => {
-  const { full_name, description, photo } = req.body || {};
+  const { full_name, description, photo, linkedin, scholar } = req.body || {};
   if (description != null && typeof description === 'string' && description.length > 400) {
     return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
   }
@@ -300,8 +300,8 @@ app.put('/api/profile', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Foto muito grande' });
   }
   runSQL(
-    'UPDATE users SET full_name = ?, description = ?, photo = ? WHERE username = ?',
-    [full_name || null, description != null ? description : null, photo != null ? photo : null, req.username]
+    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE username = ?',
+    [full_name || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, req.username]
   );
   persist();
   res.json({ success: true });
@@ -318,15 +318,15 @@ app.put('/api/profile/password', requireAuth, (req, res) => {
 
 app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const { full_name, description, photo } = req.body || {};
+  const { full_name, description, photo, linkedin, scholar } = req.body || {};
   if (description != null && typeof description === 'string' && description.length > 400) {
     return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
   }
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   runSQL(
-    'UPDATE users SET full_name = ?, description = ?, photo = ? WHERE id = ?',
-    [full_name !== undefined ? (full_name || null) : user.full_name, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, Number(req.params.id)]
+    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE id = ?',
+    [full_name !== undefined ? (full_name || null) : user.full_name, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, Number(req.params.id)]
   );
   persist();
   res.json({ success: true });
@@ -356,15 +356,15 @@ app.get('/api/quem-somos', (req, res) => {
   polygonCounts.forEach(r => { countByUser[r.username] = r.cnt; });
 
   const excludeUsers = ['deleted', 'teste'];
-  const allUsers = queryAll('SELECT username, full_name, description, photo FROM users');
+  const allUsers = queryAll('SELECT username, full_name, description, photo, linkedin, scholar FROM users');
   const adminOrder = ['mpf', 'msb'];
   const idealizadores = allUsers
     .filter(u => isAdmin(u.username))
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }))
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null }))
     .sort((a, b) => (adminOrder.indexOf(a.username) === -1 ? 99 : adminOrder.indexOf(a.username)) - (adminOrder.indexOf(b.username) === -1 ? 99 : adminOrder.indexOf(b.username)));
   const colaboradores = allUsers
     .filter(u => !isAdmin(u.username) && !excludeUsers.includes(u.username))
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null }));
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null }));
 
   res.json({ idealizadores, colaboradores });
 });
@@ -381,7 +381,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, login_count, total_time_ms FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms FROM users WHERE username != 'deleted'");
   const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
   const maskMap = {};
   for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;

@@ -106,6 +106,22 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN photo TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN login_count INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN total_time_ms INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN linkedin TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN scholar TEXT'); } catch (e) { /* already exists */ }
+
+  const socialLinks = [
+    { username: 'msb', linkedin: 'https://www.linkedin.com/in/msbarrosgis/', scholar: 'https://scholar.google.com/citations?user=YxpVjt0AAAAJ&hl=en' },
+    { username: 'mpf', linkedin: 'https://www.linkedin.com/in/matheus-pinheiro-ferreira-02a04123/', scholar: 'https://scholar.google.com/citations?user=Ype1B9wAAAAJ&hl=pt-BR' },
+    { username: 'rafael.perin', linkedin: 'https://www.linkedin.com/in/rafael-perin-menassi-7b591139a/', scholar: null }
+  ];
+  for (const s of socialLinks) {
+    try {
+      const row = db.exec(`SELECT linkedin FROM users WHERE username = '${s.username}'`);
+      if (row.length && (!row[0].values[0][0])) {
+        db.run('UPDATE users SET linkedin = ?, scholar = ? WHERE username = ?', [s.linkedin, s.scholar, s.username]);
+      }
+    } catch (e) { /* ignore */ }
+  }
 
   // Migrate not_valid → status for existing rows that haven't been migrated
   try {

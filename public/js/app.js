@@ -381,6 +381,8 @@ window.LeucenaApp = (function () {
       if (pwSection) pwSection.style.display = 'none';
       document.getElementById('profile-full-name').value = targetUser.full_name || '';
       document.getElementById('profile-description').value = targetUser.description || '';
+      document.getElementById('profile-linkedin').value = targetUser.linkedin || '';
+      document.getElementById('profile-scholar').value = targetUser.scholar || '';
       updateProfileCharCount();
       const preview = document.getElementById('profile-photo-preview');
       if (targetUser.photo) {
@@ -401,6 +403,8 @@ window.LeucenaApp = (function () {
         const p = await res.json();
         document.getElementById('profile-full-name').value = p.full_name || '';
         document.getElementById('profile-description').value = p.description || '';
+        document.getElementById('profile-linkedin').value = p.linkedin || '';
+        document.getElementById('profile-scholar').value = p.scholar || '';
         updateProfileCharCount();
         const preview = document.getElementById('profile-photo-preview');
         if (p.photo) {
@@ -471,6 +475,8 @@ window.LeucenaApp = (function () {
     e.preventDefault();
     const full_name = document.getElementById('profile-full-name').value.trim() || null;
     const description = document.getElementById('profile-description').value.trim() || null;
+    const linkedin = document.getElementById('profile-linkedin').value.trim() || null;
+    const scholar = document.getElementById('profile-scholar').value.trim() || null;
     const errorEl = document.getElementById('profile-error');
     errorEl.classList.add('hidden');
     if (description && description.length > 400) {
@@ -485,7 +491,7 @@ window.LeucenaApp = (function () {
       const res = await fetch(url, {
         method: 'PUT',
         headers: authHeaders(),
-        body: JSON.stringify({ full_name: full_name || null, description: description || null, photo: profilePhotoDataUrl })
+        body: JSON.stringify({ full_name, description, photo: profilePhotoDataUrl, linkedin, scholar })
       });
       if (!res.ok) {
         const err = await res.json();
@@ -1215,7 +1221,9 @@ window.LeucenaApp = (function () {
             username: user.username,
             full_name: user.full_name || '',
             description: user.description || '',
-            photo: user.photo || null
+            photo: user.photo || null,
+            linkedin: user.linkedin || '',
+            scholar: user.scholar || ''
           });
         });
 
