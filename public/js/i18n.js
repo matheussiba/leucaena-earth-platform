@@ -164,6 +164,7 @@ window.LeucenaI18n = (function () {
     'admin.logins': { pt: 'Logins', en: 'Logins', es: 'Logins' },
     'admin.timeOnline': { pt: 'Tempo Online', en: 'Time Online', es: 'Tiempo Online' },
     'admin.exportCsv': { pt: 'Exportar CSV', en: 'Export CSV', es: 'Exportar CSV' },
+    'admin.exportLogs': { pt: 'Logs (48h)', en: 'Logs (48h)', es: 'Logs (48h)' },
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
@@ -248,6 +249,7 @@ window.LeucenaI18n = (function () {
     'badge.draw': { pt: 'Clique direito ou Enter = finalizar · Ctrl+Z = desfazer', en: 'Right-click or Enter = finish · Ctrl+Z = undo', es: 'Clic derecho o Enter = finalizar · Ctrl+Z = deshacer' },
     'badge.delete': { pt: 'Ctrl+Z = restaurar polígono', en: 'Ctrl+Z = restore polygon', es: 'Ctrl+Z = restaurar polígono' },
     'badge.edit': { pt: 'Ctrl+Z = desfazer edição', en: 'Ctrl+Z = undo edit', es: 'Ctrl+Z = deshacer edición' },
+    'badge.pointSelected': { pt: 'Clique com o botão direito para mudar de status', en: 'Right-click to change status', es: 'Clic derecho para cambiar estado' },
 
     // ── Toast messages (streetview.js) ──
     'toast.svClickHint': { pt: 'Clique no mapa para abrir Street View. Linhas azuis mostram a cobertura disponível.', en: 'Click on the map to open Street View. Blue lines show available coverage.', es: 'Haga clic en el mapa para abrir Street View. Las líneas azules muestran la cobertura disponible.' },

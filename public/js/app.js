@@ -3,6 +3,8 @@ window.LeucenaApp = (function () {
   let authToken = null;
   let selectedCellId = null;
   let selectedCellData = null;
+  let lockHeartbeatInterval = null;
+  let pendingUncoveredPointIds = null;
   let mapsLoaded = false;
   let mapsInitialized = false;
 
@@ -28,6 +30,13 @@ window.LeucenaApp = (function () {
     document.getElementById('auth-modal-close').addEventListener('click', closeAuthModal);
     document.getElementById('auth-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeAuthModal();
+    });
+
+    document.getElementById('top-bar').addEventListener('click', () => {
+      if (typeof LeucenaMap !== 'undefined') LeucenaMap.deselectPoint();
+    });
+    document.getElementById('toolbar').addEventListener('click', () => {
+      if (typeof LeucenaMap !== 'undefined') LeucenaMap.deselectPoint();
     });
 
     document.getElementById('tool-unlock').addEventListener('click', openUnlockModal);
@@ -321,7 +330,12 @@ window.LeucenaApp = (function () {
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
 
     if (selectedCellId && selectedCellData) {
-      selectCell(selectedCellId, selectedCellData);
+      const canLock = !selectedCellData.locked_by && selectedCellData.grid_status !== 'no_points';
+      if (canLock) {
+        lockCell(selectedCellId);
+      } else {
+        selectCell(selectedCellId, selectedCellData);
+      }
     }
   }
 
@@ -580,15 +594,11 @@ window.LeucenaApp = (function () {
   }
 
   function toggleSidebar() {
-    if (isEditing()) {
-      showToast(LeucenaI18n.t('toast.exitEditFirst'), 'warning');
-      return;
-    }
     const main = document.getElementById('main-content');
     const isOpen = main.classList.toggle('sidebar-open');
     updateToggleArrow(isOpen);
     updateLegendVisibility(isOpen);
-    if (!isOpen) {
+    if (!isOpen && !isEditing()) {
       clearCellSelection();
     }
   }
@@ -740,6 +750,7 @@ window.LeucenaApp = (function () {
   }
 
   function clearCellSelection() {
+    if (lockHeartbeatInterval) { clearInterval(lockHeartbeatInterval); lockHeartbeatInterval = null; }
     if (typeof LeucenaMap !== 'undefined') {
       LeucenaMap.setSelectedCell(null);
     }
@@ -788,6 +799,10 @@ window.LeucenaApp = (function () {
 
   function closeUnlockModal() {
     document.getElementById('unlock-modal').classList.add('hidden');
+    if (pendingUncoveredPointIds && pendingUncoveredPointIds.length > 0) {
+      LeucenaMap.selectPointsPreview(pendingUncoveredPointIds);
+      pendingUncoveredPointIds = null;
+    }
   }
 
   async function confirmUnlock(status) {
@@ -805,6 +820,9 @@ window.LeucenaApp = (function () {
         const unlockErr = document.getElementById('unlock-error');
         unlockErr.textContent = err.error;
         unlockErr.classList.remove('hidden');
+        if (err.uncoveredPointIds && err.uncoveredPointIds.length > 0) {
+          pendingUncoveredPointIds = err.uncoveredPointIds;
+        }
         return;
       }
       const data = await res.json();
@@ -879,6 +897,13 @@ window.LeucenaApp = (function () {
       badge.classList.remove('hidden');
 
       showToast(LeucenaI18n.t('toast.cellLocked', displayId), 'success');
+
+      if (lockHeartbeatInterval) clearInterval(lockHeartbeatInterval);
+      lockHeartbeatInterval = setInterval(() => {
+        if (selectedCellId) {
+          fetch(`/api/grid/${selectedCellId}/heartbeat`, { method: 'POST', headers: authHeaders() }).catch(() => {});
+        }
+      }, 2 * 60 * 1000);
     } catch (e) {
       showToast(LeucenaI18n.t('toast.lockFail'), 'error');
     }
@@ -1129,7 +1154,8 @@ window.LeucenaApp = (function () {
 
       const exportRow = document.createElement('div');
       exportRow.className = 'admin-export-row';
-      exportRow.innerHTML = `<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>`;
+      exportRow.innerHTML = `<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>
+        <button id="admin-export-logs" class="admin-export-btn" style="margin-left:8px;">📋 ${t('admin.exportLogs')}</button>`;
       listEl.appendChild(exportRow);
       document.getElementById('admin-export-csv').addEventListener('click', async () => {
         try {
@@ -1140,6 +1166,19 @@ window.LeucenaApp = (function () {
           const a = document.createElement('a');
           a.href = url;
           a.download = 'leucena_users_stats.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) { showToast('Export failed', 'error'); }
+      });
+      document.getElementById('admin-export-logs').addEventListener('click', async () => {
+        try {
+          const r = await fetch('/api/admin/logs?format=csv', { headers: authHeaders() });
+          if (!r.ok) { showToast('Export failed', 'error'); return; }
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'activity_logs_48h.csv';
           a.click();
           URL.revokeObjectURL(url);
         } catch (e) { showToast('Export failed', 'error'); }

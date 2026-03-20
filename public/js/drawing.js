@@ -155,6 +155,10 @@ window.LeucenaDrawing = (function () {
   function setMode(mode) {
     activeMode = mode;
 
+    if (typeof LeucenaMap !== 'undefined' && LeucenaMap.deselectPoint) {
+      LeucenaMap.deselectPoint();
+    }
+
     deleteUndoStack.length = 0;
     editUndoStack.length = 0;
     cleanupManualDraw();

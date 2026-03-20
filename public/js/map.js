@@ -13,8 +13,13 @@ window.LeucenaMap = (function () {
   let originalRestriction = null;
   let gridBounds = null;
   let selectedCellId = null;
+  const selectedPointIds = new Set();
   let lastCoords = null;
   let clickedOnFeature = false;
+  let spiderfiedGroup = null;
+  const SPIDERFY_OFFSET = 0.00015;
+  let previewMode = false;
+  let previewTimer = null;
 
   const SELECTED_STROKE = '#00FFFF';
 
@@ -75,6 +80,7 @@ window.LeucenaMap = (function () {
         clickedOnFeature = false;
         return;
       }
+      deselectPoint();
       if (LeucenaStreetView.isActive()) {
         LeucenaStreetView.showAt(e.latLng);
         return;
@@ -125,14 +131,9 @@ window.LeucenaMap = (function () {
     }
   }
 
-  let rightDownTime = 0;
+  let rightHoldTimer = null;
 
-  function handleRightClick(e) {
-    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'draw') return;
-    const held = Date.now() - rightDownTime;
-    if (held < 2000) return;
-
-    const coordsText = `${e.latLng.lat().toFixed(6)}, ${e.latLng.lng().toFixed(6)}`;
+  function copyCoordinates(coordsText) {
     navigator.clipboard.writeText(coordsText).then(() => {
       LeucenaApp.showToast(LeucenaI18n.t('toast.coordsCopied', coordsText), 'success');
     }).catch(() => {
@@ -144,6 +145,13 @@ window.LeucenaMap = (function () {
       document.body.removeChild(ta);
       LeucenaApp.showToast(LeucenaI18n.t('toast.coordsCopied', coordsText), 'success');
     });
+  }
+
+  function handleRightClick(e) {
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'draw') return;
+    if (!e || !e.latLng) return;
+    const coordsText = `${e.latLng.lat().toFixed(6)}, ${e.latLng.lng().toFixed(6)}`;
+    copyCoordinates(coordsText);
   }
 
   function deselectFromMap() {
@@ -158,14 +166,26 @@ window.LeucenaMap = (function () {
   }
 
   function setupRightClickCopy() {
-    map.addListener('rightclick', handleRightClick);
-
     const mapDiv = document.getElementById('map');
     mapDiv.addEventListener('contextmenu', (e) => {
       e.preventDefault();
     });
     mapDiv.addEventListener('mousedown', (e) => {
-      if (e.button === 2) rightDownTime = Date.now();
+      if (e.button === 2) {
+        clearTimeout(rightHoldTimer);
+        rightHoldTimer = setTimeout(() => {
+          if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'draw') return;
+          if (!lastCoords) return;
+          copyCoordinates(lastCoords);
+          rightHoldTimer = null;
+        }, 2000);
+      }
+    });
+    mapDiv.addEventListener('mouseup', (e) => {
+      if (e.button === 2 && rightHoldTimer) {
+        clearTimeout(rightHoldTimer);
+        rightHoldTimer = null;
+      }
     });
   }
 
@@ -278,6 +298,7 @@ window.LeucenaMap = (function () {
         return;
       }
       clickedOnFeature = true;
+      deselectPoint();
       if (LeucenaStreetView.isActive()) {
         LeucenaStreetView.showAt(e.latLng);
         return;
@@ -288,10 +309,6 @@ window.LeucenaMap = (function () {
         return;
       }
       LeucenaApp.selectCell(cellId, gridData[cellId]);
-    });
-
-    poly.addListener('rightclick', (e) => {
-      handleRightClick(e);
     });
 
     gridPolygons[cellId] = poly;
@@ -321,6 +338,7 @@ window.LeucenaMap = (function () {
   }
 
   function setSelectedCell(cellId) {
+    deselectPoint();
     const prevId = selectedCellId;
     selectedCellId = cellId;
     if (prevId != null && gridData[prevId]) {
@@ -332,6 +350,7 @@ window.LeucenaMap = (function () {
   }
 
   function onCellLocked(cellId, lockedBy) {
+    deselectPoint();
     if (gridData[cellId]) {
       gridData[cellId].locked_by = lockedBy;
       updateCellAppearance(cellId, gridData[cellId]);
@@ -339,6 +358,7 @@ window.LeucenaMap = (function () {
   }
 
   function onCellUnlocked(cellId) {
+    deselectPoint();
     if (gridData[cellId]) {
       gridData[cellId].locked_by = null;
       updateCellAppearance(cellId, gridData[cellId]);
@@ -384,7 +404,18 @@ window.LeucenaMap = (function () {
             LeucenaStreetView.showAt(marker.getPosition());
             return;
           }
+          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
+            LeucenaApp.handleDeletionClick(marker.getPosition());
+            return;
+          }
           if (LeucenaDrawing.getActiveMode() === 'select') {
+            handlePointClick(pointId);
+          }
+        });
+
+        marker.addListener('rightclick', () => {
+          if (previewMode) return;
+          if (selectedPointIds.has(pointId)) {
             togglePointValidity(pointId);
           }
         });
@@ -427,6 +458,210 @@ window.LeucenaMap = (function () {
     return { path: google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#84cc16', fillOpacity: 0.9, strokeColor, strokeWeight: 0.8 };
   }
 
+  function getSelectedPointIcon(status, layer) {
+    const base = getPointIcon(status, layer);
+    return { ...base, strokeColor: SELECTED_STROKE, strokeWeight: base.strokeWeight * 2, scale: base.scale + 1 };
+  }
+
+  function getOriginalPosition(pointId) {
+    if (spiderfiedGroup) {
+      const item = spiderfiedGroup.items.find(i => i.id === pointId);
+      if (item) return spiderfiedGroup.center;
+    }
+    const entry = pointMarkersById[pointId];
+    return entry ? { lat: entry.marker.getPosition().lat(), lng: entry.marker.getPosition().lng() } : null;
+  }
+
+  function findOverlappingPoints(pointId) {
+    const origin = getOriginalPosition(pointId);
+    if (!origin) return [];
+    const lat = typeof origin.lat === 'function' ? origin.lat() : origin.lat;
+    const lng = typeof origin.lng === 'function' ? origin.lng() : origin.lng;
+    const threshold = 0.000005;
+    const overlapping = [];
+    for (const [id, e] of Object.entries(pointMarkersById)) {
+      if (!e.marker.getMap()) continue;
+      const orig = getOriginalPosition(Number(id));
+      if (!orig) continue;
+      const pLat = typeof orig.lat === 'function' ? orig.lat() : orig.lat;
+      const pLng = typeof orig.lng === 'function' ? orig.lng() : orig.lng;
+      if (Math.abs(pLat - lat) < threshold && Math.abs(pLng - lng) < threshold) {
+        overlapping.push(Number(id));
+      }
+    }
+    return overlapping;
+  }
+
+  function unspiderfy() {
+    if (!spiderfiedGroup) return;
+    for (const item of spiderfiedGroup.items) {
+      const entry = pointMarkersById[item.id];
+      if (entry) {
+        entry.marker.setPosition(spiderfiedGroup.center);
+        if (item.line) { item.line.setMap(null); }
+      }
+    }
+    spiderfiedGroup = null;
+  }
+
+  function spiderfy(pointIds) {
+    unspiderfy();
+    if (pointIds.length < 2) return;
+    const first = pointMarkersById[pointIds[0]];
+    if (!first) return;
+    const center = first.marker.getPosition();
+    const centerLat = center.lat();
+    const centerLng = center.lng();
+    const count = pointIds.length;
+    const angleStep = (2 * Math.PI) / count;
+    const items = [];
+
+    for (let i = 0; i < count; i++) {
+      const angle = angleStep * i - Math.PI / 2;
+      const newLat = centerLat + SPIDERFY_OFFSET * Math.sin(angle);
+      const newLng = centerLng + SPIDERFY_OFFSET * Math.cos(angle);
+      const entry = pointMarkersById[pointIds[i]];
+      if (!entry) continue;
+
+      const line = new google.maps.Polyline({
+        path: [center, { lat: newLat, lng: newLng }],
+        strokeColor: '#888',
+        strokeOpacity: 0.6,
+        strokeWeight: 1,
+        map: map,
+        clickable: false
+      });
+
+      entry.marker.setPosition({ lat: newLat, lng: newLng });
+      entry.marker.setZIndex(15);
+      items.push({ id: pointIds[i], line });
+    }
+
+    spiderfiedGroup = { center: { lat: centerLat, lng: centerLng }, items };
+  }
+
+  function handlePointClick(pointId) {
+    if (spiderfiedGroup) {
+      selectPoint(pointId);
+      return;
+    }
+    const overlapping = findOverlappingPoints(pointId);
+    if (overlapping.length > 1) {
+      spiderfy(overlapping);
+      return;
+    }
+    selectPoint(pointId);
+  }
+
+  function updatePointHint() {
+    const hint = document.getElementById('tool-hint-text');
+    if (!hint) return;
+    if (selectedPointIds.size > 0 && !previewMode) {
+      hint.textContent = LeucenaI18n.t('badge.pointSelected');
+      hint.classList.remove('hidden');
+    } else {
+      hint.textContent = '';
+      hint.classList.add('hidden');
+    }
+  }
+
+  function selectPoint(pointId) {
+    if (previewMode) {
+      const wasInPreview = selectedPointIds.has(pointId);
+      clearPreviewMode();
+      if (wasInPreview) {
+        const entry = pointMarkersById[pointId];
+        if (!entry) return;
+        selectedPointIds.add(pointId);
+        entry.marker.setIcon(getSelectedPointIcon(entry.data.status, entry.data.layer));
+        entry.marker.setZIndex(10);
+        updatePointHint();
+      } else {
+        const entry = pointMarkersById[pointId];
+        if (!entry) return;
+        selectedPointIds.add(pointId);
+        entry.marker.setIcon(getSelectedPointIcon(entry.data.status, entry.data.layer));
+        entry.marker.setZIndex(10);
+        updatePointHint();
+      }
+      return;
+    }
+
+    if (selectedPointIds.has(pointId)) {
+      deselectSinglePoint(pointId);
+      return;
+    }
+    deselectPoint();
+    const entry = pointMarkersById[pointId];
+    if (!entry) return;
+    selectedPointIds.add(pointId);
+    entry.marker.setIcon(getSelectedPointIcon(entry.data.status, entry.data.layer));
+    entry.marker.setZIndex(10);
+    updatePointHint();
+  }
+
+  function selectPointsPreview(pointIds) {
+    deselectPoint();
+    previewMode = true;
+    for (const pid of pointIds) {
+      const entry = pointMarkersById[pid];
+      if (!entry) continue;
+      selectedPointIds.add(pid);
+      entry.marker.setIcon(getSelectedPointIcon(entry.data.status, entry.data.layer));
+      entry.marker.setZIndex(10);
+    }
+    updatePointHint();
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => {
+      clearPreviewMode();
+    }, 5000);
+  }
+
+  function clearPreviewMode() {
+    clearTimeout(previewTimer);
+    previewTimer = null;
+    if (previewMode) {
+      previewMode = false;
+      for (const pid of [...selectedPointIds]) {
+        const entry = pointMarkersById[pid];
+        if (entry) {
+          entry.marker.setIcon(getPointIcon(entry.data.status, entry.data.layer));
+          entry.marker.setZIndex(5);
+        }
+        selectedPointIds.delete(pid);
+      }
+      unspiderfy();
+      updatePointHint();
+    }
+  }
+
+  function deselectSinglePoint(pointId) {
+    if (!selectedPointIds.has(pointId)) return;
+    const entry = pointMarkersById[pointId];
+    if (entry) {
+      entry.marker.setIcon(getPointIcon(entry.data.status, entry.data.layer));
+      entry.marker.setZIndex(5);
+    }
+    selectedPointIds.delete(pointId);
+    updatePointHint();
+  }
+
+  function deselectPoint() {
+    clearTimeout(previewTimer);
+    previewTimer = null;
+    previewMode = false;
+    for (const pid of [...selectedPointIds]) {
+      const entry = pointMarkersById[pid];
+      if (entry) {
+        entry.marker.setIcon(getPointIcon(entry.data.status, entry.data.layer));
+        entry.marker.setZIndex(5);
+      }
+      selectedPointIds.delete(pid);
+    }
+    unspiderfy();
+    updatePointHint();
+  }
+
   async function togglePointValidity(pointId) {
     if (!LeucenaApp.isLoggedIn()) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.loginToToggle'), 'warning');
@@ -462,7 +697,8 @@ window.LeucenaMap = (function () {
     entry.data.status = newStatus;
     entry.data.not_valid = newStatus;
     const layer = entry.data.layer || 'crowdmapping';
-    entry.marker.setIcon(getPointIcon(newStatus, layer));
+    const isSelected = selectedPointIds.has(pointId);
+    entry.marker.setIcon(isSelected ? getSelectedPointIcon(newStatus, layer) : getPointIcon(newStatus, layer));
     entry.marker.setTitle(getPointTitle(entry.data.fid, newStatus));
   }
 
@@ -748,7 +984,18 @@ window.LeucenaMap = (function () {
         LeucenaStreetView.showAt(marker.getPosition());
         return;
       }
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
+        LeucenaApp.handleDeletionClick(marker.getPosition());
+        return;
+      }
       if (LeucenaDrawing.getActiveMode() === 'select') {
+        handlePointClick(id);
+      }
+    });
+
+    marker.addListener('rightclick', () => {
+      if (previewMode) return;
+      if (selectedPointIds.has(id)) {
         togglePointValidity(id);
       }
     });
@@ -775,6 +1022,13 @@ window.LeucenaMap = (function () {
   function removePointMarker(pointId) {
     const entry = pointMarkersById[pointId];
     if (!entry) return;
+    selectedPointIds.delete(pointId);
+    if (spiderfiedGroup) {
+      const item = spiderfiedGroup.items.find(i => i.id === pointId);
+      if (item && item.line) item.line.setMap(null);
+      spiderfiedGroup.items = spiderfiedGroup.items.filter(i => i.id !== pointId);
+      if (spiderfiedGroup.items.length <= 1) unspiderfy();
+    }
     entry.marker.setMap(null);
     delete pointMarkersById[pointId];
     updateFilterCounts();
@@ -862,6 +1116,12 @@ window.LeucenaMap = (function () {
     findNearestPoint,
     getPointData,
     zoomToInitialView,
-    updateFilterCounts
+    updateFilterCounts,
+    selectPoint,
+    selectPointsPreview,
+    deselectPoint,
+    hasSelectedPoints: () => selectedPointIds.size > 0,
+    unspiderfy,
+    togglePointValidity
   };
 })();

@@ -78,6 +78,18 @@ async function initDB() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT NOT NULL,
+      username TEXT,
+      action TEXT NOT NULL,
+      cell_id INTEGER,
+      object_id TEXT,
+      details TEXT
+    )
+  `);
+
   const viewRow = db.exec("SELECT value FROM site_stats WHERE key = 'view_count'");
   if (viewRow.length === 0 || viewRow[0].values.length === 0) {
     db.run("INSERT OR IGNORE INTO site_stats (key, value) VALUES ('view_count', 0)");

@@ -55,12 +55,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const connectedUsers = new Map();
 const sessions = new Map();
-const LOCK_TIMEOUT_MS = 5 * 60 * 1000;
+const LOCK_TIMEOUT_MS = 30 * 60 * 1000;
 const ADMIN_USERNAMES = ['msb', 'mpf'];
 function isAdmin(username) { return ADMIN_USERNAMES.includes(username); }
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password + '***REDACTED_SALT***').digest('hex');
+}
+
+function logActivity(username, action, cellId, objectId, details) {
+  try {
+    runSQL('INSERT INTO activity_logs (timestamp, username, action, cell_id, object_id, details) VALUES (?, ?, ?, ?, ?, ?)',
+      [new Date().toISOString(), username || null, action, cellId || null, objectId || null, details || null]);
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    runSQL('DELETE FROM activity_logs WHERE timestamp < ?', [cutoff]);
+  } catch (e) { /* ignore logging errors */ }
 }
 
 function getUsernameFromToken(req) {
@@ -100,6 +109,22 @@ function pointInPolygon(point, ring) {
     }
   }
   return inside;
+}
+
+function distToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  if (dx === 0 && dy === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
+  let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+  t = Math.max(0, Math.min(1, t));
+  return Math.sqrt((px - (x1 + t * dx)) ** 2 + (py - (y1 + t * dy)) ** 2);
+}
+
+function pointNearPolygonEdge(point, ring, toleranceDeg) {
+  const [px, py] = point;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    if (distToSegment(px, py, ring[j][0], ring[j][1], ring[i][0], ring[i][1]) <= toleranceDeg) return true;
+  }
+  return false;
 }
 
 function findGridForPoint(lng, lat) {
@@ -147,13 +172,18 @@ function validateFinished(cellId) {
 
   const polys = queryAll('SELECT * FROM polygons WHERE grid_cell_id = ?', [cellId]);
 
+  const TOLERANCE_DEG = 0.00005; // ~5.5 meters at equator
+
   function isPointCoveredByPoly(lng, lat, polyGeom) {
     const coords = polyGeom.coordinates;
-    if (!pointInPolygon([lng, lat], coords[0])) return false;
-    for (let i = 1; i < coords.length; i++) {
-      if (pointInPolygon([lng, lat], coords[i])) return false;
+    if (pointInPolygon([lng, lat], coords[0])) {
+      for (let i = 1; i < coords.length; i++) {
+        if (pointInPolygon([lng, lat], coords[i])) return false;
+      }
+      return true;
     }
-    return true;
+    if (pointNearPolygonEdge([lng, lat], coords[0], TOLERANCE_DEG)) return true;
+    return false;
   }
 
   const uncovered = [];
@@ -161,13 +191,15 @@ function validateFinished(cellId) {
     const geom = JSON.parse(pt.geometry);
     const [lng, lat] = geom.coordinates;
     const covered = polys.some(p => isPointCoveredByPoly(lng, lat, JSON.parse(p.geometry)));
-    if (!covered) uncovered.push(pt.id);
+    if (!covered) uncovered.push({ id: pt.id, lng: lng.toFixed(6), lat: lat.toFixed(6), status: pt.status });
   }
 
   if (uncovered.length > 0) {
+    const details = uncovered.slice(0, 5).map(u => `#${u.id} (${u.lat}, ${u.lng})`).join(', ');
     return {
       valid: false,
-      error: `Não é possível marcar como finalizado: ${uncovered.length} ponto(s) válido(s) não estão cobertos por nenhuma máscara de Leucena. Desenhe polígonos sobre todos os pontos válidos primeiro.`
+      error: `Não é possível marcar como finalizado: ${uncovered.length} ponto(s) válido(s) (status=0) sem máscara. IDs: ${details}${uncovered.length > 5 ? '...' : ''}`,
+      uncoveredPointIds: uncovered.map(u => u.id)
     };
   }
   return { valid: true };
@@ -237,6 +269,7 @@ app.post('/api/auth/login', (req, res) => {
   if (user.password_hash !== hash) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
   runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1 WHERE username = ?', [username]);
+  logActivity(username, 'login', null, null, null);
 
   const token = uuidv4();
   sessions.set(token, username);
@@ -425,6 +458,22 @@ app.get('/api/admin/passcode', requireAuth, (req, res) => {
   res.json({ passcode: getNextPasscode() });
 });
 
+app.get('/api/admin/logs', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const format = req.query.format || 'json';
+  const logs = queryAll('SELECT * FROM activity_logs ORDER BY timestamp DESC');
+  if (format === 'csv') {
+    const header = 'id,timestamp,username,action,cell_id,object_id,details\n';
+    const rows = logs.map(l =>
+      `${l.id},${l.timestamp},${l.username || ''},${l.action},${l.cell_id || ''},${l.object_id || ''},"${(l.details || '').replace(/"/g, '""')}"`
+    ).join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=activity_logs.csv');
+    return res.send(header + rows);
+  }
+  res.json(logs);
+});
+
 app.get('/api/admin/db-info', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const dataPath = process.env.DATA_PATH || path.join(__dirname, 'data');
@@ -518,8 +567,17 @@ app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
 
   io.emit('cell:locked', { cellId: Number(id), username });
   io.emit('cell:statusChanged', { cellId: Number(id), status: 'in_use', username });
+  logActivity(username, 'cell_lock', Number(id), null, null);
   persist();
   res.json({ success: true, worked_by: workedBy.join(',') });
+});
+
+app.post('/api/grid/:id/heartbeat', requireAuth, (req, res) => {
+  const { id } = req.params;
+  const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
+  if (!cell || cell.locked_by !== req.username) return res.status(400).json({ error: 'Not locked by you' });
+  runSQL('UPDATE grid_cells SET locked_at = ? WHERE id = ?', [new Date().toISOString(), Number(id)]);
+  res.json({ success: true });
 });
 
 app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
@@ -541,7 +599,7 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
   if (newStatus === 'finished') {
     const validation = validateFinished(Number(id));
     if (!validation.valid) {
-      return res.status(400).json({ error: validation.error });
+      return res.status(400).json({ error: validation.error, uncoveredPointIds: validation.uncoveredPointIds || [] });
     }
     finishedBy = username;
   }
@@ -560,6 +618,7 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
 
   io.emit('cell:unlocked', { cellId: Number(id), username });
   io.emit('cell:statusChanged', { cellId: Number(id), status: newStatus, username, finished_by: finishedBy });
+  logActivity(username, 'cell_unlock', Number(id), null, JSON.stringify({ newStatus }));
   persist();
   res.json({ success: true, status: newStatus });
 });
@@ -616,6 +675,7 @@ app.post('/api/polygons', requireAuth, (req, res) => {
 
   const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_at: now, updated_at: now };
   io.emit('polygon:created', polygon);
+  logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
   persist();
   res.json(polygon);
 });
@@ -641,6 +701,7 @@ app.put('/api/polygons/:id', requireAuth, (req, res) => {
   runSQL('UPDATE polygons SET geometry = ?, updated_at = ? WHERE id = ?', [JSON.stringify(geometry), now, id]);
 
   io.emit('polygon:updated', { id, geometry, updated_at: now });
+  logActivity(username, 'polygon_edit', poly.grid_cell_id, id, null);
   persist();
   res.json({ success: true });
 });
@@ -663,6 +724,7 @@ app.delete('/api/polygons/:id', requireAuth, (req, res) => {
 
   runSQL('DELETE FROM polygons WHERE id = ?', [id]);
   io.emit('polygon:deleted', { id, grid_cell_id: poly.grid_cell_id });
+  logActivity(username, 'polygon_delete', poly.grid_cell_id, id, null);
   persist();
   res.json({ success: true });
 });
@@ -778,6 +840,7 @@ app.put('/api/points/:id/validity', requireAuth, (req, res) => {
   runSQL('UPDATE occurrence_points SET status = ?, not_valid = ? WHERE id = ?', [newStatus, newStatus, Number(id)]);
 
   io.emit('point:validityChanged', { id: Number(id), not_valid: newStatus, status: newStatus });
+  logActivity(req.username, 'point_status_change', null, String(id), JSON.stringify({ from: currentStatus, to: newStatus }));
   persist();
   res.json({ id: Number(id), not_valid: newStatus, status: newStatus });
 });
@@ -879,6 +942,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
+      logActivity(user.username, 'disconnect', null, null, null);
       const now = new Date().toISOString();
       const locked = queryAll('SELECT id FROM grid_cells WHERE locked_by = ?', [user.username]);
       for (const cell of locked) {
@@ -888,6 +952,7 @@ io.on('connection', (socket) => {
           [newStatus, now, cell.id]);
         io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username });
         io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: user.username });
+        logActivity(user.username, 'cell_unlock_disconnect', cell.id, null, JSON.stringify({ newStatus }));
       }
       if (locked.length > 0) persist();
 

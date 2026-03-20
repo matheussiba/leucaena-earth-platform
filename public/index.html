@@ -320,6 +320,12 @@
       <span>MODO DE INSERÇÃO DE PONTOS — Pressione L para adicionar ponto, Ctrl+Z para desfazer</span>
     </div>
 
+    <div id="edit-mode-badge" class="edit-mode-badge hidden">
+      <span class="edit-pulse"></span>
+      <span id="edit-mode-text">Editando Célula #--</span>
+      <span id="tool-hint-text" class="tool-hint-text hidden"></span>
+    </div>
+
     <div id="main-content">
       <!-- Botão do Painel Lateral -->
       <button id="sidebar-toggle" class="sidebar-toggle" title="Alternar painel lateral">
@@ -447,11 +453,6 @@
       <!-- Mapa + Street View -->
       <div id="map-container">
         <div id="map"></div>
-        <div id="edit-mode-badge" class="edit-mode-badge hidden">
-          <span class="edit-pulse"></span>
-          <span id="edit-mode-text">Editando Célula #--</span>
-          <span id="tool-hint-text" class="tool-hint-text hidden"></span>
-        </div>
         <!-- Ferramentas de edição flutuantes (só visíveis em modo de edição) -->
         <div id="edit-tools-panel" class="edit-tools-panel hidden">
           <button class="edit-tool-btn" id="tool-draw" data-i18n-title="tool.draw" title="Desenhar Polígono">
