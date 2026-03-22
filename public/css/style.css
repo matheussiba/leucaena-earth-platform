@@ -670,6 +670,11 @@ html, body {
   display: none;
 }
 
+/* Mobile-only bar at top of sidebar (close + title) — hidden on desktop */
+.sidebar-mobile-header {
+  display: none;
+}
+
 .sidebar-section {
   padding: 16px;
   border-bottom: 1px solid var(--border);
@@ -2137,10 +2142,54 @@ html, body {
 
   #main-content.sidebar-open .sidebar-overlay {
     display: block;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   #sidebar {
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 4px 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    flex-shrink: 0;
+  }
+
+  .sidebar-mobile-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+  }
+
+  .sidebar-close-btn:hover,
+  .sidebar-close-btn:active {
+    background: var(--bg-primary);
+    color: var(--accent);
   }
 
   .sidebar-toggle {
@@ -2341,6 +2390,14 @@ html, body {
 @media (max-width: 480px) {
   :root {
     --sidebar-width: 100vw;
+  }
+
+  /* Sidebar full-width: default toggle position (left: 100vw) hides it — keep it visible on the right */
+  #main-content.sidebar-open .sidebar-toggle {
+    left: auto;
+    right: 8px;
+    border-radius: var(--radius) 0 0 var(--radius);
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
   }
 
   .app-logo {

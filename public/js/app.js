@@ -27,6 +27,8 @@ window.LeucenaApp = (function () {
   function init() {
     document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+    if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
     document.getElementById('login-btn').addEventListener('click', () => openAuthModal('login'));
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('auth-modal-close').addEventListener('click', closeAuthModal);

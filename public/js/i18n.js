@@ -94,6 +94,8 @@ window.LeucenaI18n = (function () {
     'sidebar.finishedBy': { pt: 'Finalizado por:', en: 'Finished by:', es: 'Finalizado por:' },
     'sidebar.lockEdit': { pt: 'Bloquear e Editar', en: 'Lock & Edit', es: 'Bloquear y Editar' },
     'sidebar.onlineUsers': { pt: 'Usuários Online', en: 'Online Users', es: 'Usuarios en Línea' },
+    'sidebar.mobilePanelTitle': { pt: 'Painel', en: 'Panel', es: 'Panel' },
+    'sidebar.closePanel': { pt: 'Fechar painel', en: 'Close panel', es: 'Cerrar panel' },
 
     // ── Status labels ──
     'status.not_yet_finished': { pt: 'Ainda não finalizado', en: 'Not yet finished', es: 'Aún no finalizado' },
