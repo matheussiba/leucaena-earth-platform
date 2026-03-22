@@ -1,6 +1,7 @@
 window.LeucenaApp = (function () {
   let username = null;
   let authToken = null;
+  let userRole = 'contributor';
   let selectedCellId = null;
   let selectedCellData = null;
   let lockHeartbeatInterval = null;
@@ -10,9 +11,10 @@ window.LeucenaApp = (function () {
 
   function getUsername() { return username; }
   function getAuthToken() { return authToken; }
+  function getUserRole() { return userRole; }
   function isLoggedIn() { return !!username && !!authToken; }
-  const ADMIN_USERS = ['msb', 'mpf'];
-  function isAdminUser() { return ADMIN_USERS.includes(username); }
+  function isAdminUser() { return userRole === 'admin'; }
+  function isTeamOrAbove() { return userRole === 'admin' || userRole === 'team'; }
   function getSelectedCellId() { return selectedCellId; }
   function getSelectedCellData() { return selectedCellData; }
 
@@ -50,6 +52,10 @@ window.LeucenaApp = (function () {
     document.getElementById('docs-modal-close').addEventListener('click', closeDocsModal);
     document.getElementById('docs-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeDocsModal();
+    });
+    document.getElementById('docs-back-guide').addEventListener('click', () => {
+      closeDocsModal();
+      openGuideModal('main');
     });
 
     setupLangDropdown();
@@ -103,6 +109,9 @@ window.LeucenaApp = (function () {
     tryRestoreSession();
 
     LeucenaI18n.translatePage();
+
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
   }
 
   // ── Language dropdown ──
@@ -150,8 +159,6 @@ window.LeucenaApp = (function () {
         lockBtn.textContent = t('auth.loginToEdit');
       } else if (selectedCellData.locked_by && selectedCellData.locked_by !== username) {
         lockBtn.textContent = t('toast.lockedBy', selectedCellData.locked_by);
-      } else if (selectedCellData.grid_status === 'no_points' && !selectedCellData.locked_by) {
-        lockBtn.textContent = t('toast.noPointsToEdit');
       } else if (!selectedCellData.locked_by) {
         lockBtn.textContent = t('sidebar.lockEdit');
       }
@@ -173,35 +180,57 @@ window.LeucenaApp = (function () {
     }
   }
 
+  // ── Deep-linking (hash) ──
+
+  const GUIDE_PAGES = ['main', 'leucena', 'howto', 'media', 'collaborate', 'about'];
+  const VALID_HASHES = new Set(['docs', 'guide', ...Object.keys({ leucena:1, howto:1, media:1, collaborate:1, about:1 })]);
+
+  function setHash(h) { history.replaceState(null, '', h ? '#' + h : window.location.pathname + window.location.search); }
+
   // ── Docs modal ──
 
   function openDocsModal() {
     LeucenaI18n.translatePage();
     document.getElementById('docs-modal').classList.remove('hidden');
+    setHash('docs');
   }
 
   function closeDocsModal() {
     document.getElementById('docs-modal').classList.add('hidden');
+    setHash('');
   }
 
   // ── Guide modal ──
 
-  function openGuideModal() {
+  function openGuideModal(page) {
     LeucenaI18n.translatePage();
-    showGuidePage('main');
+    const target = (typeof page === 'string') ? page : 'main';
+    showGuidePage(target);
     document.getElementById('guide-modal').classList.remove('hidden');
+    if (target === 'about') loadQuemSomosContent();
   }
 
   function closeGuideModal() {
     document.getElementById('guide-modal').classList.add('hidden');
+    setHash('');
   }
 
   function showGuidePage(page) {
-    ['guide-main', 'guide-leucena', 'guide-howto', 'guide-media', 'guide-collaborate', 'guide-about'].forEach(id => {
-      const el = document.getElementById(id);
+    GUIDE_PAGES.forEach(p => {
+      const el = document.getElementById('guide-' + p);
       if (el) el.classList.add('hidden');
     });
     document.getElementById('guide-' + page).classList.remove('hidden');
+    if (page !== 'main') setHash(page);
+    else if (!document.getElementById('guide-modal').classList.contains('hidden')) setHash('guide');
+  }
+
+  function handleHash() {
+    const hash = window.location.hash.replace('#', '');
+    if (!hash) return;
+    if (hash === 'docs') { openDocsModal(); return; }
+    if (hash === 'guide') { openGuideModal('main'); return; }
+    if (VALID_HASHES.has(hash)) { openGuideModal(hash); return; }
   }
 
   // ── Auth modal ──
@@ -282,6 +311,7 @@ window.LeucenaApp = (function () {
 
       authToken = data.token;
       username = data.username;
+      userRole = data.role || 'contributor';
       localStorage.setItem('leucena_token', authToken);
       localStorage.setItem('leucena_username', username);
 
@@ -305,6 +335,7 @@ window.LeucenaApp = (function () {
         const data = await res.json();
         authToken = storedToken;
         username = data.username;
+        userRole = data.role || 'contributor';
         onLoginSuccess();
       } else {
         localStorage.removeItem('leucena_token');
@@ -327,10 +358,16 @@ window.LeucenaApp = (function () {
     LeucenaCollab.init(username);
     showAdminTools();
     loadUserProfile();
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyStyles) {
+      LeucenaDrawing.refreshPolyStyles();
+    }
+    if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) {
+      LeucenaMap.updateFilterCounts();
+    }
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
 
     if (selectedCellId && selectedCellData) {
-      const canLock = !selectedCellData.locked_by && selectedCellData.grid_status !== 'no_points';
+      const canLock = !selectedCellData.locked_by;
       if (canLock) {
         lockCell(selectedCellId);
       } else {
@@ -373,12 +410,16 @@ window.LeucenaApp = (function () {
 
     const titleEl = document.getElementById('profile-modal').querySelector('h2');
     const pwSection = document.getElementById('profile-pw-section');
+    const socialSection = document.getElementById('profile-social-section');
+    const subtitleEl = document.getElementById('profile-subtitle');
     const t = LeucenaI18n.t;
 
     if (targetUser) {
       adminEditingUser = targetUser;
       titleEl.textContent = t('admin.editProfileTitle', targetUser.username);
       if (pwSection) pwSection.style.display = 'none';
+      if (socialSection) socialSection.style.display = '';
+      if (subtitleEl) subtitleEl.textContent = t('profile.subtitleMember');
       document.getElementById('profile-full-name').value = targetUser.full_name || '';
       document.getElementById('profile-description').value = targetUser.description || '';
       document.getElementById('profile-linkedin').value = targetUser.linkedin || '';
@@ -397,6 +438,8 @@ window.LeucenaApp = (function () {
       adminEditingUser = null;
       titleEl.textContent = t('profile.title');
       if (pwSection) pwSection.style.display = '';
+      if (socialSection) socialSection.style.display = getUserRole() === 'contributor' ? 'none' : '';
+      if (subtitleEl) subtitleEl.textContent = t(getUserRole() === 'contributor' ? 'profile.subtitleContributor' : 'profile.subtitleMember');
       try {
         const res = await fetch('/api/profile', { headers: authHeaders() });
         if (!res.ok) return;
@@ -539,17 +582,19 @@ window.LeucenaApp = (function () {
 
       const lang = typeof LeucenaI18n !== 'undefined' && LeucenaI18n.getLang ? LeucenaI18n.getLang() : 'pt';
       let html = '<h2>' + (lang === 'en' ? 'About Us' : lang === 'es' ? 'Quiénes Somos' : 'Quem Somos') + '</h2>';
-      if (data.idealizadores && data.idealizadores.length > 0) {
-        html += '<div class="about-section-title">' + t('about.idealizadores') + '</div><div class="about-cards">';
-        data.idealizadores.forEach(p => { html += cardHtml(p); });
+      const equipe = data.equipe || data.idealizadores || [];
+      const colaboradores = data.colaboradores || [];
+      if (equipe.length > 0) {
+        html += '<div class="about-section-title">' + t('about.equipe') + '</div><div class="about-cards">';
+        equipe.forEach(p => { html += cardHtml(p); });
         html += '</div>';
       }
-      if (data.colaboradores && data.colaboradores.length > 0) {
+      if (colaboradores.length > 0) {
         html += '<div class="about-section-title">' + t('about.colaboradores') + '</div><div class="about-cards">';
-        data.colaboradores.forEach(p => { html += cardHtml(p); });
+        colaboradores.forEach(p => { html += cardHtml(p); });
         html += '</div>';
       }
-      if (!data.idealizadores.length && !data.colaboradores.length) {
+      if (!equipe.length && !colaboradores.length) {
         html += '<p class="text-muted">Nenhum perfil publicado ainda.</p>';
       }
       container.innerHTML = html;
@@ -590,6 +635,12 @@ window.LeucenaApp = (function () {
     hideAdminTools();
     deselectCell();
     enableTools(false);
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyStyles) {
+      LeucenaDrawing.refreshPolyStyles();
+    }
+    if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) {
+      LeucenaMap.updateFilterCounts();
+    }
     showToast(LeucenaI18n.t('auth.disconnected'), 'info');
   }
 
@@ -731,12 +782,6 @@ window.LeucenaApp = (function () {
       lockBtn.classList.remove('hidden');
       unlockToolBtn.disabled = true;
       enableTools(false);
-    } else if (cellData.grid_status === 'no_points') {
-      lockBtn.textContent = t('toast.noPointsToEdit');
-      lockBtn.disabled = true;
-      lockBtn.classList.remove('hidden');
-      unlockToolBtn.disabled = true;
-      enableTools(false);
     } else {
       lockBtn.textContent = t('sidebar.lockEdit');
       lockBtn.disabled = false;
@@ -775,6 +820,7 @@ window.LeucenaApp = (function () {
     if (enabled) {
       editPanel.classList.remove('hidden');
       unlockBtn.classList.remove('hidden');
+      applyRoleRestrictions();
     } else {
       editPanel.classList.add('hidden');
       unlockBtn.classList.add('hidden');
@@ -800,6 +846,15 @@ window.LeucenaApp = (function () {
       return;
     }
     document.getElementById('unlock-error').classList.add('hidden');
+
+    const finBtn = document.getElementById('unlock-finished');
+    const notice = document.getElementById('unlock-crowdmapping-notice');
+    const isContributor = getUserRole() === 'contributor';
+    const hasCrowd = isContributor && LeucenaMap.cellHasCrowdmapping(selectedCellId);
+
+    finBtn.classList.toggle('hidden', hasCrowd);
+    notice.classList.toggle('hidden', !hasCrowd);
+
     document.getElementById('unlock-modal').classList.remove('hidden');
   }
 
@@ -982,7 +1037,7 @@ window.LeucenaApp = (function () {
     });
 
     deleteCb.addEventListener('change', () => {
-      if (!isLoggedIn() || !isAdminUser()) { deleteCb.checked = false; return; }
+      if (!isLoggedIn() || !isTeamOrAbove()) { deleteCb.checked = false; return; }
       if (deleteCb.checked) {
         setInsertionMode(false);
         setDeletionMode(true);
@@ -1056,13 +1111,16 @@ window.LeucenaApp = (function () {
   }
 
   function showAdminTools() {
-    document.getElementById('insertion-sep').classList.remove('hidden');
-    document.getElementById('insertion-toggle').classList.remove('hidden');
-    if (isAdminUser()) {
+    if (isTeamOrAbove()) {
+      document.getElementById('insertion-sep').classList.remove('hidden');
+      document.getElementById('insertion-toggle').classList.remove('hidden');
       document.getElementById('deletion-toggle').classList.remove('hidden');
+    }
+    if (isAdminUser()) {
       document.getElementById('admin-users-btn').classList.remove('hidden');
       loadViewCount();
     }
+    applyRoleRestrictions();
   }
 
   function hideAdminTools() {
@@ -1073,6 +1131,7 @@ window.LeucenaApp = (function () {
     document.getElementById('view-counter').classList.add('hidden');
     if (insertionMode) setInsertionMode(false);
     if (deletionMode) setDeletionMode(false);
+    userRole = 'contributor';
   }
 
   // ── View counter ──
@@ -1191,14 +1250,15 @@ window.LeucenaApp = (function () {
       });
 
       for (const user of data.users) {
-        const isAdm = ADMIN_USERS.includes(user.username);
+        const role = user.role || 'contributor';
+        const roleLabelMap = { admin: 'Admin', team: 'Membro', contributor: 'Colaborador' };
         const totalMs = user.total_time_ms || 0;
         const timeStr = formatDuration(totalMs);
         const row = document.createElement('div');
         row.className = 'admin-user-row';
         row.innerHTML = `
           <div class="admin-user-info">
-            <span class="admin-user-name">${user.username}${isAdm ? '<span class="admin-user-badge">Admin</span>' : ''}</span>
+            <span class="admin-user-name">${user.username}<span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span></span>
             <div class="admin-user-date">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
             <div class="admin-user-stats">
               <span title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
@@ -1207,11 +1267,32 @@ window.LeucenaApp = (function () {
             </div>
           </div>
           <div class="admin-user-actions">
+            <select class="admin-role-select" data-user-id="${user.id}">
+              <option value="admin"${role === 'admin' ? ' selected' : ''}>Admin</option>
+              <option value="team"${role === 'team' ? ' selected' : ''}>Membro</option>
+              <option value="contributor"${role === 'contributor' ? ' selected' : ''}>Colaborador</option>
+            </select>
             <button class="admin-profile-btn">${t('admin.editProfile')}</button>
             <button class="admin-pw-btn">${t('admin.changePassword')}</button>
-            ${!isAdm ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
+            ${role !== 'admin' ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
           </div>
         `;
+
+        const roleSelect = row.querySelector('.admin-role-select');
+        roleSelect.addEventListener('change', async () => {
+          const newRole = roleSelect.value;
+          try {
+            const r = await fetch(`/api/admin/users/${user.id}/role`, {
+              method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role: newRole })
+            });
+            if (r.ok) {
+              showToast('Role atualizado', 'success');
+              const badge = row.querySelector('.admin-user-badge');
+              badge.textContent = { admin: 'Admin', team: 'Membro', contributor: 'Colaborador' }[newRole];
+              badge.className = 'admin-user-badge admin-role-' + newRole;
+            } else { const err = await r.json(); showToast(err.error, 'error'); roleSelect.value = role; }
+          } catch (e) { showToast('Erro de conexão', 'error'); roleSelect.value = role; }
+        });
 
         const profileBtn = row.querySelector('.admin-profile-btn');
         profileBtn.addEventListener('click', () => {
@@ -1347,6 +1428,9 @@ window.LeucenaApp = (function () {
     }
   }
 
+  function applyRoleRestrictions() {
+  }
+
   setupPointModes();
 
   init();
@@ -1354,6 +1438,7 @@ window.LeucenaApp = (function () {
   return {
     getUsername,
     getAuthToken,
+    getUserRole,
     isLoggedIn,
     authHeaders,
     getSelectedCellId,
@@ -1370,6 +1455,7 @@ window.LeucenaApp = (function () {
     handleDeletionClick,
     collapseLegendOnFirstZoom,
     isEditing,
-    isAdminUser
+    isAdminUser,
+    isTeamOrAbove
   };
 })();

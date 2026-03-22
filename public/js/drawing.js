@@ -8,11 +8,19 @@ window.LeucenaDrawing = (function () {
   const editUndoStack = [];
   let manualDrawState = null;
 
-  const POLY_STYLE = {
+  const POLY_STYLE_MEMBER = {
     strokeColor: '#84cc16',
     strokeOpacity: 0.9,
     strokeWeight: 2.5,
     fillColor: '#84cc16',
+    fillOpacity: 0.10
+  };
+
+  const POLY_STYLE_CONTRIBUTOR = {
+    strokeColor: '#f97316',
+    strokeOpacity: 0.9,
+    strokeWeight: 2.5,
+    fillColor: '#f97316',
     fillOpacity: 0.10
   };
 
@@ -22,6 +30,25 @@ window.LeucenaDrawing = (function () {
     fillColor: '#f59e0b',
     fillOpacity: 0.15
   };
+
+  let showMemberMasks = true;
+  let showContributorMasks = true;
+
+  function isMemberRole(role) {
+    return role === 'admin' || role === 'team';
+  }
+
+  function getPolyStyle(creatorRole) {
+    const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getUserRole() : null;
+    if (!viewerRole || viewerRole === 'contributor') return POLY_STYLE_MEMBER;
+    return isMemberRole(creatorRole) ? POLY_STYLE_MEMBER : POLY_STYLE_CONTRIBUTOR;
+  }
+
+  function shouldShowPoly(creatorRole) {
+    const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getUserRole() : null;
+    if (!viewerRole || viewerRole === 'contributor') return true;
+    return isMemberRole(creatorRole) ? showMemberMasks : showContributorMasks;
+  }
 
   function init() {
     loadAllPolygons();
@@ -93,13 +120,16 @@ window.LeucenaDrawing = (function () {
 
     const map = LeucenaMap.getMap();
     const paths = geojsonRingsToPaths(geometry.coordinates);
+    const creatorRole = props.created_by_role || 'contributor';
+    const style = getPolyStyle(creatorRole);
+    const visible = LeucenaMap.getShowPolygons() && shouldShowPoly(creatorRole);
 
     const poly = new google.maps.Polygon({
       paths: paths,
-      ...POLY_STYLE,
+      ...style,
       editable: editable,
       draggable: false,
-      map: LeucenaMap.getShowPolygons() ? map : null,
+      map: visible ? map : null,
       zIndex: 10
     });
 
@@ -216,7 +246,8 @@ window.LeucenaDrawing = (function () {
 
   function clearHoleTarget() {
     if (holeTargetId && drawnPolygons[holeTargetId]) {
-      drawnPolygons[holeTargetId].gmapsPoly.setOptions(POLY_STYLE);
+      const crole = drawnPolygons[holeTargetId].data.created_by_role || 'contributor';
+      drawnPolygons[holeTargetId].gmapsPoly.setOptions(getPolyStyle(crole));
     }
     holeTargetId = null;
   }
@@ -313,7 +344,7 @@ window.LeucenaDrawing = (function () {
 
     const previewPoly = new google.maps.Polygon({
       paths: [],
-      ...POLY_STYLE,
+      ...POLY_STYLE_MEMBER,
       editable: false,
       clickable: false,
       zIndex: 10,
@@ -322,7 +353,7 @@ window.LeucenaDrawing = (function () {
 
     const guideLine = new google.maps.Polyline({
       path: [],
-      strokeColor: POLY_STYLE.strokeColor,
+      strokeColor: POLY_STYLE_MEMBER.strokeColor,
       strokeOpacity: 0.5,
       strokeWeight: 1.5,
       map: map,
@@ -574,7 +605,14 @@ window.LeucenaDrawing = (function () {
   function canEditPolygon(entry) {
     const username = LeucenaApp.getUsername();
     if (!username) return false;
-    if (username === 'msb') return true;
+    if (LeucenaApp.isAdminUser()) return true;
+    return entry.data.created_by === username;
+  }
+
+  function canDeletePolygon(entry) {
+    const username = LeucenaApp.getUsername();
+    if (!username) return false;
+    if (LeucenaApp.isAdminUser()) return true;
     return entry.data.created_by === username;
   }
 
@@ -624,7 +662,7 @@ window.LeucenaDrawing = (function () {
     const entry = drawnPolygons[id];
     if (!entry) return;
 
-    if (!canEditPolygon(entry)) {
+    if (!canDeletePolygon(entry)) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyBelongsAdmin', entry.data.created_by), 'warning');
       return;
     }
@@ -679,10 +717,51 @@ window.LeucenaDrawing = (function () {
   }
 
   function setVisible(visible) {
-    const map = visible ? LeucenaMap.getMap() : null;
+    const map = LeucenaMap.getMap();
     for (const entry of Object.values(drawnPolygons)) {
-      entry.gmapsPoly.setMap(map);
+      const crole = entry.data.created_by_role || 'contributor';
+      const show = visible && shouldShowPoly(crole);
+      entry.gmapsPoly.setMap(show ? map : null);
     }
+  }
+
+  function setMemberMasksVisible(visible) {
+    showMemberMasks = visible;
+    refreshPolyVisibility();
+  }
+
+  function setContributorMasksVisible(visible) {
+    showContributorMasks = visible;
+    refreshPolyVisibility();
+  }
+
+  function refreshPolyVisibility() {
+    const globalShow = LeucenaMap.getShowPolygons();
+    const map = LeucenaMap.getMap();
+    for (const entry of Object.values(drawnPolygons)) {
+      const crole = entry.data.created_by_role || 'contributor';
+      const show = globalShow && shouldShowPoly(crole);
+      entry.gmapsPoly.setMap(show ? map : null);
+    }
+  }
+
+  function refreshPolyStyles() {
+    for (const entry of Object.values(drawnPolygons)) {
+      const crole = entry.data.created_by_role || 'contributor';
+      const style = getPolyStyle(crole);
+      entry.gmapsPoly.setOptions(style);
+    }
+    refreshPolyVisibility();
+  }
+
+  function getPolygonCounts() {
+    let member = 0, contributor = 0;
+    for (const entry of Object.values(drawnPolygons)) {
+      const crole = entry.data.created_by_role || 'contributor';
+      if (isMemberRole(crole)) member++;
+      else contributor++;
+    }
+    return { member, contributor, total: member + contributor };
   }
 
   function addRemotePolygon(data) {
@@ -729,12 +808,16 @@ window.LeucenaDrawing = (function () {
     init,
     deactivate,
     setVisible,
+    setMemberMasksVisible,
+    setContributorMasksVisible,
+    refreshPolyStyles,
     addRemotePolygon,
     updateRemotePolygon,
     removeRemotePolygon,
     getActiveMode,
     setClickable,
     getPolygonCount,
+    getPolygonCounts,
     clearUndoHistory
   };
 })();

@@ -667,6 +667,10 @@ window.LeucenaMap = (function () {
       LeucenaApp.showToast(LeucenaI18n.t('toast.loginToToggle'), 'warning');
       return;
     }
+    if (!LeucenaApp.isTeamOrAbove()) {
+      LeucenaApp.showToast(LeucenaI18n.t('toast.validityRestricted'), 'warning');
+      return;
+    }
 
     try {
       const res = await fetch(`/api/points/${pointId}/validity`, {
@@ -858,6 +862,14 @@ window.LeucenaMap = (function () {
       }
     });
 
+    document.getElementById('toggle-masks-member').addEventListener('change', function () {
+      if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.setMemberMasksVisible(this.checked);
+    });
+
+    document.getElementById('toggle-masks-contributor').addEventListener('change', function () {
+      if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.setContributorMasksVisible(this.checked);
+    });
+
     syncPointsParent();
   }
 
@@ -899,6 +911,24 @@ window.LeucenaMap = (function () {
 
     const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : 0;
     setText('count-polygons-total', polyCount);
+
+    const subEl = document.getElementById('mask-subcategories');
+    if (subEl && typeof LeucenaApp !== 'undefined') {
+      const role = LeucenaApp.getUserRole ? LeucenaApp.getUserRole() : null;
+      const showSubs = role === 'admin' || role === 'team';
+      subEl.classList.toggle('hidden', !showSubs);
+      const defLeg = document.getElementById('legend-mask-default');
+      const memLeg = document.getElementById('legend-mask-member');
+      const conLeg = document.getElementById('legend-mask-contributor');
+      if (defLeg) defLeg.classList.toggle('hidden', showSubs);
+      if (memLeg) memLeg.classList.toggle('hidden', !showSubs);
+      if (conLeg) conLeg.classList.toggle('hidden', !showSubs);
+      if (showSubs && typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCounts) {
+        const counts = LeucenaDrawing.getPolygonCounts();
+        setText('count-masks-member', counts.member);
+        setText('count-masks-contributor', counts.contributor);
+      }
+    }
   }
 
   function setFeaturesClickable(clickable) {
@@ -938,6 +968,18 @@ window.LeucenaMap = (function () {
       path.forEach(p => bounds.extend(p));
     });
     return bounds;
+  }
+
+  function cellHasCrowdmapping(cellId) {
+    const bounds = getCellBounds(cellId);
+    if (!bounds) return false;
+    for (const entry of Object.values(pointMarkersById)) {
+      if ((entry.data.layer || 'crowdmapping') !== 'crowdmapping') continue;
+      if (entry.data.status !== 0) continue;
+      const pos = entry.marker.getPosition();
+      if (bounds.contains(pos)) return true;
+    }
+    return false;
   }
 
   function getShowPolygons() { return showPolygons; }
@@ -1122,6 +1164,7 @@ window.LeucenaMap = (function () {
     deselectPoint,
     hasSelectedPoints: () => selectedPointIds.size > 0,
     unspiderfy,
-    togglePointValidity
+    togglePointValidity,
+    cellHasCrowdmapping
   };
 })();

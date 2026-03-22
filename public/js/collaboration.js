@@ -14,7 +14,6 @@ window.LeucenaCollab = (function () {
     });
 
     socket.on('disconnect', () => {
-      LeucenaApp.showToast(LeucenaI18n.t('toast.reconnecting'), 'warning');
     });
 
     socket.on('users:updated', (users) => {

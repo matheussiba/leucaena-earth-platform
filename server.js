@@ -56,8 +56,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 const connectedUsers = new Map();
 const sessions = new Map();
 const LOCK_TIMEOUT_MS = 30 * 60 * 1000;
-const ADMIN_USERNAMES = ['msb', 'mpf'];
-function isAdmin(username) { return ADMIN_USERNAMES.includes(username); }
+function getUserRole(username) {
+  const user = queryOne('SELECT role FROM users WHERE username = ?', [username]);
+  return (user && user.role) || 'contributor';
+}
+function isAdmin(username) { return getUserRole(username) === 'admin'; }
+function isTeamOrAbove(username) { const r = getUserRole(username); return r === 'admin' || r === 'team'; }
+function canDeleteMask(username, maskCreator) {
+  if (getUserRole(username) === 'admin') return true;
+  return maskCreator === username;
+}
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password + '***REDACTED_SALT***').digest('hex');
@@ -224,8 +232,7 @@ app.get('/api/stats/views', (req, res) => {
 // ── Auth ──
 
 function getNextPasscode() {
-  const adminList = ADMIN_USERNAMES.map(u => `'${u}'`).join(',');
-  const row = queryOne(`SELECT COUNT(*) as cnt FROM users WHERE username NOT IN (${adminList}) AND username != 'deleted'`);
+  const row = queryOne("SELECT COUNT(*) as cnt FROM users WHERE role != 'admin' AND username != 'deleted'");
   const n = row.cnt;
   const d0 = Math.floor(n / 4);
   const rem = n % 4;
@@ -255,7 +262,8 @@ app.post('/api/auth/register', (req, res) => {
 
   const token = uuidv4();
   sessions.set(token, username);
-  res.json({ token, username });
+  const role = getUserRole(username);
+  res.json({ token, username, role });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -273,14 +281,15 @@ app.post('/api/auth/login', (req, res) => {
 
   const token = uuidv4();
   sessions.set(token, username);
-  res.json({ token, username });
+  const role = getUserRole(username);
+  res.json({ token, username, role });
 });
 
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar FROM users WHERE username = ?', [username]);
-  res.json({ username, full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null });
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role FROM users WHERE username = ?', [username]);
+  res.json({ username, role: user?.role || 'contributor', full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null });
 });
 
 // ── Profile (for Quem Somos) ──
@@ -348,7 +357,6 @@ app.get('/api/landing-stats', (req, res) => {
 });
 
 app.get('/api/quem-somos', (req, res) => {
-  const adminList = ADMIN_USERNAMES.map(u => `'${u}'`).join(',');
   const polygonCounts = queryAll(
     "SELECT created_by AS username, COUNT(*) AS cnt FROM polygons WHERE created_by IS NOT NULL AND created_by != 'deleted' GROUP BY created_by"
   );
@@ -356,17 +364,25 @@ app.get('/api/quem-somos', (req, res) => {
   polygonCounts.forEach(r => { countByUser[r.username] = r.cnt; });
 
   const excludeUsers = ['deleted', 'teste'];
-  const allUsers = queryAll('SELECT username, full_name, description, photo, linkedin, scholar FROM users');
-  const adminOrder = ['mpf', 'msb'];
-  const idealizadores = allUsers
-    .filter(u => isAdmin(u.username))
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null }))
-    .sort((a, b) => (adminOrder.indexOf(a.username) === -1 ? 99 : adminOrder.indexOf(a.username)) - (adminOrder.indexOf(b.username) === -1 ? 99 : adminOrder.indexOf(b.username)));
-  const colaboradores = allUsers
-    .filter(u => !isAdmin(u.username) && !excludeUsers.includes(u.username))
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null }));
+  const allUsers = queryAll('SELECT username, full_name, description, photo, linkedin, scholar, role FROM users');
+  const teamOrder = ['mpf', 'msb'];
 
-  res.json({ idealizadores, colaboradores });
+  const equipe = allUsers
+    .filter(u => (u.role === 'admin' || u.role === 'team') && !excludeUsers.includes(u.username))
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0 }))
+    .sort((a, b) => {
+      if (a.role === 'admin' && b.role !== 'admin') return -1;
+      if (a.role !== 'admin' && b.role === 'admin') return 1;
+      const ai = teamOrder.indexOf(a.username), bi = teamOrder.indexOf(b.username);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+  const colaboradores = allUsers
+    .filter(u => u.role === 'contributor' && !excludeUsers.includes(u.username) && (countByUser[u.username] || 0) >= 5)
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0 }))
+    .sort((a, b) => b.mask_count - a.mask_count);
+
+  res.json({ equipe, colaboradores });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -381,7 +397,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role FROM users WHERE username != 'deleted'");
   const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
   const maskMap = {};
   for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;
@@ -453,6 +469,18 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const { role } = req.body;
+  const validRoles = ['admin', 'team', 'contributor'];
+  if (!validRoles.includes(role)) return res.status(400).json({ error: 'Role inválido' });
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  runSQL('UPDATE users SET role = ? WHERE id = ?', [role, Number(req.params.id)]);
+  persist();
+  res.json({ success: true });
+});
+
 app.get('/api/admin/passcode', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   res.json({ passcode: getNextPasscode() });
@@ -517,6 +545,10 @@ app.put('/api/grid/:id/status', requireAuth, (req, res) => {
     return res.status(400).json({ error: `Status inválido. Deve ser um dos seguintes: ${valid.join(', ')}` });
   }
 
+  if (status === 'finished' && !isTeamOrAbove(username)) {
+    return res.status(403).json({ error: 'Colaboradores não podem finalizar células' });
+  }
+
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
   if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
 
@@ -544,10 +576,6 @@ app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
   if (!cell) return res.status(404).json({ error: 'Célula não encontrada' });
-
-  if (cell.grid_status === 'no_points') {
-    return res.status(400).json({ error: 'Esta célula não possui pontos. Nada para editar.' });
-  }
 
   if (cell.locked_by && cell.locked_by !== username) {
     return res.status(409).json({ error: `Célula já está bloqueada por ${cell.locked_by}` });
@@ -596,6 +624,21 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
   let newStatus = status || 'not_yet_finished';
   let finishedBy = cell.finished_by;
 
+  if (newStatus === 'finished' && !isTeamOrAbove(username)) {
+    const cellGeom = JSON.parse(cell.geometry);
+    const cellRings = cellGeom.type === 'MultiPolygon'
+      ? cellGeom.coordinates.map(p => p[0])
+      : [cellGeom.coordinates[0]];
+    const hasCrowdmapping = queryAll("SELECT geometry FROM occurrence_points WHERE layer = 'crowdmapping'")
+      .some(p => {
+        const g = JSON.parse(p.geometry);
+        return cellRings.some(ring => pointInPolygon([g.coordinates[0], g.coordinates[1]], ring));
+      });
+    if (hasCrowdmapping) {
+      return res.status(403).json({ error: 'crowdmapping_cell' });
+    }
+  }
+
   if (newStatus === 'finished') {
     const validation = validateFinished(Number(id));
     if (!validation.valid) {
@@ -608,6 +651,17 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
     const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [Number(id)]);
     if (masks.length > 0) {
       newStatus = 'mapping';
+    } else {
+      const cellGeom = JSON.parse(cell.geometry);
+      const cellRings = cellGeom.type === 'MultiPolygon'
+        ? cellGeom.coordinates.map(p => p[0])
+        : [cellGeom.coordinates[0]];
+      const allPoints = queryAll('SELECT geometry FROM occurrence_points');
+      const hasPoints = allPoints.some(p => {
+        const g = JSON.parse(p.geometry);
+        return cellRings.some(ring => pointInPolygon([g.coordinates[0], g.coordinates[1]], ring));
+      });
+      if (!hasPoints) newStatus = 'no_points';
     }
   }
 
@@ -633,12 +687,21 @@ app.get('/api/polygons', (req, res) => {
   } else {
     polys = queryAll('SELECT * FROM polygons');
   }
+  const roleCache = {};
+  function creatorRole(username) {
+    if (!username) return 'contributor';
+    if (roleCache[username] !== undefined) return roleCache[username];
+    const u = queryOne('SELECT role FROM users WHERE username = ?', [username]);
+    roleCache[username] = (u && u.role) || 'contributor';
+    return roleCache[username];
+  }
   const features = polys.map(p => ({
     type: 'Feature',
     properties: {
       id: p.id,
       grid_cell_id: p.grid_cell_id,
       created_by: p.created_by,
+      created_by_role: creatorRole(p.created_by),
       created_at: p.created_at,
       updated_at: p.updated_at
     },
@@ -673,7 +736,7 @@ app.post('/api/polygons', requireAuth, (req, res) => {
     [id, Number(grid_cell_id), JSON.stringify(geometry), username || 'anonymous', now, now]
   );
 
-  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_at: now, updated_at: now };
+  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: getUserRole(username), created_at: now, updated_at: now };
   io.emit('polygon:created', polygon);
   logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
   persist();
@@ -713,8 +776,8 @@ app.delete('/api/polygons/:id', requireAuth, (req, res) => {
   const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
   if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
 
-  if (poly.created_by !== username && !isAdmin(username)) {
-    return res.status(403).json({ error: `Este polígono pertence a ${poly.created_by}` });
+  if (!canDeleteMask(username, poly.created_by)) {
+    return res.status(403).json({ error: `Este polígono pertence a ${poly.created_by}. Somente o criador ou um administrador pode excluí-lo.` });
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [poly.grid_cell_id]);
@@ -744,6 +807,10 @@ app.get('/api/points', (req, res) => {
 app.post('/api/points', requireAuth, (req, res) => {
   const { lat, lng } = req.body;
   const username = req.username;
+
+  if (!isTeamOrAbove(username)) {
+    return res.status(403).json({ error: 'Colaboradores não podem adicionar pontos' });
+  }
 
   if (lat == null || lng == null) {
     return res.status(400).json({ error: 'lat e lng obrigatórios' });
@@ -792,8 +859,8 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
   const { id } = req.params;
   const username = req.username;
 
-  if (!isAdmin(username)) {
-    return res.status(403).json({ error: 'Somente administradores podem excluir pontos' });
+  if (!isTeamOrAbove(username)) {
+    return res.status(403).json({ error: 'Colaboradores não podem excluir pontos' });
   }
 
   const point = queryOne('SELECT * FROM occurrence_points WHERE id = ?', [Number(id)]);
@@ -831,6 +898,9 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
 });
 
 app.put('/api/points/:id/validity', requireAuth, (req, res) => {
+  if (!isTeamOrAbove(req.username)) {
+    return res.status(403).json({ error: 'Apenas membros e administradores podem alterar a validade de pontos' });
+  }
   const { id } = req.params;
   const point = queryOne('SELECT * FROM occurrence_points WHERE id = ?', [Number(id)]);
   if (!point) return res.status(404).json({ error: 'Ponto não encontrado' });
@@ -847,7 +917,10 @@ app.put('/api/points/:id/validity', requireAuth, (req, res) => {
 
 // ── Export ──
 
-app.get('/api/export/geojson', (req, res) => {
+app.get('/api/export/geojson', requireAuth, (req, res) => {
+  if (!isTeamOrAbove(req.username)) {
+    return res.status(403).json({ error: 'Exportação de máscaras disponível a partir do segundo semestre de 2026' });
+  }
   const polys = queryAll('SELECT * FROM polygons');
   const fc = {
     type: 'FeatureCollection',
@@ -891,7 +964,10 @@ app.get('/api/export/grid-status', (req, res) => {
   res.json(fc);
 });
 
-app.get('/api/export/points', (req, res) => {
+app.get('/api/export/points', requireAuth, (req, res) => {
+  if (!isTeamOrAbove(req.username)) {
+    return res.status(403).json({ error: 'Exportação de pontos disponível a partir do segundo semestre de 2026' });
+  }
   const points = queryAll('SELECT * FROM occurrence_points');
   const fc = {
     type: 'FeatureCollection',

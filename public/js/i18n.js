@@ -51,6 +51,7 @@ window.LeucenaI18n = (function () {
     'unlock.finished': { pt: 'Finalizado', en: 'Finished', es: 'Finalizado' },
     'unlock.notFinished': { pt: 'Ainda não finalizado', en: 'Not yet finished', es: 'Aún no finalizado' },
     'unlock.cancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
+    'unlock.crowdmappingNotice': { pt: 'Esta célula contém pontos de crowdmapping e só pode ser finalizada por um administrador. Você pode salvá-la como "Ainda não finalizado".', en: 'This cell contains crowdmapping points and can only be finalized by an administrator. You can save it as "Not yet finished".', es: 'Esta celda contiene puntos de crowdmapping y solo puede ser finalizada por un administrador. Puede guardarla como "Aún no finalizado".' },
 
     // ── Add Points modal ──
     'addPts.title': { pt: 'Modo de Inserção de Pontos', en: 'Point Insertion Mode', es: 'Modo de Inserción de Puntos' },
@@ -77,6 +78,8 @@ window.LeucenaI18n = (function () {
     'sidebar.showPoints': { pt: 'Exibir pontos', en: 'Show points', es: 'Mostrar puntos' },
     'sidebar.leucenaMasks': { pt: 'Máscaras de Leucenas', en: 'Leucaena Masks', es: 'Máscaras de Leucenas' },
     'sidebar.showLeucenaMasks': { pt: 'Exibir máscaras', en: 'Show masks', es: 'Mostrar máscaras' },
+    'sidebar.masksMember': { pt: 'Membros', en: 'Members', es: 'Miembros' },
+    'sidebar.masksContributor': { pt: 'Colaboradores', en: 'Contributors', es: 'Colaboradores' },
     'sidebar.mappedPolygons': { pt: 'Polígonos Mapeados', en: 'Mapped Polygons', es: 'Polígonos Mapeados' },
     'sidebar.layerCrowdmapping': { pt: 'Crowdmapping', en: 'Crowdmapping', es: 'Crowdmapping' },
     'sidebar.layerInaturalist': { pt: 'iNaturalist', en: 'iNaturalist', es: 'iNaturalist' },
@@ -168,7 +171,8 @@ window.LeucenaI18n = (function () {
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
-    'profile.subtitle': { pt: 'Estas informações aparecem na seção "Quem Somos" (idealizadores ou colaboradores com 10+ máscaras).', en: 'This information appears in the "About Us" section (project leaders or collaborators with 10+ masks).', es: 'Esta información aparece en la sección "Quiénes Somos" (creadores o colaboradores con 10+ máscaras).' },
+    'profile.subtitleMember': { pt: 'Estas informações aparecem na seção "Quem Somos" do site.', en: 'This information appears in the "About Us" section of the site.', es: 'Esta información aparece en la sección "Quiénes Somos" del sitio.' },
+    'profile.subtitleContributor': { pt: 'Crie 5+ máscaras para aparecer no nosso site como colaborador(a) da leucaena.earth!', en: 'Create 5+ masks to be featured on our site as a leucaena.earth collaborator!', es: '¡Cree 5+ máscaras para aparecer en nuestro sitio como colaborador(a) de leucaena.earth!' },
     'profile.fullName': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
     'profile.description': { pt: 'Descrição', en: 'Description', es: 'Descripción' },
     'profile.photo': { pt: 'Foto', en: 'Photo', es: 'Foto' },
@@ -181,6 +185,7 @@ window.LeucenaI18n = (function () {
     'profile.pwTooShort': { pt: 'A senha deve ter pelo menos 3 caracteres', en: 'Password must have at least 3 characters', es: 'La contraseña debe tener al menos 3 caracteres' },
     'profile.pwChanged': { pt: 'Senha alterada com sucesso', en: 'Password changed successfully', es: 'Contraseña cambiada exitosamente' },
     'profile.fullNamePlaceholder': { pt: 'Seu nome completo', en: 'Your full name', es: 'Su nombre completo' },
+    'about.equipe': { pt: 'Membros', en: 'Members', es: 'Miembros' },
     'about.idealizadores': { pt: 'Idealizadores', en: 'Project Leaders', es: 'Creadores' },
     'about.colaboradores': { pt: 'Colaboradores', en: 'Collaborators', es: 'Colaboradores' },
 
@@ -216,6 +221,7 @@ window.LeucenaI18n = (function () {
     'toast.coordsCopied': { pt: 'Coordenadas copiadas: {0}', en: 'Coordinates copied: {0}', es: 'Coordenadas copiadas: {0}' },
     'toast.loginToToggle': { pt: 'Faça login para alterar a validade do ponto', en: 'Sign in to change point validity', es: 'Inicie sesión para cambiar la validez del punto' },
     'toast.validityFail': { pt: 'Falha ao atualizar validade do ponto', en: 'Failed to update point validity', es: 'Error al actualizar validez del punto' },
+    'toast.validityRestricted': { pt: 'Apenas membros podem alterar a validade de pontos', en: 'Only members can change point validity', es: 'Solo los miembros pueden cambiar la validez de puntos' },
     'toast.markedInvalid': { pt: 'Ponto marcado como inválido', en: 'Point marked as invalid', es: 'Punto marcado como inválido' },
     'toast.markedValid': { pt: 'Ponto marcado como válido', en: 'Point marked as valid', es: 'Punto marcado como válido' },
     'toast.markedDoubt': { pt: 'Ponto marcado como incerto', en: 'Point marked as uncertain', es: 'Punto marcado como incierto' },
@@ -231,6 +237,8 @@ window.LeucenaI18n = (function () {
     'toast.lockCellToEdit': { pt: 'Bloqueie a célula para editar seus polígonos', en: 'Lock the cell to edit its polygons', es: 'Bloquee la celda para editar sus polígonos' },
     'toast.polyEditSaveFail': { pt: 'Falha ao salvar alterações do polígono', en: 'Failed to save polygon changes', es: 'Error al guardar cambios del polígono' },
     'toast.polyBelongsAdmin': { pt: 'Este polígono pertence a {0}. Somente ele ou o administrador pode excluí-lo.', en: 'This polygon belongs to {0}. Only they or the admin can delete it.', es: 'Este polígono pertenece a {0}. Solo él o el administrador puede eliminarlo.' },
+    'toast.contributorNoDelete': { pt: 'Colaboradores não podem deletar máscaras', en: 'Contributors cannot delete masks', es: 'Colaboradores no pueden eliminar máscaras' },
+    'export.masksDisclaimer': { pt: 'Os pontos de ocorrência e as máscaras ainda estão em fase de validação e não estão disponíveis para download no momento. Esses dados estarão abertos ao público a partir do segundo semestre de 2026, quando o processo de validação será concluído.', en: 'Occurrence points and masks are still undergoing validation and are not available for download at this time. This data will be publicly available starting in the second semester of 2026, once the validation process is complete.', es: 'Los puntos de ocurrencia y las máscaras aún están en fase de validación y no están disponibles para descarga en este momento. Estos datos estarán abiertos al público a partir del segundo semestre de 2026, cuando se complete el proceso de validación.' },
     'deleteWarn.title': { pt: '⚠️ Atenção', en: '⚠️ Warning', es: '⚠️ Atención' },
     'deleteWarn.message': { pt: 'Você está prestes a excluir polígonos. Clique em um polígono no mapa para removê-lo permanentemente.', en: 'You are about to delete polygons. Click a polygon on the map to permanently remove it.', es: 'Está a punto de eliminar polígonos. Haga clic en un polígono en el mapa para eliminarlo permanentemente.' },
     'deleteWarn.ok': { pt: 'Entendi, continuar', en: 'I understand, continue', es: 'Entendido, continuar' },
@@ -402,16 +410,193 @@ window.LeucenaI18n = (function () {
 
   // ── How-to content per language ──
 
+  var ICO = {
+    draw: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>',
+    edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+    del: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
+    hole: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="2 2 22 2 22 22 2 22"/><polygon points="7 7 17 7 17 17 7 17" stroke-dasharray="3 2"/></svg>',
+    sel: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>',
+    unlock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>',
+    sv: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>',
+    home: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+    lock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+    check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'
+  };
+
+  function btn(icon, label, special) {
+    return '<span class="guide-btn-ref' + (special ? ' guide-btn-special' : '') + '">' + icon + ' ' + label + '</span>';
+  }
+
+  function step(num, title, body) {
+    return '<div class="guide-step-card"><h3><span class="guide-step-num">' + num + '</span>' + title + '</h3>' + body + '</div>';
+  }
+
   function getHowtoContentPT() {
-    return `<h2>Como fazer o mapeamento</h2><h3>1. Crie sua conta</h3><p>Clique em <strong>"Entrar"</strong> no canto superior direito e depois em <strong>"Cadastrar"</strong>. Você precisará de um <strong>código de acesso</strong> — solicite por e-mail a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p><h3>2. Selecione uma célula do grid</h3><p>O mapa está dividido em <strong>células (quadrados)</strong>. Clique em uma célula para ver suas informações. As cores indicam o status:</p><ul><li><strong style="color:#7c3aed">Roxo</strong> — Ainda não finalizado</li><li><strong style="color:#eab308">Amarelo (vazado)</strong> — Célula em Uso (alguém está editando agora)</li><li><strong style="color:#FFFF59">Amarelo</strong> — Mapeando (possui máscaras, mas não foi finalizado)</li><li><strong style="color:#9ca3af">Cinza</strong> — Sem pontos de ocorrência</li><li><strong style="color:#22c55e">Verde</strong> — Finalizado</li></ul><h3>3. Bloqueie a célula para edição</h3><p>Clique em <strong>"Bloquear e Editar"</strong> para reservar a célula para você.</p><h3>4. Desenhe as máscaras de Leucena</h3><p>Use os botões de edição na parte inferior do mapa:</p><ul><li><strong>Desenhar</strong> — Inicie um polígono com cliques (mínimo 3 vértices).</li><li><strong>Editar</strong> — Arraste vértices de polígonos existentes.</li><li><strong>Excluir</strong> — Clique em um polígono para removê-lo.</li></ul><h3>5. Use o Street View para confirmar</h3><p>Clique em <strong>"Street View"</strong> e depois no mapa para abrir a visão de rua e confirmar visualmente a leucena.</p><h3>6. Valide os pontos</h3><p>Pontos <strong>amarelos</strong> são válidos. Use <strong>"Selecionar"</strong> e clique em um ponto para marcá-lo como <strong>inválido (vermelho)</strong> se estiver errado.</p><h3>7. Finalize a célula</h3><p>Clique em <strong>"Desbloquear"</strong> e escolha <strong>"Finalizado"</strong>. O sistema verificará se todos os pontos válidos possuem uma máscara sobre eles.</p><div class="guide-tip"><strong>Dica:</strong> Use o botão <strong>Home</strong> (ícone de casa) para recentrar na célula ou voltar à visão geral.</div>`;
+    return '<h2>Como fazer o mapeamento</h2>' +
+    '<div class="guide-objective"><strong>Objetivo:</strong> Criar polígonos (máscaras) ao redor de <strong>aglomerados de leucena</strong> visíveis na imagem de satélite. Cada ponto verde no mapa representa uma ocorrência registrada — sua tarefa é desenhar polígonos que cubram esses pontos e a área de leucena ao redor deles.</div>' +
+
+    step(1, 'Crie sua conta', '<p>No canto superior direito, clique em <strong>"Entrar"</strong> e depois em <strong>"Cadastrar"</strong>. Você precisará de um <strong>código de acesso</strong> — solicite pelo e-mail <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
+
+    step(2, 'Entenda o mapa', '<p>O mapa está dividido em <strong>células (quadrados)</strong>. Cada célula tem um status indicado pela cor:</p>' +
+      '<ul>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Roxo</strong> — Ainda não finalizado (priorize estas!)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Amarelo (vazado)</strong> — Em uso por outro colaborador</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Amarelo</strong> — Mapeando (possui máscaras, mas não finalizado)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#d4d4d8;vertical-align:middle;margin-right:6px"></span><strong>Cinza</strong> — Sem pontos de ocorrência</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:6px"></span><strong>Verde</strong> — Finalizado</li>' +
+      '</ul>' +
+      '<p>Clique em qualquer célula para ver seu status e informações na barra lateral.</p>') +
+
+    step(3, 'Bloqueie a célula', '<p>Clique no botão ' + btn(ICO.lock, 'Bloquear e Editar') + ' na barra lateral. A célula ficará reservada para você e as ferramentas de edição aparecerão.</p>' +
+      '<div class="guide-warning"><strong>Importante:</strong> Enquanto a célula estiver bloqueada, nenhum outro usuário pode editá-la. Lembre-se de desbloquear quando terminar!</div>') +
+
+    step(4, 'Desenhe as máscaras', '<p>Localize os <strong>aglomerados de leucena</strong> na imagem de satélite (copas de árvores em agrupamento) e use o botão:</p>' +
+      '<p>' + btn(ICO.draw, 'Desenhar') + ' — Clique no mapa para criar os vértices do polígono. Cada clique adiciona um ponto. Para <strong>fechar o polígono</strong>, clique no primeiro ponto (ele ficará destacado) ou dê um <strong>duplo-clique</strong>.</p>' +
+      '<ul>' +
+      '<li>Mínimo de <strong>3 vértices</strong> para formar um polígono.</li>' +
+      '<li>O polígono deve <strong>cobrir toda a área de leucena</strong> visível, incluindo os pontos de ocorrência próximos.</li>' +
+      '<li>Priorize <strong>aglomerados</strong> — áreas com várias árvores juntas.</li>' +
+      '</ul>') +
+
+    step(5, 'Edite as máscaras', '<p>Precisa ajustar um polígono que já desenhou? Use:</p>' +
+      '<p>' + btn(ICO.edit, 'Editar') + ' — Clique no polígono e arraste os vértices (pontos brancos) para reposicioná-los. Você também pode arrastar o ponto médio entre dois vértices para criar um novo vértice.</p>') +
+
+    step(6, 'Crie buracos nas máscaras', '<p>Se dentro de um polígono grande houver uma área <strong>sem leucena</strong> (por exemplo, um prédio ou estrada), use:</p>' +
+      '<p>' + btn(ICO.hole, 'Criar buraco', true) + ' — Primeiro clique no polígono-alvo (ele ficará destacado com borda laranja). Em seguida, desenhe o contorno da área interna que <strong>não</strong> é leucena. Esse recorte será excluído do polígono.</p>') +
+
+    step(7, 'Exclua máscaras', '<p>Desenhou um polígono errado? Use:</p>' +
+      '<p>' + btn(ICO.del, 'Excluir') + ' — Clique no polígono que deseja remover. Uma confirmação será exibida antes da exclusão.</p>' +
+      '<div class="guide-warning"><strong>Nota:</strong> Você só pode excluir polígonos que <strong>você mesmo</strong> desenhou.</div>') +
+
+    step(8, 'Use o Street View', '<p>Na dúvida se a vegetação é leucena? Use:</p>' +
+      '<p>' + btn(ICO.sv, 'Street View') + ' — Clique no botão na barra inferior e depois clique em qualquer ponto do mapa. Uma janela do Google Street View abrirá no local, permitindo que você confirme visualmente a espécie. Procure pelas características: folhas bipinadas, flores brancas esféricas e vagens.</p>') +
+
+    step(9, 'Desbloqueie a célula', '<p>Quando terminar o trabalho na célula, clique no botão:</p>' +
+      '<p>' + btn(ICO.unlock, 'Desbloquear') + ' na barra inferior. Um modal aparecerá com duas opções:</p>' +
+      '<ul>' +
+      '<li>' + btn(ICO.check, 'Finalizado') + ' — Marque se <strong>todos</strong> os pontos de ocorrência válidos estiverem cobertos por máscaras. O sistema verificará automaticamente.</li>' +
+      '<li>' + btn('', 'Ainda não finalizado') + ' — Use se você ainda precisa voltar depois, ou se não conseguiu cobrir todos os pontos.</li>' +
+      '</ul>') +
+
+    '<div class="guide-tip"><strong>Dicas úteis:</strong>' +
+    '<ul style="margin-top:6px">' +
+    '<li>Use o botão ' + btn(ICO.home, 'Home') + ' para recentrar na célula ou voltar à visão geral.</li>' +
+    '<li>Alterne entre <strong>Satélite</strong> e <strong>Mapa</strong> para melhor visualização das copas das árvores.</li>' +
+    '<li>Use <strong>Ctrl+Z</strong> para desfazer a última ação (ao adicionar ou remover pontos).</li>' +
+    '<li>Use o <strong>zoom</strong> para ver detalhes das copas — leucenas têm copas arredondadas com tom verde-claro.</li>' +
+    '</ul></div>';
   }
 
   function getHowtoContentEN() {
-    return `<h2>How to Map</h2><h3>1. Create your account</h3><p>Click <strong>"Sign In"</strong> in the upper right corner, then <strong>"Register"</strong>. You will need an <strong>access code</strong> — request one by emailing <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p><h3>2. Select a grid cell</h3><p>The map is divided into <strong>cells (squares)</strong>. Click a cell to view its information. Colors indicate status:</p><ul><li><strong style="color:#7c3aed">Purple</strong> — Not yet finished</li><li><strong style="color:#eab308">Yellow (hollow)</strong> — Cell in Use (someone is editing now)</li><li><strong style="color:#FFFF59">Yellow</strong> — Mapping (has masks, but not finished)</li><li><strong style="color:#9ca3af">Gray</strong> — No occurrence points</li><li><strong style="color:#22c55e">Green</strong> — Finished</li></ul><h3>3. Lock the cell for editing</h3><p>Click <strong>"Lock & Edit"</strong> to reserve the cell for yourself.</p><h3>4. Draw Leucaena masks</h3><p>Use the editing buttons at the bottom of the map:</p><ul><li><strong>Draw</strong> — Start a polygon by clicking (minimum 3 vertices).</li><li><strong>Edit</strong> — Drag vertices of existing polygons.</li><li><strong>Delete</strong> — Click a polygon to remove it.</li></ul><h3>5. Use Street View to confirm</h3><p>Click <strong>"Street View"</strong> then click on the map to open street-level view and visually confirm leucaena.</p><h3>6. Validate points</h3><p><strong>Yellow</strong> points are valid. Use <strong>"Select"</strong> and click a point to mark it as <strong>invalid (red)</strong> if incorrect.</p><h3>7. Finish the cell</h3><p>Click <strong>"Unlock"</strong> and choose <strong>"Finished"</strong>. The system will verify that all valid points have a mask overlapping them.</p><div class="guide-tip"><strong>Tip:</strong> Use the <strong>Home</strong> button (house icon) to re-center on the cell or return to the overview.</div>`;
+    return '<h2>How to Map</h2>' +
+    '<div class="guide-objective"><strong>Objective:</strong> Create polygons (masks) around <strong>clusters of leucaena</strong> visible in the satellite imagery. Each green dot on the map represents a recorded occurrence — your task is to draw polygons covering these points and the leucaena area around them.</div>' +
+
+    step(1, 'Create your account', '<p>In the upper right corner, click <strong>"Sign In"</strong> then <strong>"Register"</strong>. You will need an <strong>access code</strong> — request one by emailing <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
+
+    step(2, 'Understand the map', '<p>The map is divided into <strong>cells (squares)</strong>. Each cell has a status indicated by its color:</p>' +
+      '<ul>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Purple</strong> — Not yet finished (prioritize these!)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Yellow (hollow)</strong> — In use by another collaborator</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Yellow</strong> — Mapping (has masks but not finished)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#d4d4d8;vertical-align:middle;margin-right:6px"></span><strong>Gray</strong> — No occurrence points</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:6px"></span><strong>Green</strong> — Finished</li>' +
+      '</ul>' +
+      '<p>Click any cell to view its status and information in the sidebar.</p>') +
+
+    step(3, 'Lock the cell', '<p>Click the ' + btn(ICO.lock, 'Lock & Edit') + ' button in the sidebar. The cell will be reserved for you and the editing tools will appear.</p>' +
+      '<div class="guide-warning"><strong>Important:</strong> While the cell is locked, no other user can edit it. Remember to unlock when you\'re done!</div>') +
+
+    step(4, 'Draw the masks', '<p>Locate <strong>leucaena clusters</strong> in the satellite imagery (grouped tree canopies) and use the button:</p>' +
+      '<p>' + btn(ICO.draw, 'Draw') + ' — Click on the map to create polygon vertices. Each click adds a point. To <strong>close the polygon</strong>, click on the first point (it will be highlighted) or <strong>double-click</strong>.</p>' +
+      '<ul>' +
+      '<li>Minimum of <strong>3 vertices</strong> to form a polygon.</li>' +
+      '<li>The polygon should <strong>cover the entire leucaena area</strong> visible, including nearby occurrence points.</li>' +
+      '<li>Prioritize <strong>clusters</strong> — areas with multiple trees grouped together.</li>' +
+      '</ul>') +
+
+    step(5, 'Edit the masks', '<p>Need to adjust a polygon you already drew? Use:</p>' +
+      '<p>' + btn(ICO.edit, 'Edit') + ' — Click the polygon and drag the vertices (white dots) to reposition them. You can also drag the midpoint between two vertices to create a new one.</p>') +
+
+    step(6, 'Create holes in masks', '<p>If inside a large polygon there is an area <strong>without leucaena</strong> (for example, a building or road), use:</p>' +
+      '<p>' + btn(ICO.hole, 'Create hole', true) + ' — First click the target polygon (it will be highlighted with an orange border). Then draw the outline of the internal area that is <strong>not</strong> leucaena. This cutout will be excluded from the polygon.</p>') +
+
+    step(7, 'Delete masks', '<p>Drew a polygon by mistake? Use:</p>' +
+      '<p>' + btn(ICO.del, 'Delete') + ' — Click the polygon you want to remove. A confirmation will be shown before deletion.</p>' +
+      '<div class="guide-warning"><strong>Note:</strong> You can only delete polygons that <strong>you</strong> drew.</div>') +
+
+    step(8, 'Use Street View', '<p>Not sure if the vegetation is leucaena? Use:</p>' +
+      '<p>' + btn(ICO.sv, 'Street View') + ' — Click the button in the bottom toolbar, then click anywhere on the map. A Google Street View window will open at that location, allowing you to visually confirm the species. Look for: bipinnate leaves, white spherical flowers, and seed pods.</p>') +
+
+    step(9, 'Unlock the cell', '<p>When you\'re done working on the cell, click:</p>' +
+      '<p>' + btn(ICO.unlock, 'Unlock') + ' in the bottom toolbar. A modal will appear with two options:</p>' +
+      '<ul>' +
+      '<li>' + btn(ICO.check, 'Finished') + ' — Select if <strong>all</strong> valid occurrence points are covered by masks. The system will verify automatically.</li>' +
+      '<li>' + btn('', 'Not yet finished') + ' — Use if you still need to come back later, or couldn\'t cover all points.</li>' +
+      '</ul>') +
+
+    '<div class="guide-tip"><strong>Useful tips:</strong>' +
+    '<ul style="margin-top:6px">' +
+    '<li>Use the ' + btn(ICO.home, 'Home') + ' button to re-center on the cell or return to the overview.</li>' +
+    '<li>Switch between <strong>Satellite</strong> and <strong>Map</strong> views for better tree canopy visualization.</li>' +
+    '<li>Use <strong>Ctrl+Z</strong> to undo the last action (when adding or removing points).</li>' +
+    '<li>Use <strong>zoom</strong> to see canopy details — leucaena has rounded canopies with a light-green tone.</li>' +
+    '</ul></div>';
   }
 
   function getHowtoContentES() {
-    return `<h2>Cómo mapear</h2><h3>1. Cree su cuenta</h3><p>Haga clic en <strong>"Iniciar Sesión"</strong> en la esquina superior derecha y luego en <strong>"Registrarse"</strong>. Necesitará un <strong>código de acceso</strong> — solicítelo por correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p><h3>2. Seleccione una celda de la grilla</h3><p>El mapa está dividido en <strong>celdas (cuadrados)</strong>. Haga clic en una celda para ver su información. Los colores indican el estado:</p><ul><li><strong style="color:#7c3aed">Púrpura</strong> — Aún no finalizado</li><li><strong style="color:#eab308">Amarillo (hueco)</strong> — Celda en Uso (alguien está editando ahora)</li><li><strong style="color:#FFFF59">Amarillo</strong> — Mapeando (tiene máscaras, pero no finalizado)</li><li><strong style="color:#9ca3af">Gris</strong> — Sin puntos de ocurrencia</li><li><strong style="color:#22c55e">Verde</strong> — Finalizado</li></ul><h3>3. Bloquee la celda para edición</h3><p>Haga clic en <strong>"Bloquear y Editar"</strong> para reservar la celda.</p><h3>4. Dibuje las máscaras de Leucaena</h3><p>Use los botones de edición en la parte inferior del mapa:</p><ul><li><strong>Dibujar</strong> — Inicie un polígono con clics (mínimo 3 vértices).</li><li><strong>Editar</strong> — Arrastre vértices de polígonos existentes.</li><li><strong>Eliminar</strong> — Haga clic en un polígono para eliminarlo.</li></ul><h3>5. Use Street View para confirmar</h3><p>Haga clic en <strong>"Street View"</strong> y luego en el mapa para abrir la vista de calle y confirmar visualmente la leucaena.</p><h3>6. Valide los puntos</h3><p>Los puntos <strong>amarillos</strong> son válidos. Use <strong>"Seleccionar"</strong> y haga clic en un punto para marcarlo como <strong>inválido (rojo)</strong>.</p><h3>7. Finalice la celda</h3><p>Haga clic en <strong>"Desbloquear"</strong> y elija <strong>"Finalizado"</strong>. El sistema verificará que todos los puntos válidos tengan una máscara sobre ellos.</p><div class="guide-tip"><strong>Consejo:</strong> Use el botón <strong>Home</strong> (ícono de casa) para recentrar en la celda o volver a la vista general.</div>`;
+    return '<h2>Cómo mapear</h2>' +
+    '<div class="guide-objective"><strong>Objetivo:</strong> Crear polígonos (máscaras) alrededor de <strong>aglomerados de leucaena</strong> visibles en la imagen satelital. Cada punto verde en el mapa representa una ocurrencia registrada — su tarea es dibujar polígonos que cubran estos puntos y el área de leucaena a su alrededor.</div>' +
+
+    step(1, 'Cree su cuenta', '<p>En la esquina superior derecha, haga clic en <strong>"Iniciar Sesión"</strong> y luego en <strong>"Registrarse"</strong>. Necesitará un <strong>código de acceso</strong> — solicítelo por correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
+
+    step(2, 'Entienda el mapa', '<p>El mapa está dividido en <strong>celdas (cuadrados)</strong>. Cada celda tiene un estado indicado por su color:</p>' +
+      '<ul>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Púrpura</strong> — Aún no finalizado (¡priorice estas!)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Amarillo (hueco)</strong> — En uso por otro colaborador</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Amarillo</strong> — Mapeando (tiene máscaras pero no finalizado)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#d4d4d8;vertical-align:middle;margin-right:6px"></span><strong>Gris</strong> — Sin puntos de ocurrencia</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:6px"></span><strong>Verde</strong> — Finalizado</li>' +
+      '</ul>' +
+      '<p>Haga clic en cualquier celda para ver su estado e información en la barra lateral.</p>') +
+
+    step(3, 'Bloquee la celda', '<p>Haga clic en el botón ' + btn(ICO.lock, 'Bloquear y Editar') + ' en la barra lateral. La celda quedará reservada para usted y las herramientas de edición aparecerán.</p>' +
+      '<div class="guide-warning"><strong>Importante:</strong> Mientras la celda esté bloqueada, ningún otro usuario puede editarla. ¡Recuerde desbloquear cuando termine!</div>') +
+
+    step(4, 'Dibuje las máscaras', '<p>Localice los <strong>aglomerados de leucaena</strong> en la imagen satelital (copas de árboles agrupadas) y use el botón:</p>' +
+      '<p>' + btn(ICO.draw, 'Dibujar') + ' — Haga clic en el mapa para crear los vértices del polígono. Cada clic agrega un punto. Para <strong>cerrar el polígono</strong>, haga clic en el primer punto (estará resaltado) o haga <strong>doble clic</strong>.</p>' +
+      '<ul>' +
+      '<li>Mínimo de <strong>3 vértices</strong> para formar un polígono.</li>' +
+      '<li>El polígono debe <strong>cubrir toda el área de leucaena</strong> visible, incluyendo los puntos de ocurrencia cercanos.</li>' +
+      '<li>Priorice <strong>aglomerados</strong> — áreas con varios árboles juntos.</li>' +
+      '</ul>') +
+
+    step(5, 'Edite las máscaras', '<p>¿Necesita ajustar un polígono ya dibujado? Use:</p>' +
+      '<p>' + btn(ICO.edit, 'Editar') + ' — Haga clic en el polígono y arrastre los vértices (puntos blancos) para reposicionarlos. También puede arrastrar el punto medio entre dos vértices para crear uno nuevo.</p>') +
+
+    step(6, 'Cree agujeros en las máscaras', '<p>Si dentro de un polígono grande hay un área <strong>sin leucaena</strong> (por ejemplo, un edificio o carretera), use:</p>' +
+      '<p>' + btn(ICO.hole, 'Crear agujero', true) + ' — Primero haga clic en el polígono objetivo (se resaltará con borde naranja). Luego dibuje el contorno del área interna que <strong>no</strong> es leucaena. Este recorte será excluido del polígono.</p>') +
+
+    step(7, 'Elimine máscaras', '<p>¿Dibujó un polígono por error? Use:</p>' +
+      '<p>' + btn(ICO.del, 'Eliminar') + ' — Haga clic en el polígono que desea eliminar. Se mostrará una confirmación antes de la eliminación.</p>' +
+      '<div class="guide-warning"><strong>Nota:</strong> Solo puede eliminar polígonos que <strong>usted mismo</strong> dibujó.</div>') +
+
+    step(8, 'Use Street View', '<p>¿No está seguro si la vegetación es leucaena? Use:</p>' +
+      '<p>' + btn(ICO.sv, 'Street View') + ' — Haga clic en el botón en la barra inferior y luego haga clic en cualquier punto del mapa. Se abrirá una ventana de Google Street View en esa ubicación, permitiéndole confirmar visualmente la especie. Busque: hojas bipinnadas, flores blancas esféricas y vainas.</p>') +
+
+    step(9, 'Desbloquee la celda', '<p>Cuando termine el trabajo en la celda, haga clic en:</p>' +
+      '<p>' + btn(ICO.unlock, 'Desbloquear') + ' en la barra inferior. Aparecerá un modal con dos opciones:</p>' +
+      '<ul>' +
+      '<li>' + btn(ICO.check, 'Finalizado') + ' — Seleccione si <strong>todos</strong> los puntos de ocurrencia válidos están cubiertos por máscaras. El sistema verificará automáticamente.</li>' +
+      '<li>' + btn('', 'Aún no finalizado') + ' — Use si necesita volver después, o no pudo cubrir todos los puntos.</li>' +
+      '</ul>') +
+
+    '<div class="guide-tip"><strong>Consejos útiles:</strong>' +
+    '<ul style="margin-top:6px">' +
+    '<li>Use el botón ' + btn(ICO.home, 'Inicio') + ' para recentrar en la celda o volver a la vista general.</li>' +
+    '<li>Alterne entre <strong>Satélite</strong> y <strong>Mapa</strong> para mejor visualización de las copas.</li>' +
+    '<li>Use <strong>Ctrl+Z</strong> para deshacer la última acción (al agregar o eliminar puntos).</li>' +
+    '<li>Use el <strong>zoom</strong> para ver detalles de las copas — la leucaena tiene copas redondeadas con tono verde claro.</li>' +
+    '</ul></div>';
   }
 
   // ── Media content (news links + references) ──

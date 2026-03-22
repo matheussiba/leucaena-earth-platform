@@ -274,6 +274,9 @@
     .team-social a:hover { background: rgba(34,197,94,0.15); border-color: var(--green); color: var(--green); }
     .team-social svg { width: 16px; height: 16px; fill: currentColor; }
     .team-avatar a { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none; color: inherit; font-size: inherit; font-weight: inherit; }
+    .team-section-label { width: 100%; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--green); margin-bottom: -8px; }
+    .team-section-grid { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; width: 100%; }
+    .team-section-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 16px auto; }
 
     /* ── Collaborate ── */
     #collaborate { text-align: center; }
@@ -659,7 +662,7 @@
       'nav.project':     { pt: 'O Projeto', en: 'The Project', es: 'El Proyecto' },
       'nav.species':     { pt: 'A Espécie', en: 'The Species', es: 'La Especie' },
       'nav.news':        { pt: 'Na Mídia', en: 'In the Media', es: 'En los Medios' },
-      'nav.team':        { pt: 'Equipe', en: 'Team', es: 'Equipo' },
+      'nav.team':        { pt: 'Nosso Time', en: 'Our Team', es: 'Nuestro Equipo' },
       'nav.collaborate': { pt: 'Colabore', en: 'Collaborate', es: 'Colabore' },
       'nav.openMap':     { pt: 'Abrir Mapa', en: 'Open Map', es: 'Abrir Mapa' },
       'nav.interactiveMap': { pt: 'Mapa Interativo', en: 'Interactive Map', es: 'Mapa Interactivo' },
@@ -764,7 +767,7 @@
       'news.title': { pt: 'Erradicação de Leucena no Brasil — Notícias', en: 'Leucaena Eradication in Brazil — News', es: 'Erradicación de Leucaena en Brasil — Noticias' },
       'news.desc': { pt: 'A leucena é tema de projetos de lei, planos de erradicação municipais e reportagens em todo o Brasil.', en: 'Leucaena is the subject of bills, municipal eradication plans and media reports across Brazil.', es: 'La leucaena es tema de proyectos de ley, planes de erradicación municipales y reportajes en todo Brasil.' },
 
-      'team.label': { pt: 'Equipe', en: 'Team', es: 'Equipo' },
+      'team.label': { pt: 'Nosso Time', en: 'Our Team', es: 'Nuestro Equipo' },
       'team.title': { pt: 'Quem está por trás do projeto', en: 'Who is behind the project', es: 'Quién está detrás del proyecto' },
       'team.desc': {
         pt: 'Pesquisadores da <strong>ESALQ — Universidade de São Paulo</strong> e colaboradores voluntários que tornam este mapeamento possível.',
@@ -813,6 +816,7 @@
     };
 
     const teamRoles = { pt: { i: 'Idealizador', c: 'Colaborador' }, en: { i: 'Founder', c: 'Contributor' }, es: { i: 'Idealizador', c: 'Colaborador' } };
+    const sectionLabels = { pt: { team: 'Membros', contributors: 'Colaboradores' }, en: { team: 'Members', contributors: 'Contributors' }, es: { team: 'Miembros', contributors: 'Colaboradores' } };
 
     function detectLang() {
       const saved = localStorage.getItem('leucena_lang');
@@ -880,34 +884,44 @@
     const linkedinSvg = '<svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>';
     const scholarSvg = '<svg viewBox="0 0 24 24"><path d="M5.242 13.769L0 9.5 12 0l12 9.5-5.242 4.269C17.548 11.249 14.978 9.5 12 9.5c-2.977 0-5.548 1.748-6.758 4.269zM12 10a7 7 0 100 14 7 7 0 000-14z"/></svg>';
 
+    function buildCard(u, roleLabel) {
+      const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      const avContent = u.photo ? '<img src="' + u.photo + '" alt="' + (u.full_name || u.username) + '">' : initials;
+      const avInner = u.scholar
+        ? '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + avContent + '</a>'
+        : avContent;
+      let social = '';
+      if (u.linkedin || u.scholar) {
+        social = '<div class="team-social">';
+        if (u.linkedin) social += '<a href="' + u.linkedin + '" target="_blank" rel="noopener" title="LinkedIn">' + linkedinSvg + '</a>';
+        if (u.scholar) social += '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + scholarSvg + '</a>';
+        social += '</div>';
+      }
+      return '<article class="team-card"><div class="team-avatar">' + avInner + '</div><div class="team-name">' + (u.full_name || u.username) + '</div><div class="team-role">' + roleLabel + '</div><div class="team-desc">' + (u.description || '') + '</div>' + social + '</article>';
+    }
+
     function renderTeam() {
       if (!teamData) return;
       const grid = document.getElementById('team-grid');
       grid.innerHTML = '';
+      const labels = sectionLabels[lang] || sectionLabels.en;
       const roles = teamRoles[lang] || teamRoles.en;
-      const all = [
-        ...teamData.idealizadores.map(u => ({ ...u, role: roles.i })),
-        ...teamData.colaboradores.map(u => ({ ...u, role: roles.c }))
-      ];
-      for (const u of all) {
-        const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-        const avContent = u.photo ? '<img src="' + u.photo + '" alt="' + (u.full_name || u.username) + '">' : initials;
-        const avInner = u.scholar
-          ? '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + avContent + '</a>'
-          : avContent;
-        let social = '';
-        if (u.linkedin || u.scholar) {
-          social = '<div class="team-social">';
-          if (u.linkedin) social += '<a href="' + u.linkedin + '" target="_blank" rel="noopener" title="LinkedIn">' + linkedinSvg + '</a>';
-          if (u.scholar) social += '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + scholarSvg + '</a>';
-          social += '</div>';
-        }
-        const card = document.createElement('article');
-        card.className = 'team-card';
-        card.innerHTML = '<div class="team-avatar">' + avInner + '</div><div class="team-name">' + (u.full_name || u.username) + '</div><div class="team-role">' + u.role + '</div><div class="team-desc">' + (u.description || '') + '</div>' + social;
-        grid.appendChild(card);
+
+      const equipe = teamData.equipe || teamData.idealizadores || [];
+      const contribs = teamData.colaboradores || [];
+
+      if (equipe.length > 0) {
+        grid.innerHTML += '<div class="team-section-label">' + labels.team + '</div>';
+        grid.innerHTML += '<div class="team-section-grid">' + equipe.map(u => buildCard(u, u.role === 'admin' ? roles.i : roles.c)).join('') + '</div>';
       }
-      if (all.length === 0) grid.innerHTML = '<p style="color:var(--text-muted)">—</p>';
+
+      if (contribs.length > 0) {
+        grid.innerHTML += '<div class="team-section-divider"></div>';
+        grid.innerHTML += '<div class="team-section-label">' + labels.contributors + '</div>';
+        grid.innerHTML += '<div class="team-section-grid">' + contribs.map(u => buildCard(u, roles.c)).join('') + '</div>';
+      }
+
+      if (equipe.length === 0 && contribs.length === 0) grid.innerHTML = '<p style="color:var(--text-muted)">—</p>';
     }
     fetch('/api/quem-somos').then(r => r.json()).then(d => { teamData = d; renderTeam(); }).catch(() => {});
 
