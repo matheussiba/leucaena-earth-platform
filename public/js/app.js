@@ -2,6 +2,7 @@ window.LeucenaApp = (function () {
   let username = null;
   let authToken = null;
   let userRole = 'contributor';
+  let testerMode = 'contributor';
   let selectedCellId = null;
   let selectedCellData = null;
   let lockHeartbeatInterval = null;
@@ -12,9 +13,17 @@ window.LeucenaApp = (function () {
   function getUsername() { return username; }
   function getAuthToken() { return authToken; }
   function getUserRole() { return userRole; }
+  function getEffectiveRole() {
+    if (userRole === 'tester') return testerMode;
+    return userRole;
+  }
   function isLoggedIn() { return !!username && !!authToken; }
-  function isAdminUser() { return userRole === 'admin'; }
-  function isTeamOrAbove() { return userRole === 'admin' || userRole === 'team'; }
+  function isSuperAdmin() { return userRole === 'superadmin'; }
+  function isAdminUser() { return userRole === 'admin' || userRole === 'superadmin'; }
+  function isTeamOrAbove() {
+    const eff = getEffectiveRole();
+    return eff === 'superadmin' || eff === 'admin' || eff === 'team';
+  }
   function getSelectedCellId() { return selectedCellId; }
   function getSelectedCellData() { return selectedCellData; }
 
@@ -356,6 +365,7 @@ window.LeucenaApp = (function () {
       authToken = data.token;
       username = data.username;
       userRole = data.role || 'contributor';
+      testerMode = data.tester_mode || 'contributor';
       localStorage.setItem('leucena_token', authToken);
       localStorage.setItem('leucena_username', username);
 
@@ -380,6 +390,7 @@ window.LeucenaApp = (function () {
         authToken = storedToken;
         username = data.username;
         userRole = data.role || 'contributor';
+        testerMode = data.tester_mode || 'contributor';
         onLoginSuccess();
       } else {
         localStorage.removeItem('leucena_token');
@@ -482,8 +493,9 @@ window.LeucenaApp = (function () {
       adminEditingUser = null;
       titleEl.textContent = t('profile.title');
       if (pwSection) pwSection.style.display = '';
-      if (socialSection) socialSection.style.display = getUserRole() === 'contributor' ? 'none' : '';
-      if (subtitleEl) subtitleEl.textContent = t(getUserRole() === 'contributor' ? 'profile.subtitleContributor' : 'profile.subtitleMember');
+      const effRole = getEffectiveRole();
+      if (socialSection) socialSection.style.display = (effRole === 'contributor') ? 'none' : '';
+      if (subtitleEl) subtitleEl.textContent = t((effRole === 'contributor') ? 'profile.subtitleContributor' : 'profile.subtitleMember');
       try {
         const res = await fetch('/api/profile', { headers: authHeaders() });
         if (!res.ok) return;
@@ -899,7 +911,7 @@ window.LeucenaApp = (function () {
 
     const finBtn = document.getElementById('unlock-finished');
     const notice = document.getElementById('unlock-crowdmapping-notice');
-    const isContributor = getUserRole() === 'contributor';
+    const isContributor = getEffectiveRole() === 'contributor';
     const hasCrowd = isContributor && LeucenaMap.cellHasCrowdmapping(selectedCellId);
 
     finBtn.classList.toggle('hidden', hasCrowd);
@@ -1199,6 +1211,7 @@ window.LeucenaApp = (function () {
     if (insertionMode) setInsertionMode(false);
     if (deletionMode) setDeletionMode(false);
     userRole = 'contributor';
+    testerMode = 'contributor';
   }
 
   // ── View counter ──
@@ -1303,30 +1316,29 @@ window.LeucenaApp = (function () {
       const res = await fetch('/api/admin/users', { headers: authHeaders() });
       if (!res.ok) return;
       const data = await res.json();
+      const callerIsSuperAdmin = data.callerRole === 'superadmin';
 
       const pcBox = document.getElementById('admin-passcode-display');
-      const romanCode = passcodeToRoman(data.nextPasscode);
-      pcBox.innerHTML = `<strong>${t('admin.nextPasscode')}</strong> <span class="admin-passcode-roman">${romanCode}</span><button type="button" class="admin-copy-btn" id="admin-copy-passcode" title="${t('admin.copyPasscode')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
-      document.getElementById('admin-copy-passcode').addEventListener('click', (e) => {
-        const code = String(data.nextPasscode);
-        const btn = e.currentTarget;
-        const showCopyFeedback = () => {
-          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
-          showToast('Código copiado!', 'success');
-          setTimeout(() => { btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>'; }, 1500);
-        };
-        try {
-          if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(code).then(showCopyFeedback).catch(() => { fallbackCopy(code); showCopyFeedback(); });
-          } else {
-            fallbackCopy(code);
-            showCopyFeedback();
-          }
-        } catch (err) {
-          fallbackCopy(code);
-          showCopyFeedback();
-        }
-      });
+      if (data.nextPasscode) {
+        const romanCode = passcodeToRoman(data.nextPasscode);
+        pcBox.innerHTML = `<strong>${t('admin.nextPasscode')}</strong> <span class="admin-passcode-roman">${romanCode}</span><button type="button" class="admin-copy-btn" id="admin-copy-passcode" title="${t('admin.copyPasscode')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
+        document.getElementById('admin-copy-passcode').addEventListener('click', (e) => {
+          const code = String(data.nextPasscode);
+          const btn = e.currentTarget;
+          const showCopyFeedback = () => {
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+            showToast('Código copiado!', 'success');
+            setTimeout(() => { btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>'; }, 1500);
+          };
+          try {
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(code).then(showCopyFeedback).catch(() => { fallbackCopy(code); showCopyFeedback(); });
+            } else { fallbackCopy(code); showCopyFeedback(); }
+          } catch (err) { fallbackCopy(code); showCopyFeedback(); }
+        });
+      } else {
+        pcBox.innerHTML = '';
+      }
 
       const metricsEl = document.getElementById('admin-global-metrics');
       metricsEl.innerHTML = `<div class="admin-metric"><span class="admin-metric-value">${data.globalMasks.toLocaleString()}</span><span class="admin-metric-label">${t('admin.totalMasks')}</span></div><div class="admin-metric"><span class="admin-metric-value">${data.globalAreaHa.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span><span class="admin-metric-label">${t('admin.totalArea')}</span></div>`;
@@ -1388,13 +1400,31 @@ window.LeucenaApp = (function () {
         } catch (e) { showToast('Erro ao copiar logs', 'error'); }
       });
 
+      const roleLabelMap = { superadmin: 'Super Admin', admin: 'Admin', team: 'Membro', contributor: 'Colaborador', tester: 'Tester' };
+      const allRoles = ['superadmin', 'admin', 'team', 'contributor', 'tester'];
+
       for (const user of data.users) {
         const role = user.role || 'contributor';
-        const roleLabelMap = { admin: 'Admin', team: 'Membro', contributor: 'Colaborador' };
         const totalMs = user.total_time_ms || 0;
         const timeStr = formatDuration(totalMs);
         const row = document.createElement('div');
         row.className = 'admin-user-row';
+
+        let roleSelectHtml = '';
+        if (callerIsSuperAdmin) {
+          roleSelectHtml = `<select class="admin-role-select" data-user-id="${user.id}">${allRoles.map(r => `<option value="${r}"${role === r ? ' selected' : ''}>${roleLabelMap[r]}</option>`).join('')}</select>`;
+        }
+
+        let testerRadioHtml = '';
+        if (role === 'tester') {
+          const tm = user.tester_mode || 'contributor';
+          testerRadioHtml = `<div class="admin-tester-mode">
+            <label><input type="radio" name="tester-mode-${user.id}" value="team"${tm === 'team' ? ' checked' : ''}> Membro</label>
+            <label><input type="radio" name="tester-mode-${user.id}" value="contributor"${tm === 'contributor' ? ' checked' : ''}> Colaborador</label>
+          </div>`;
+        }
+
+        const canDelete = callerIsSuperAdmin && role !== 'superadmin';
         row.innerHTML = `
           <div class="admin-user-info">
             <span class="admin-user-name">${user.username}<span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span></span>
@@ -1405,33 +1435,43 @@ window.LeucenaApp = (function () {
               <span title="${t('admin.logins')}">🔑 ${user.login_count || 0}</span>
               <span title="${t('admin.timeOnline')}">⏱ ${timeStr}</span>
             </div>
+            ${testerRadioHtml}
           </div>
           <div class="admin-user-actions">
-            <select class="admin-role-select" data-user-id="${user.id}">
-              <option value="admin"${role === 'admin' ? ' selected' : ''}>Admin</option>
-              <option value="team"${role === 'team' ? ' selected' : ''}>Membro</option>
-              <option value="contributor"${role === 'contributor' ? ' selected' : ''}>Colaborador</option>
-            </select>
+            ${roleSelectHtml}
             <button class="admin-profile-btn">${t('admin.editProfile')}</button>
             <button class="admin-pw-btn">${t('admin.changePassword')}</button>
-            ${role !== 'admin' ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
+            ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
           </div>
         `;
 
         const roleSelect = row.querySelector('.admin-role-select');
-        roleSelect.addEventListener('change', async () => {
-          const newRole = roleSelect.value;
-          try {
-            const r = await fetch(`/api/admin/users/${user.id}/role`, {
-              method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role: newRole })
-            });
-            if (r.ok) {
-              showToast('Role atualizado', 'success');
-              const badge = row.querySelector('.admin-user-badge');
-              badge.textContent = { admin: 'Admin', team: 'Membro', contributor: 'Colaborador' }[newRole];
-              badge.className = 'admin-user-badge admin-role-' + newRole;
-            } else { const err = await r.json(); showToast(err.error, 'error'); roleSelect.value = role; }
-          } catch (e) { showToast('Erro de conexão', 'error'); roleSelect.value = role; }
+        if (roleSelect) {
+          roleSelect.addEventListener('change', async () => {
+            const newRole = roleSelect.value;
+            try {
+              const r = await fetch(`/api/admin/users/${user.id}/role`, {
+                method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role: newRole })
+              });
+              if (r.ok) {
+                showToast('Role atualizado', 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); roleSelect.value = role; }
+            } catch (e) { showToast('Erro de conexão', 'error'); roleSelect.value = role; }
+          });
+        }
+
+        const testerRadios = row.querySelectorAll('input[name="tester-mode-' + user.id + '"]');
+        testerRadios.forEach(radio => {
+          radio.addEventListener('change', async () => {
+            try {
+              const r = await fetch(`/api/admin/users/${user.id}/tester-mode`, {
+                method: 'PUT', headers: authHeaders(), body: JSON.stringify({ tester_mode: radio.value })
+              });
+              if (r.ok) showToast('Modo tester atualizado', 'success');
+              else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          });
         });
 
         const profileBtn = row.querySelector('.admin-profile-btn');
@@ -1596,7 +1636,9 @@ window.LeucenaApp = (function () {
     collapseLegendOnFirstZoom,
     isEditing,
     isAdminUser,
+    isSuperAdmin,
     isTeamOrAbove,
+    getEffectiveRole,
     logEvent,
     flushLogs: _flushLogs
   };

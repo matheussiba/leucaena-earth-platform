@@ -110,8 +110,9 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN scholar TEXT'); } catch (e) { /* already exists */ }
   try { db.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'contributor'"); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE polygons ADD COLUMN area_ha REAL DEFAULT 0'); } catch (e) { /* already exists */ }
+  try { db.run("ALTER TABLE users ADD COLUMN tester_mode TEXT DEFAULT 'contributor'"); } catch (e) { /* already exists */ }
 
-  try { db.run("UPDATE users SET role = 'admin' WHERE username IN ('msb', 'mpf') AND (role IS NULL OR role = 'contributor')"); } catch (e) {}
+  try { db.run("UPDATE users SET role = 'superadmin' WHERE username IN ('msb', 'mpf') AND role IN ('admin', 'contributor')"); } catch (e) {}
   try { db.run("UPDATE users SET role = 'team' WHERE username IN ('rafael.perin', 'judith.alves') AND (role IS NULL OR role = 'contributor')"); } catch (e) {}
 
   const socialLinks = [

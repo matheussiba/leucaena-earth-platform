@@ -60,10 +60,22 @@ function getUserRole(username) {
   const user = queryOne('SELECT role FROM users WHERE username = ?', [username]);
   return (user && user.role) || 'contributor';
 }
-function isAdmin(username) { return getUserRole(username) === 'admin'; }
-function isTeamOrAbove(username) { const r = getUserRole(username); return r === 'admin' || r === 'team'; }
+function getEffectiveRole(username) {
+  const role = getUserRole(username);
+  if (role === 'tester') {
+    const user = queryOne('SELECT tester_mode FROM users WHERE username = ?', [username]);
+    return (user && user.tester_mode) || 'contributor';
+  }
+  return role;
+}
+function isSuperAdmin(username) { return getUserRole(username) === 'superadmin'; }
+function isAdmin(username) { const r = getUserRole(username); return r === 'admin' || r === 'superadmin'; }
+function isTeamOrAbove(username) {
+  const eff = getEffectiveRole(username);
+  return eff === 'superadmin' || eff === 'admin' || eff === 'team';
+}
 function canDeleteMask(username, maskCreator) {
-  if (getUserRole(username) === 'admin') return true;
+  if (isAdmin(username)) return true;
   return maskCreator === username;
 }
 
@@ -259,7 +271,7 @@ app.get('/api/stats/views', (req, res) => {
 // ── Auth ──
 
 function getNextPasscode() {
-  const row = queryOne("SELECT COUNT(*) as cnt FROM users WHERE role != 'admin' AND username != 'deleted'");
+  const row = queryOne("SELECT COUNT(*) as cnt FROM users WHERE role NOT IN ('admin','superadmin','tester') AND username != 'deleted'");
   const n = row.cnt;
   const d0 = Math.floor(n / 4);
   const rem = n % 4;
@@ -291,7 +303,7 @@ app.post('/api/auth/register', (req, res) => {
   const token = uuidv4();
   sessions.set(token, username);
   const role = getUserRole(username);
-  res.json({ token, username, role });
+  res.json({ token, username, role, tester_mode: 'contributor' });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -310,14 +322,15 @@ app.post('/api/auth/login', (req, res) => {
   const token = uuidv4();
   sessions.set(token, username);
   const role = getUserRole(username);
-  res.json({ token, username, role });
+  const tm = queryOne('SELECT tester_mode FROM users WHERE username = ?', [username]);
+  res.json({ token, username, role, tester_mode: (tm && tm.tester_mode) || 'contributor' });
 });
 
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role FROM users WHERE username = ?', [username]);
-  res.json({ username, role: user?.role || 'contributor', full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null });
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role, tester_mode FROM users WHERE username = ?', [username]);
+  res.json({ username, role: user?.role || 'contributor', tester_mode: user?.tester_mode || 'contributor', full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null });
 });
 
 // ── Profile (for Quem Somos) ──
@@ -396,11 +409,11 @@ app.get('/api/quem-somos', (req, res) => {
   const teamOrder = ['mpf', 'msb'];
 
   const equipe = allUsers
-    .filter(u => (u.role === 'admin' || u.role === 'team') && !excludeUsers.includes(u.username))
+    .filter(u => (u.role === 'superadmin' || u.role === 'admin' || u.role === 'team') && !excludeUsers.includes(u.username))
     .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0 }))
     .sort((a, b) => {
-      if (a.role === 'admin' && b.role !== 'admin') return -1;
-      if (a.role !== 'admin' && b.role === 'admin') return 1;
+      const order = { superadmin: 0, admin: 1, team: 2 };
+      if ((order[a.role] ?? 9) !== (order[b.role] ?? 9)) return (order[a.role] ?? 9) - (order[b.role] ?? 9);
       const ai = teamOrder.indexOf(a.username), bi = teamOrder.indexOf(b.username);
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     });
@@ -429,7 +442,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -448,8 +461,8 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
     u.mask_count = maskMap[u.username] || 0;
     u.mask_area_ha = Math.round((areaMap[u.username] || 0) * 100) / 100;
   }
-  const passcode = getNextPasscode();
-  res.json({ users, nextPasscode: passcode, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100 });
+  const passcode = isSuperAdmin(req.username) ? getNextPasscode() : null;
+  res.json({ users, nextPasscode: passcode, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100, callerRole: getUserRole(req.username) });
 });
 
 app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
@@ -488,10 +501,10 @@ app.put('/api/admin/users/:id/password', requireAuth, (req, res) => {
 });
 
 app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-  if (isAdmin(user.username)) return res.status(400).json({ error: 'Não é possível excluir um administrador' });
+  if (user.role === 'superadmin') return res.status(400).json({ error: 'Não é possível excluir um Super Admin' });
 
   const deletedExists = queryOne("SELECT id FROM users WHERE username = 'deleted'");
   if (!deletedExists) {
@@ -518,12 +531,15 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
 });
 
 app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Apenas Super Admin pode alterar roles' });
   const { role } = req.body;
-  const validRoles = ['admin', 'team', 'contributor'];
+  const validRoles = ['superadmin', 'admin', 'team', 'contributor', 'tester'];
   if (!validRoles.includes(role)) return res.status(400).json({ error: 'Role inválido' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (user.role === 'superadmin' && role !== 'superadmin' && user.username !== req.username) {
+    return res.status(403).json({ error: 'Não é possível rebaixar outro Super Admin' });
+  }
   const oldRole = user.role || 'contributor';
   runSQL('UPDATE users SET role = ? WHERE id = ?', [role, Number(req.params.id)]);
   logActivity(req.username, 'role_change', null, null, { target_user: user.username, from: oldRole, to: role });
@@ -531,8 +547,20 @@ app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.put('/api/admin/users/:id/tester-mode', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { tester_mode } = req.body;
+  if (!['team', 'contributor'].includes(tester_mode)) return res.status(400).json({ error: 'Modo inválido' });
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (user.role !== 'tester') return res.status(400).json({ error: 'Usuário não é tester' });
+  runSQL('UPDATE users SET tester_mode = ? WHERE id = ?', [tester_mode, Number(req.params.id)]);
+  persist();
+  res.json({ success: true });
+});
+
 app.get('/api/admin/passcode', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   res.json({ passcode: getNextPasscode() });
 });
 
@@ -767,8 +795,11 @@ app.get('/api/polygons', (req, res) => {
   function creatorRole(username) {
     if (!username) return 'contributor';
     if (roleCache[username] !== undefined) return roleCache[username];
-    const u = queryOne('SELECT role FROM users WHERE username = ?', [username]);
-    roleCache[username] = (u && u.role) || 'contributor';
+    const u = queryOne('SELECT role, tester_mode FROM users WHERE username = ?', [username]);
+    let r = (u && u.role) || 'contributor';
+    if (r === 'superadmin') r = 'admin';
+    if (r === 'tester') r = (u && u.tester_mode) || 'contributor';
+    roleCache[username] = r;
     return roleCache[username];
   }
   const features = polys.map(p => ({
@@ -814,7 +845,9 @@ app.post('/api/polygons', requireAuth, (req, res) => {
     [id, Number(grid_cell_id), JSON.stringify(geometry), username || 'anonymous', now, now, areaHa]
   );
 
-  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: getUserRole(username), created_at: now, updated_at: now, area_ha: areaHa };
+  const effRole = getEffectiveRole(username);
+  const polyRole = effRole === 'superadmin' ? 'admin' : effRole;
+  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: polyRole, created_at: now, updated_at: now, area_ha: areaHa };
   io.emit('polygon:created', polygon);
   logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
   persist();
