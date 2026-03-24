@@ -779,8 +779,13 @@ window.LeucenaApp = (function () {
     const unlockToolBtn = document.getElementById('tool-unlock');
 
     const infoEl = document.getElementById('selected-cell-info');
-    infoEl.classList.remove('hidden');
-    infoEl.textContent = t('edit.cellInfo', displayId, formatStatus(cellData.grid_status));
+    const editBadge = document.getElementById('edit-mode-badge');
+    if (editBadge && !editBadge.classList.contains('hidden')) {
+      infoEl.classList.add('hidden');
+    } else {
+      infoEl.classList.remove('hidden');
+      infoEl.textContent = t('edit.cellInfo', displayId, formatStatus(cellData.grid_status));
+    }
 
     if (!isLoggedIn()) {
       lockBtn.textContent = t('auth.loginToEdit');
