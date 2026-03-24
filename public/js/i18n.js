@@ -177,6 +177,8 @@ window.LeucenaI18n = (function () {
     'admin.copyRecentLogs': { pt: 'Copiar log (5 min)', en: 'Copy log (5 min)', es: 'Copiar log (5 min)' },
     'admin.logsCopied': { pt: 'Log copiado!', en: 'Log copied!', es: 'Log copiado!' },
     'admin.noRecentLogs': { pt: 'Nenhum log nos últimos 5 minutos', en: 'No logs in the last 5 minutes', es: 'Sin logs en los últimos 5 minutos' },
+    'admin.backupDb': { pt: 'Backup DB', en: 'Backup DB', es: 'Backup DB' },
+    'admin.backupDone': { pt: 'Backup baixado com sucesso', en: 'Backup downloaded successfully', es: 'Backup descargado exitosamente' },
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
@@ -193,6 +195,8 @@ window.LeucenaI18n = (function () {
     'profile.changePasswordBtn': { pt: 'Alterar', en: 'Change', es: 'Cambiar' },
     'profile.pwTooShort': { pt: 'A senha deve ter pelo menos 3 caracteres', en: 'Password must have at least 3 characters', es: 'La contraseña debe tener al menos 3 caracteres' },
     'profile.pwChanged': { pt: 'Senha alterada com sucesso', en: 'Password changed successfully', es: 'Contraseña cambiada exitosamente' },
+    'profile.email': { pt: 'E-mail', en: 'Email', es: 'Correo electrónico' },
+    'profile.emailPlaceholder': { pt: 'seu@email.com', en: 'your@email.com', es: 'su@correo.com' },
     'profile.fullNamePlaceholder': { pt: 'Seu nome completo', en: 'Your full name', es: 'Su nombre completo' },
     'about.equipe': { pt: 'Membros', en: 'Members', es: 'Miembros' },
     'about.idealizadores': { pt: 'Idealizadores', en: 'Project Leaders', es: 'Creadores' },

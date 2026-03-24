@@ -477,6 +477,7 @@ window.LeucenaApp = (function () {
       if (subtitleEl) subtitleEl.textContent = t('profile.subtitleMember');
       document.getElementById('profile-full-name').value = targetUser.full_name || '';
       document.getElementById('profile-description').value = targetUser.description || '';
+      document.getElementById('profile-email').value = targetUser.email || '';
       document.getElementById('profile-linkedin').value = targetUser.linkedin || '';
       document.getElementById('profile-scholar').value = targetUser.scholar || '';
       updateProfileCharCount();
@@ -502,6 +503,7 @@ window.LeucenaApp = (function () {
         const p = await res.json();
         document.getElementById('profile-full-name').value = p.full_name || '';
         document.getElementById('profile-description').value = p.description || '';
+        document.getElementById('profile-email').value = p.email || '';
         document.getElementById('profile-linkedin').value = p.linkedin || '';
         document.getElementById('profile-scholar').value = p.scholar || '';
         updateProfileCharCount();
@@ -574,6 +576,7 @@ window.LeucenaApp = (function () {
     e.preventDefault();
     const full_name = document.getElementById('profile-full-name').value.trim() || null;
     const description = document.getElementById('profile-description').value.trim() || null;
+    const email = document.getElementById('profile-email').value.trim() || null;
     const linkedin = document.getElementById('profile-linkedin').value.trim() || null;
     const scholar = document.getElementById('profile-scholar').value.trim() || null;
     const errorEl = document.getElementById('profile-error');
@@ -590,7 +593,7 @@ window.LeucenaApp = (function () {
       const res = await fetch(url, {
         method: 'PUT',
         headers: authHeaders(),
-        body: JSON.stringify({ full_name, description, photo: profilePhotoDataUrl, linkedin, scholar })
+        body: JSON.stringify({ full_name, description, photo: profilePhotoDataUrl, email, linkedin, scholar })
       });
       if (!res.ok) {
         const err = await res.json();
@@ -1373,9 +1376,11 @@ window.LeucenaApp = (function () {
 
       const exportRow = document.createElement('div');
       exportRow.className = 'admin-export-row';
+      const backupBtnHtml = callerIsSuperAdmin ? `<button id="admin-backup-db" class="admin-export-btn">💾 ${t('admin.backupDb')}</button>` : '';
       exportRow.innerHTML = `<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>
         <button id="admin-export-logs" class="admin-export-btn">📋 ${t('admin.exportLogs')}</button>
-        <button id="admin-copy-recent-logs" class="admin-export-btn admin-copy-log-btn">📄 ${t('admin.copyRecentLogs')}</button>`;
+        <button id="admin-copy-recent-logs" class="admin-export-btn admin-copy-log-btn">📄 ${t('admin.copyRecentLogs')}</button>
+        ${backupBtnHtml}`;
       listEl.appendChild(exportRow);
       document.getElementById('admin-export-csv').addEventListener('click', async () => {
         try {
@@ -1425,6 +1430,24 @@ window.LeucenaApp = (function () {
         } catch (e) { showToast('Erro ao copiar logs', 'error'); }
       });
 
+      const backupBtn = document.getElementById('admin-backup-db');
+      if (backupBtn) {
+        backupBtn.addEventListener('click', async () => {
+          try {
+            const r = await fetch('/api/admin/backup', { headers: authHeaders() });
+            if (!r.ok) { showToast('Backup failed', 'error'); return; }
+            const blob = await r.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `leucena_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.db`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(t('admin.backupDone'), 'success');
+          } catch (e) { showToast('Backup failed', 'error'); }
+        });
+      }
+
       const roleLabelMap = { superadmin: 'Super Admin', admin: 'Admin', team: 'Membro', contributor: 'Colaborador', tester: 'Tester' };
       const allRoles = ['superadmin', 'admin', 'team', 'contributor', 'tester'];
 
@@ -1454,9 +1477,11 @@ window.LeucenaApp = (function () {
         }
 
         const canDelete = callerIsSuperAdmin && role !== 'superadmin';
+        const emailDisplay = user.email ? `<div class="admin-user-email">${user.email}</div>` : '';
         row.innerHTML = `
           <div class="admin-user-info">
             <span class="admin-user-name">${user.username}<span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span></span>
+            ${emailDisplay}
             <div class="admin-user-date">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
             <div class="admin-user-stats">
               <span title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
@@ -1526,6 +1551,7 @@ window.LeucenaApp = (function () {
             full_name: user.full_name || '',
             description: user.description || '',
             photo: user.photo || null,
+            email: user.email || '',
             linkedin: user.linkedin || '',
             scholar: user.scholar || ''
           });

@@ -1981,6 +1981,12 @@ html, body {
   color: var(--text-primary);
 }
 
+.admin-user-email {
+  font-size: 11px;
+  color: var(--green);
+  word-break: break-all;
+}
+
 .admin-user-date {
   font-size: 11px;
   color: var(--text-muted);

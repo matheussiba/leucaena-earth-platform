@@ -23,6 +23,15 @@ const fs = require('fs');
 
 const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || '';
 
+app.set('trust proxy', 1);
+
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] === 'http') {
+    return res.redirect(301, 'https://' + req.headers.host + req.url);
+  }
+  next();
+});
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
@@ -329,20 +338,20 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role, tester_mode FROM users WHERE username = ?', [username]);
-  res.json({ username, role: user?.role || 'contributor', tester_mode: user?.tester_mode || 'contributor', full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null });
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role, tester_mode, email FROM users WHERE username = ?', [username]);
+  res.json({ username, role: user?.role || 'contributor', tester_mode: user?.tester_mode || 'contributor', full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null, email: user?.email || null });
 });
 
 // ── Profile (for Quem Somos) ──
 
 app.get('/api/profile', requireAuth, (req, res) => {
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar FROM users WHERE username = ?', [req.username]);
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, email FROM users WHERE username = ?', [req.username]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-  res.json({ username: user.username, full_name: user.full_name || null, description: user.description || null, photo: user.photo || null, linkedin: user.linkedin || null, scholar: user.scholar || null });
+  res.json({ username: user.username, full_name: user.full_name || null, description: user.description || null, photo: user.photo || null, linkedin: user.linkedin || null, scholar: user.scholar || null, email: user.email || null });
 });
 
 app.put('/api/profile', requireAuth, (req, res) => {
-  const { full_name, description, photo, linkedin, scholar } = req.body || {};
+  const { full_name, description, photo, linkedin, scholar, email } = req.body || {};
   if (description != null && typeof description === 'string' && description.length > 400) {
     return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
   }
@@ -350,8 +359,8 @@ app.put('/api/profile', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Foto muito grande' });
   }
   runSQL(
-    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE username = ?',
-    [full_name || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, req.username]
+    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ? WHERE username = ?',
+    [full_name || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, email || null, req.username]
   );
   persist();
   res.json({ success: true });
@@ -368,15 +377,15 @@ app.put('/api/profile/password', requireAuth, (req, res) => {
 
 app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const { full_name, description, photo, linkedin, scholar } = req.body || {};
+  const { full_name, description, photo, linkedin, scholar, email } = req.body || {};
   if (description != null && typeof description === 'string' && description.length > 400) {
     return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
   }
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   runSQL(
-    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE id = ?',
-    [full_name !== undefined ? (full_name || null) : user.full_name, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, Number(req.params.id)]
+    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ? WHERE id = ?',
+    [full_name !== undefined ? (full_name || null) : user.full_name, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, email !== undefined ? (email || null) : user.email, Number(req.params.id)]
   );
   persist();
   res.json({ success: true });
@@ -443,7 +452,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -468,18 +477,19 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
 
 app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, login_count, total_time_ms FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, email, login_count, total_time_ms FROM users WHERE username != 'deleted'");
   const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
   const maskMap = {};
   for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;
 
-  const header = 'username,full_name,description,masks_created,login_count,total_time_hours,created_at';
+  const header = 'username,full_name,email,description,masks_created,login_count,total_time_hours,created_at';
   const rows = users.map(u => {
     const masks = maskMap[u.username] || 0;
     const hours = ((u.total_time_ms || 0) / 3600000).toFixed(2);
     const fullName = (u.full_name || '').replace(/"/g, '""');
     const desc = (u.description || '').replace(/"/g, '""').replace(/\n/g, ' ');
-    return `${u.username},"${fullName}","${desc}",${masks},${u.login_count || 0},${hours},${u.created_at || ''}`;
+    const email = (u.email || '').replace(/"/g, '""');
+    return `${u.username},"${fullName}","${email}","${desc}",${masks},${u.login_count || 0},${hours},${u.created_at || ''}`;
   });
 
   const csv = header + '\n' + rows.join('\n');
@@ -619,6 +629,70 @@ app.get('/api/admin/db-info', requireAuth, (req, res) => {
     hasPersistentDisk: !!process.env.DATA_PATH,
     hint: process.env.DATA_PATH ? 'Persistent disk configured. DB should survive deploys.' : 'No DATA_PATH set. Add a Render Persistent Disk (mount /data) and set env DATA_PATH=/data to keep the DB across deploys.'
   });
+});
+
+// ── Backup ──
+
+const BACKUP_DIR = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'backups');
+const MAX_BACKUPS = 10;
+
+function createBackup() {
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    persist();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const dest = path.join(BACKUP_DIR, `leucena_${ts}.db`);
+    fs.copyFileSync(DB_PATH, dest);
+
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.endsWith('.db'))
+      .sort()
+      .reverse();
+    for (let i = MAX_BACKUPS; i < files.length; i++) {
+      fs.unlinkSync(path.join(BACKUP_DIR, files[i]));
+    }
+    return dest;
+  } catch (e) {
+    console.error('Backup failed:', e.message);
+    return null;
+  }
+}
+
+setInterval(createBackup, 6 * 60 * 60 * 1000);
+
+app.get('/api/admin/backup', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  persist();
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  res.setHeader('Content-Disposition', `attachment; filename="leucena_backup_${ts}.db"`);
+  res.setHeader('Content-Type', 'application/octet-stream');
+  const data = fs.readFileSync(DB_PATH);
+  logActivity(req.username, 'db_backup_download', null, null, null);
+  res.send(data);
+});
+
+app.get('/api/admin/backups', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter(f => f.endsWith('.db'))
+      .sort()
+      .reverse()
+      .map(f => ({ name: f, size: fs.statSync(path.join(BACKUP_DIR, f)).size }));
+    res.json({ backups: files, dir: BACKUP_DIR });
+  } catch (e) { res.json({ backups: [], dir: BACKUP_DIR }); }
+});
+
+app.post('/api/admin/backup', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const dest = createBackup();
+  if (dest) {
+    logActivity(req.username, 'db_backup_manual', null, null, null);
+    res.json({ success: true, file: path.basename(dest) });
+  } else {
+    res.status(500).json({ error: 'Backup failed' });
+  }
 });
 
 // ── REST API ──
