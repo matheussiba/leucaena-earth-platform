@@ -537,9 +537,7 @@ app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
   if (!validRoles.includes(role)) return res.status(400).json({ error: 'Role inválido' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-  if (user.role === 'superadmin' && role !== 'superadmin' && user.username !== req.username) {
-    return res.status(403).json({ error: 'Não é possível rebaixar outro Super Admin' });
-  }
+  // Temporarily allowing superadmin to demote other superadmins
   const oldRole = user.role || 'contributor';
   runSQL('UPDATE users SET role = ? WHERE id = ?', [role, Number(req.params.id)]);
   logActivity(req.username, 'role_change', null, null, { target_user: user.username, from: oldRole, to: role });
