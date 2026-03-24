@@ -113,6 +113,7 @@ async function initDB() {
   try { db.run("ALTER TABLE users ADD COLUMN tester_mode TEXT DEFAULT 'contributor'"); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN is_founder INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN email TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN last_active TEXT'); } catch (e) { /* already exists */ }
 
   try { db.run("UPDATE users SET role = 'superadmin' WHERE username = 'msb' AND role IN ('admin', 'contributor')"); } catch (e) {}
   try { db.run("UPDATE users SET role = 'admin' WHERE username = 'mpf' AND (role IS NULL OR role = 'contributor')"); } catch (e) {}

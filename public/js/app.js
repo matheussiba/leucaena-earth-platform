@@ -537,6 +537,8 @@ window.LeucenaApp = (function () {
     const subtitleEl = document.getElementById('profile-subtitle');
     const t = LeucenaI18n.t;
 
+    const emailInput = document.getElementById('profile-email');
+
     if (targetUser) {
       adminEditingUser = targetUser;
       titleEl.textContent = t('admin.editProfileTitle', targetUser.username);
@@ -545,7 +547,8 @@ window.LeucenaApp = (function () {
       if (subtitleEl) subtitleEl.textContent = t('profile.subtitleMember');
       document.getElementById('profile-full-name').value = targetUser.full_name || '';
       document.getElementById('profile-description').value = targetUser.description || '';
-      document.getElementById('profile-email').value = targetUser.email || '';
+      emailInput.value = targetUser.email || '';
+      emailInput.disabled = false;
       document.getElementById('profile-linkedin').value = targetUser.linkedin || '';
       document.getElementById('profile-scholar').value = targetUser.scholar || '';
       updateProfileCharCount();
@@ -565,13 +568,14 @@ window.LeucenaApp = (function () {
       const effRole = getEffectiveRole();
       if (socialSection) socialSection.style.display = (effRole === 'contributor') ? 'none' : '';
       if (subtitleEl) subtitleEl.textContent = t((effRole === 'contributor') ? 'profile.subtitleContributor' : 'profile.subtitleMember');
+      emailInput.disabled = true;
       try {
         const res = await fetch('/api/profile', { headers: authHeaders() });
         if (!res.ok) return;
         const p = await res.json();
         document.getElementById('profile-full-name').value = p.full_name || '';
         document.getElementById('profile-description').value = p.description || '';
-        document.getElementById('profile-email').value = p.email || '';
+        emailInput.value = p.email || '';
         document.getElementById('profile-linkedin').value = p.linkedin || '';
         document.getElementById('profile-scholar').value = p.scholar || '';
         updateProfileCharCount();
@@ -644,7 +648,8 @@ window.LeucenaApp = (function () {
     e.preventDefault();
     const full_name = document.getElementById('profile-full-name').value.trim() || null;
     const description = document.getElementById('profile-description').value.trim() || null;
-    const email = document.getElementById('profile-email').value.trim() || null;
+    const emailInput = document.getElementById('profile-email');
+    const email = adminEditingUser ? (emailInput.value.trim() || null) : undefined;
     const linkedin = document.getElementById('profile-linkedin').value.trim() || null;
     const scholar = document.getElementById('profile-scholar').value.trim() || null;
     const errorEl = document.getElementById('profile-error');
@@ -658,10 +663,12 @@ window.LeucenaApp = (function () {
       const url = adminEditingUser
         ? `/api/admin/users/${adminEditingUser.id}/profile`
         : '/api/profile';
+      const payload = { full_name, description, photo: profilePhotoDataUrl, linkedin, scholar };
+      if (adminEditingUser) payload.email = email;
       const res = await fetch(url, {
         method: 'PUT',
         headers: authHeaders(),
-        body: JSON.stringify({ full_name, description, photo: profilePhotoDataUrl, email, linkedin, scholar })
+        body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const err = await res.json();
@@ -1519,6 +1526,21 @@ window.LeucenaApp = (function () {
       const roleLabelMap = { superadmin: 'Super Admin', admin: 'Admin', team: 'Membro', contributor: 'Colaborador', tester: 'Tester' };
       const allRoles = ['superadmin', 'admin', 'team', 'contributor', 'tester'];
 
+      const onlineSet = new Set(data.onlineUsers || []);
+
+      function formatLastActive(isoDate, username) {
+        if (onlineSet.has(username)) return `<span class="admin-active-now">● ${t('admin.activeNow')}</span>`;
+        if (!isoDate) return t('admin.never');
+        const diff = Date.now() - new Date(isoDate).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return `<span class="admin-active-now">● ${t('admin.activeNow')}</span>`;
+        if (mins < 60) return t('admin.minutesAgo', mins);
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return t('admin.hoursAgo', hrs);
+        const days = Math.floor(hrs / 24);
+        return t('admin.daysAgo', days);
+      }
+
       for (const user of data.users) {
         const role = user.role || 'contributor';
         const totalMs = user.total_time_ms || 0;
@@ -1545,23 +1567,30 @@ window.LeucenaApp = (function () {
         }
 
         const canDelete = callerIsSuperAdmin && role !== 'superadmin';
-        const emailDisplay = user.email ? `<div class="admin-user-email">${user.email}</div>` : '';
+        const emailDisplay = user.email ? `<span class="admin-user-email">${user.email}</span>` : '';
+        const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '—';
+        const lastActiveHtml = formatLastActive(user.last_active, user.username);
+
         row.innerHTML = `
-          <div class="admin-user-info">
-            <span class="admin-user-name">${user.username}<span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span></span>
-            ${emailDisplay}
-            <div class="admin-user-date">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
-            <div class="admin-user-stats">
-              <span title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
-              <span title="${t('admin.area')}">📐 ${(user.mask_area_ha || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
-              <span title="${t('admin.logins')}">🔑 ${user.login_count || 0}</span>
-              <span title="${t('admin.timeOnline')}">⏱ ${timeStr}</span>
-            </div>
-            ${testerRadioHtml}
-          </div>
-          <div class="admin-user-actions">
+          <div class="admin-row-line1">
             ${founderCheckboxHtml}
+            <span class="admin-user-name">${user.username}</span>
+            <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
             ${roleSelectHtml}
+            ${emailDisplay}
+          </div>
+          <div class="admin-row-line2">
+            <span class="admin-meta">${t('admin.createdAt')}: ${createdDate}</span>
+            <span class="admin-meta-sep">·</span>
+            <span class="admin-meta">${t('admin.lastAccess')}: ${lastActiveHtml}</span>
+            <span class="admin-meta-sep">·</span>
+            <span class="admin-stat" title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
+            <span class="admin-stat" title="${t('admin.area')}">📐 ${(user.mask_area_ha || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
+            <span class="admin-stat" title="${t('admin.logins')}">🔑 ${user.login_count || 0}</span>
+            <span class="admin-stat" title="${t('admin.timeOnline')}">⏱ ${timeStr}</span>
+          </div>
+          ${testerRadioHtml}
+          <div class="admin-user-actions">
             <button class="admin-profile-btn">${t('admin.editProfile')}</button>
             <button class="admin-pw-btn">${t('admin.changePassword')}</button>
             <button class="admin-reset-btn">${t('admin.generateResetCode')}</button>

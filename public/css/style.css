@@ -458,6 +458,7 @@ html, body {
 .profile-label:first-of-type { margin-top: 0; }
 
 #profile-form input[type="text"],
+#profile-form input[type="email"],
 #profile-form textarea {
   width: 100%;
   padding: 8px 12px;
@@ -467,6 +468,11 @@ html, body {
   color: var(--text-primary);
   font-size: 14px;
   box-sizing: border-box;
+}
+
+#profile-form input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 #profile-form textarea { resize: vertical; min-height: 80px; }
@@ -1978,25 +1984,27 @@ html, body {
 }
 
 .admin-users-list {
-  max-height: 400px;
+  max-height: 70vh;
   overflow-y: auto;
 }
 
 .admin-user-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-  gap: 8px;
+  gap: 6px;
 }
 
 .admin-user-row:last-child {
   border-bottom: none;
 }
 
-.admin-user-info {
-  flex: 1;
+.admin-row-line1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
   min-width: 0;
 }
 
@@ -2004,38 +2012,49 @@ html, body {
   font-weight: 600;
   font-size: 14px;
   color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .admin-user-email {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--green);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
-.admin-user-date {
+.admin-row-line2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.admin-user-stats {
-  display: flex;
-  gap: 12px;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-secondary);
+.admin-meta {
+  white-space: nowrap;
 }
 
-.admin-user-stats span {
+.admin-meta-sep {
+  color: var(--border);
+}
+
+.admin-active-now {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.admin-stat {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 6px;
+  padding: 1px 5px;
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .admin-export-row {
@@ -2077,12 +2096,13 @@ html, body {
 
 .admin-user-badge {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
   background: var(--accent);
   color: white;
   font-weight: 600;
-  margin-left: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .admin-role-superadmin { background: #a855f7; }
@@ -2132,12 +2152,14 @@ html, body {
   background: var(--bg-secondary);
   color: var(--text);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .admin-user-actions {
   display: flex;
   gap: 6px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .export-disclaimer {
@@ -2540,19 +2562,16 @@ html, body {
     min-width: 180px;
   }
 
-  .admin-user-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
+  .admin-row-line1 {
+    flex-wrap: wrap;
   }
 
   .admin-user-actions {
     flex-wrap: wrap;
   }
 
-  .admin-user-stats {
-    gap: 8px;
-    flex-wrap: wrap;
+  .admin-row-line2 {
+    gap: 6px;
   }
 
   .about-cards {

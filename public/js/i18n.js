@@ -184,6 +184,13 @@ window.LeucenaI18n = (function () {
     'admin.resetCodeGenerated': { pt: 'Código de recuperação para "{0}":', en: 'Recovery code for "{0}":', es: 'Código de recuperación para "{0}":' },
     'admin.resetCodeExpires': { pt: 'Válido por {0} minutos.', en: 'Valid for {0} minutes.', es: 'Válido por {0} minutos.' },
     'admin.resetCodeCopied': { pt: 'Código copiado para a área de transferência', en: 'Code copied to clipboard', es: 'Código copiado al portapapeles' },
+    'admin.createdAt': { pt: 'Criado em', en: 'Created', es: 'Creado' },
+    'admin.lastAccess': { pt: 'Último acesso', en: 'Last access', es: 'Último acceso' },
+    'admin.activeNow': { pt: 'Ativo agora', en: 'Active now', es: 'Activo ahora' },
+    'admin.minutesAgo': { pt: 'há {0} minutos', en: '{0} min ago', es: 'hace {0} min' },
+    'admin.hoursAgo': { pt: 'há {0} horas', en: '{0}h ago', es: 'hace {0}h' },
+    'admin.daysAgo': { pt: 'há {0} dias', en: '{0}d ago', es: 'hace {0}d' },
+    'admin.never': { pt: 'Nunca', en: 'Never', es: 'Nunca' },
 
     // ── Password Reset ──
     'reset.title': { pt: 'Recuperar Senha', en: 'Reset Password', es: 'Recuperar Contraseña' },

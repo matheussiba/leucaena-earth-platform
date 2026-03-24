@@ -362,7 +362,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   const hash = hashPassword(password);
   if (user.password_hash !== hash) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
-  runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1 WHERE username = ?', [username]);
+  runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), username]);
   logActivity(username, 'login', null, null, null);
 
   const token = uuidv4();
@@ -388,7 +388,7 @@ app.get('/api/profile', requireAuth, (req, res) => {
 });
 
 app.put('/api/profile', requireAuth, (req, res) => {
-  const { full_name, description, photo, linkedin, scholar, email } = req.body || {};
+  const { full_name, description, photo, linkedin, scholar } = req.body || {};
   if (description != null && typeof description === 'string' && description.length > 400) {
     return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
   }
@@ -396,8 +396,8 @@ app.put('/api/profile', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Foto muito grande' });
   }
   runSQL(
-    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ? WHERE username = ?',
-    [full_name || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, email || null, req.username]
+    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE username = ?',
+    [full_name || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, req.username]
   );
   persist();
   res.json({ success: true });
@@ -515,7 +515,7 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -535,7 +535,8 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
     u.mask_area_ha = Math.round((areaMap[u.username] || 0) * 100) / 100;
   }
   const passcode = isSuperAdmin(req.username) ? getNextPasscode() : null;
-  res.json({ users, nextPasscode: passcode, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100, callerRole: getUserRole(req.username) });
+  const onlineUsernames = Array.from(connectedUsers.values()).map(u => u.username);
+  res.json({ users, nextPasscode: passcode, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100, callerRole: getUserRole(req.username), onlineUsers: onlineUsernames });
 });
 
 app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
@@ -1281,6 +1282,7 @@ io.on('connection', (socket) => {
       editingCell: null,
       joinedAt: new Date().toISOString()
     });
+    runSQL('UPDATE users SET last_active = ? WHERE username = ?', [new Date().toISOString(), data.username]);
     io.emit('users:updated', Array.from(connectedUsers.values()));
     console.log(`User joined: ${data.username}`);
   });
@@ -1312,7 +1314,7 @@ io.on('connection', (socket) => {
 
       const sessionMs = Date.now() - new Date(user.joinedAt).getTime();
       if (sessionMs > 0 && sessionMs < 86400000) {
-        runSQL('UPDATE users SET total_time_ms = COALESCE(total_time_ms, 0) + ? WHERE username = ?', [sessionMs, user.username]);
+        runSQL('UPDATE users SET total_time_ms = COALESCE(total_time_ms, 0) + ?, last_active = ? WHERE username = ?', [sessionMs, new Date().toISOString(), user.username]);
       }
 
       connectedUsers.delete(socket.id);
