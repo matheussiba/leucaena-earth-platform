@@ -96,7 +96,12 @@ window.LeucenaDrawing = (function () {
   }
 
   function geojsonRingsToPaths(coordinates) {
-    return coordinates.map(ring => ring.map(c => ({ lat: c[1], lng: c[0] })));
+    return coordinates.map(ring => {
+      const len = ring.length;
+      const isClosed = len > 1 && ring[0][0] === ring[len - 1][0] && ring[0][1] === ring[len - 1][1];
+      const pts = isClosed ? ring.slice(0, -1) : ring;
+      return pts.map(c => ({ lat: c[1], lng: c[0] }));
+    });
   }
 
   function pathsToGeoJSONCoords(gmapsPoly) {
@@ -150,13 +155,48 @@ window.LeucenaDrawing = (function () {
     drawnPolygons[id] = { gmapsPoly: poly, data: { id, ...props, geometry } };
   }
 
+  const pathListenerMap = {};
+  let editUndoGuard = false;
+
   function attachPathListeners(id, poly) {
-    const save = () => savePolygonGeometry(id, poly);
+    detachPathListeners(id);
+    let gestureTimer = null;
+    const gmapListeners = [];
+
+    const onPathChange = () => {
+      if (editUndoGuard) return;
+      if (gestureTimer === null) {
+        const entry = drawnPolygons[id];
+        if (entry && entry._lastGeometry) {
+          editUndoStack.push({ id, geometry: JSON.parse(JSON.stringify(entry._lastGeometry)) });
+        }
+      }
+      clearTimeout(gestureTimer);
+      gestureTimer = setTimeout(() => {
+        gestureTimer = null;
+        if (editUndoGuard) return;
+        savePolygonGeometry(id, poly);
+        const entry = drawnPolygons[id];
+        if (entry) {
+          entry._lastGeometry = { type: 'Polygon', coordinates: pathsToGeoJSONCoords(poly) };
+        }
+      }, 150);
+    };
+
     const paths = poly.getPaths();
     for (let i = 0; i < paths.getLength(); i++) {
-      google.maps.event.addListener(paths.getAt(i), 'set_at', save);
-      google.maps.event.addListener(paths.getAt(i), 'insert_at', save);
+      gmapListeners.push(google.maps.event.addListener(paths.getAt(i), 'set_at', onPathChange));
+      gmapListeners.push(google.maps.event.addListener(paths.getAt(i), 'insert_at', onPathChange));
     }
+    pathListenerMap[id] = { gmapListeners, gestureTimerRef: () => gestureTimer, clearGesture: () => { clearTimeout(gestureTimer); gestureTimer = null; } };
+  }
+
+  function detachPathListeners(id) {
+    const data = pathListenerMap[id];
+    if (!data) return;
+    data.gmapListeners.forEach(l => google.maps.event.removeListener(l));
+    data.clearGesture();
+    delete pathListenerMap[id];
   }
 
   function setupToolbar() {
@@ -183,7 +223,12 @@ window.LeucenaDrawing = (function () {
   }
 
   function setMode(mode) {
+    const prevMode = activeMode;
     activeMode = mode;
+
+    if (prevMode !== mode && typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('tool_switch', LeucenaApp.getSelectedCellId(), null, { from: prevMode, to: mode });
+    }
 
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.deselectPoint) {
       LeucenaMap.deselectPoint();
@@ -314,6 +359,9 @@ window.LeucenaDrawing = (function () {
         entry.data.geometry = newGeometry;
         renderPolygon(targetId, newGeometry, entry.data, false);
 
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hole_create', entry.data.grid_cell_id, targetId, { rings: currentCoords.length });
+        }
         LeucenaApp.showToast(LeucenaI18n.t('toast.holeCreated'), 'success');
       } catch (e) {
         holePoly.setMap(null);
@@ -331,8 +379,21 @@ window.LeucenaDrawing = (function () {
 
   // ── Manual vertex-by-vertex drawing ──
 
+  function showDrawOverlay() {
+    const overlay = document.getElementById('draw-instructions-overlay');
+    if (!overlay) return;
+    overlay.textContent = LeucenaI18n.t('badge.draw');
+    overlay.classList.remove('hidden');
+  }
+
+  function hideDrawOverlay() {
+    const overlay = document.getElementById('draw-instructions-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
+
   function startDrawing() {
     cleanupManualDraw();
+    showDrawOverlay();
     const map = LeucenaMap.getMap();
     const vertices = [];
     const vertexMarkers = [];
@@ -497,6 +558,7 @@ window.LeucenaDrawing = (function () {
     }
 
     LeucenaMap.setGridClickable(true);
+    hideDrawOverlay();
 
     manualDrawState = null;
   }
@@ -552,13 +614,6 @@ window.LeucenaDrawing = (function () {
 
   // ── Edit undo ──
 
-  function saveEditSnapshot(id) {
-    const entry = drawnPolygons[id];
-    if (!entry) return;
-    const coords = pathsToGeoJSONCoords(entry.gmapsPoly);
-    editUndoStack.push({ id, geometry: { type: 'Polygon', coordinates: coords } });
-  }
-
   async function undoEditPolygon() {
     if (editUndoStack.length === 0) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.nothingToUndo'), 'info');
@@ -568,9 +623,15 @@ window.LeucenaDrawing = (function () {
     const entry = drawnPolygons[snapshot.id];
     if (!entry) return;
 
+    editUndoGuard = true;
+    detachPathListeners(snapshot.id);
+
     const paths = geojsonRingsToPaths(snapshot.geometry.coordinates);
     entry.gmapsPoly.setPaths(paths);
-    entry.data.geometry = snapshot.geometry;
+    entry.data.geometry = JSON.parse(JSON.stringify(snapshot.geometry));
+    entry._lastGeometry = JSON.parse(JSON.stringify(snapshot.geometry));
+
+    editUndoGuard = false;
     attachPathListeners(snapshot.id, entry.gmapsPoly);
 
     try {
@@ -579,6 +640,9 @@ window.LeucenaDrawing = (function () {
         headers: LeucenaApp.authHeaders(),
         body: JSON.stringify({ geometry: snapshot.geometry })
       });
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_edit_undo', entry.data.grid_cell_id, snapshot.id, null);
+      }
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyRestored'), 'success');
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
@@ -588,17 +652,17 @@ window.LeucenaDrawing = (function () {
   // ── Tool badges ──
 
   function updateToolBadge(mode) {
-    const hint = document.getElementById('tool-hint-text');
-    if (!hint) return;
+    const overlay = document.getElementById('draw-instructions-overlay');
+    if (!overlay) return;
     const t = LeucenaI18n.t;
 
     if (mode === 'draw' || mode === 'delete' || mode === 'edit') {
-      hint.textContent = mode === 'draw' ? t('badge.draw')
-                       : mode === 'delete' ? t('badge.delete')
-                       : t('badge.edit');
-      hint.classList.remove('hidden');
+      overlay.textContent = mode === 'draw' ? t('badge.draw')
+                          : mode === 'delete' ? t('badge.delete')
+                          : t('badge.edit');
+      overlay.classList.remove('hidden');
     } else {
-      hint.classList.add('hidden');
+      overlay.classList.add('hidden');
     }
   }
 
@@ -638,8 +702,17 @@ window.LeucenaDrawing = (function () {
     entry.gmapsPoly.setEditable(!isEditable);
 
     if (!isEditable) {
-      saveEditSnapshot(id);
+      const coords = pathsToGeoJSONCoords(entry.gmapsPoly);
+      entry._lastGeometry = { type: 'Polygon', coordinates: JSON.parse(JSON.stringify(coords)) };
       attachPathListeners(id, entry.gmapsPoly);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_edit_start', entry.data.grid_cell_id, id, null);
+      }
+    } else {
+      detachPathListeners(id);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_edit_end', entry.data.grid_cell_id, id, null);
+      }
     }
   }
 
@@ -704,8 +777,9 @@ window.LeucenaDrawing = (function () {
   }
 
   function makeAllNonEditable() {
-    for (const entry of Object.values(drawnPolygons)) {
+    for (const [id, entry] of Object.entries(drawnPolygons)) {
       entry.gmapsPoly.setEditable(false);
+      detachPathListeners(id);
     }
   }
 
@@ -772,6 +846,7 @@ window.LeucenaDrawing = (function () {
   function updateRemotePolygon(data) {
     const entry = drawnPolygons[data.id];
     if (!entry) return;
+    if (entry.gmapsPoly.getEditable()) return;
     const paths = geojsonRingsToPaths(data.geometry.coordinates);
     entry.gmapsPoly.setPaths(paths);
     entry.data.geometry = data.geometry;

@@ -931,6 +931,31 @@ html, body {
   letter-spacing: 0.2px;
 }
 
+/* ── Drawing instructions (inline in badge) ── */
+.draw-overlay-inline {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 5px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
+  color: #fde047;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  text-align: center;
+  animation: drawBadgeIn 0.2s ease;
+}
+
+.draw-overlay-inline.hidden {
+  display: none;
+}
+
+@keyframes drawBadgeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ── Map ── */
 #map-container {
   flex: 1;
@@ -1817,10 +1842,43 @@ html, body {
 }
 
 /* ── Admin users modal ── */
+.admin-global-metrics {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.admin-metric {
+  flex: 1;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.admin-metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+.admin-metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .admin-passcode-box {
   background: var(--bg-tertiary);
   border-radius: var(--radius);
   padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
   font-size: 13px;
   color: var(--text-secondary);
@@ -1828,6 +1886,33 @@ html, body {
 
 .admin-passcode-box strong {
   color: var(--text-primary);
+}
+
+.admin-passcode-roman {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+
+.admin-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.admin-copy-btn:hover {
+  background: var(--bg-primary);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .admin-users-list {
@@ -1885,6 +1970,8 @@ html, body {
 .admin-export-row {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
 }
@@ -1903,6 +1990,18 @@ html, body {
 
 .admin-export-btn:hover {
   opacity: 0.85;
+}
+
+.admin-copy-log-btn {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.admin-copy-log-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
 }
 
 .admin-user-badge {
@@ -2480,4 +2579,5 @@ html, body {
     width: 12px;
     height: 12px;
   }
+
 }

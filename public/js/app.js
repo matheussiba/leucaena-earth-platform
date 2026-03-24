@@ -24,6 +24,22 @@ window.LeucenaApp = (function () {
     return h;
   }
 
+  const _logQueue = [];
+  let _logTimer = null;
+  function logEvent(action, cellId, objectId, details) {
+    if (!authToken) return;
+    _logQueue.push({ action, cell_id: cellId || null, object_id: objectId || null, details: details || null });
+    if (!_logTimer) {
+      _logTimer = setTimeout(_flushLogs, 3000);
+    }
+  }
+  function _flushLogs() {
+    _logTimer = null;
+    if (_logQueue.length === 0 || !authToken) return;
+    const batch = _logQueue.splice(0, 50);
+    fetch('/api/log', { method: 'POST', headers: authHeaders(), body: JSON.stringify(batch) }).catch(() => {});
+  }
+
   function init() {
     document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
@@ -114,6 +130,7 @@ window.LeucenaApp = (function () {
 
     handleHash();
     window.addEventListener('hashchange', handleHash);
+    window.addEventListener('beforeunload', _flushLogs);
   }
 
   // ── Language dropdown ──
@@ -606,6 +623,7 @@ window.LeucenaApp = (function () {
   }
 
   async function logout() {
+    _flushLogs();
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
@@ -1170,6 +1188,16 @@ window.LeucenaApp = (function () {
     return code.split('').map(d => toRoman(parseInt(d))).join('.');
   }
 
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
   function formatDuration(ms) {
     const totalSec = Math.floor(ms / 1000);
     const h = Math.floor(totalSec / 3600);
@@ -1192,29 +1220,30 @@ window.LeucenaApp = (function () {
 
       const pcBox = document.getElementById('admin-passcode-display');
       const romanCode = passcodeToRoman(data.nextPasscode);
-      pcBox.innerHTML = `<strong>${t('admin.nextPasscode')}</strong> <span id="passcode-value" style="letter-spacing:2px;font-family:monospace;">****</span>`;
-
-      const pcVal = document.getElementById('passcode-value');
-      let holdTimer = null;
-      pcBox.addEventListener('contextmenu', (e) => e.preventDefault());
-      pcBox.addEventListener('mousedown', (e) => {
-        if (e.button === 2) {
-          holdTimer = setTimeout(() => {
-            pcVal.textContent = romanCode;
-            pcVal.style.color = 'var(--accent)';
-          }, 3000);
+      pcBox.innerHTML = `<strong>${t('admin.nextPasscode')}</strong> <span class="admin-passcode-roman">${romanCode}</span><button type="button" class="admin-copy-btn" id="admin-copy-passcode" title="${t('admin.copyPasscode')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
+      document.getElementById('admin-copy-passcode').addEventListener('click', (e) => {
+        const code = String(data.nextPasscode);
+        const btn = e.currentTarget;
+        const showCopyFeedback = () => {
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+          showToast('Código copiado!', 'success');
+          setTimeout(() => { btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>'; }, 1500);
+        };
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(code).then(showCopyFeedback).catch(() => { fallbackCopy(code); showCopyFeedback(); });
+          } else {
+            fallbackCopy(code);
+            showCopyFeedback();
+          }
+        } catch (err) {
+          fallbackCopy(code);
+          showCopyFeedback();
         }
       });
-      pcBox.addEventListener('mouseup', () => {
-        clearTimeout(holdTimer);
-        pcVal.textContent = '****';
-        pcVal.style.color = '';
-      });
-      pcBox.addEventListener('mouseleave', () => {
-        clearTimeout(holdTimer);
-        pcVal.textContent = '****';
-        pcVal.style.color = '';
-      });
+
+      const metricsEl = document.getElementById('admin-global-metrics');
+      metricsEl.innerHTML = `<div class="admin-metric"><span class="admin-metric-value">${data.globalMasks.toLocaleString()}</span><span class="admin-metric-label">${t('admin.totalMasks')}</span></div><div class="admin-metric"><span class="admin-metric-value">${data.globalAreaHa.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span><span class="admin-metric-label">${t('admin.totalArea')}</span></div>`;
 
       const listEl = document.getElementById('admin-users-list');
       listEl.innerHTML = '';
@@ -1222,7 +1251,8 @@ window.LeucenaApp = (function () {
       const exportRow = document.createElement('div');
       exportRow.className = 'admin-export-row';
       exportRow.innerHTML = `<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>
-        <button id="admin-export-logs" class="admin-export-btn" style="margin-left:8px;">📋 ${t('admin.exportLogs')}</button>`;
+        <button id="admin-export-logs" class="admin-export-btn">📋 ${t('admin.exportLogs')}</button>
+        <button id="admin-copy-recent-logs" class="admin-export-btn admin-copy-log-btn">📄 ${t('admin.copyRecentLogs')}</button>`;
       listEl.appendChild(exportRow);
       document.getElementById('admin-export-csv').addEventListener('click', async () => {
         try {
@@ -1250,6 +1280,27 @@ window.LeucenaApp = (function () {
           URL.revokeObjectURL(url);
         } catch (e) { showToast('Export failed', 'error'); }
       });
+      document.getElementById('admin-copy-recent-logs').addEventListener('click', async () => {
+        try {
+          const r = await fetch('/api/admin/logs?minutes=5', { headers: authHeaders() });
+          if (!r.ok) { showToast('Export failed', 'error'); return; }
+          const logs = await r.json();
+          if (logs.length === 0) { showToast(t('admin.noRecentLogs'), 'info'); return; }
+          const text = logs.map(l => {
+            let line = `[${l.timestamp}] ${l.username || '?'} — ${l.action}`;
+            if (l.cell_id) line += ` | cell:${l.cell_id}`;
+            if (l.object_id) line += ` | obj:${l.object_id}`;
+            if (l.details) { try { line += ` | ${l.details}`; } catch (_) {} }
+            return line;
+          }).join('\n');
+          try {
+            if (navigator.clipboard && window.isSecureContext) {
+              await navigator.clipboard.writeText(text);
+            } else { fallbackCopy(text); }
+          } catch (_) { fallbackCopy(text); }
+          showToast(t('admin.logsCopied'), 'success');
+        } catch (e) { showToast('Erro ao copiar logs', 'error'); }
+      });
 
       for (const user of data.users) {
         const role = user.role || 'contributor';
@@ -1264,6 +1315,7 @@ window.LeucenaApp = (function () {
             <div class="admin-user-date">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
             <div class="admin-user-stats">
               <span title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
+              <span title="${t('admin.area')}">📐 ${(user.mask_area_ha || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
               <span title="${t('admin.logins')}">🔑 ${user.login_count || 0}</span>
               <span title="${t('admin.timeOnline')}">⏱ ${timeStr}</span>
             </div>
@@ -1458,6 +1510,8 @@ window.LeucenaApp = (function () {
     collapseLegendOnFirstZoom,
     isEditing,
     isAdminUser,
-    isTeamOrAbove
+    isTeamOrAbove,
+    logEvent,
+    flushLogs: _flushLogs
   };
 })();

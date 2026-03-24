@@ -17,12 +17,14 @@ window.LeucenaExport = (function () {
       e.preventDefault();
       if (LeucenaApp.getUserRole() === 'contributor') return;
       exportMenu.classList.remove('show');
+      if (LeucenaApp.logEvent) LeucenaApp.logEvent('export_start', null, null, { type: 'masks' });
       downloadFile('/api/export/geojson', 'leucena_polygons.geojson');
     });
 
     document.getElementById('export-grid').addEventListener('click', (e) => {
       e.preventDefault();
       exportMenu.classList.remove('show');
+      if (LeucenaApp.logEvent) LeucenaApp.logEvent('export_start', null, null, { type: 'grid' });
       downloadFile('/api/export/grid-status', 'grid_status.geojson');
     });
 
@@ -30,6 +32,7 @@ window.LeucenaExport = (function () {
       e.preventDefault();
       if (LeucenaApp.getUserRole() === 'contributor') return;
       exportMenu.classList.remove('show');
+      if (LeucenaApp.logEvent) LeucenaApp.logEvent('export_start', null, null, { type: 'points' });
       downloadFile('/api/export/points', 'leucena_points.geojson');
     });
   }

@@ -166,10 +166,17 @@ window.LeucenaI18n = (function () {
     'admin.profileUpdated': { pt: 'Perfil atualizado', en: 'Profile updated', es: 'Perfil actualizado' },
     'admin.editProfileTitle': { pt: 'Editar perfil de {0}', en: 'Edit profile of {0}', es: 'Editar perfil de {0}' },
     'admin.masks': { pt: 'Máscaras', en: 'Masks', es: 'Máscaras' },
+    'admin.area': { pt: 'Área mapeada', en: 'Mapped area', es: 'Área mapeada' },
     'admin.logins': { pt: 'Logins', en: 'Logins', es: 'Logins' },
     'admin.timeOnline': { pt: 'Tempo Online', en: 'Time Online', es: 'Tiempo Online' },
-    'admin.exportCsv': { pt: 'Exportar CSV', en: 'Export CSV', es: 'Exportar CSV' },
+    'admin.totalMasks': { pt: 'Total de máscaras', en: 'Total masks', es: 'Total de máscaras' },
+    'admin.totalArea': { pt: 'Área total mapeada', en: 'Total mapped area', es: 'Área total mapeada' },
+    'admin.copyPasscode': { pt: 'Copiar código', en: 'Copy code', es: 'Copiar código' },
+    'admin.exportCsv': { pt: 'Exportar Usuários', en: 'Export Users', es: 'Exportar Usuarios' },
     'admin.exportLogs': { pt: 'Logs (48h)', en: 'Logs (48h)', es: 'Logs (48h)' },
+    'admin.copyRecentLogs': { pt: 'Copiar log (5 min)', en: 'Copy log (5 min)', es: 'Copiar log (5 min)' },
+    'admin.logsCopied': { pt: 'Log copiado!', en: 'Log copied!', es: 'Log copiado!' },
+    'admin.noRecentLogs': { pt: 'Nenhum log nos últimos 5 minutos', en: 'No logs in the last 5 minutes', es: 'Sin logs en los últimos 5 minutos' },
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },

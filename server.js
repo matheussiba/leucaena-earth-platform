@@ -71,12 +71,17 @@ function hashPassword(password) {
   return crypto.createHash('sha256').update(password + '***REDACTED_SALT***').digest('hex');
 }
 
+let _logCleanupCounter = 0;
 function logActivity(username, action, cellId, objectId, details) {
   try {
+    const dets = (details && typeof details === 'object') ? JSON.stringify(details) : (details || null);
     runSQL('INSERT INTO activity_logs (timestamp, username, action, cell_id, object_id, details) VALUES (?, ?, ?, ?, ?, ?)',
-      [new Date().toISOString(), username || null, action, cellId || null, objectId || null, details || null]);
-    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    runSQL('DELETE FROM activity_logs WHERE timestamp < ?', [cutoff]);
+      [new Date().toISOString(), username || null, action, cellId || null, objectId || null, dets]);
+    if (++_logCleanupCounter >= 50) {
+      _logCleanupCounter = 0;
+      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      runSQL('DELETE FROM activity_logs WHERE timestamp < ?', [cutoff]);
+    }
   } catch (e) { /* ignore logging errors */ }
 }
 
@@ -133,6 +138,28 @@ function pointNearPolygonEdge(point, ring, toleranceDeg) {
     if (distToSegment(px, py, ring[j][0], ring[j][1], ring[i][0], ring[i][1]) <= toleranceDeg) return true;
   }
   return false;
+}
+
+function ringAreaM2(ring) {
+  const toRad = Math.PI / 180;
+  const R = 6371000;
+  let area = 0;
+  for (let i = 0, len = ring.length; i < len; i++) {
+    const [lng1, lat1] = ring[i];
+    const [lng2, lat2] = ring[(i + 1) % len];
+    area += (lng2 - lng1) * toRad * (2 + Math.sin(lat1 * toRad) + Math.sin(lat2 * toRad));
+  }
+  return Math.abs(area * R * R / 2);
+}
+
+function polygonAreaHa(geometry) {
+  if (!geometry || !geometry.coordinates) return 0;
+  const coords = geometry.coordinates;
+  let area = ringAreaM2(coords[0]);
+  for (let i = 1; i < coords.length; i++) {
+    area -= ringAreaM2(coords[i]);
+  }
+  return Math.max(0, area) / 10000;
 }
 
 function findGridForPoint(lng, lat) {
@@ -259,6 +286,7 @@ app.post('/api/auth/register', (req, res) => {
   const hash = hashPassword(password);
   const now = new Date().toISOString();
   runSQL('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)', [username, hash, now]);
+  logActivity(username, 'register', null, null, null);
 
   const token = uuidv4();
   sessions.set(token, username);
@@ -387,9 +415,13 @@ app.get('/api/quem-somos', (req, res) => {
 
 app.post('/api/auth/logout', (req, res) => {
   const header = req.headers.authorization;
+  let logUser = null;
   if (header && header.startsWith('Bearer ')) {
-    sessions.delete(header.slice(7));
+    const token = header.slice(7);
+    logUser = sessions.get(token) || null;
+    sessions.delete(token);
   }
+  if (logUser) logActivity(logUser, 'logout', null, null, null);
   res.json({ success: true });
 });
 
@@ -398,12 +430,26 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role FROM users WHERE username != 'deleted'");
-  const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
+  const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
-  for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;
-  for (const u of users) u.mask_count = maskMap[u.username] || 0;
+  const areaMap = {};
+  let globalMasks = 0;
+  let globalAreaHa = 0;
+  for (const p of allPolys) {
+    const user = p.created_by;
+    maskMap[user] = (maskMap[user] || 0) + 1;
+    let ha = 0;
+    try { ha = polygonAreaHa(JSON.parse(p.geometry)); } catch (e) { /* skip bad geometry */ }
+    areaMap[user] = (areaMap[user] || 0) + ha;
+    globalMasks++;
+    globalAreaHa += ha;
+  }
+  for (const u of users) {
+    u.mask_count = maskMap[u.username] || 0;
+    u.mask_area_ha = Math.round((areaMap[u.username] || 0) * 100) / 100;
+  }
   const passcode = getNextPasscode();
-  res.json({ users, nextPasscode: passcode });
+  res.json({ users, nextPasscode: passcode, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100 });
 });
 
 app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
@@ -436,6 +482,7 @@ app.put('/api/admin/users/:id/password', requireAuth, (req, res) => {
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   const hash = hashPassword(password);
   runSQL('UPDATE users SET password_hash = ? WHERE id = ?', [hash, Number(req.params.id)]);
+  logActivity(req.username, 'password_change', null, null, { target_user: user.username });
   persist();
   res.json({ success: true });
 });
@@ -464,6 +511,7 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
   }
 
   runSQL('DELETE FROM users WHERE id = ?', [Number(req.params.id)]);
+  logActivity(req.username, 'user_delete', null, null, { deleted_user: user.username, deleted_role: user.role });
   persist();
   io.emit('users:updated', Array.from(connectedUsers.values()));
   res.json({ success: true });
@@ -476,7 +524,9 @@ app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
   if (!validRoles.includes(role)) return res.status(400).json({ error: 'Role inválido' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  const oldRole = user.role || 'contributor';
   runSQL('UPDATE users SET role = ? WHERE id = ?', [role, Number(req.params.id)]);
+  logActivity(req.username, 'role_change', null, null, { target_user: user.username, from: oldRole, to: role });
   persist();
   res.json({ success: true });
 });
@@ -489,7 +539,14 @@ app.get('/api/admin/passcode', requireAuth, (req, res) => {
 app.get('/api/admin/logs', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const format = req.query.format || 'json';
-  const logs = queryAll('SELECT * FROM activity_logs ORDER BY timestamp DESC');
+  const minutes = req.query.minutes ? Number(req.query.minutes) : null;
+  let logs;
+  if (minutes && minutes > 0) {
+    const since = new Date(Date.now() - minutes * 60 * 1000).toISOString();
+    logs = queryAll('SELECT * FROM activity_logs WHERE timestamp >= ? ORDER BY timestamp DESC', [since]);
+  } else {
+    logs = queryAll('SELECT * FROM activity_logs ORDER BY timestamp DESC');
+  }
   if (format === 'csv') {
     const header = 'id,timestamp,username,action,cell_id,object_id,details\n';
     const rows = logs.map(l =>
@@ -500,6 +557,17 @@ app.get('/api/admin/logs', requireAuth, (req, res) => {
     return res.send(header + rows);
   }
   res.json(logs);
+});
+
+app.post('/api/log', requireAuth, (req, res) => {
+  const events = req.body;
+  if (!Array.isArray(events)) return res.status(400).json({ error: 'Expected array' });
+  const max = Math.min(events.length, 50);
+  for (let i = 0; i < max; i++) {
+    const e = events[i];
+    logActivity(req.username, e.action || 'unknown', e.cell_id || null, e.object_id || null, e.details || null);
+  }
+  res.json({ logged: max });
 });
 
 app.get('/api/admin/db-info', requireAuth, (req, res) => {
@@ -595,7 +663,7 @@ app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
 
   io.emit('cell:locked', { cellId: Number(id), username });
   io.emit('cell:statusChanged', { cellId: Number(id), status: 'in_use', username });
-  logActivity(username, 'cell_lock', Number(id), null, null);
+  logActivity(username, 'cell_lock', Number(id), null, { prev_status: cell.grid_status });
   persist();
   res.json({ success: true, worked_by: workedBy.join(',') });
 });
@@ -851,6 +919,7 @@ app.post('/api/points', requireAuth, (req, res) => {
   };
 
   io.emit('point:created', pointData);
+  logActivity(username, 'point_create', gridCell ? gridCell.id : null, String(inserted.id), { fid: newFid, lat, lng, layer: pointLayer });
   persist();
   res.json(pointData);
 });
@@ -893,6 +962,7 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
   }
 
   io.emit('point:deleted', { id: Number(id) });
+  logActivity(username, 'point_delete', gridCell ? gridCell.id : null, String(id), { fid: point.fid, layer: point.layer });
   persist();
   res.json({ success: true, gridStatusChanged });
 });
@@ -935,6 +1005,7 @@ app.get('/api/export/geojson', requireAuth, (req, res) => {
       geometry: JSON.parse(p.geometry)
     }))
   };
+  logActivity(req.username, 'export_masks', null, null, { count: fc.features.length });
   res.setHeader('Content-Disposition', 'attachment; filename="leucena_polygons.geojson"');
   res.setHeader('Content-Type', 'application/geo+json');
   res.json(fc);
@@ -959,6 +1030,8 @@ app.get('/api/export/grid-status', (req, res) => {
       geometry: JSON.parse(c.geometry)
     }))
   };
+  const uname = getUsernameFromToken(req);
+  if (uname) logActivity(uname, 'export_grid', null, null, { count: fc.features.length });
   res.setHeader('Content-Disposition', 'attachment; filename="grid_status.geojson"');
   res.setHeader('Content-Type', 'application/geo+json');
   res.json(fc);
@@ -977,6 +1050,7 @@ app.get('/api/export/points', requireAuth, (req, res) => {
       geometry: JSON.parse(p.geometry)
     }))
   };
+  logActivity(req.username, 'export_points', null, null, { count: fc.features.length });
   res.setHeader('Content-Disposition', 'attachment; filename="leucena_points.geojson"');
   res.setHeader('Content-Type', 'application/geo+json');
   res.json(fc);
