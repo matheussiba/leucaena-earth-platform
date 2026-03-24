@@ -107,6 +107,31 @@ window.LeucenaApp = (function () {
       if (e.target === e.currentTarget) closeAdminUsersModal();
     });
 
+    document.getElementById('admin-debug-toggle').addEventListener('change', (e) => {
+      const vc = document.getElementById('view-counter');
+      vc.classList.toggle('debug-active', e.target.checked);
+      vc.title = e.target.checked ? 'Debug — clique para info do mapa' : 'Visualizações do site';
+    });
+    document.getElementById('view-counter').addEventListener('click', () => {
+      const toggle = document.getElementById('admin-debug-toggle');
+      if (!toggle || !toggle.checked) return;
+      openDebugModal();
+    });
+    document.getElementById('debug-modal-close').addEventListener('click', () => {
+      document.getElementById('debug-modal').classList.add('hidden');
+    });
+    document.getElementById('debug-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) document.getElementById('debug-modal').classList.add('hidden');
+    });
+    document.getElementById('debug-copy-all').addEventListener('click', () => {
+      const body = document.getElementById('debug-info-body');
+      const lines = Array.from(body.querySelectorAll('.debug-row')).map(r => {
+        return r.querySelector('.debug-key').textContent + ' ' + r.querySelector('.debug-val').textContent;
+      });
+      const text = lines.join('\n');
+      navigator.clipboard.writeText(text).then(() => showToast('Copiado!', 'success', 2000)).catch(() => showToast(text, 'info', 6000));
+    });
+
     document.getElementById('user-badge').addEventListener('click', () => openProfileModal());
     document.getElementById('profile-modal-close').addEventListener('click', closeProfileModal);
     document.getElementById('profile-modal').addEventListener('click', (e) => {
@@ -1227,6 +1252,45 @@ window.LeucenaApp = (function () {
     if (h > 0) return `${h}h ${m}m`;
     if (m > 0) return `${m}m`;
     return `${totalSec}s`;
+  }
+
+  function openDebugModal() {
+    const map = LeucenaMap.getMap();
+    if (!map) return;
+    const zoom = map.getZoom();
+    const bounds = map.getBounds();
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const center = map.getCenter();
+    const mapType = map.getMapTypeId();
+    const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : '—';
+
+    const rows = [
+      { key: 'Zoom', val: zoom },
+      { key: 'Center', val: `${center.lat().toFixed(6)}, ${center.lng().toFixed(6)}` },
+      { key: 'Top-Left (NW)', val: `${ne.lat().toFixed(6)}, ${sw.lng().toFixed(6)}` },
+      { key: 'Bottom-Right (SE)', val: `${sw.lat().toFixed(6)}, ${ne.lng().toFixed(6)}` },
+      { key: 'Bbox (W,S,E,N)', val: `${sw.lng().toFixed(6)}, ${sw.lat().toFixed(6)}, ${ne.lng().toFixed(6)}, ${ne.lat().toFixed(6)}` },
+      { key: 'Map Type', val: mapType },
+      { key: 'Viewport (px)', val: `${map.getDiv().offsetWidth} × ${map.getDiv().offsetHeight}` },
+      { key: 'Polígonos', val: polyCount },
+      { key: 'Célula', val: selectedCellId || '—' },
+      { key: 'Usuário', val: username || '—' },
+      { key: 'Role', val: userRole || '—' },
+    ];
+
+    const body = document.getElementById('debug-info-body');
+    body.innerHTML = rows.map(r => {
+      const v = String(r.val);
+      return `<div class="debug-row">
+        <span class="debug-key">${r.key}:</span>
+        <span class="debug-val">${v}</span>
+        <button class="debug-copy-btn" title="Copiar" onclick="navigator.clipboard.writeText('${v.replace(/'/g, "\\'")}').then(()=>LeucenaApp.showToast('Copiado!','success',1500))">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+    document.getElementById('debug-modal').classList.remove('hidden');
   }
 
   async function openAdminUsersModal() {

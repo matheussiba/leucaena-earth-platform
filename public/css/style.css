@@ -2619,6 +2619,94 @@ html, body {
 
 }
 
+/* ── Admin debug section ── */
+.admin-debug-section {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-debug-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-debug-label input[type="checkbox"] {
+  accent-color: #f59e0b;
+  width: 16px;
+  height: 16px;
+}
+
+.view-counter.debug-active {
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.view-counter.debug-active:hover {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+.view-counter.debug-active svg {
+  stroke: #f59e0b;
+}
+
+.debug-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.debug-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.debug-key {
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.debug-val {
+  color: #e2e8f0;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  flex: 1;
+  word-break: break-all;
+}
+
+.debug-copy-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.debug-copy-btn:hover {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+
 /* ── Polygon area labels ── */
 .poly-area-label {
   position: absolute;

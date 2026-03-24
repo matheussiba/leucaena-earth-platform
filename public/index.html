@@ -114,10 +114,25 @@
   <div id="admin-users-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-docs">
       <button id="admin-users-close" class="modal-close">&times;</button>
-      <h2 data-i18n="admin.usersTitle">Gerenciar Usuários</h2>
+      <h2 data-i18n="admin.usersTitle">Painel do Admin</h2>
       <div id="admin-global-metrics" class="admin-global-metrics"></div>
       <div id="admin-passcode-display" class="admin-passcode-box"></div>
       <div id="admin-users-list" class="admin-users-list"></div>
+      <div class="admin-debug-section">
+        <label class="admin-debug-label">
+          <input type="checkbox" id="admin-debug-toggle"> Debug
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Debug Info -->
+  <div id="debug-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-small">
+      <button id="debug-modal-close" class="modal-close">&times;</button>
+      <h2>Debug — Map Info</h2>
+      <div id="debug-info-body" class="debug-info-body"></div>
+      <button class="btn btn-primary" id="debug-copy-all" style="margin-top:12px;width:100%">Copiar tudo</button>
     </div>
   </div>
 
@@ -315,7 +330,7 @@
           <div class="user-avatar" id="user-avatar"></div>
           <span id="user-display-name"></span>
         </button>
-        <button class="btn btn-secondary btn-small hidden" id="admin-users-btn" title="Gerenciar Usuários">
+        <button class="btn btn-secondary btn-small hidden" id="admin-users-btn" title="Painel do Admin">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </button>
         <span class="view-counter hidden" id="view-counter" title="Visualizações do site">
