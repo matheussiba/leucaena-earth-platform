@@ -36,6 +36,7 @@ window.LeucenaI18n = (function () {
     'auth.disconnected': { pt: 'Desconectado', en: 'Disconnected', es: 'Desconectado' },
     'auth.loginToEdit': { pt: 'Faça login para Editar', en: 'Sign in to Edit', es: 'Inicie sesión para Editar' },
     'auth.logout': { pt: 'Sair', en: 'Logout', es: 'Salir' },
+    'auth.forgotPassword': { pt: 'Esqueci minha senha', en: 'Forgot my password', es: 'Olvidé mi contraseña' },
 
     // ── Top bar ──
     'topbar.export': { pt: 'Exportar', en: 'Export', es: 'Exportar' },
@@ -179,6 +180,19 @@ window.LeucenaI18n = (function () {
     'admin.noRecentLogs': { pt: 'Nenhum log nos últimos 5 minutos', en: 'No logs in the last 5 minutes', es: 'Sin logs en los últimos 5 minutos' },
     'admin.backupDb': { pt: 'Backup DB', en: 'Backup DB', es: 'Backup DB' },
     'admin.backupDone': { pt: 'Backup baixado com sucesso', en: 'Backup downloaded successfully', es: 'Backup descargado exitosamente' },
+    'admin.generateResetCode': { pt: 'Recuperar Senha', en: 'Reset Password', es: 'Recuperar Contraseña' },
+    'admin.resetCodeGenerated': { pt: 'Código de recuperação para "{0}":', en: 'Recovery code for "{0}":', es: 'Código de recuperación para "{0}":' },
+    'admin.resetCodeExpires': { pt: 'Válido por {0} minutos.', en: 'Valid for {0} minutes.', es: 'Válido por {0} minutos.' },
+    'admin.resetCodeCopied': { pt: 'Código copiado para a área de transferência', en: 'Code copied to clipboard', es: 'Código copiado al portapapeles' },
+
+    // ── Password Reset ──
+    'reset.title': { pt: 'Recuperar Senha', en: 'Reset Password', es: 'Recuperar Contraseña' },
+    'reset.subtitle': { pt: 'Informe seu usuário, o código recebido do administrador e a nova senha.', en: 'Enter your username, the code received from the administrator, and a new password.', es: 'Ingrese su usuario, el código recibido del administrador y una nueva contraseña.' },
+    'reset.codePlaceholder': { pt: 'Código de recuperação', en: 'Recovery code', es: 'Código de recuperación' },
+    'reset.newPasswordPlaceholder': { pt: 'Nova senha (mínimo 3 caracteres)', en: 'New password (min. 3 characters)', es: 'Nueva contraseña (mín. 3 caracteres)' },
+    'reset.submit': { pt: 'Redefinir Senha', en: 'Reset Password', es: 'Restablecer Contraseña' },
+    'reset.success': { pt: 'Senha redefinida com sucesso! Redirecionando para o login...', en: 'Password reset successfully! Redirecting to login...', es: 'Contraseña restablecida exitosamente! Redirigiendo al login...' },
+    'reset.backToLogin': { pt: 'Voltar ao login', en: 'Back to login', es: 'Volver al login' },
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },

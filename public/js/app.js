@@ -296,6 +296,21 @@ window.LeucenaApp = (function () {
       e.preventDefault();
       openAuthModal(authMode === 'login' ? 'register' : 'login');
     });
+    document.getElementById('auth-forgot-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      closeAuthModal();
+      openResetModal();
+    });
+    document.getElementById('reset-modal-close').addEventListener('click', closeResetModal);
+    document.getElementById('reset-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeResetModal();
+    });
+    document.getElementById('reset-form').addEventListener('submit', handleResetSubmit);
+    document.getElementById('reset-back-login').addEventListener('click', (e) => {
+      e.preventDefault();
+      closeResetModal();
+      openAuthModal('login');
+    });
   }
 
   function openAuthModal(mode) {
@@ -312,6 +327,7 @@ window.LeucenaApp = (function () {
     passcodeInput.value = '';
 
     const t = LeucenaI18n.t;
+    const forgotGroup = document.getElementById('auth-forgot-group');
     if (mode === 'login') {
       document.getElementById('auth-modal-title').textContent = t('auth.login');
       document.getElementById('auth-modal-subtitle').textContent = t('auth.loginSubtitle');
@@ -320,6 +336,7 @@ window.LeucenaApp = (function () {
       document.getElementById('auth-switch-link').textContent = t('auth.register');
       passcodeGroup.classList.add('hidden');
       passcodeInput.removeAttribute('required');
+      forgotGroup.classList.remove('hidden');
     } else {
       document.getElementById('auth-modal-title').textContent = t('auth.register');
       document.getElementById('auth-modal-subtitle').textContent = t('auth.registerSubtitle');
@@ -328,12 +345,63 @@ window.LeucenaApp = (function () {
       document.getElementById('auth-switch-link').textContent = t('auth.login');
       passcodeGroup.classList.remove('hidden');
       passcodeInput.setAttribute('required', 'required');
+      forgotGroup.classList.add('hidden');
     }
     document.getElementById('auth-username').focus();
   }
 
   function closeAuthModal() {
     document.getElementById('auth-modal').classList.add('hidden');
+  }
+
+  function openResetModal() {
+    const modal = document.getElementById('reset-modal');
+    document.getElementById('reset-error').classList.add('hidden');
+    document.getElementById('reset-success').classList.add('hidden');
+    document.getElementById('reset-username').value = '';
+    document.getElementById('reset-code').value = '';
+    document.getElementById('reset-password').value = '';
+    modal.classList.remove('hidden');
+    document.getElementById('reset-username').focus();
+  }
+
+  function closeResetModal() {
+    document.getElementById('reset-modal').classList.add('hidden');
+  }
+
+  async function handleResetSubmit(e) {
+    e.preventDefault();
+    const username = document.getElementById('reset-username').value.trim();
+    const code = document.getElementById('reset-code').value.trim();
+    const password = document.getElementById('reset-password').value;
+    const errorEl = document.getElementById('reset-error');
+    const successEl = document.getElementById('reset-success');
+    errorEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, code, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errorEl.textContent = data.error;
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      successEl.textContent = LeucenaI18n.t('reset.success');
+      successEl.classList.remove('hidden');
+      document.getElementById('reset-form').reset();
+      setTimeout(() => {
+        closeResetModal();
+        openAuthModal('login');
+      }, 2000);
+    } catch (err) {
+      errorEl.textContent = LeucenaI18n.t('auth.connectionError');
+      errorEl.classList.remove('hidden');
+    }
   }
 
   async function handleAuthSubmit(e) {
@@ -1496,6 +1564,7 @@ window.LeucenaApp = (function () {
             ${roleSelectHtml}
             <button class="admin-profile-btn">${t('admin.editProfile')}</button>
             <button class="admin-pw-btn">${t('admin.changePassword')}</button>
+            <button class="admin-reset-btn">${t('admin.generateResetCode')}</button>
             ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
           </div>
         `;
@@ -1566,6 +1635,26 @@ window.LeucenaApp = (function () {
           });
           if (r.ok) { showToast(t('admin.passwordChanged'), 'success'); }
           else { const err = await r.json(); showToast(err.error, 'error'); }
+        });
+
+        const resetBtn = row.querySelector('.admin-reset-btn');
+        resetBtn.addEventListener('click', async () => {
+          try {
+            const r = await fetch(`/api/admin/users/${user.id}/reset-token`, {
+              method: 'POST', headers: authHeaders()
+            });
+            const data = await r.json();
+            if (r.ok) {
+              const msg = `${t('admin.resetCodeGenerated', user.username)}\n\n${data.code}\n\n${t('admin.resetCodeExpires', data.expiresInMinutes)}`;
+              try {
+                if (navigator.clipboard && window.isSecureContext) {
+                  await navigator.clipboard.writeText(data.code);
+                } else { fallbackCopy(data.code); }
+              } catch (_) { fallbackCopy(data.code); }
+              alert(msg);
+              showToast(t('admin.resetCodeCopied'), 'success');
+            } else { showToast(data.error, 'error'); }
+          } catch (e) { showToast('Erro de conexão', 'error'); }
         });
 
         const delBtn = row.querySelector('.admin-del-btn');

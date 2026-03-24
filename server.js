@@ -62,6 +62,43 @@ app.get('/landing', (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── Rate limiter (in-memory, per IP) ──
+
+const _rateBuckets = {};
+
+function rateLimit(key, maxAttempts, windowMs) {
+  return (req, res, next) => {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const bucketKey = `${key}:${ip}`;
+    const now = Date.now();
+    if (!_rateBuckets[bucketKey]) _rateBuckets[bucketKey] = [];
+    _rateBuckets[bucketKey] = _rateBuckets[bucketKey].filter(t => t > now - windowMs);
+    if (_rateBuckets[bucketKey].length >= maxAttempts) {
+      const retryAfter = Math.ceil((windowMs - (now - _rateBuckets[bucketKey][0])) / 1000);
+      return res.status(429).json({ error: `Muitas tentativas. Tente novamente em ${retryAfter}s.`, retryAfter });
+    }
+    _rateBuckets[bucketKey].push(now);
+    next();
+  };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const key of Object.keys(_rateBuckets)) {
+    _rateBuckets[key] = _rateBuckets[key].filter(t => t > now - 3600000);
+    if (_rateBuckets[key].length === 0) delete _rateBuckets[key];
+  }
+}, 10 * 60 * 1000);
+
+const loginLimiter = rateLimit('login', 8, 15 * 60 * 1000);
+const registerLimiter = rateLimit('register', 5, 60 * 60 * 1000);
+const resetLimiter = rateLimit('reset', 5, 15 * 60 * 1000);
+
+// ── Password reset tokens (in-memory, expire in 30 min) ──
+
+const resetTokens = new Map();
+const RESET_TOKEN_TTL = 30 * 60 * 1000;
+
 const connectedUsers = new Map();
 const sessions = new Map();
 const LOCK_TIMEOUT_MS = 30 * 60 * 1000;
@@ -290,7 +327,7 @@ function getNextPasscode() {
   return `${d1}${d2}${d3}${d0}`;
 }
 
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', registerLimiter, (req, res) => {
   const { username, password, passcode } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
   if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
@@ -315,7 +352,7 @@ app.post('/api/auth/register', (req, res) => {
   res.json({ token, username, role, tester_mode: 'contributor' });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
 
@@ -445,6 +482,32 @@ app.post('/api/auth/logout', (req, res) => {
     sessions.delete(token);
   }
   if (logUser) logActivity(logUser, 'logout', null, null, null);
+  res.json({ success: true });
+});
+
+// ── Password reset ──
+
+app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
+  const { username, code, password } = req.body;
+  if (!username || !code || !password) return res.status(400).json({ error: 'Usuário, código e nova senha são obrigatórios' });
+  if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+
+  const entry = resetTokens.get(username.toLowerCase());
+  if (!entry) return res.status(400).json({ error: 'Nenhum código de recuperação encontrado. Solicite ao administrador.' });
+  if (Date.now() > entry.expires) {
+    resetTokens.delete(username.toLowerCase());
+    return res.status(400).json({ error: 'Código expirado. Solicite um novo ao administrador.' });
+  }
+  if (entry.code !== code.trim()) return res.status(400).json({ error: 'Código inválido' });
+
+  const user = queryOne('SELECT id FROM users WHERE username = ?', [username]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+  const hash = hashPassword(password);
+  runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, username]);
+  resetTokens.delete(username.toLowerCase());
+  logActivity(username, 'password_reset_used', null, null, null);
+  persist();
   res.json({ success: true });
 });
 
@@ -579,6 +642,16 @@ app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
   runSQL('UPDATE users SET is_founder = ? WHERE id = ?', [is_founder ? 1 : 0, Number(req.params.id)]);
   persist();
   res.json({ success: true });
+});
+
+app.post('/api/admin/users/:id/reset-token', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  resetTokens.set(user.username.toLowerCase(), { code, expires: Date.now() + RESET_TOKEN_TTL });
+  logActivity(req.username, 'reset_token_generated', null, null, { target_user: user.username });
+  res.json({ success: true, code, username: user.username, expiresInMinutes: RESET_TOKEN_TTL / 60000 });
 });
 
 app.get('/api/admin/passcode', requireAuth, (req, res) => {

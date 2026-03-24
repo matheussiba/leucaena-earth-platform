@@ -46,6 +46,29 @@
         <span id="auth-switch-text" data-i18n="auth.noAccount">Não tem conta?</span>
         <a href="#" id="auth-switch-link" data-i18n="auth.register">Cadastrar</a>
       </p>
+      <p class="auth-forgot" id="auth-forgot-group">
+        <a href="#" id="auth-forgot-link" data-i18n="auth.forgotPassword">Esqueci minha senha</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Modal de Recuperação de Senha -->
+  <div id="reset-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-small">
+      <button id="reset-modal-close" class="modal-close">&times;</button>
+      <h2 data-i18n="reset.title">Recuperar Senha</h2>
+      <p class="modal-subtitle" data-i18n="reset.subtitle">Informe seu usuário, o código recebido do administrador e a nova senha.</p>
+      <div id="reset-error" class="auth-error hidden"></div>
+      <div id="reset-success" class="auth-success hidden"></div>
+      <form id="reset-form">
+        <input type="text" id="reset-username" data-i18n-placeholder="auth.userPlaceholder" placeholder="Usuário" required autocomplete="username" minlength="2" maxlength="30">
+        <input type="text" id="reset-code" data-i18n-placeholder="reset.codePlaceholder" placeholder="Código de recuperação" required autocomplete="off" maxlength="10">
+        <input type="password" id="reset-password" data-i18n-placeholder="reset.newPasswordPlaceholder" placeholder="Nova senha (mínimo 3 caracteres)" required minlength="3">
+        <button type="submit" class="btn btn-primary btn-full" data-i18n="reset.submit">Redefinir Senha</button>
+      </form>
+      <p class="auth-switch">
+        <a href="#" id="reset-back-login" data-i18n="reset.backToLogin">Voltar ao login</a>
+      </p>
     </div>
   </div>
 
