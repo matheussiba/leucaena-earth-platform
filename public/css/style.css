@@ -2009,7 +2009,10 @@ html, body {
 .admin-user-email {
   font-size: 11px;
   color: var(--green);
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .admin-user-date {
