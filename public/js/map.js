@@ -912,10 +912,10 @@ window.LeucenaMap = (function () {
     const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : 0;
     setText('count-polygons-total', polyCount);
 
-    const subEl = document.getElementById('mask-subcategories');
+  const subEl = document.getElementById('mask-subcategories');
     if (subEl && typeof LeucenaApp !== 'undefined') {
       const role = LeucenaApp.getUserRole ? LeucenaApp.getUserRole() : null;
-      const showSubs = role === 'admin' || role === 'team';
+      const showSubs = role === 'superadmin' || role === 'admin' || role === 'team';
       subEl.classList.toggle('hidden', !showSubs);
       const defLeg = document.getElementById('legend-mask-default');
       const memLeg = document.getElementById('legend-mask-member');
