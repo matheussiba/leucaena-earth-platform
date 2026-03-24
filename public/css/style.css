@@ -2618,3 +2618,22 @@ html, body {
   }
 
 }
+
+/* ── Polygon area labels ── */
+.poly-area-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow:
+    0 0 4px rgba(0, 0, 0, 0.9),
+    0 0 8px rgba(0, 0, 0, 0.7),
+    1px 1px 2px rgba(0, 0, 0, 0.8),
+    -1px -1px 2px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.3px;
+  z-index: 12;
+}

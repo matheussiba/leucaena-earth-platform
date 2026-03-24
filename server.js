@@ -738,11 +738,19 @@ app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
     [newStatus, finishedBy, now, Number(id)]
   );
 
+  const cellPolys = queryAll('SELECT geometry FROM polygons WHERE grid_cell_id = ?', [Number(id)]);
+  let cellMaskCount = cellPolys.length;
+  let cellAreaHa = 0;
+  for (const p of cellPolys) {
+    try { cellAreaHa += polygonAreaHa(JSON.parse(p.geometry)); } catch (e) {}
+  }
+  cellAreaHa = Math.round(cellAreaHa * 10) / 10;
+
   io.emit('cell:unlocked', { cellId: Number(id), username });
   io.emit('cell:statusChanged', { cellId: Number(id), status: newStatus, username, finished_by: finishedBy });
   logActivity(username, 'cell_unlock', Number(id), null, JSON.stringify({ newStatus }));
   persist();
-  res.json({ success: true, status: newStatus });
+  res.json({ success: true, status: newStatus, maskCount: cellMaskCount, areaHa: cellAreaHa });
 });
 
 // ── Polygons ──
@@ -771,7 +779,8 @@ app.get('/api/polygons', (req, res) => {
       created_by: p.created_by,
       created_by_role: creatorRole(p.created_by),
       created_at: p.created_at,
-      updated_at: p.updated_at
+      updated_at: p.updated_at,
+      area_ha: p.area_ha || 0
     },
     geometry: JSON.parse(p.geometry)
   }));
@@ -799,12 +808,13 @@ app.post('/api/polygons', requireAuth, (req, res) => {
 
   const id = uuidv4();
   const now = new Date().toISOString();
+  const areaHa = Math.round(polygonAreaHa(geometry) * 100000) / 100000;
   runSQL(
-    'INSERT INTO polygons (id, grid_cell_id, geometry, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, Number(grid_cell_id), JSON.stringify(geometry), username || 'anonymous', now, now]
+    'INSERT INTO polygons (id, grid_cell_id, geometry, created_by, created_at, updated_at, area_ha) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, Number(grid_cell_id), JSON.stringify(geometry), username || 'anonymous', now, now, areaHa]
   );
 
-  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: getUserRole(username), created_at: now, updated_at: now };
+  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: getUserRole(username), created_at: now, updated_at: now, area_ha: areaHa };
   io.emit('polygon:created', polygon);
   logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
   persist();
@@ -829,12 +839,13 @@ app.put('/api/polygons/:id', requireAuth, (req, res) => {
   }
 
   const now = new Date().toISOString();
-  runSQL('UPDATE polygons SET geometry = ?, updated_at = ? WHERE id = ?', [JSON.stringify(geometry), now, id]);
+  const areaHa = Math.round(polygonAreaHa(geometry) * 100000) / 100000;
+  runSQL('UPDATE polygons SET geometry = ?, updated_at = ?, area_ha = ? WHERE id = ?', [JSON.stringify(geometry), now, areaHa, id]);
 
-  io.emit('polygon:updated', { id, geometry, updated_at: now });
+  io.emit('polygon:updated', { id, geometry, updated_at: now, area_ha: areaHa });
   logActivity(username, 'polygon_edit', poly.grid_cell_id, id, null);
   persist();
-  res.json({ success: true });
+  res.json({ success: true, area_ha: areaHa });
 });
 
 app.delete('/api/polygons/:id', requireAuth, (req, res) => {
@@ -1000,7 +1011,8 @@ app.get('/api/export/geojson', requireAuth, (req, res) => {
         id: p.id,
         grid_cell_id: p.grid_cell_id,
         created_by: p.created_by,
-        created_at: p.created_at
+        created_at: p.created_at,
+        area_ha: p.area_ha || 0
       },
       geometry: JSON.parse(p.geometry)
     }))
@@ -1124,6 +1136,19 @@ const PORT = process.env.PORT || 3000;
 
 async function start() {
   await initDB();
+
+  const emptyArea = queryAll('SELECT id, geometry FROM polygons WHERE area_ha IS NULL OR area_ha = 0');
+  if (emptyArea.length > 0) {
+    for (const p of emptyArea) {
+      try {
+        const ha = polygonAreaHa(JSON.parse(p.geometry));
+        runSQL('UPDATE polygons SET area_ha = ? WHERE id = ?', [Math.round(ha * 100000) / 100000, p.id]);
+      } catch (e) {}
+    }
+    persist();
+    console.log(`  Backfilled area_ha for ${emptyArea.length} polygons`);
+  }
+
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  Leucena Mapping Platform running at:`);
     console.log(`  Local:   http://localhost:${PORT}`);

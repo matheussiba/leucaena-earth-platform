@@ -7,6 +7,7 @@ window.LeucenaDrawing = (function () {
   const deleteUndoStack = [];
   const editUndoStack = [];
   let manualDrawState = null;
+  let _areaLabelsVisible = false;
 
   const POLY_STYLE_MEMBER = {
     strokeColor: '#84cc16',
@@ -23,6 +24,109 @@ window.LeucenaDrawing = (function () {
     fillColor: '#f97316',
     fillOpacity: 0.10
   };
+
+  // ── Client-side geodesic area calculation ──
+  function ringAreaM2(ring) {
+    const toRad = Math.PI / 180, R = 6371000;
+    let area = 0;
+    for (let i = 0, len = ring.length; i < len; i++) {
+      const [lng1, lat1] = ring[i];
+      const [lng2, lat2] = ring[(i + 1) % len];
+      area += (lng2 - lng1) * toRad * (2 + Math.sin(lat1 * toRad) + Math.sin(lat2 * toRad));
+    }
+    return Math.abs(area * R * R / 2);
+  }
+
+  function calcAreaHa(geometry) {
+    if (!geometry || !geometry.coordinates) return 0;
+    const coords = geometry.coordinates;
+    let area = ringAreaM2(coords[0]);
+    for (let i = 1; i < coords.length; i++) area -= ringAreaM2(coords[i]);
+    return Math.max(0, area) / 10000;
+  }
+
+  function formatAreaLabel(ha) {
+    if (ha < 0.1) {
+      const m2 = Math.round(ha * 10000);
+      return m2.toLocaleString() + ' m²';
+    }
+    return ha.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' ha';
+  }
+
+  // ── Area Label Overlay (lazy-initialized after Google Maps loads) ──
+  let _AreaLabelOverlay = null;
+
+  function getAreaLabelOverlayClass() {
+    if (_AreaLabelOverlay) return _AreaLabelOverlay;
+    _AreaLabelOverlay = class extends google.maps.OverlayView {
+      constructor(position, text, map) {
+        super();
+        this._position = position;
+        this._text = text;
+        this._div = null;
+        this.setMap(map);
+      }
+
+      onAdd() {
+        const div = document.createElement('div');
+        div.className = 'poly-area-label';
+        div.textContent = this._text;
+        this._div = div;
+        this.getPanes().overlayLayer.appendChild(div);
+      }
+
+      draw() {
+        if (!this._div) return;
+        const proj = this.getProjection();
+        if (!proj) return;
+        const pos = proj.fromLatLngToDivPixel(this._position);
+        if (!pos) return;
+        this._div.style.left = pos.x + 'px';
+        this._div.style.top = pos.y + 'px';
+      }
+
+      onRemove() {
+        if (this._div && this._div.parentNode) {
+          this._div.parentNode.removeChild(this._div);
+        }
+        this._div = null;
+      }
+
+      updatePosition(latLng) {
+        this._position = latLng;
+        this.draw();
+      }
+
+      updateText(text) {
+        this._text = text;
+        if (this._div) this._div.textContent = text;
+      }
+
+      setVisible(visible) {
+        if (this._div) this._div.style.display = visible ? '' : 'none';
+      }
+    };
+    return _AreaLabelOverlay;
+  }
+
+  function polygonCentroid(geometry) {
+    const ring = geometry.coordinates[0];
+    let sumLat = 0, sumLng = 0;
+    const n = ring.length > 1 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]
+      ? ring.length - 1 : ring.length;
+    for (let i = 0; i < n; i++) {
+      sumLng += ring[i][0];
+      sumLat += ring[i][1];
+    }
+    return new google.maps.LatLng(sumLat / n, sumLng / n);
+  }
+
+  function createAreaLabel(geometry, areaHa, map) {
+    const center = polygonCentroid(geometry);
+    const text = formatAreaLabel(areaHa);
+    const Cls = getAreaLabelOverlayClass();
+    return new Cls(center, text, map);
+  }
 
   const HOLE_HIGHLIGHT = {
     strokeColor: '#f59e0b',
@@ -121,6 +225,7 @@ window.LeucenaDrawing = (function () {
   function renderPolygon(id, geometry, props, editable) {
     if (drawnPolygons[id]) {
       drawnPolygons[id].gmapsPoly.setMap(null);
+      if (drawnPolygons[id].areaLabel) drawnPolygons[id].areaLabel.setMap(null);
     }
 
     const map = LeucenaMap.getMap();
@@ -152,7 +257,10 @@ window.LeucenaDrawing = (function () {
       attachPathListeners(id, poly);
     }
 
-    drawnPolygons[id] = { gmapsPoly: poly, data: { id, ...props, geometry } };
+    const areaHa = props.area_ha != null ? props.area_ha : calcAreaHa(geometry);
+    const showLabel = visible && _areaLabelsVisible;
+    const areaLabel = createAreaLabel(geometry, areaHa, showLabel ? map : null);
+    drawnPolygons[id] = { gmapsPoly: poly, areaLabel, data: { id, ...props, geometry } };
   }
 
   const pathListenerMap = {};
@@ -171,14 +279,20 @@ window.LeucenaDrawing = (function () {
           editUndoStack.push({ id, geometry: JSON.parse(JSON.stringify(entry._lastGeometry)) });
         }
       }
+      const entry = drawnPolygons[id];
+      if (entry && entry.areaLabel) {
+        const geom = { type: 'Polygon', coordinates: pathsToGeoJSONCoords(poly) };
+        entry.areaLabel.updateText(formatAreaLabel(calcAreaHa(geom)));
+        entry.areaLabel.updatePosition(polygonCentroid(geom));
+      }
       clearTimeout(gestureTimer);
       gestureTimer = setTimeout(() => {
         gestureTimer = null;
         if (editUndoGuard) return;
         savePolygonGeometry(id, poly);
-        const entry = drawnPolygons[id];
-        if (entry) {
-          entry._lastGeometry = { type: 'Polygon', coordinates: pathsToGeoJSONCoords(poly) };
+        const e = drawnPolygons[id];
+        if (e) {
+          e._lastGeometry = { type: 'Polygon', coordinates: pathsToGeoJSONCoords(poly) };
         }
       }, 150);
     };
@@ -260,8 +374,26 @@ window.LeucenaDrawing = (function () {
 
     if (mode === 'draw') {
       startDrawing();
+    } else if (mode === 'edit') {
+      makeAllEditableInCell();
     } else if (mode === 'hole') {
       LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
+    }
+  }
+
+  function makeAllEditableInCell() {
+    const cellId = LeucenaApp.getSelectedCellId();
+    const cellData = LeucenaApp.getSelectedCellData();
+    const username = LeucenaApp.getUsername();
+    if (!cellId || !cellData || cellData.locked_by !== username) return;
+
+    for (const [id, entry] of Object.entries(drawnPolygons)) {
+      if (entry.data.grid_cell_id !== cellId) continue;
+      if (!canEditPolygon(entry)) continue;
+      entry.gmapsPoly.setEditable(true);
+      const coords = pathsToGeoJSONCoords(entry.gmapsPoly);
+      entry._lastGeometry = { type: 'Polygon', coordinates: JSON.parse(JSON.stringify(coords)) };
+      attachPathListeners(id, entry.gmapsPoly);
     }
   }
 
@@ -355,8 +487,10 @@ window.LeucenaDrawing = (function () {
           return;
         }
 
+        const holeResult = await res.json();
         holePoly.setMap(null);
         entry.data.geometry = newGeometry;
+        if (holeResult.area_ha != null) entry.data.area_ha = holeResult.area_ha;
         renderPolygon(targetId, newGeometry, entry.data, false);
 
         if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
@@ -529,7 +663,7 @@ window.LeucenaDrawing = (function () {
       }
 
       const result = await res.json();
-      renderPolygon(result.id, geometry, result, true);
+      renderPolygon(result.id, geometry, result, false);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaved'), 'success');
     } catch (e) {
@@ -630,6 +764,11 @@ window.LeucenaDrawing = (function () {
     entry.gmapsPoly.setPaths(paths);
     entry.data.geometry = JSON.parse(JSON.stringify(snapshot.geometry));
     entry._lastGeometry = JSON.parse(JSON.stringify(snapshot.geometry));
+
+    if (entry.areaLabel) {
+      entry.areaLabel.updateText(formatAreaLabel(calcAreaHa(snapshot.geometry)));
+      entry.areaLabel.updatePosition(polygonCentroid(snapshot.geometry));
+    }
 
     editUndoGuard = false;
     attachPathListeners(snapshot.id, entry.gmapsPoly);
@@ -767,6 +906,7 @@ window.LeucenaDrawing = (function () {
         return;
       }
       entry.gmapsPoly.setMap(null);
+      if (entry.areaLabel) entry.areaLabel.setMap(null);
       delete drawnPolygons[id];
       deleteUndoStack.push(backup);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
@@ -796,6 +936,7 @@ window.LeucenaDrawing = (function () {
       const crole = entry.data.created_by_role || 'contributor';
       const show = visible && shouldShowPoly(crole);
       entry.gmapsPoly.setMap(show ? map : null);
+      if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
   }
 
@@ -816,6 +957,7 @@ window.LeucenaDrawing = (function () {
       const crole = entry.data.created_by_role || 'contributor';
       const show = globalShow && shouldShowPoly(crole);
       entry.gmapsPoly.setMap(show ? map : null);
+      if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
   }
 
@@ -850,12 +992,18 @@ window.LeucenaDrawing = (function () {
     const paths = geojsonRingsToPaths(data.geometry.coordinates);
     entry.gmapsPoly.setPaths(paths);
     entry.data.geometry = data.geometry;
+    if (entry.areaLabel) {
+      const ha = data.area_ha != null ? data.area_ha : calcAreaHa(data.geometry);
+      entry.areaLabel.updateText(formatAreaLabel(ha));
+      entry.areaLabel.updatePosition(polygonCentroid(data.geometry));
+    }
   }
 
   function removeRemotePolygon(id) {
     const entry = drawnPolygons[id];
     if (!entry) return;
     entry.gmapsPoly.setMap(null);
+    if (entry.areaLabel) entry.areaLabel.setMap(null);
     delete drawnPolygons[id];
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
   }
@@ -879,6 +1027,18 @@ window.LeucenaDrawing = (function () {
     cleanupManualDraw();
   }
 
+  function setAreaLabelsVisible(visible) {
+    _areaLabelsVisible = visible;
+    const map = LeucenaMap.getMap();
+    const globalShow = LeucenaMap.getShowPolygons();
+    for (const entry of Object.values(drawnPolygons)) {
+      if (!entry.areaLabel) continue;
+      const crole = entry.data.created_by_role || 'contributor';
+      const show = visible && globalShow && shouldShowPoly(crole);
+      entry.areaLabel.setMap(show ? map : null);
+    }
+  }
+
   return {
     init,
     deactivate,
@@ -893,6 +1053,7 @@ window.LeucenaDrawing = (function () {
     setClickable,
     getPolygonCount,
     getPolygonCounts,
-    clearUndoHistory
+    clearUndoHistory,
+    setAreaLabelsVisible
   };
 })();

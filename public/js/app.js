@@ -929,6 +929,7 @@ window.LeucenaApp = (function () {
       document.getElementById('tool-unlock').disabled = true;
       document.getElementById('edit-mode-badge').classList.add('hidden');
       enableTools(false);
+      LeucenaDrawing.setAreaLabelsVisible(false);
       LeucenaDrawing.deactivate();
 
       if (selectedCellData) {
@@ -938,7 +939,22 @@ window.LeucenaApp = (function () {
         }
       }
 
-      showToast(LeucenaI18n.t('toast.cellUnlocked', cellId, formatStatus(finalStatus)), 'success');
+      const displayId = selectedCellData ? (selectedCellData.grid_id || cellId) : cellId;
+      let msg = LeucenaI18n.t('toast.cellUnlocked', displayId, formatStatus(finalStatus));
+
+      if (data.maskCount > 0) {
+        const areaHa = data.areaHa || 0;
+        let areaStr;
+        if (areaHa < 0.1) {
+          const m2 = Math.round(areaHa * 10000);
+          areaStr = m2.toLocaleString() + ' m²';
+        } else {
+          areaStr = areaHa.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' ha';
+        }
+        msg += ` — ${data.maskCount} ${data.maskCount === 1 ? 'máscara' : 'máscaras'}, ${areaStr}`;
+      }
+
+      showToast(msg, 'success', 6000);
     } catch (e) {
       showToast(LeucenaI18n.t('toast.unlockFail'), 'error');
     }
@@ -978,6 +994,7 @@ window.LeucenaApp = (function () {
       badge.classList.remove('hidden');
 
       showToast(LeucenaI18n.t('toast.cellLocked', displayId), 'success');
+      LeucenaDrawing.setAreaLabelsVisible(true);
 
       if (lockHeartbeatInterval) clearInterval(lockHeartbeatInterval);
       lockHeartbeatInterval = setInterval(() => {
