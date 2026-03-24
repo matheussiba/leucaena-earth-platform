@@ -1897,16 +1897,45 @@ html, body {
   }
 }
 
-/* ── View counter (admin) ── */
+/* ── View counter (admin) — clique abre debug; estilo âmbar ── */
 .view-counter {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: #fbbf24;
   padding: 2px 8px;
-  background: var(--bar-btn-bg);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
   border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.view-counter:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.65);
+}
+
+.view-counter svg {
+  stroke: #fbbf24;
+  flex-shrink: 0;
+}
+
+.view-counter.view-counter-modal-open {
+  background: rgba(245, 158, 11, 0.32);
+  border-color: #f59e0b;
+  color: #fde047;
+}
+
+.view-counter.view-counter-modal-open svg {
+  stroke: #fde047;
+}
+
+.view-counter:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
 }
 
 /* ── Admin users modal ── */
@@ -2025,6 +2054,15 @@ html, body {
 }
 
 .admin-row-line2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.admin-row-line-stats {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2570,7 +2608,8 @@ html, body {
     flex-wrap: wrap;
   }
 
-  .admin-row-line2 {
+  .admin-row-line2,
+  .admin-row-line-stats {
     gap: 6px;
   }
 
@@ -2730,21 +2769,7 @@ html, body {
   height: 16px;
 }
 
-.view-counter.debug-active {
-  border: 1px solid rgba(245, 158, 11, 0.5);
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.view-counter.debug-active:hover {
-  background: rgba(245, 158, 11, 0.25);
-}
-
-.view-counter.debug-active svg {
-  stroke: #f59e0b;
-}
+/* .view-counter.debug-active — reservado se o checkbox Debug voltar ao HTML */
 
 .debug-info-body {
   display: flex;

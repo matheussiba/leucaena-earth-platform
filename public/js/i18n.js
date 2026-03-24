@@ -192,6 +192,10 @@ window.LeucenaI18n = (function () {
     'admin.daysAgo': { pt: 'há {0} dias', en: '{0}d ago', es: 'hace {0}d' },
     'admin.never': { pt: 'Nunca', en: 'Never', es: 'Nunca' },
 
+    // ── Debug (map / stats modal) ──
+    'debug.siteViews': { pt: 'Visualizações do site', en: 'Site views', es: 'Visitas al sitio' },
+    'debug.mapNotReady': { pt: 'Mapa ainda não carregado', en: 'Map not loaded yet', es: 'Mapa aún no cargado' },
+
     // ── Password Reset ──
     'reset.title': { pt: 'Recuperar Senha', en: 'Reset Password', es: 'Recuperar Contraseña' },
     'reset.subtitle': { pt: 'Informe seu usuário, o código recebido do administrador e a nova senha.', en: 'Enter your username, the code received from the administrator, and a new password.', es: 'Ingrese su usuario, el código recibido del administrador y una nueva contraseña.' },

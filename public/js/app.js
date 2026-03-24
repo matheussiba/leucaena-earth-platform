@@ -116,21 +116,25 @@ window.LeucenaApp = (function () {
       if (e.target === e.currentTarget) closeAdminUsersModal();
     });
 
-    document.getElementById('admin-debug-toggle').addEventListener('change', (e) => {
-      const vc = document.getElementById('view-counter');
-      vc.classList.toggle('debug-active', e.target.checked);
-      vc.title = e.target.checked ? 'Debug — clique para info do mapa' : 'Visualizações do site';
+    const adminDebugToggle = document.getElementById('admin-debug-toggle');
+    if (adminDebugToggle) {
+      adminDebugToggle.addEventListener('change', (e) => {
+        const vc = document.getElementById('view-counter');
+        vc.classList.toggle('debug-active', e.target.checked);
+        vc.title = e.target.checked ? 'Debug — clique para info do mapa' : 'Visualizações do site';
+      });
+    }
+    const viewCounterEl = document.getElementById('view-counter');
+    viewCounterEl.addEventListener('click', () => openDebugModal());
+    viewCounterEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openDebugModal();
+      }
     });
-    document.getElementById('view-counter').addEventListener('click', () => {
-      const toggle = document.getElementById('admin-debug-toggle');
-      if (!toggle || !toggle.checked) return;
-      openDebugModal();
-    });
-    document.getElementById('debug-modal-close').addEventListener('click', () => {
-      document.getElementById('debug-modal').classList.add('hidden');
-    });
+    document.getElementById('debug-modal-close').addEventListener('click', closeDebugModal);
     document.getElementById('debug-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) document.getElementById('debug-modal').classList.add('hidden');
+      if (e.target === e.currentTarget) closeDebugModal();
     });
     document.getElementById('debug-copy-all').addEventListener('click', () => {
       const body = document.getElementById('debug-info-body');
@@ -1370,42 +1374,71 @@ window.LeucenaApp = (function () {
     return `${totalSec}s`;
   }
 
+  function closeDebugModal() {
+    document.getElementById('debug-modal').classList.add('hidden');
+    const vc = document.getElementById('view-counter');
+    if (vc) vc.classList.remove('view-counter-modal-open');
+  }
+
   function openDebugModal() {
     const map = LeucenaMap.getMap();
-    if (!map) return;
-    const zoom = map.getZoom();
-    const bounds = map.getBounds();
-    const ne = bounds.getNorthEast();
-    const sw = bounds.getSouthWest();
-    const center = map.getCenter();
-    const mapType = map.getMapTypeId();
-    const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : '—';
+    const viewsEl = document.getElementById('view-count');
+    const viewsVal = viewsEl ? viewsEl.textContent.trim() : '—';
 
     const rows = [
-      { key: 'Zoom', val: zoom },
-      { key: 'Center', val: `${center.lat().toFixed(6)}, ${center.lng().toFixed(6)}` },
-      { key: 'Top-Left (NW)', val: `${ne.lat().toFixed(6)}, ${sw.lng().toFixed(6)}` },
-      { key: 'Bottom-Right (SE)', val: `${sw.lat().toFixed(6)}, ${ne.lng().toFixed(6)}` },
-      { key: 'Bbox (W,S,E,N)', val: `${sw.lng().toFixed(6)}, ${sw.lat().toFixed(6)}, ${ne.lng().toFixed(6)}, ${ne.lat().toFixed(6)}` },
-      { key: 'Map Type', val: mapType },
-      { key: 'Viewport (px)', val: `${map.getDiv().offsetWidth} × ${map.getDiv().offsetHeight}` },
-      { key: 'Polígonos', val: polyCount },
-      { key: 'Célula', val: selectedCellId || '—' },
-      { key: 'Usuário', val: username || '—' },
-      { key: 'Role', val: userRole || '—' },
+      { key: LeucenaI18n.t('debug.siteViews'), val: viewsVal },
     ];
 
+    if (map) {
+      const bounds = map.getBounds();
+      const ne = bounds.getNorthEast();
+      const sw = bounds.getSouthWest();
+      const center = map.getCenter();
+      const mapType = map.getMapTypeId();
+      const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : '—';
+      rows.push(
+        { key: 'Zoom', val: map.getZoom() },
+        { key: 'Center', val: `${center.lat().toFixed(6)}, ${center.lng().toFixed(6)}` },
+        { key: 'Top-Left (NW)', val: `${ne.lat().toFixed(6)}, ${sw.lng().toFixed(6)}` },
+        { key: 'Bottom-Right (SE)', val: `${sw.lat().toFixed(6)}, ${ne.lng().toFixed(6)}` },
+        { key: 'Bbox (W,S,E,N)', val: `${sw.lng().toFixed(6)}, ${sw.lat().toFixed(6)}, ${ne.lng().toFixed(6)}, ${ne.lat().toFixed(6)}` },
+        { key: 'Map Type', val: mapType },
+        { key: 'Viewport (px)', val: `${map.getDiv().offsetWidth} × ${map.getDiv().offsetHeight}` },
+        { key: 'Polígonos', val: polyCount },
+        { key: 'Célula', val: selectedCellId || '—' },
+        { key: 'Usuário', val: username || '—' },
+        { key: 'Role', val: userRole || '—' },
+      );
+    } else {
+      rows.push(
+        { key: 'Mapa', val: LeucenaI18n.t('debug.mapNotReady') },
+        { key: 'Célula', val: selectedCellId || '—' },
+        { key: 'Usuário', val: username || '—' },
+        { key: 'Role', val: userRole || '—' },
+      );
+    }
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
     const body = document.getElementById('debug-info-body');
     body.innerHTML = rows.map(r => {
       const v = String(r.val);
+      const vJs = JSON.stringify(v);
       return `<div class="debug-row">
-        <span class="debug-key">${r.key}:</span>
-        <span class="debug-val">${v}</span>
-        <button class="debug-copy-btn" title="Copiar" onclick="navigator.clipboard.writeText('${v.replace(/'/g, "\\'")}').then(()=>LeucenaApp.showToast('Copiado!','success',1500))">
+        <span class="debug-key">${escHtml(r.key)}:</span>
+        <span class="debug-val">${escHtml(v)}</span>
+        <button type="button" class="debug-copy-btn" title="Copiar" onclick="navigator.clipboard.writeText(${vJs}).then(function(){LeucenaApp.showToast('Copiado!','success',1500);})">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
       </div>`;
     }).join('');
+    const vc = document.getElementById('view-counter');
+    if (vc) vc.classList.add('view-counter-modal-open');
     document.getElementById('debug-modal').classList.remove('hidden');
   }
 
@@ -1583,7 +1616,8 @@ window.LeucenaApp = (function () {
             <span class="admin-meta">${t('admin.createdAt')}: ${createdDate}</span>
             <span class="admin-meta-sep">·</span>
             <span class="admin-meta">${t('admin.lastAccess')}: ${lastActiveHtml}</span>
-            <span class="admin-meta-sep">·</span>
+          </div>
+          <div class="admin-row-line-stats">
             <span class="admin-stat" title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
             <span class="admin-stat" title="${t('admin.area')}">📐 ${(user.mask_area_ha || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
             <span class="admin-stat" title="${t('admin.logins')}">🔑 ${user.login_count || 0}</span>
