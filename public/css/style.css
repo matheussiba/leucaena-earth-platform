@@ -2057,6 +2057,20 @@ html, body {
 .admin-role-contributor { background: #6b7280; }
 .admin-role-tester { background: #f59e0b; color: #000; }
 
+.admin-founder-label {
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #a855f7;
+  white-space: nowrap;
+}
+
+.admin-founder-label input[type="checkbox"] {
+  accent-color: #a855f7;
+}
+
 .admin-tester-mode {
   display: flex;
   gap: 12px;

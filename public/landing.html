@@ -815,9 +815,9 @@
       es: '<h3>Identificación</h3><p><em>Leucaena leucocephala</em>, conocida como <strong>leucaena</strong>, es un árbol tropical de la familia Fabaceae. Hojas bipinnadas, flores esféricas blancas, vainas aplanadas y porte de 5 a 15 metros.</p><h3>Origen</h3><p>Originaria de América Central y México, fue introducida en Brasil en la década de 1940 como forrajera y para fijación de nitrógeno.</p><h3>Impacto y Erradicación</h3><p>Clasificada por la <strong>UICN como una de las 100 peores especies invasoras del mundo</strong>. Crecimiento rápido (hasta 3 m/año), producción masiva de semillas y efectos alelopáticos impiden la regeneración nativa. Varios municipios en Brasil ya mantienen programas de erradicación.</p>'
     };
 
-    const teamRoles = { pt: { i: 'Idealizador', c: 'Colaborador' }, en: { i: 'Founder', c: 'Contributor' }, es: { i: 'Idealizador', c: 'Colaborador' } };
-    const sectionLabels = { pt: { team: 'Membros', contributors: 'Colaboradores' }, en: { team: 'Members', contributors: 'Contributors' }, es: { team: 'Miembros', contributors: 'Colaboradores' } };
-
+    const teamRoles = { pt: { i: 'Idealizador', m: 'Membro', c: 'Colaborador' }, en: { i: 'Founder', m: 'Member', c: 'Contributor' }, es: { i: 'Idealizador', m: 'Miembro', c: 'Colaborador' } };
+    const sectionLabels = { pt: { idealizadores: 'Idealizadores', team: 'Equipe', contributors: 'Colaboradores' }, en: { idealizadores: 'Founders', team: 'Team', contributors: 'Contributors' }, es: { idealizadores: 'Creadores', team: 'Equipo', contributors: 'Colaboradores' } };
+    
     function detectLang() {
       const saved = localStorage.getItem('leucena_lang');
       if (saved) return saved;
@@ -903,26 +903,28 @@
     function renderTeam() {
       if (!teamData) return;
       const grid = document.getElementById('team-grid');
+      if (!grid) return;
       grid.innerHTML = '';
       const labels = sectionLabels[lang] || sectionLabels.en;
       const roles = teamRoles[lang] || teamRoles.en;
 
-      const equipe = teamData.equipe || teamData.idealizadores || [];
+      const equipe = teamData.equipe || [];
       const contribs = teamData.colaboradores || [];
 
       if (equipe.length > 0) {
         grid.innerHTML += '<div class="team-section-label">' + labels.team + '</div>';
-        grid.innerHTML += '<div class="team-section-grid">' + equipe.map(u => buildCard(u, u.role === 'admin' ? roles.i : roles.c)).join('') + '</div>';
+        grid.innerHTML += '<div class="team-section-grid">' + equipe.map(u => buildCard(u, u.is_founder ? roles.i : roles.m)).join('') + '</div>';
       }
-
       if (contribs.length > 0) {
-        grid.innerHTML += '<div class="team-section-divider"></div>';
+        if (equipe.length > 0) grid.innerHTML += '<div class="team-section-divider"></div>';
         grid.innerHTML += '<div class="team-section-label">' + labels.contributors + '</div>';
         grid.innerHTML += '<div class="team-section-grid">' + contribs.map(u => buildCard(u, roles.c)).join('') + '</div>';
       }
-
-      if (equipe.length === 0 && contribs.length === 0) grid.innerHTML = '<p style="color:var(--text-muted)">—</p>';
+      if (equipe.length === 0 && contribs.length === 0) {
+         grid.innerHTML = '<p style="color:var(--text-muted)">—</p>';
+      }
     }
+
     fetch('/api/quem-somos').then(r => r.json()).then(d => { teamData = d; renderTeam(); }).catch(() => {});
 
     /* FAQ */

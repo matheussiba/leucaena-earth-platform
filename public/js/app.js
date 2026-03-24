@@ -638,7 +638,7 @@ window.LeucenaApp = (function () {
 
       const lang = typeof LeucenaI18n !== 'undefined' && LeucenaI18n.getLang ? LeucenaI18n.getLang() : 'pt';
       let html = '<h2>' + (lang === 'en' ? 'About Us' : lang === 'es' ? 'Quiénes Somos' : 'Quem Somos') + '</h2>';
-      const equipe = data.equipe || data.idealizadores || [];
+      const equipe = data.equipe || [];
       const colaboradores = data.colaboradores || [];
       if (equipe.length > 0) {
         html += '<div class="about-section-title">' + t('about.equipe') + '</div><div class="about-cards">';
@@ -1198,16 +1198,41 @@ window.LeucenaApp = (function () {
     if (isAdminUser()) {
       document.getElementById('admin-users-btn').classList.remove('hidden');
       loadViewCount();
+      
+      const maskSub = document.getElementById('mask-subcategories');
+      if (maskSub) maskSub.classList.remove('hidden');
+      
+      const legendDefault = document.getElementById('legend-mask-default');
+      if (legendDefault) legendDefault.classList.add('hidden');
+      
+      const legendMember = document.getElementById('legend-mask-member');
+      if (legendMember) legendMember.classList.remove('hidden');
+      
+      const legendContrib = document.getElementById('legend-mask-contributor');
+      if (legendContrib) legendContrib.classList.remove('hidden');
     }
     applyRoleRestrictions();
   }
-
+  
   function hideAdminTools() {
     document.getElementById('insertion-sep').classList.add('hidden');
     document.getElementById('insertion-toggle').classList.add('hidden');
     document.getElementById('deletion-toggle').classList.add('hidden');
     document.getElementById('admin-users-btn').classList.add('hidden');
     document.getElementById('view-counter').classList.add('hidden');
+    
+    const maskSub = document.getElementById('mask-subcategories');
+    if (maskSub) maskSub.classList.add('hidden');
+    
+    const legendDefault = document.getElementById('legend-mask-default');
+    if (legendDefault) legendDefault.classList.remove('hidden');
+    
+    const legendMember = document.getElementById('legend-mask-member');
+    if (legendMember) legendMember.classList.add('hidden');
+    
+    const legendContrib = document.getElementById('legend-mask-contributor');
+    if (legendContrib) legendContrib.classList.add('hidden');
+
     if (insertionMode) setInsertionMode(false);
     if (deletionMode) setDeletionMode(false);
     userRole = 'contributor';
@@ -1411,10 +1436,14 @@ window.LeucenaApp = (function () {
         row.className = 'admin-user-row';
 
         let roleSelectHtml = '';
+        let founderCheckboxHtml = '';
         if (callerIsSuperAdmin) {
           roleSelectHtml = `<select class="admin-role-select" data-user-id="${user.id}">${allRoles.map(r => `<option value="${r}"${role === r ? ' selected' : ''}>${roleLabelMap[r]}</option>`).join('')}</select>`;
+          if (role === 'superadmin' || role === 'admin' || role === 'team') {
+            const isFounder = user.is_founder ? 'checked' : '';
+            founderCheckboxHtml = `<label class="admin-founder-label"><input type="checkbox" class="admin-founder-cb" ${isFounder}> Idealizador</label>`;
+          }
         }
-
         let testerRadioHtml = '';
         if (role === 'tester') {
           const tm = user.tester_mode || 'contributor';
@@ -1438,6 +1467,7 @@ window.LeucenaApp = (function () {
             ${testerRadioHtml}
           </div>
           <div class="admin-user-actions">
+            ${founderCheckboxHtml}
             ${roleSelectHtml}
             <button class="admin-profile-btn">${t('admin.editProfile')}</button>
             <button class="admin-pw-btn">${t('admin.changePassword')}</button>
@@ -1473,6 +1503,19 @@ window.LeucenaApp = (function () {
             } catch (e) { showToast('Erro de conexão', 'error'); }
           });
         });
+
+        const founderCb = row.querySelector('.admin-founder-cb');
+        if (founderCb) {
+          founderCb.addEventListener('change', async () => {
+            try {
+              const r = await fetch(`/api/admin/users/${user.id}/founder`, {
+                method: 'PUT', headers: authHeaders(), body: JSON.stringify({ is_founder: founderCb.checked })
+              });
+              if (r.ok) showToast('Idealizador atualizado', 'success');
+              else { const err = await r.json(); showToast(err.error, 'error'); founderCb.checked = !founderCb.checked; }
+            } catch (e) { showToast('Erro de conexão', 'error'); founderCb.checked = !founderCb.checked; }
+          });
+        }
 
         const profileBtn = row.querySelector('.admin-profile-btn');
         profileBtn.addEventListener('click', () => {

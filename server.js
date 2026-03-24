@@ -405,13 +405,14 @@ app.get('/api/quem-somos', (req, res) => {
   polygonCounts.forEach(r => { countByUser[r.username] = r.cnt; });
 
   const excludeUsers = ['deleted', 'teste'];
-  const allUsers = queryAll('SELECT username, full_name, description, photo, linkedin, scholar, role FROM users');
+  const allUsers = queryAll('SELECT username, full_name, description, photo, linkedin, scholar, role, is_founder FROM users');
   const teamOrder = ['mpf', 'msb'];
 
   const equipe = allUsers
     .filter(u => (u.role === 'superadmin' || u.role === 'admin' || u.role === 'team') && !excludeUsers.includes(u.username))
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0 }))
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, is_founder: u.is_founder || 0, mask_count: countByUser[u.username] || 0 }))
     .sort((a, b) => {
+      if (a.is_founder !== b.is_founder) return b.is_founder - a.is_founder;
       const order = { superadmin: 0, admin: 1, team: 2 };
       if ((order[a.role] ?? 9) !== (order[b.role] ?? 9)) return (order[a.role] ?? 9) - (order[b.role] ?? 9);
       const ai = teamOrder.indexOf(a.username), bi = teamOrder.indexOf(b.username);
@@ -442,7 +443,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -537,7 +538,9 @@ app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
   if (!validRoles.includes(role)) return res.status(400).json({ error: 'Role inválido' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-  // Temporarily allowing superadmin to demote other superadmins
+  if (user.role === 'superadmin' && role !== 'superadmin' && user.username !== req.username) {
+    return res.status(403).json({ error: 'Não é possível rebaixar outro Super Admin' });
+  }
   const oldRole = user.role || 'contributor';
   runSQL('UPDATE users SET role = ? WHERE id = ?', [role, Number(req.params.id)]);
   logActivity(req.username, 'role_change', null, null, { target_user: user.username, from: oldRole, to: role });
@@ -553,6 +556,17 @@ app.put('/api/admin/users/:id/tester-mode', requireAuth, (req, res) => {
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   if (user.role !== 'tester') return res.status(400).json({ error: 'Usuário não é tester' });
   runSQL('UPDATE users SET tester_mode = ? WHERE id = ?', [tester_mode, Number(req.params.id)]);
+  persist();
+  res.json({ success: true });
+});
+
+app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { is_founder } = req.body;
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (!['superadmin', 'admin', 'team'].includes(user.role)) return res.status(400).json({ error: 'Apenas membros da equipe podem ser Idealizadores' });
+  runSQL('UPDATE users SET is_founder = ? WHERE id = ?', [is_founder ? 1 : 0, Number(req.params.id)]);
   persist();
   res.json({ success: true });
 });
