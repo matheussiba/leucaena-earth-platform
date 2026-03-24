@@ -444,6 +444,8 @@ window.LeucenaI18n = (function () {
     return '<h2>Como fazer o mapeamento</h2>' +
     '<div class="guide-objective"><strong>Objetivo:</strong> Criar polígonos (máscaras) ao redor de <strong>aglomerados de leucena</strong> visíveis na imagem de satélite. Cada ponto verde no mapa representa uma ocorrência registrada — sua tarefa é desenhar polígonos que cubram esses pontos e a área de leucena ao redor deles.</div>' +
 
+    '<div class="guide-video"><h3>📺 Vídeo tutorial</h3><p>Assista ao vídeo abaixo para ver o passo a passo completo do mapeamento:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="Como mapear no leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
+
     step(1, 'Crie sua conta', '<p>No canto superior direito, clique em <strong>"Entrar"</strong> e depois em <strong>"Cadastrar"</strong>. Você precisará de um <strong>código de acesso</strong> — solicite pelo e-mail <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
 
     step(2, 'Entenda o mapa', '<p>O mapa está dividido em <strong>células (quadrados)</strong>. Cada célula tem um status indicado pela cor:</p>' +
@@ -500,6 +502,8 @@ window.LeucenaI18n = (function () {
     return '<h2>How to Map</h2>' +
     '<div class="guide-objective"><strong>Objective:</strong> Create polygons (masks) around <strong>clusters of leucaena</strong> visible in the satellite imagery. Each green dot on the map represents a recorded occurrence — your task is to draw polygons covering these points and the leucaena area around them.</div>' +
 
+    '<div class="guide-video"><h3>📺 Video tutorial</h3><p>Watch the video below for a complete step-by-step mapping walkthrough:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="How to map on leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
+
     step(1, 'Create your account', '<p>In the upper right corner, click <strong>"Sign In"</strong> then <strong>"Register"</strong>. You will need an <strong>access code</strong> — request one by emailing <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
 
     step(2, 'Understand the map', '<p>The map is divided into <strong>cells (squares)</strong>. Each cell has a status indicated by its color:</p>' +
@@ -555,6 +559,8 @@ window.LeucenaI18n = (function () {
   function getHowtoContentES() {
     return '<h2>Cómo mapear</h2>' +
     '<div class="guide-objective"><strong>Objetivo:</strong> Crear polígonos (máscaras) alrededor de <strong>aglomerados de leucaena</strong> visibles en la imagen satelital. Cada punto verde en el mapa representa una ocurrencia registrada — su tarea es dibujar polígonos que cubran estos puntos y el área de leucaena a su alrededor.</div>' +
+
+    '<div class="guide-video"><h3>📺 Video tutorial</h3><p>Mire el video a continuación para ver el paso a paso completo del mapeo:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="Cómo mapear en leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
 
     step(1, 'Cree su cuenta', '<p>En la esquina superior derecha, haga clic en <strong>"Iniciar Sesión"</strong> y luego en <strong>"Registrarse"</strong>. Necesitará un <strong>código de acceso</strong> — solicítelo por correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
 
