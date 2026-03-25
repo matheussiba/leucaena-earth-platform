@@ -2776,6 +2776,64 @@ html, body {
   height: 16px;
 }
 
+/* ── Admin: create user section ── */
+.admin-create-user-btn {
+  background: #22c55e !important;
+  border-color: #22c55e !important;
+}
+
+.admin-create-user-section {
+  padding: 14px 16px;
+  margin: 0 0 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+}
+
+.admin-create-user-section h3 {
+  font-size: 14px;
+  margin: 0 0 10px;
+  color: var(--text-primary);
+}
+
+.admin-create-user-section input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+
+.admin-create-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.admin-create-actions .btn {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+
+.admin-create-actions .btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.admin-create-actions .btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
 /* ── Welcome modal ── */
 .welcome-card {
   text-align: center;

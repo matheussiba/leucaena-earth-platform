@@ -1541,7 +1541,8 @@ window.LeucenaApp = (function () {
       const exportRow = document.createElement('div');
       exportRow.className = 'admin-export-row';
       const backupBtnHtml = callerIsSuperAdmin ? `<button id="admin-backup-db" class="admin-export-btn">💾 ${t('admin.backupDb')}</button>` : '';
-      exportRow.innerHTML = `<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>
+      const createUserBtnHtml = callerIsSuperAdmin ? `<button id="admin-create-user-btn" class="admin-export-btn admin-create-user-btn">➕ ${t('admin.createUser')}</button>` : '';
+      exportRow.innerHTML = `${createUserBtnHtml}<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>
         <button id="admin-export-logs" class="admin-export-btn">📋 ${t('admin.exportLogs')}</button>
         <button id="admin-copy-recent-logs" class="admin-export-btn admin-copy-log-btn">📄 ${t('admin.copyRecentLogs')}</button>
         ${backupBtnHtml}`;
@@ -1611,6 +1612,66 @@ window.LeucenaApp = (function () {
           } catch (e) { showToast('Backup failed', 'error'); }
         });
       }
+
+      const createUserBtn = document.getElementById('admin-create-user-btn');
+      if (createUserBtn) {
+        createUserBtn.addEventListener('click', () => {
+          const section = document.getElementById('admin-create-user');
+          section.classList.toggle('hidden');
+          if (!section.classList.contains('hidden')) {
+            document.getElementById('admin-create-username').value = '';
+            document.getElementById('admin-create-email').value = '';
+            document.getElementById('admin-create-password').value = '';
+            document.getElementById('admin-create-error').classList.add('hidden');
+            document.getElementById('admin-create-username').focus();
+          }
+        });
+      }
+
+      const createUsernameInput = document.getElementById('admin-create-username');
+      createUsernameInput.addEventListener('input', () => {
+        createUsernameInput.value = createUsernameInput.value
+          .toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9.]/g, '');
+      });
+
+      document.getElementById('admin-create-submit').addEventListener('click', async () => {
+        const u = document.getElementById('admin-create-username').value.trim();
+        const e = document.getElementById('admin-create-email').value.trim();
+        const p = document.getElementById('admin-create-password').value;
+        const errEl = document.getElementById('admin-create-error');
+        errEl.classList.add('hidden');
+
+        if (!u || !e || !p) {
+          errEl.textContent = t('admin.createUserAllFields');
+          errEl.classList.remove('hidden');
+          return;
+        }
+
+        try {
+          const r = await fetch('/api/admin/users/create', {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ username: u, email: e, password: p })
+          });
+          const data = await r.json();
+          if (!r.ok) {
+            errEl.textContent = data.error;
+            errEl.classList.remove('hidden');
+            return;
+          }
+          document.getElementById('admin-create-user').classList.add('hidden');
+          showToast(t('admin.createUserSuccess', u), 'success');
+          openAdminUsersModal();
+        } catch (err) {
+          errEl.textContent = 'Erro de conexão';
+          errEl.classList.remove('hidden');
+        }
+      });
+
+      document.getElementById('admin-create-cancel').addEventListener('click', () => {
+        document.getElementById('admin-create-user').classList.add('hidden');
+      });
 
       const roleLabelMap = { superadmin: 'Super Admin', admin: 'Admin', team: 'Membro', contributor: 'Colaborador', tester: 'Tester' };
       const allRoles = ['superadmin', 'admin', 'team', 'contributor', 'tester'];

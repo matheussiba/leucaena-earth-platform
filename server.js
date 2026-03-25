@@ -537,7 +537,7 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
     u.mask_count = maskMap[u.username] || 0;
     u.mask_area_ha = Math.round((areaMap[u.username] || 0) * 100) / 100;
   }
-  const passcode = isSuperAdmin(req.username) ? getNextPasscode() : null;
+  const passcode = isAdmin(req.username) ? getNextPasscode() : null;
   const onlineUsernames = Array.from(connectedUsers.values()).map(u => u.username);
   res.json({ users, nextPasscode: passcode, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100, callerRole: getUserRole(req.username), onlineUsers: onlineUsernames });
 });
@@ -563,6 +563,27 @@ app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename=leucena_users_stats.csv');
   res.send('\uFEFF' + csv);
+});
+
+app.post('/api/admin/users/create', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { username, password, email } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
+  if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
+  if (!/^[a-z0-9.]+$/.test(username)) return res.status(400).json({ error: 'O usuário deve conter apenas letras minúsculas, números e ponto' });
+  if (!/[a-z]/.test(username)) return res.status(400).json({ error: 'O usuário deve conter pelo menos uma letra' });
+  if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
+
+  const existing = queryOne('SELECT id FROM users WHERE username = ?', [username]);
+  if (existing) return res.status(409).json({ error: 'Nome de usuário já em uso' });
+
+  const hash = hashPassword(password);
+  const now = new Date().toISOString();
+  runSQL('INSERT INTO users (username, password_hash, created_at, email) VALUES (?, ?, ?, ?)', [username, hash, now, email]);
+  logActivity(req.username, 'admin_create_user', null, null, { target_user: username });
+  persist();
+  res.json({ success: true, username });
 });
 
 app.put('/api/admin/users/:id/password', requireAuth, (req, res) => {
