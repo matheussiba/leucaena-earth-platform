@@ -87,7 +87,13 @@ window.LeucenaApp = (function () {
 
     setupLangDropdown();
 
-    document.getElementById('guide-btn').addEventListener('click', () => Onboarding.startTour('manual'));
+    document.getElementById('guide-btn').addEventListener('click', () => {
+      if (!Onboarding.isTourCompleted()) {
+        Onboarding.startTour('manual');
+      } else {
+        openGuideModal();
+      }
+    });
     document.getElementById('guide-modal-close').addEventListener('click', closeGuideModal);
     document.getElementById('guide-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeGuideModal();
@@ -163,6 +169,12 @@ window.LeucenaApp = (function () {
         btn.querySelector('.pw-eye-open').classList.toggle('hidden', showing);
         btn.querySelector('.pw-eye-closed').classList.toggle('hidden', !showing);
       });
+    });
+
+    document.getElementById('tour-next').addEventListener('click', () => Onboarding.nextStep());
+    document.getElementById('tour-skip').addEventListener('click', () => Onboarding.endTour());
+    document.getElementById('tour-overlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget || e.target.classList.contains('tour-overlay')) Onboarding.endTour();
     });
 
     document.getElementById('welcome-ok').addEventListener('click', () => Onboarding.closeWelcome(false));
@@ -291,7 +303,6 @@ window.LeucenaApp = (function () {
   function closeGuideModal() {
     document.getElementById('guide-modal').classList.add('hidden');
     setHash('');
-    if (_tourStartedFrom) Onboarding.onTourEnd();
   }
 
   function showGuidePage(page) {
@@ -558,6 +569,16 @@ window.LeucenaApp = (function () {
   // ── Onboarding Controller ──
   const WELCOME_VERSION = 'v1_howto_video';
   let _tourStartedFrom = null;
+  let _tourStep = 0;
+  let _tourSpotlight = null;
+
+  const TOUR_STEPS = [
+    { target: '#top-bar',       text: 'tour.step1', position: 'bottom' },
+    { target: '#map',           text: 'tour.step2', position: 'center' },
+    { target: '#legend-toggle', text: 'tour.step3', position: 'left'   },
+    { target: '#guide-btn',     text: 'tour.step4', position: 'bottom' },
+    { target: '#login-btn',     text: 'tour.step5', position: 'bottom' },
+  ];
 
   const Onboarding = {
     isTourCompleted()  { return localStorage.getItem('leucena_tour_completed') === 'true'; },
@@ -567,7 +588,7 @@ window.LeucenaApp = (function () {
 
     onLogin() {
       if (!this.isTourCompleted()) {
-        this.startTour('auto');
+        setTimeout(() => this.startTour('auto'), 800);
       } else if (!this.isWelcomeShown()) {
         this.showWelcome();
       }
@@ -575,10 +596,84 @@ window.LeucenaApp = (function () {
 
     startTour(source) {
       _tourStartedFrom = source;
-      openGuideModal('main');
+      _tourStep = 0;
+      if (!_tourSpotlight) {
+        _tourSpotlight = document.createElement('div');
+        _tourSpotlight.className = 'tour-spotlight';
+        document.body.appendChild(_tourSpotlight);
+      }
+      document.getElementById('tour-overlay').classList.remove('hidden');
+      this._renderStep();
     },
 
-    onTourEnd() {
+    _renderStep() {
+      const t = LeucenaI18n.t;
+      const step = TOUR_STEPS[_tourStep];
+      const overlay = document.getElementById('tour-overlay');
+      const tooltip = document.getElementById('tour-tooltip');
+      const textEl = document.getElementById('tour-text');
+      const nextBtn = document.getElementById('tour-next');
+      const isLast = _tourStep === TOUR_STEPS.length - 1;
+
+      textEl.textContent = t(step.text);
+      nextBtn.textContent = isLast ? t('tour.finish') : t('tour.next');
+
+      const indicator = document.getElementById('tour-step-indicator');
+      indicator.innerHTML = TOUR_STEPS.map((_, i) =>
+        `<span class="tour-dot${i === _tourStep ? ' active' : ''}"></span>`
+      ).join('');
+
+      const el = document.querySelector(step.target);
+      if (!el || el.classList.contains('hidden') || el.offsetParent === null) {
+        _tourStep++;
+        if (_tourStep >= TOUR_STEPS.length) { this.endTour(); return; }
+        this._renderStep();
+        return;
+      }
+
+      const rect = el.getBoundingClientRect();
+      const pad = 6;
+
+      _tourSpotlight.style.top    = (rect.top - pad) + 'px';
+      _tourSpotlight.style.left   = (rect.left - pad) + 'px';
+      _tourSpotlight.style.width  = (rect.width + pad * 2) + 'px';
+      _tourSpotlight.style.height = (rect.height + pad * 2) + 'px';
+      _tourSpotlight.style.display = 'block';
+
+      const tw = 340;
+      const th = 180;
+      let ttop, tleft;
+
+      if (step.position === 'center') {
+        ttop = rect.top + rect.height / 2 - th / 2;
+        tleft = rect.left + rect.width / 2 - tw / 2;
+      } else if (step.position === 'bottom') {
+        ttop = rect.bottom + pad + 12;
+        tleft = rect.left + rect.width / 2 - tw / 2;
+      } else if (step.position === 'left') {
+        ttop = rect.top + rect.height / 2 - th / 2;
+        tleft = rect.left - tw - pad - 12;
+      }
+
+      tleft = Math.max(12, Math.min(tleft, window.innerWidth - tw - 12));
+      ttop = Math.max(12, Math.min(ttop, window.innerHeight - th - 12));
+
+      tooltip.style.top = ttop + 'px';
+      tooltip.style.left = tleft + 'px';
+    },
+
+    nextStep() {
+      _tourStep++;
+      if (_tourStep >= TOUR_STEPS.length) {
+        this.endTour();
+      } else {
+        this._renderStep();
+      }
+    },
+
+    endTour() {
+      document.getElementById('tour-overlay').classList.add('hidden');
+      if (_tourSpotlight) _tourSpotlight.style.display = 'none';
       this.setTourCompleted();
       if (_tourStartedFrom === 'auto' && !this.isWelcomeShown()) {
         setTimeout(() => this.showWelcome(), 400);

@@ -2869,6 +2869,106 @@ html, body {
   color: var(--text-secondary);
 }
 
+/* ── Tour overlay ── */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  pointer-events: none;
+}
+
+.tour-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+
+.tour-spotlight {
+  position: fixed;
+  z-index: 100001;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  transition: all 0.35s ease;
+}
+
+.tour-tooltip {
+  position: fixed;
+  z-index: 100002;
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  max-width: 340px;
+  min-width: 240px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  pointer-events: auto;
+  transition: all 0.35s ease;
+}
+
+.tour-step-indicator {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.tour-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.2s;
+}
+
+.tour-dot.active {
+  background: var(--accent);
+}
+
+.tour-text {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  margin: 0 0 14px 0;
+}
+
+.tour-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.tour-btn {
+  padding: 7px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+
+.tour-btn-skip {
+  background: none;
+  color: var(--text-muted);
+}
+
+.tour-btn-skip:hover {
+  color: var(--text-secondary);
+}
+
+.tour-btn-next {
+  background: var(--accent);
+  color: white;
+}
+
+.tour-btn-next:hover {
+  opacity: 0.85;
+}
+
 /* ── Welcome modal ── */
 .welcome-card {
   text-align: center;

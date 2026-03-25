@@ -217,6 +217,36 @@ window.LeucenaI18n = (function () {
     'welcome.dontShowAgain': { pt: 'Não mostrar novamente', en: "Don't show again", es: 'No mostrar de nuevo' },
     'welcome.goToVideo': { pt: 'Ver vídeo', en: 'Watch video', es: 'Ver video' },
 
+    // ── Tour steps ──
+    'tour.skip': { pt: 'Pular', en: 'Skip', es: 'Saltar' },
+    'tour.next': { pt: 'Próximo', en: 'Next', es: 'Siguiente' },
+    'tour.finish': { pt: 'Entendi!', en: 'Got it!', es: '¡Entendido!' },
+    'tour.step1': {
+      pt: 'Bem-vindo ao leucaena.earth! Vamos fazer um tour rápido pela plataforma.',
+      en: 'Welcome to leucaena.earth! Let\'s take a quick tour of the platform.',
+      es: '¡Bienvenido a leucaena.earth! Hagamos un recorrido rápido por la plataforma.'
+    },
+    'tour.step2': {
+      pt: 'Este é o mapa com a grade de células. Cada célula pode ser selecionada e mapeada por um colaborador.',
+      en: 'This is the map with the cell grid. Each cell can be selected and mapped by a contributor.',
+      es: 'Este es el mapa con la grilla de celdas. Cada celda puede ser seleccionada y mapeada por un colaborador.'
+    },
+    'tour.step3': {
+      pt: 'Aqui você encontra a Legenda, que explica as cores e símbolos do mapa.',
+      en: 'Here you\'ll find the Legend, which explains the map colors and symbols.',
+      es: 'Aquí encontrará la Leyenda, que explica los colores y símbolos del mapa.'
+    },
+    'tour.step4': {
+      pt: 'Use este botão para aprender mais sobre o projeto, como mapear e ver tutoriais em vídeo.',
+      en: 'Use this button to learn more about the project, how to map, and watch video tutorials.',
+      es: 'Use este botón para aprender más sobre el proyecto, cómo mapear y ver tutoriales en video.'
+    },
+    'tour.step5': {
+      pt: 'Clique aqui para fazer login ou criar sua conta e começar a mapear leucaenas!',
+      en: 'Click here to log in or create your account and start mapping leucaenas!',
+      es: '¡Haga clic aquí para iniciar sesión o crear su cuenta y empezar a mapear leucaenas!'
+    },
+
     // ── Debug (map / stats modal) ──
     'debug.siteViews': { pt: 'Visualizações do site', en: 'Site views', es: 'Visitas al sitio' },
     'debug.mapNotReady': { pt: 'Mapa ainda não carregado', en: 'Map not loaded yet', es: 'Mapa aún no cargado' },
