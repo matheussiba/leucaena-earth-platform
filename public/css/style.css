@@ -2792,6 +2792,23 @@ html, body {
   font-weight: 500;
 }
 
+.welcome-video-link {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 10px 24px;
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.welcome-video-link:hover {
+  opacity: 0.85;
+}
+
 .welcome-actions {
   display: flex;
   justify-content: space-between;

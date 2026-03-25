@@ -157,6 +157,11 @@ window.LeucenaApp = (function () {
 
     document.getElementById('welcome-ok').addEventListener('click', () => closeWelcome(false));
     document.getElementById('welcome-dismiss-forever').addEventListener('click', () => closeWelcome(true));
+    document.getElementById('welcome-go-video').addEventListener('click', (e) => {
+      e.preventDefault();
+      closeWelcome(false);
+      openGuideModal('howto');
+    });
     document.getElementById('welcome-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeWelcome(false);
     });
