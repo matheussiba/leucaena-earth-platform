@@ -87,7 +87,7 @@ window.LeucenaApp = (function () {
 
     setupLangDropdown();
 
-    document.getElementById('guide-btn').addEventListener('click', openGuideModal);
+    document.getElementById('guide-btn').addEventListener('click', () => Onboarding.startTour('manual'));
     document.getElementById('guide-modal-close').addEventListener('click', closeGuideModal);
     document.getElementById('guide-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeGuideModal();
@@ -165,15 +165,15 @@ window.LeucenaApp = (function () {
       });
     });
 
-    document.getElementById('welcome-ok').addEventListener('click', () => closeWelcome(false));
-    document.getElementById('welcome-dismiss-forever').addEventListener('click', () => closeWelcome(true));
+    document.getElementById('welcome-ok').addEventListener('click', () => Onboarding.closeWelcome(false));
+    document.getElementById('welcome-dismiss-forever').addEventListener('click', () => Onboarding.closeWelcome(true));
     document.getElementById('welcome-go-video').addEventListener('click', (e) => {
       e.preventDefault();
-      closeWelcome(false);
+      Onboarding.closeWelcome(false);
       openGuideModal('howto');
     });
     document.getElementById('welcome-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeWelcome(false);
+      if (e.target === e.currentTarget) Onboarding.closeWelcome(false);
     });
 
     trackPageView();
@@ -291,6 +291,7 @@ window.LeucenaApp = (function () {
   function closeGuideModal() {
     document.getElementById('guide-modal').classList.add('hidden');
     setHash('');
+    if (_tourStartedFrom) Onboarding.onTourEnd();
   }
 
   function showGuidePage(page) {
@@ -542,7 +543,7 @@ window.LeucenaApp = (function () {
       LeucenaMap.updateFilterCounts();
     }
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
-    showWelcomeIfNeeded();
+    Onboarding.onLogin();
 
     if (selectedCellId && selectedCellData) {
       const canLock = !selectedCellData.locked_by;
@@ -554,20 +555,49 @@ window.LeucenaApp = (function () {
     }
   }
 
+  // ── Onboarding Controller ──
   const WELCOME_VERSION = 'v1_howto_video';
+  let _tourStartedFrom = null;
 
-  function showWelcomeIfNeeded() {
-    if (localStorage.getItem('leucena_welcome_dismissed') === WELCOME_VERSION) return;
-    LeucenaI18n.translatePage();
-    setTimeout(() => {
-      document.getElementById('welcome-modal').classList.remove('hidden');
-    }, 600);
-  }
+  const Onboarding = {
+    isTourCompleted()  { return localStorage.getItem('leucena_tour_completed') === 'true'; },
+    isWelcomeShown()   { return localStorage.getItem('leucena_welcome_dismissed') === WELCOME_VERSION; },
+    setTourCompleted() { localStorage.setItem('leucena_tour_completed', 'true'); },
+    setWelcomeShown()  { localStorage.setItem('leucena_welcome_dismissed', WELCOME_VERSION); },
 
-  function closeWelcome(dismiss) {
-    document.getElementById('welcome-modal').classList.add('hidden');
-    if (dismiss) localStorage.setItem('leucena_welcome_dismissed', WELCOME_VERSION);
-  }
+    onLogin() {
+      if (!this.isTourCompleted()) {
+        this.startTour('auto');
+      } else if (!this.isWelcomeShown()) {
+        this.showWelcome();
+      }
+    },
+
+    startTour(source) {
+      _tourStartedFrom = source;
+      openGuideModal('main');
+    },
+
+    onTourEnd() {
+      this.setTourCompleted();
+      if (_tourStartedFrom === 'auto' && !this.isWelcomeShown()) {
+        setTimeout(() => this.showWelcome(), 400);
+      }
+      _tourStartedFrom = null;
+    },
+
+    showWelcome() {
+      LeucenaI18n.translatePage();
+      setTimeout(() => {
+        document.getElementById('welcome-modal').classList.remove('hidden');
+      }, 300);
+    },
+
+    closeWelcome(dismiss) {
+      document.getElementById('welcome-modal').classList.add('hidden');
+      if (dismiss) this.setWelcomeShown();
+    }
+  };
 
   function applyProfileToUI(profile) {
     const nameEl = document.getElementById('user-display-name');
