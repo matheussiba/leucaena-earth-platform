@@ -155,6 +155,16 @@ window.LeucenaApp = (function () {
     document.getElementById('profile-photo-input').addEventListener('change', handleProfilePhotoSelect);
     document.getElementById('profile-change-pw-btn').addEventListener('click', changeOwnPassword);
 
+    document.querySelectorAll('.pw-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        const showing = input.type === 'password';
+        input.type = showing ? 'text' : 'password';
+        btn.querySelector('.pw-eye-open').classList.toggle('hidden', showing);
+        btn.querySelector('.pw-eye-closed').classList.toggle('hidden', !showing);
+      });
+    });
+
     document.getElementById('welcome-ok').addEventListener('click', () => closeWelcome(false));
     document.getElementById('welcome-dismiss-forever').addEventListener('click', () => closeWelcome(true));
     document.getElementById('welcome-go-video').addEventListener('click', (e) => {

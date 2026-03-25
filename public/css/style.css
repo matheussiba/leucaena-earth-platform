@@ -203,6 +203,41 @@ html, body {
   text-align: left;
 }
 
+/* ── Password toggle eye ── */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 40px;
+  box-sizing: border-box;
+}
+
+.pw-toggle-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.pw-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.pw-toggle-btn svg.hidden {
+  display: none;
+}
+
 .auth-field-hint {
   font-size: 11px;
   color: var(--text-muted);
