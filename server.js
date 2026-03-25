@@ -26,8 +26,14 @@ const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || '';
 app.set('trust proxy', 1);
 
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] === 'http') {
-    return res.redirect(301, 'https://' + req.headers.host + req.url);
+  if (process.env.NODE_ENV === 'production') {
+    const host = req.headers.host || '';
+    if (host.endsWith('.onrender.com')) {
+      return res.redirect(301, 'https://map.leucaena.earth' + req.url);
+    }
+    if (req.headers['x-forwarded-proto'] === 'http') {
+      return res.redirect(301, 'https://' + host + req.url);
+    }
   }
   next();
 });
