@@ -570,17 +570,18 @@ window.LeucenaApp = (function () {
 
   // ── Onboarding Controller ──
   const WELCOME_VERSION = 'v1_howto_video';
-  const TOUR_VERSION = 'v1';
+  const TOUR_VERSION = 'v2';
   let _tourStartedFrom = null;
   let _tourStep = 0;
   let _tourSpotlight = null;
 
   const TOUR_STEPS = [
-    { target: '#top-bar',       text: 'tour.step1', position: 'bottom' },
-    { target: '#map',           text: 'tour.step2', position: 'center' },
-    { target: '#legend-toggle', text: 'tour.step3', position: 'left'   },
-    { target: '#guide-btn',     text: 'tour.step4', position: 'bottom' },
-    { target: '#login-btn',     text: 'tour.step5', position: 'bottom' },
+    { target: '#guide-btn',       text: 'tour.step1' },
+    { target: '#map',             text: 'tour.step2' },
+    { target: '#sidebar-toggle',  text: 'tour.step3' },
+    { target: '#legend-toggle',   text: 'tour.step4' },
+    { target: '#login-btn',       text: 'tour.step5' },
+    { target: '#user-badge',      text: 'tour.step6' },
   ];
 
   const Onboarding = {
@@ -612,7 +613,6 @@ window.LeucenaApp = (function () {
     _renderStep() {
       const t = LeucenaI18n.t;
       const step = TOUR_STEPS[_tourStep];
-      const overlay = document.getElementById('tour-overlay');
       const tooltip = document.getElementById('tour-tooltip');
       const textEl = document.getElementById('tour-text');
       const nextBtn = document.getElementById('tour-next');
@@ -635,7 +635,7 @@ window.LeucenaApp = (function () {
       }
 
       const rect = el.getBoundingClientRect();
-      const pad = 6;
+      const pad = 8;
 
       _tourSpotlight.style.top    = (rect.top - pad) + 'px';
       _tourSpotlight.style.left   = (rect.left - pad) + 'px';
@@ -643,26 +643,48 @@ window.LeucenaApp = (function () {
       _tourSpotlight.style.height = (rect.height + pad * 2) + 'px';
       _tourSpotlight.style.display = 'block';
 
-      const tw = 340;
-      const th = 180;
-      let ttop, tleft;
+      tooltip.style.top = '0px';
+      tooltip.style.left = '0px';
+      tooltip.style.visibility = 'hidden';
 
-      if (step.position === 'center') {
-        ttop = rect.top + rect.height / 2 - th / 2;
-        tleft = rect.left + rect.width / 2 - tw / 2;
-      } else if (step.position === 'bottom') {
-        ttop = rect.bottom + pad + 12;
-        tleft = rect.left + rect.width / 2 - tw / 2;
-      } else if (step.position === 'left') {
-        ttop = rect.top + rect.height / 2 - th / 2;
-        tleft = rect.left - tw - pad - 12;
-      }
+      requestAnimationFrame(() => {
+        const tw = tooltip.offsetWidth;
+        const th = tooltip.offsetHeight;
+        const gap = 14;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
 
-      tleft = Math.max(12, Math.min(tleft, window.innerWidth - tw - 12));
-      ttop = Math.max(12, Math.min(ttop, window.innerHeight - th - 12));
+        const spaceBelow = vh - rect.bottom - pad;
+        const spaceAbove = rect.top - pad;
+        const spaceRight = vw - rect.right - pad;
+        const spaceLeft  = rect.left - pad;
 
-      tooltip.style.top = ttop + 'px';
-      tooltip.style.left = tleft + 'px';
+        let ttop, tleft;
+
+        if (spaceBelow >= th + gap) {
+          ttop = rect.bottom + pad + gap;
+          tleft = rect.left + rect.width / 2 - tw / 2;
+        } else if (spaceAbove >= th + gap) {
+          ttop = rect.top - pad - gap - th;
+          tleft = rect.left + rect.width / 2 - tw / 2;
+        } else if (spaceRight >= tw + gap) {
+          tleft = rect.right + pad + gap;
+          ttop = rect.top + rect.height / 2 - th / 2;
+        } else if (spaceLeft >= tw + gap) {
+          tleft = rect.left - pad - gap - tw;
+          ttop = rect.top + rect.height / 2 - th / 2;
+        } else {
+          ttop = vh / 2 - th / 2;
+          tleft = vw / 2 - tw / 2;
+        }
+
+        tleft = Math.max(10, Math.min(tleft, vw - tw - 10));
+        ttop  = Math.max(10, Math.min(ttop, vh - th - 10));
+
+        tooltip.style.top  = ttop + 'px';
+        tooltip.style.left = tleft + 'px';
+        tooltip.style.visibility = 'visible';
+      });
     },
 
     nextStep() {

@@ -223,29 +223,34 @@ window.LeucenaI18n = (function () {
     'tour.next': { pt: 'Próximo', en: 'Next', es: 'Siguiente' },
     'tour.finish': { pt: 'Entendi!', en: 'Got it!', es: '¡Entendido!' },
     'tour.step1': {
-      pt: 'Bem-vindo ao leucaena.earth! Vamos fazer um tour rápido pela plataforma.',
-      en: 'Welcome to leucaena.earth! Let\'s take a quick tour of the platform.',
-      es: '¡Bienvenido a leucaena.earth! Hagamos un recorrido rápido por la plataforma.'
+      pt: 'Bem-vindo! Aqui você encontra documentação, tutoriais em vídeo e informações sobre o projeto.',
+      en: 'Welcome! Here you\'ll find documentation, video tutorials, and project info.',
+      es: '¡Bienvenido! Aquí encontrará documentación, tutoriales en video e información del proyecto.'
     },
     'tour.step2': {
-      pt: 'Este é o mapa com a grade de células. Cada célula pode ser selecionada e mapeada por um colaborador.',
-      en: 'This is the map with the cell grid. Each cell can be selected and mapped by a contributor.',
-      es: 'Este es el mapa con la grilla de celdas. Cada celda puede ser seleccionada y mapeada por un colaborador.'
+      pt: 'Este é o mapa. Clique em uma célula da grade para ver seu status e começar a mapear leucaenas.',
+      en: 'This is the map. Click a grid cell to see its status and start mapping leucaenas.',
+      es: 'Este es el mapa. Haga clic en una celda de la grilla para ver su estado y empezar a mapear.'
     },
     'tour.step3': {
-      pt: 'Aqui você encontra a Legenda, que explica as cores e símbolos do mapa.',
-      en: 'Here you\'ll find the Legend, which explains the map colors and symbols.',
-      es: 'Aquí encontrará la Leyenda, que explica los colores y símbolos del mapa.'
+      pt: 'Abra o painel lateral para ver filtros, informações da célula selecionada e os usuários online.',
+      en: 'Open the side panel to see filters, selected cell info, and online users.',
+      es: 'Abra el panel lateral para ver filtros, información de la celda y usuarios en línea.'
     },
     'tour.step4': {
-      pt: 'Use este botão para aprender mais sobre o projeto, como mapear e ver tutoriais em vídeo.',
-      en: 'Use this button to learn more about the project, how to map, and watch video tutorials.',
-      es: 'Use este botón para aprender más sobre el proyecto, cómo mapear y ver tutoriales en video.'
+      pt: 'A legenda explica as cores e símbolos que você vê no mapa.',
+      en: 'The legend explains the colors and symbols you see on the map.',
+      es: 'La leyenda explica los colores y símbolos que ve en el mapa.'
     },
     'tour.step5': {
-      pt: 'Clique aqui para fazer login ou criar sua conta e começar a mapear leucaenas!',
-      en: 'Click here to log in or create your account and start mapping leucaenas!',
-      es: '¡Haga clic aquí para iniciar sesión o crear su cuenta y empezar a mapear leucaenas!'
+      pt: 'Faça login ou crie sua conta para começar a desenhar polígonos de leucaena!',
+      en: 'Log in or create your account to start drawing leucaena polygons!',
+      es: '¡Inicie sesión o cree su cuenta para empezar a dibujar polígonos de leucaena!'
+    },
+    'tour.step6': {
+      pt: 'Depois de logado, clique aqui para editar seu perfil e ver suas informações.',
+      en: 'After logging in, click here to edit your profile and see your info.',
+      es: 'Después de iniciar sesión, haga clic aquí para editar su perfil y ver su información.'
     },
 
     // ── Debug (map / stats modal) ──
