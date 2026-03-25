@@ -192,6 +192,21 @@ window.LeucenaI18n = (function () {
     'admin.daysAgo': { pt: 'há {0} dias', en: '{0}d ago', es: 'hace {0}d' },
     'admin.never': { pt: 'Nunca', en: 'Never', es: 'Nunca' },
 
+    // ── Welcome modal ──
+    'welcome.title': { pt: 'Novidades!', en: "What's new!", es: '¡Novedades!' },
+    'welcome.videoAdded': {
+      pt: 'Foi adicionado um vídeo na seção "Como Mapear" explicando o procedimento de mapeamento.',
+      en: 'A video has been added to the "How to Map" section explaining the mapping procedure.',
+      es: 'Se agregó un video en la sección "Cómo Mapear" que explica el procedimiento de mapeo.'
+    },
+    'welcome.objective': {
+      pt: 'O objetivo é que sejam desenhadas máscaras (polígonos) de leucaenas sobre as imagens de satélite. O vídeo explica como fazer isso passo a passo!',
+      en: 'The goal is to draw leucaena masks (polygons) over satellite imagery. The video explains how to do it step by step!',
+      es: 'El objetivo es dibujar máscaras (polígonos) de leucaenas sobre las imágenes de satélite. ¡El video explica cómo hacerlo paso a paso!'
+    },
+    'welcome.dontShowAgain': { pt: 'Não mostrar novamente', en: "Don't show again", es: 'No mostrar de nuevo' },
+    'welcome.goToVideo': { pt: 'Ver vídeo', en: 'Watch video', es: 'Ver video' },
+
     // ── Debug (map / stats modal) ──
     'debug.siteViews': { pt: 'Visualizações do site', en: 'Site views', es: 'Visitas al sitio' },
     'debug.mapNotReady': { pt: 'Mapa ainda não carregado', en: 'Map not loaded yet', es: 'Mapa aún no cargado' },

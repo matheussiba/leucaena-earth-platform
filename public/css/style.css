@@ -2769,6 +2769,52 @@ html, body {
   height: 16px;
 }
 
+/* ── Welcome modal ── */
+.welcome-card {
+  text-align: center;
+  padding: 28px 24px 20px;
+}
+
+.welcome-card h2 {
+  margin-bottom: 16px;
+  font-size: 20px;
+}
+
+.welcome-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.welcome-text-secondary {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.welcome-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  gap: 12px;
+}
+
+.welcome-actions .btn-link {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.welcome-actions .btn-link:hover {
+  color: var(--text-secondary);
+}
+
 /* .view-counter.debug-active — reservado se o checkbox Debug voltar ao HTML */
 
 .debug-info-body {

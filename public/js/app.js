@@ -155,6 +155,12 @@ window.LeucenaApp = (function () {
     document.getElementById('profile-photo-input').addEventListener('change', handleProfilePhotoSelect);
     document.getElementById('profile-change-pw-btn').addEventListener('click', changeOwnPassword);
 
+    document.getElementById('welcome-ok').addEventListener('click', () => closeWelcome(false));
+    document.getElementById('welcome-dismiss-forever').addEventListener('click', () => closeWelcome(true));
+    document.getElementById('welcome-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeWelcome(false);
+    });
+
     trackPageView();
 
     document.getElementById('tool-home').addEventListener('click', handleHomeClick);
@@ -492,6 +498,7 @@ window.LeucenaApp = (function () {
       LeucenaMap.updateFilterCounts();
     }
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
+    showWelcomeIfNeeded();
 
     if (selectedCellId && selectedCellData) {
       const canLock = !selectedCellData.locked_by;
@@ -501,6 +508,21 @@ window.LeucenaApp = (function () {
         selectCell(selectedCellId, selectedCellData);
       }
     }
+  }
+
+  const WELCOME_VERSION = 'v1_howto_video';
+
+  function showWelcomeIfNeeded() {
+    if (localStorage.getItem('leucena_welcome_dismissed') === WELCOME_VERSION) return;
+    LeucenaI18n.translatePage();
+    setTimeout(() => {
+      document.getElementById('welcome-modal').classList.remove('hidden');
+    }, 600);
+  }
+
+  function closeWelcome(dismiss) {
+    document.getElementById('welcome-modal').classList.add('hidden');
+    if (dismiss) localStorage.setItem('leucena_welcome_dismissed', WELCOME_VERSION);
   }
 
   function applyProfileToUI(profile) {
