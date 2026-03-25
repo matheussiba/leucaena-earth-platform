@@ -38,6 +38,43 @@ app.use((req, res, next) => {
   next();
 });
 
+const MAINTENANCE_HTML = `<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>leucaena.earth — Manutenção</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.card{text-align:center;max-width:420px;padding:40px 32px;border:1px solid #1e293b;border-radius:16px;background:#1e293b}
+h1{font-size:28px;margin-bottom:8px;color:#22c55e}
+.icon{font-size:48px;margin-bottom:16px}
+p{font-size:15px;line-height:1.6;color:#94a3b8;margin-top:12px}
+.accent{color:#22c55e;font-weight:600}
+</style>
+</head>
+<body>
+<div class="card">
+<div class="icon">🔧</div>
+<h1>Estamos trabalhando!</h1>
+<p>A plataforma de mapeamento está em <span class="accent">manutenção</span>.</p>
+<p>Volte em alguns minutos.</p>
+</div>
+</body>
+</html>`;
+
+app.use((req, res, next) => {
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    const host = (req.hostname || req.headers.host || '').split(':')[0];
+    const isMap = host === 'map.leucaena.earth' || host.endsWith('.onrender.com');
+    const isApi = req.path.startsWith('/api/');
+    if (isMap && !isApi) {
+      return res.status(503).send(MAINTENANCE_HTML);
+    }
+  }
+  next();
+});
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
