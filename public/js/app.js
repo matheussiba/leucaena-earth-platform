@@ -604,6 +604,7 @@ window.LeucenaApp = (function () {
         document.body.appendChild(_tourSpotlight);
       }
       document.getElementById('tour-overlay').classList.remove('hidden');
+      document.getElementById('tour-tooltip').classList.remove('hidden');
       this._renderStep();
     },
 
@@ -695,6 +696,7 @@ window.LeucenaApp = (function () {
 
     endTour() {
       document.getElementById('tour-overlay').classList.add('hidden');
+      document.getElementById('tour-tooltip').classList.add('hidden');
       if (_tourSpotlight) _tourSpotlight.style.display = 'none';
       this.setTourCompleted();
       if (_tourStartedFrom === 'auto' && !this.isWelcomeShown()) {
