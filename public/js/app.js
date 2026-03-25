@@ -1826,9 +1826,18 @@ window.LeucenaApp = (function () {
               return;
             }
 
-            let msg = t('admin.importSuccess', data.imported);
-            if (data.skipped > 0) msg += ` (${data.skipped} ${t('admin.importSkipped')})`;
-            showToast(msg, 'success', 6000);
+            if (data.imported > 0) {
+              showToast(t('admin.importSuccess', data.imported), 'success', 6000);
+            }
+            if (data.duplicates > 0) {
+              showToast(t('admin.importDuplicates', data.duplicates), 'warning', 6000);
+            }
+            if (data.skipped > 0) {
+              showToast(t('admin.importSkippedMsg', data.skipped), 'error', 6000);
+            }
+            if (data.imported === 0 && data.duplicates > 0) {
+              showToast(t('admin.importAllDuplicates'), 'warning', 6000);
+            }
 
           } catch (e) {
             showToast('Erro ao ler arquivo', 'error');

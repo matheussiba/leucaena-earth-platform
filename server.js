@@ -1173,11 +1173,26 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Nenhum ponto válido encontrado.', details: errors.slice(0, 20) });
   }
 
+  const existingPoints = queryAll('SELECT geometry FROM occurrence_points');
+  const existingSet = new Set();
+  for (const ep of existingPoints) {
+    const g = JSON.parse(ep.geometry);
+    const key = `${Number(g.coordinates[0]).toFixed(5)}_${Number(g.coordinates[1]).toFixed(5)}`;
+    existingSet.add(key);
+  }
+
   const maxFidRow = queryOne('SELECT MAX(fid) as maxFid FROM occurrence_points');
   let nextFid = (maxFidRow && maxFidRow.maxFid != null) ? maxFidRow.maxFid + 1 : 1;
 
   let inserted = 0;
+  let duplicates = 0;
   for (const pt of validPoints) {
+    const key = `${pt.lng.toFixed(5)}_${pt.lat.toFixed(5)}`;
+    if (existingSet.has(key)) {
+      duplicates++;
+      continue;
+    }
+    existingSet.add(key);
     const geometry = JSON.stringify({ type: 'Point', coordinates: [pt.lng, pt.lat] });
     runSQL(
       'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, 0, ?, 0)',
@@ -1188,11 +1203,12 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
   }
 
   persist();
-  logActivity(req.username, 'import_points', null, null, { count: inserted, errors: errors.length });
+  logActivity(req.username, 'import_points', null, null, { count: inserted, duplicates, errors: errors.length });
 
   res.json({
     success: true,
     imported: inserted,
+    duplicates,
     skipped: errors.length,
     details: errors.length > 0 ? errors.slice(0, 20) : undefined
   });
