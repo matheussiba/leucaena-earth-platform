@@ -1186,6 +1186,7 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
 
   let inserted = 0;
   let duplicates = 0;
+  const createdPoints = [];
   for (const pt of validPoints) {
     const key = `${pt.lng.toFixed(5)}_${pt.lat.toFixed(5)}`;
     if (existingSet.has(key)) {
@@ -1193,17 +1194,23 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
       continue;
     }
     existingSet.add(key);
-    const geometry = JSON.stringify({ type: 'Point', coordinates: [pt.lng, pt.lat] });
+    const geometry = { type: 'Point', coordinates: [pt.lng, pt.lat] };
     runSQL(
       'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, 0, ?, 0)',
-      [nextFid, geometry, 'crowdmapping']
+      [nextFid, JSON.stringify(geometry), 'crowdmapping']
     );
+    const row = queryOne('SELECT id FROM occurrence_points WHERE fid = ?', [nextFid]);
+    createdPoints.push({ id: row.id, fid: nextFid, not_valid: 0, status: 0, layer: 'crowdmapping', geometry });
     nextFid++;
     inserted++;
   }
 
   persist();
   logActivity(req.username, 'import_points', null, null, { count: inserted, duplicates, errors: errors.length });
+
+  for (const p of createdPoints) {
+    io.emit('point:created', p);
+  }
 
   res.json({
     success: true,
