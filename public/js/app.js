@@ -200,6 +200,10 @@ window.LeucenaApp = (function () {
     handleHash();
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('beforeunload', _flushLogs);
+
+    if (!Onboarding.isTourCompleted() && !isLoggedIn()) {
+      setTimeout(() => Onboarding.startTour('auto'), 1200);
+    }
   }
 
   // ── Language dropdown ──
@@ -566,6 +570,7 @@ window.LeucenaApp = (function () {
 
   // ── Onboarding Controller ──
   const WELCOME_VERSION = 'v1_howto_video';
+  const TOUR_VERSION = 'v1';
   let _tourStartedFrom = null;
   let _tourStep = 0;
   let _tourSpotlight = null;
@@ -579,9 +584,9 @@ window.LeucenaApp = (function () {
   ];
 
   const Onboarding = {
-    isTourCompleted()  { return localStorage.getItem('leucena_tour_completed') === 'true'; },
+    isTourCompleted()  { return localStorage.getItem('leucena_tour_completed') === TOUR_VERSION; },
     isWelcomeShown()   { return localStorage.getItem('leucena_welcome_dismissed') === WELCOME_VERSION; },
-    setTourCompleted() { localStorage.setItem('leucena_tour_completed', 'true'); },
+    setTourCompleted() { localStorage.setItem('leucena_tour_completed', TOUR_VERSION); },
     setWelcomeShown()  { localStorage.setItem('leucena_welcome_dismissed', WELCOME_VERSION); },
 
     onLogin() {
