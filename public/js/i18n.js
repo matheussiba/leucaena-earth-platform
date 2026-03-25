@@ -31,6 +31,7 @@ window.LeucenaI18n = (function () {
     'auth.emailPlaceholder': { pt: 'seu@email.com', en: 'your@email.com', es: 'su@email.com' },
     'auth.usernameHint': { pt: 'Apenas letras minúsculas, números e ponto', en: 'Only lowercase letters, numbers, and dot', es: 'Solo letras minúsculas, números y punto' },
     'auth.usernameInvalid': { pt: 'Usuário inválido. Use apenas letras minúsculas, números e ponto (ex: joao.silva)', en: 'Invalid username. Use only lowercase letters, numbers, and dot (e.g. joao.silva)', es: 'Usuario inválido. Use solo letras minúsculas, números y punto (ej: joao.silva)' },
+    'auth.usernameNeedsLetter': { pt: 'O usuário deve conter pelo menos uma letra (ex: joao.silva)', en: 'Username must contain at least one letter (e.g. joao.silva)', es: 'El usuario debe contener al menos una letra (ej: joao.silva)' },
     'auth.createAccount': { pt: 'Criar Conta', en: 'Create Account', es: 'Crear Cuenta' },
     'auth.noAccount': { pt: 'Não tem conta?', en: 'No account?', es: '¿No tiene cuenta?' },
     'auth.hasAccount': { pt: 'Já tem conta?', en: 'Already have an account?', es: '¿Ya tiene cuenta?' },

@@ -448,6 +448,11 @@ window.LeucenaApp = (function () {
       errorEl.classList.remove('hidden');
       return;
     }
+    if (authMode === 'register' && !/[a-z]/.test(user)) {
+      errorEl.textContent = LeucenaI18n.t('auth.usernameNeedsLetter');
+      errorEl.classList.remove('hidden');
+      return;
+    }
 
     const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
     const payload = { username: user, password: pass };

@@ -332,6 +332,7 @@ app.post('/api/auth/register', registerLimiter, (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
   if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
   if (!/^[a-z0-9.]+$/.test(username)) return res.status(400).json({ error: 'O usuário deve conter apenas letras minúsculas, números e ponto (ex: joao.silva)' });
+  if (!/[a-z]/.test(username)) return res.status(400).json({ error: 'O usuário deve conter pelo menos uma letra (ex: joao.silva)' });
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
 
