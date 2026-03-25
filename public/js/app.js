@@ -201,9 +201,6 @@ window.LeucenaApp = (function () {
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('beforeunload', _flushLogs);
 
-    if (!Onboarding.isTourCompleted() && !isLoggedIn()) {
-      setTimeout(() => Onboarding.startTour('auto'), 1200);
-    }
   }
 
   // ── Language dropdown ──
