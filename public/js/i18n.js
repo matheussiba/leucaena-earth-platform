@@ -20,7 +20,7 @@ window.LeucenaI18n = (function () {
     'auth.register': { pt: 'Cadastrar', en: 'Register', es: 'Registrarse' },
     'auth.loginSubtitle': { pt: 'Faça login para editar o mapa', en: 'Sign in to edit the map', es: 'Inicie sesión para editar el mapa' },
     'auth.registerSubtitle': { pt: 'Crie uma conta para começar a mapear', en: 'Create an account to start mapping', es: 'Cree una cuenta para empezar a mapear' },
-    'auth.userPlaceholder': { pt: 'Usuário', en: 'Username', es: 'Usuario' },
+    'auth.userPlaceholder': { pt: 'joao.silva', en: 'joao.silva', es: 'joao.silva' },
     'auth.passPlaceholder': { pt: 'Senha', en: 'Password', es: 'Contraseña' },
     'auth.passcodePlaceholder': { pt: 'Código de acesso', en: 'Access code', es: 'Código de acceso' },
     'auth.passcodeHint': {
@@ -28,6 +28,9 @@ window.LeucenaI18n = (function () {
       en: 'If you don\'t have the code, email <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>',
       es: 'Si no tiene el código, envíe un correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>'
     },
+    'auth.emailPlaceholder': { pt: 'seu@email.com', en: 'your@email.com', es: 'su@email.com' },
+    'auth.usernameHint': { pt: 'Apenas letras minúsculas, números e ponto', en: 'Only lowercase letters, numbers, and dot', es: 'Solo letras minúsculas, números y punto' },
+    'auth.usernameInvalid': { pt: 'Usuário inválido. Use apenas letras minúsculas, números e ponto (ex: joao.silva)', en: 'Invalid username. Use only lowercase letters, numbers, and dot (e.g. joao.silva)', es: 'Usuario inválido. Use solo letras minúsculas, números y punto (ej: joao.silva)' },
     'auth.createAccount': { pt: 'Criar Conta', en: 'Create Account', es: 'Crear Cuenta' },
     'auth.noAccount': { pt: 'Não tem conta?', en: 'No account?', es: '¿No tiene cuenta?' },
     'auth.hasAccount': { pt: 'Já tem conta?', en: 'Already have an account?', es: '¿Ya tiene cuenta?' },

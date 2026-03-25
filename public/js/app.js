@@ -307,6 +307,13 @@ window.LeucenaApp = (function () {
 
   function setupAuthForm() {
     document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
+    const usernameInput = document.getElementById('auth-username');
+    usernameInput.addEventListener('input', () => {
+      usernameInput.value = usernameInput.value
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9.]/g, '');
+    });
     document.getElementById('auth-switch-link').addEventListener('click', (e) => {
       e.preventDefault();
       openAuthModal(authMode === 'login' ? 'register' : 'login');
@@ -340,6 +347,10 @@ window.LeucenaApp = (function () {
     const passcodeGroup = document.getElementById('passcode-group');
     const passcodeInput = document.getElementById('auth-passcode');
     passcodeInput.value = '';
+    const emailGroup = document.getElementById('email-group');
+    const emailInput = document.getElementById('auth-email');
+    emailInput.value = '';
+    const usernameHint = document.getElementById('auth-username-hint');
 
     const t = LeucenaI18n.t;
     const forgotGroup = document.getElementById('auth-forgot-group');
@@ -351,6 +362,9 @@ window.LeucenaApp = (function () {
       document.getElementById('auth-switch-link').textContent = t('auth.register');
       passcodeGroup.classList.add('hidden');
       passcodeInput.removeAttribute('required');
+      emailGroup.classList.add('hidden');
+      emailInput.removeAttribute('required');
+      usernameHint.classList.add('hidden');
       forgotGroup.classList.remove('hidden');
     } else {
       document.getElementById('auth-modal-title').textContent = t('auth.register');
@@ -360,6 +374,9 @@ window.LeucenaApp = (function () {
       document.getElementById('auth-switch-link').textContent = t('auth.login');
       passcodeGroup.classList.remove('hidden');
       passcodeInput.setAttribute('required', 'required');
+      emailGroup.classList.remove('hidden');
+      emailInput.setAttribute('required', 'required');
+      usernameHint.classList.remove('hidden');
       forgotGroup.classList.add('hidden');
     }
     document.getElementById('auth-username').focus();
@@ -421,15 +438,22 @@ window.LeucenaApp = (function () {
 
   async function handleAuthSubmit(e) {
     e.preventDefault();
-    const user = document.getElementById('auth-username').value.trim();
+    const user = document.getElementById('auth-username').value.trim().toLowerCase();
     const pass = document.getElementById('auth-password').value;
     const errorEl = document.getElementById('auth-error');
     errorEl.classList.add('hidden');
+
+    if (authMode === 'register' && !/^[a-z0-9.]{2,30}$/.test(user)) {
+      errorEl.textContent = LeucenaI18n.t('auth.usernameInvalid');
+      errorEl.classList.remove('hidden');
+      return;
+    }
 
     const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
     const payload = { username: user, password: pass };
     if (authMode === 'register') {
       payload.passcode = document.getElementById('auth-passcode').value.trim();
+      payload.email = document.getElementById('auth-email').value.trim();
     }
 
     try {

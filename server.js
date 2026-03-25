@@ -328,10 +328,12 @@ function getNextPasscode() {
 }
 
 app.post('/api/auth/register', registerLimiter, (req, res) => {
-  const { username, password, passcode } = req.body;
+  const { username, password, passcode, email } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
   if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
+  if (!/^[a-z0-9.]+$/.test(username)) return res.status(400).json({ error: 'O usuário deve conter apenas letras minúsculas, números e ponto (ex: joao.silva)' });
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
 
   const expectedPasscode = getNextPasscode();
   if (!passcode || passcode.trim() !== expectedPasscode) {
@@ -343,7 +345,7 @@ app.post('/api/auth/register', registerLimiter, (req, res) => {
 
   const hash = hashPassword(password);
   const now = new Date().toISOString();
-  runSQL('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)', [username, hash, now]);
+  runSQL('INSERT INTO users (username, password_hash, created_at, email) VALUES (?, ?, ?, ?)', [username, hash, now, email]);
   logActivity(username, 'register', null, null, null);
 
   const token = uuidv4();

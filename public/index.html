@@ -34,8 +34,12 @@
       <p id="auth-modal-subtitle" class="modal-subtitle" data-i18n="auth.loginSubtitle">Faça login para editar o mapa</p>
       <div id="auth-error" class="auth-error hidden"></div>
       <form id="auth-form">
-        <input type="text" id="auth-username" placeholder="Usuário" data-i18n-placeholder="auth.userPlaceholder" required autocomplete="username" minlength="2" maxlength="30">
+        <input type="text" id="auth-username" placeholder="joao.silva" data-i18n-placeholder="auth.userPlaceholder" required autocomplete="username" minlength="2" maxlength="30" pattern="[a-z0-9.]+">
+        <p class="auth-field-hint hidden" id="auth-username-hint" data-i18n="auth.usernameHint">Apenas letras minúsculas, números e ponto</p>
         <input type="password" id="auth-password" placeholder="Senha" data-i18n-placeholder="auth.passPlaceholder" required autocomplete="current-password" minlength="3">
+        <div id="email-group" class="hidden">
+          <input type="email" id="auth-email" placeholder="seu@email.com" data-i18n-placeholder="auth.emailPlaceholder" autocomplete="email" maxlength="200">
+        </div>
         <div id="passcode-group" class="hidden">
           <input type="text" id="auth-passcode" placeholder="Código de acesso" data-i18n-placeholder="auth.passcodePlaceholder" autocomplete="off" maxlength="10">
           <p class="passcode-hint" data-i18n-html="auth.passcodeHint">Se não possui o código, envie um e-mail para <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p>
