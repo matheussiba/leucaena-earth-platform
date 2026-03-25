@@ -2842,6 +2842,11 @@ html, body {
   background: #22c55e !important;
   border-color: #22c55e !important;
 }
+.admin-import-points-btn {
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: #1a1a2e !important;
+}
 
 .admin-create-user-section {
   padding: 14px 16px;

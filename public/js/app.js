@@ -1701,9 +1701,11 @@ window.LeucenaApp = (function () {
       exportRow.className = 'admin-export-row';
       const backupBtnHtml = callerIsSuperAdmin ? `<button id="admin-backup-db" class="admin-export-btn">💾 ${t('admin.backupDb')}</button>` : '';
       const createUserBtnHtml = callerIsSuperAdmin ? `<button id="admin-create-user-btn" class="admin-export-btn admin-create-user-btn">➕ ${t('admin.createUser')}</button>` : '';
+      const importPointsBtnHtml = callerIsSuperAdmin ? `<button id="admin-import-points-btn" class="admin-export-btn admin-import-points-btn">📍 ${t('admin.importPoints')}</button>` : '';
       exportRow.innerHTML = `${createUserBtnHtml}<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>
         <button id="admin-export-logs" class="admin-export-btn">📋 ${t('admin.exportLogs')}</button>
         <button id="admin-copy-recent-logs" class="admin-export-btn admin-copy-log-btn">📄 ${t('admin.copyRecentLogs')}</button>
+        ${importPointsBtnHtml}
         ${backupBtnHtml}`;
       listEl.appendChild(exportRow);
       document.getElementById('admin-export-csv').addEventListener('click', async () => {
@@ -1769,6 +1771,68 @@ window.LeucenaApp = (function () {
             URL.revokeObjectURL(url);
             showToast(t('admin.backupDone'), 'success');
           } catch (e) { showToast('Backup failed', 'error'); }
+        });
+      }
+
+      const importPointsBtn = document.getElementById('admin-import-points-btn');
+      if (importPointsBtn) {
+        const fileInput = document.getElementById('admin-import-geojson-input');
+        importPointsBtn.addEventListener('click', () => {
+          fileInput.value = '';
+          fileInput.click();
+        });
+        fileInput.addEventListener('change', async () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+
+          if (file.size > 20 * 1024 * 1024) {
+            showToast(t('admin.importFileTooLarge'), 'error');
+            return;
+          }
+
+          try {
+            const text = await file.text();
+            let geojson;
+            try {
+              geojson = JSON.parse(text);
+            } catch (e) {
+              showToast(t('admin.importInvalidJson'), 'error');
+              return;
+            }
+
+            if (!geojson || geojson.type !== 'FeatureCollection' || !Array.isArray(geojson.features)) {
+              showToast(t('admin.importNotFeatureCollection'), 'error');
+              return;
+            }
+
+            const count = geojson.features.length;
+            if (count === 0) {
+              showToast(t('admin.importEmpty'), 'warning');
+              return;
+            }
+
+            if (!confirm(t('admin.importConfirm', count))) return;
+
+            showToast(t('admin.importUploading'), 'info', 10000);
+
+            const r = await fetch('/api/admin/points/import', {
+              method: 'POST',
+              headers: authHeaders(),
+              body: JSON.stringify(geojson)
+            });
+            const data = await r.json();
+            if (!r.ok) {
+              showToast(data.error || 'Erro na importação', 'error', 8000);
+              return;
+            }
+
+            let msg = t('admin.importSuccess', data.imported);
+            if (data.skipped > 0) msg += ` (${data.skipped} ${t('admin.importSkipped')})`;
+            showToast(msg, 'success', 6000);
+
+          } catch (e) {
+            showToast('Erro ao ler arquivo', 'error');
+          }
         });
       }
 

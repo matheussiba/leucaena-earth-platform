@@ -1131,6 +1131,73 @@ app.delete('/api/polygons/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ── Import GeoJSON points (Super Admin) ──
+
+app.post('/api/admin/points/import', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+
+  const geojson = req.body;
+  if (!geojson || geojson.type !== 'FeatureCollection' || !Array.isArray(geojson.features)) {
+    return res.status(400).json({ error: 'GeoJSON inválido. Esperado um FeatureCollection com features.' });
+  }
+
+  const features = geojson.features;
+  if (features.length === 0) {
+    return res.status(400).json({ error: 'Nenhuma feature encontrada no GeoJSON.' });
+  }
+  if (features.length > 50000) {
+    return res.status(400).json({ error: 'Máximo de 50.000 pontos por importação.' });
+  }
+
+  const errors = [];
+  const validPoints = [];
+
+  for (let i = 0; i < features.length; i++) {
+    const f = features[i];
+    if (!f || !f.geometry) { errors.push(`Feature ${i + 1}: sem geometry`); continue; }
+
+    let coords;
+    if (f.geometry.type === 'Point' && Array.isArray(f.geometry.coordinates)) {
+      coords = f.geometry.coordinates;
+    } else { errors.push(`Feature ${i + 1}: tipo "${f.geometry.type}" não é Point`); continue; }
+
+    const lng = Number(coords[0]);
+    const lat = Number(coords[1]);
+    if (isNaN(lng) || isNaN(lat)) { errors.push(`Feature ${i + 1}: coordenadas inválidas`); continue; }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { errors.push(`Feature ${i + 1}: coordenadas fora do intervalo (lat:${lat}, lng:${lng})`); continue; }
+
+    validPoints.push({ lat, lng });
+  }
+
+  if (validPoints.length === 0) {
+    return res.status(400).json({ error: 'Nenhum ponto válido encontrado.', details: errors.slice(0, 20) });
+  }
+
+  const maxFidRow = queryOne('SELECT MAX(fid) as maxFid FROM occurrence_points');
+  let nextFid = (maxFidRow && maxFidRow.maxFid != null) ? maxFidRow.maxFid + 1 : 1;
+
+  let inserted = 0;
+  for (const pt of validPoints) {
+    const geometry = JSON.stringify({ type: 'Point', coordinates: [pt.lng, pt.lat] });
+    runSQL(
+      'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, 0, ?, 0)',
+      [nextFid, geometry, 'crowdmapping']
+    );
+    nextFid++;
+    inserted++;
+  }
+
+  persist();
+  logActivity(req.username, 'import_points', null, null, { count: inserted, errors: errors.length });
+
+  res.json({
+    success: true,
+    imported: inserted,
+    skipped: errors.length,
+    details: errors.length > 0 ? errors.slice(0, 20) : undefined
+  });
+});
+
 // ── Occurrence points ──
 
 app.get('/api/points', (req, res) => {
