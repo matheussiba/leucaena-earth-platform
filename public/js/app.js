@@ -87,12 +87,10 @@ window.LeucenaApp = (function () {
 
     setupLangDropdown();
 
-    document.getElementById('guide-btn').addEventListener('click', () => {
-      if (!Onboarding.isTourCompleted()) {
-        Onboarding.startTour('manual');
-      } else {
-        openGuideModal();
-      }
+    document.getElementById('guide-btn').addEventListener('click', openGuideModal);
+    document.getElementById('guide-start-tour').addEventListener('click', () => {
+      closeGuideModal();
+      Onboarding.startTour('manual');
     });
     document.getElementById('guide-modal-close').addEventListener('click', closeGuideModal);
     document.getElementById('guide-modal').addEventListener('click', (e) => {

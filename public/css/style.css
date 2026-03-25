@@ -1593,6 +1593,32 @@ html, body {
 
 .guide-page { }
 
+.guide-tour-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.guide-tour-btn:hover {
+  background: rgba(34, 197, 94, 0.18);
+  border-style: solid;
+}
+
+.guide-tour-btn svg {
+  flex-shrink: 0;
+}
+
 .guide-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

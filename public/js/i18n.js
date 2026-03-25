@@ -218,6 +218,7 @@ window.LeucenaI18n = (function () {
     'welcome.goToVideo': { pt: 'Ver vídeo', en: 'Watch video', es: 'Ver video' },
 
     // ── Tour steps ──
+    'tour.startTour': { pt: 'Fazer o tour da plataforma', en: 'Take the platform tour', es: 'Hacer el tour de la plataforma' },
     'tour.skip': { pt: 'Pular', en: 'Skip', es: 'Saltar' },
     'tour.next': { pt: 'Próximo', en: 'Next', es: 'Siguiente' },
     'tour.finish': { pt: 'Entendi!', en: 'Got it!', es: '¡Entendido!' },
