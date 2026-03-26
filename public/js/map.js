@@ -478,7 +478,7 @@ window.LeucenaMap = (function () {
       pointClusterer = new markerClusterer.MarkerClusterer({
         map,
         markers: [],
-        algorithmOptions: { maxZoom: 11 },
+        algorithmOptions: { maxZoom: 10 },
         renderer: { render: clusterRenderer }
       });
     }
