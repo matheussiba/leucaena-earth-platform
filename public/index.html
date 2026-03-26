@@ -106,6 +106,19 @@
     </div>
   </div>
 
+  <!-- Modal de Troca de Ferramenta com polígono em progresso -->
+  <div id="tool-switch-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-small">
+      <h2 data-i18n="toolSwitch.title">⚠️ Polígono em andamento</h2>
+      <p class="modal-subtitle" data-i18n="toolSwitch.message">Você tem um polígono sendo desenhado. O que deseja fazer?</p>
+      <div class="unlock-options">
+        <button class="btn btn-danger btn-full" id="tool-switch-cancel-draw" data-i18n="toolSwitch.cancelDraw">Cancelar polígono e trocar ferramenta</button>
+        <button class="btn btn-primary btn-full" id="tool-switch-finish-draw" data-i18n="toolSwitch.finishDraw">Finalizar polígono e trocar ferramenta</button>
+        <button class="btn btn-secondary btn-full" id="tool-switch-continue" data-i18n="toolSwitch.continue">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal de Aviso de Exclusão -->
   <div id="delete-warn-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-small">

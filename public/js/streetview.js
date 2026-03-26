@@ -14,6 +14,10 @@ window.LeucenaStreetView = (function () {
     active = !active;
     const btn = document.getElementById('tool-streetview');
     if (active) {
+      const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
+      if (drawMode === 'draw' && !LeucenaDrawing.isPolygonInProgress()) {
+        LeucenaDrawing.setMode('select');
+      }
       btn.classList.add('active');
       LeucenaMap.showStreetViewCoverage(true);
       LeucenaApp.showToast(LeucenaI18n.t('toast.svClickHint'), 'info');

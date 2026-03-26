@@ -350,6 +350,11 @@ window.LeucenaI18n = (function () {
     'toast.polyBelongsAdmin': { pt: 'Este polígono pertence a {0}. Somente ele ou o administrador pode excluí-lo.', en: 'This polygon belongs to {0}. Only they or the admin can delete it.', es: 'Este polígono pertenece a {0}. Solo él o el administrador puede eliminarlo.' },
     'toast.contributorNoDelete': { pt: 'Colaboradores não podem deletar máscaras', en: 'Contributors cannot delete masks', es: 'Colaboradores no pueden eliminar máscaras' },
     'export.masksDisclaimer': { pt: 'Os pontos de ocorrência e as máscaras ainda estão em fase de validação e não estão disponíveis para download no momento. Esses dados estarão abertos ao público a partir do segundo semestre de 2026, quando o processo de validação será concluído.', en: 'Occurrence points and masks are still undergoing validation and are not available for download at this time. This data will be publicly available starting in the second semester of 2026, once the validation process is complete.', es: 'Los puntos de ocurrencia y las máscaras aún están en fase de validación y no están disponibles para descarga en este momento. Estos datos estarán abiertos al público a partir del segundo semestre de 2026, cuando se complete el proceso de validación.' },
+    'toolSwitch.title': { pt: '⚠️ Polígono em andamento', en: '⚠️ Polygon in progress', es: '⚠️ Polígono en progreso' },
+    'toolSwitch.message': { pt: 'Você tem um polígono sendo desenhado. O que deseja fazer?', en: 'You have a polygon being drawn. What would you like to do?', es: 'Tiene un polígono en proceso de dibujo. ¿Qué desea hacer?' },
+    'toolSwitch.cancelDraw': { pt: 'Cancelar polígono e trocar ferramenta', en: 'Cancel polygon and switch tool', es: 'Cancelar polígono y cambiar herramienta' },
+    'toolSwitch.finishDraw': { pt: 'Finalizar polígono e trocar ferramenta', en: 'Finish polygon and switch tool', es: 'Finalizar polígono y cambiar herramienta' },
+    'toolSwitch.continue': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
     'deleteWarn.title': { pt: '⚠️ Atenção', en: '⚠️ Warning', es: '⚠️ Atención' },
     'deleteWarn.message': { pt: 'Você está prestes a excluir polígonos. Clique em um polígono no mapa para removê-lo permanentemente.', en: 'You are about to delete polygons. Click a polygon on the map to permanently remove it.', es: 'Está a punto de eliminar polígonos. Haga clic en un polígono en el mapa para eliminarlo permanentemente.' },
     'deleteWarn.ok': { pt: 'Entendi, continuar', en: 'I understand, continue', es: 'Entendido, continuar' },
@@ -366,7 +371,8 @@ window.LeucenaI18n = (function () {
 
     // ── Tool hint badges ──
     'badge.draw': { pt: 'Clique direito ou Enter = finalizar · Ctrl+Z = desfazer', en: 'Right-click or Enter = finish · Ctrl+Z = undo', es: 'Clic derecho o Enter = finalizar · Ctrl+Z = deshacer' },
-    'badge.delete': { pt: 'Ctrl+Z = restaurar polígono', en: 'Ctrl+Z = restore polygon', es: 'Ctrl+Z = restaurar polígono' },
+    'badge.delete': { pt: 'Clique em um polígono para selecioná-lo', en: 'Click a polygon to select it', es: 'Haga clic en un polígono para seleccionarlo' },
+    'badge.deleteConfirm': { pt: 'Aperte Delete para excluir · Esc para cancelar · Ctrl+Z = restaurar', en: 'Press Delete to remove · Esc to cancel · Ctrl+Z = restore', es: 'Presione Delete para eliminar · Esc para cancelar · Ctrl+Z = restaurar' },
     'badge.edit': { pt: 'Ctrl+Z = desfazer edição', en: 'Ctrl+Z = undo edit', es: 'Ctrl+Z = deshacer edición' },
     'badge.pointSelected': { pt: 'Clique com o botão direito para mudar de status', en: 'Right-click to change status', es: 'Clic derecho para cambiar estado' },
 

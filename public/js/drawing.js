@@ -8,6 +8,10 @@ window.LeucenaDrawing = (function () {
   const editUndoStack = [];
   let manualDrawState = null;
   let _areaLabelsVisible = false;
+  let _editModified = false;
+  let _pendingToolSwitch = null;
+  let _suppressDrawRestart = false;
+  let _pendingDeleteId = null;
 
   const POLY_STYLE_MEMBER = {
     strokeColor: '#84cc16',
@@ -168,6 +172,20 @@ window.LeucenaDrawing = (function () {
         return;
       }
 
+      if ((e.key === 'Delete' || e.key === 'Backspace') && activeMode === 'delete' && _pendingDeleteId) {
+        e.preventDefault();
+        const id = _pendingDeleteId;
+        clearPendingDelete();
+        deletePolygon(id);
+        return;
+      }
+
+      if (e.key === 'Escape' && activeMode === 'delete' && _pendingDeleteId) {
+        e.preventDefault();
+        clearPendingDelete();
+        return;
+      }
+
       if (!(e.key === 'z' && (e.ctrlKey || e.metaKey))) return;
 
       if (activeMode === 'draw' && manualDrawState) {
@@ -245,7 +263,7 @@ window.LeucenaDrawing = (function () {
 
     poly.addListener('click', () => {
       if (activeMode === 'delete') {
-        deletePolygon(id);
+        selectForDeletion(id);
       } else if (activeMode === 'edit') {
         toggleEditPolygon(id);
       } else if (activeMode === 'hole') {
@@ -273,6 +291,7 @@ window.LeucenaDrawing = (function () {
 
     const onPathChange = () => {
       if (editUndoGuard) return;
+      _editModified = true;
       if (gestureTimer === null) {
         const entry = drawnPolygons[id];
         if (entry && entry._lastGeometry) {
@@ -313,15 +332,44 @@ window.LeucenaDrawing = (function () {
     delete pathListenerMap[id];
   }
 
+  function isPolygonInProgress() {
+    return activeMode === 'draw' && manualDrawState && manualDrawState.vertices.length > 0;
+  }
+
+  function requestToolSwitch(targetMode) {
+    if (isPolygonInProgress()) {
+      _pendingToolSwitch = targetMode;
+      document.getElementById('tool-switch-modal').classList.remove('hidden');
+      return;
+    }
+    if (targetMode === 'delete') {
+      showDeleteWarningModal();
+    } else {
+      setMode(targetMode);
+    }
+  }
+
   function setupToolbar() {
-    document.getElementById('tool-select').addEventListener('click', () => setMode('select'));
-    document.getElementById('tool-draw').addEventListener('click', () => setMode(activeMode === 'draw' ? 'select' : 'draw'));
-    document.getElementById('tool-edit').addEventListener('click', () => setMode(activeMode === 'edit' ? 'select' : 'edit'));
+    document.getElementById('tool-select').addEventListener('click', () => {
+      if (activeMode === 'select') return;
+      requestToolSwitch('select');
+    });
+    document.getElementById('tool-draw').addEventListener('click', () => {
+      if (activeMode === 'draw') { setMode('select'); return; }
+      requestToolSwitch('draw');
+    });
+    document.getElementById('tool-edit').addEventListener('click', () => {
+      if (activeMode === 'edit') { setMode('select'); return; }
+      requestToolSwitch('edit');
+    });
     document.getElementById('tool-delete').addEventListener('click', () => {
       if (activeMode === 'delete') { setMode('select'); return; }
-      showDeleteWarningModal();
+      requestToolSwitch('delete');
     });
-    document.getElementById('tool-hole').addEventListener('click', () => setMode(activeMode === 'hole' ? 'select' : 'hole'));
+    document.getElementById('tool-hole').addEventListener('click', () => {
+      if (activeMode === 'hole') { setMode('select'); return; }
+      requestToolSwitch('hole');
+    });
 
     document.getElementById('delete-warn-ok').addEventListener('click', () => {
       document.getElementById('delete-warn-modal').classList.add('hidden');
@@ -329,6 +377,36 @@ window.LeucenaDrawing = (function () {
     });
     document.getElementById('delete-warn-cancel').addEventListener('click', () => {
       document.getElementById('delete-warn-modal').classList.add('hidden');
+    });
+
+    document.getElementById('tool-switch-cancel-draw').addEventListener('click', () => {
+      const target = _pendingToolSwitch;
+      _pendingToolSwitch = null;
+      document.getElementById('tool-switch-modal').classList.add('hidden');
+      cleanupManualDraw();
+      if (target === 'delete') {
+        showDeleteWarningModal();
+      } else {
+        setMode(target || 'select');
+      }
+    });
+    document.getElementById('tool-switch-finish-draw').addEventListener('click', () => {
+      const target = _pendingToolSwitch;
+      _pendingToolSwitch = null;
+      document.getElementById('tool-switch-modal').classList.add('hidden');
+      _suppressDrawRestart = true;
+      completeManualDraw().then(() => {
+        _suppressDrawRestart = false;
+        if (target === 'delete') {
+          showDeleteWarningModal();
+        } else {
+          setMode(target || 'select');
+        }
+      });
+    });
+    document.getElementById('tool-switch-continue').addEventListener('click', () => {
+      _pendingToolSwitch = null;
+      document.getElementById('tool-switch-modal').classList.add('hidden');
     });
   }
 
@@ -350,6 +428,8 @@ window.LeucenaDrawing = (function () {
 
     deleteUndoStack.length = 0;
     editUndoStack.length = 0;
+    _editModified = false;
+    clearPendingDelete();
     cleanupManualDraw();
     updateToolBadge(mode);
 
@@ -372,12 +452,17 @@ window.LeucenaDrawing = (function () {
     clearHoleTarget();
     makeAllNonEditable();
 
+    const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
     if (mode === 'draw') {
       startDrawing();
-    } else if (mode === 'edit') {
-      makeAllEditableInCell();
-    } else if (mode === 'hole') {
-      LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
+      if (map) map.setOptions({ draggableCursor: 'crosshair' });
+    } else {
+      if (map) map.setOptions({ draggableCursor: null });
+      if (mode === 'edit') {
+        makeAllEditableInCell();
+      } else if (mode === 'hole') {
+        LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
+      }
     }
   }
 
@@ -529,6 +614,7 @@ window.LeucenaDrawing = (function () {
     cleanupManualDraw();
     showDrawOverlay();
     const map = LeucenaMap.getMap();
+    map.setOptions({ draggableCursor: 'crosshair' });
     const vertices = [];
     const vertexMarkers = [];
     const prevDblClickZoom = map.get('disableDoubleClickZoom');
@@ -630,7 +716,7 @@ window.LeucenaDrawing = (function () {
       if (vertices.length > 0) {
         LeucenaApp.showToast(LeucenaI18n.t('toast.min3Vertices'), 'warning');
       }
-      if (activeMode === 'draw') startDrawing();
+      if (activeMode === 'draw' && !_suppressDrawRestart) startDrawing();
       return;
     }
 
@@ -638,7 +724,7 @@ window.LeucenaDrawing = (function () {
     if (!cellId) {
       cleanupManualDraw();
       LeucenaApp.showToast(LeucenaI18n.t('toast.selectCellFirst'), 'warning');
-      if (activeMode === 'draw') startDrawing();
+      if (activeMode === 'draw' && !_suppressDrawRestart) startDrawing();
       return;
     }
 
@@ -658,7 +744,7 @@ window.LeucenaDrawing = (function () {
       if (!res.ok) {
         const err = await res.json();
         LeucenaApp.showToast(err.error, 'error');
-        if (activeMode === 'draw') startDrawing();
+        if (activeMode === 'draw' && !_suppressDrawRestart) startDrawing();
         return;
       }
 
@@ -670,7 +756,7 @@ window.LeucenaDrawing = (function () {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaveFail'), 'error');
     }
 
-    if (activeMode === 'draw') startDrawing();
+    if (activeMode === 'draw' && !_suppressDrawRestart) startDrawing();
   }
 
   function cleanupManualDraw() {
@@ -693,6 +779,8 @@ window.LeucenaDrawing = (function () {
 
     LeucenaMap.setGridClickable(true);
     hideDrawOverlay();
+
+    if (map) map.setOptions({ draggableCursor: null });
 
     manualDrawState = null;
   }
@@ -796,9 +884,13 @@ window.LeucenaDrawing = (function () {
     const t = LeucenaI18n.t;
 
     if (mode === 'draw' || mode === 'delete' || mode === 'edit') {
-      overlay.textContent = mode === 'draw' ? t('badge.draw')
-                          : mode === 'delete' ? t('badge.delete')
-                          : t('badge.edit');
+      if (mode === 'delete' && _pendingDeleteId) {
+        overlay.textContent = t('badge.deleteConfirm');
+      } else {
+        overlay.textContent = mode === 'draw' ? t('badge.draw')
+                            : mode === 'delete' ? t('badge.delete')
+                            : t('badge.edit');
+      }
       overlay.classList.remove('hidden');
     } else {
       overlay.classList.add('hidden');
@@ -868,6 +960,49 @@ window.LeucenaDrawing = (function () {
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
     }
+  }
+
+  function clearPendingDelete() {
+    if (_pendingDeleteId && drawnPolygons[_pendingDeleteId]) {
+      const entry = drawnPolygons[_pendingDeleteId];
+      const crole = entry.data.created_by_role || 'contributor';
+      entry.gmapsPoly.setOptions(getPolyStyle(crole));
+    }
+    _pendingDeleteId = null;
+    updateToolBadge(activeMode);
+  }
+
+  function selectForDeletion(id) {
+    const entry = drawnPolygons[id];
+    if (!entry) return;
+
+    if (!canDeletePolygon(entry)) {
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyBelongsAdmin', entry.data.created_by), 'warning');
+      return;
+    }
+
+    const cellId = entry.data.grid_cell_id;
+    const selectedCell = LeucenaApp.getSelectedCellId();
+    const cellData = LeucenaApp.getSelectedCellData();
+    if (cellId !== selectedCell || !cellData || cellData.locked_by !== LeucenaApp.getUsername()) {
+      LeucenaApp.showToast(LeucenaI18n.t('toast.lockCellToDelete'), 'warning');
+      return;
+    }
+
+    if (_pendingDeleteId === id) {
+      clearPendingDelete();
+      return;
+    }
+
+    clearPendingDelete();
+    _pendingDeleteId = id;
+    entry.gmapsPoly.setOptions({
+      strokeColor: '#ef4444',
+      fillColor: '#ef4444',
+      fillOpacity: 0.4,
+      strokeWeight: 3
+    });
+    updateToolBadge('delete');
   }
 
   async function deletePolygon(id) {
@@ -1050,10 +1185,14 @@ window.LeucenaDrawing = (function () {
     updateRemotePolygon,
     removeRemotePolygon,
     getActiveMode,
+    setMode,
     setClickable,
     getPolygonCount,
     getPolygonCounts,
     clearUndoHistory,
-    setAreaLabelsVisible
+    setAreaLabelsVisible,
+    isPolygonInProgress,
+    isEditModified() { return _editModified; },
+    exitEditMode() { if (activeMode === 'edit') { setMode('select'); } }
   };
 })();

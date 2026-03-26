@@ -80,8 +80,14 @@ window.LeucenaMap = (function () {
         clickedOnFeature = false;
         return;
       }
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'edit' && LeucenaDrawing.isEditModified()) {
+        LeucenaDrawing.exitEditMode();
+        return;
+      }
       deselectPoint();
       if (LeucenaStreetView.isActive()) {
+        const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
+        if (drawMode === 'draw') return;
         LeucenaStreetView.showAt(e.latLng);
         return;
       }
@@ -290,6 +296,11 @@ window.LeucenaMap = (function () {
     });
 
     poly.addListener('click', (e) => {
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'edit' && LeucenaDrawing.isEditModified()) {
+        clickedOnFeature = true;
+        LeucenaDrawing.exitEditMode();
+        return;
+      }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
         LeucenaApp.handleDeletionClick(e.latLng);
         return;
