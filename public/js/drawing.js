@@ -163,12 +163,10 @@ window.LeucenaDrawing = (function () {
     loadAllPolygons();
     setupToolbar();
     setupUndoHandler();
-    setTimeout(() => {
-      const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
-      if (map) {
-        map.addListener('mousemove', (e) => { _lastMouseLatLng = e.latLng; });
-      }
-    }, 500);
+    const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
+    if (map) {
+      map.addListener('mousemove', (e) => { _lastMouseLatLng = e.latLng; });
+    }
   }
 
   function isInputFocused() {
@@ -209,6 +207,26 @@ window.LeucenaDrawing = (function () {
         return;
       }
 
+      if (e.shiftKey && (e.key === 'D' || e.key === 'd') && cellLocked) {
+        e.preventDefault();
+        if (activeMode === 'delete') {
+          setMode('select');
+        } else {
+          requestToolSwitch('delete');
+        }
+        return;
+      }
+
+      if (e.shiftKey && (e.key === 'H' || e.key === 'h') && cellLocked) {
+        e.preventDefault();
+        if (activeMode === 'hole') {
+          setMode('select');
+        } else {
+          requestToolSwitch('hole');
+        }
+        return;
+      }
+
       if (e.shiftKey && (e.key === 'S' || e.key === 's')) {
         e.preventDefault();
         const svBtn = document.getElementById('tool-streetview');
@@ -219,17 +237,26 @@ window.LeucenaDrawing = (function () {
       if ((e.key === 'v' || e.key === 'V') && !e.shiftKey && !e.ctrlKey && !e.metaKey && activeMode === 'draw' && manualDrawState && _lastMouseLatLng) {
         e.preventDefault();
         manualDrawState.addVertex(_lastMouseLatLng);
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hotkey_vertex', LeucenaApp.getSelectedCellId(), null, { lat: _lastMouseLatLng.lat(), lng: _lastMouseLatLng.lng(), count: manualDrawState.vertices.length });
+        }
         return;
       }
 
       if (e.key === 'Enter' && activeMode === 'draw' && manualDrawState) {
         e.preventDefault();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hotkey_finish_draw', LeucenaApp.getSelectedCellId(), null, { vertices: manualDrawState.vertices.length });
+        }
         completeManualDraw();
         return;
       }
 
       if ((e.key === 'Delete' || e.key === 'Backspace') && activeMode === 'delete' && _pendingDeleteId) {
         e.preventDefault();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hotkey_confirm_delete', LeucenaApp.getSelectedCellId(), _pendingDeleteId, null);
+        }
         const id = _pendingDeleteId;
         clearPendingDelete();
         deletePolygon(id);
@@ -238,6 +265,9 @@ window.LeucenaDrawing = (function () {
 
       if (e.key === 'Escape' && activeMode === 'delete' && _pendingDeleteId) {
         e.preventDefault();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hotkey_cancel_delete', LeucenaApp.getSelectedCellId(), _pendingDeleteId, null);
+        }
         clearPendingDelete();
         return;
       }
@@ -247,6 +277,9 @@ window.LeucenaDrawing = (function () {
       if (activeMode === 'draw' && manualDrawState) {
         e.preventDefault();
         e.stopPropagation();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hotkey_undo_vertex', LeucenaApp.getSelectedCellId(), null, { remaining: manualDrawState.vertices.length - 1 });
+        }
         undoDrawVertex();
       } else if (activeMode === 'delete' && deleteUndoStack.length > 0) {
         e.preventDefault();
@@ -439,6 +472,9 @@ window.LeucenaDrawing = (function () {
       const target = _pendingToolSwitch;
       _pendingToolSwitch = null;
       document.getElementById('tool-switch-modal').classList.add('hidden');
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('tool_switch_cancel_draw', LeucenaApp.getSelectedCellId(), null, { target });
+      }
       cleanupManualDraw();
       if (target === 'delete') {
         showDeleteWarningModal();
@@ -450,6 +486,9 @@ window.LeucenaDrawing = (function () {
       const target = _pendingToolSwitch;
       _pendingToolSwitch = null;
       document.getElementById('tool-switch-modal').classList.add('hidden');
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('tool_switch_finish_draw', LeucenaApp.getSelectedCellId(), null, { target });
+      }
       _suppressDrawRestart = true;
       completeManualDraw().then(() => {
         _suppressDrawRestart = false;
@@ -733,6 +772,9 @@ window.LeucenaDrawing = (function () {
     const clickListener = map.addListener('click', (e) => {
       if (activeMode !== 'draw') return;
       addVertex(e.latLng);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('draw_vertex_click', LeucenaApp.getSelectedCellId(), null, { lat: e.latLng.lat(), lng: e.latLng.lng(), count: vertices.length });
+      }
     });
 
     const moveListener = map.addListener('mousemove', (e) => {
@@ -746,6 +788,9 @@ window.LeucenaDrawing = (function () {
 
     const dblClickListener = map.addListener('dblclick', (e) => {
       if (activeMode !== 'draw') return;
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('draw_finish_dblclick', LeucenaApp.getSelectedCellId(), null, { vertices: vertices.length });
+      }
       if (vertices.length > 0) removeLastVertex();
       completeManualDraw();
     });
@@ -753,6 +798,9 @@ window.LeucenaDrawing = (function () {
     const rightClickListener = map.addListener('rightclick', (e) => {
       if (activeMode !== 'draw') return;
       if (vertices.length >= 3) {
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('draw_finish_rightclick', LeucenaApp.getSelectedCellId(), null, { vertices: vertices.length });
+        }
         completeManualDraw();
       }
     });
@@ -840,7 +888,6 @@ window.LeucenaDrawing = (function () {
 
     if (map) map.setOptions({ draggableCursor: null });
 
-    _lastMouseLatLng = null;
     manualDrawState = null;
   }
 
@@ -1061,6 +1108,9 @@ window.LeucenaDrawing = (function () {
       fillOpacity: 0.4,
       strokeWeight: 3
     });
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('polygon_select_delete', entry.data.grid_cell_id, id, null);
+    }
     updateToolBadge('delete');
   }
 

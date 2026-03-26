@@ -20,10 +20,16 @@ window.LeucenaStreetView = (function () {
       }
       btn.classList.add('active');
       LeucenaMap.showStreetViewCoverage(true);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('streetview_open', null, null, null);
+      }
       LeucenaApp.showToast(LeucenaI18n.t('toast.svClickHint'), 'info');
     } else {
       btn.classList.remove('active');
       LeucenaMap.showStreetViewCoverage(false);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('streetview_close', null, null, null);
+      }
       close();
     }
   }
@@ -38,6 +44,9 @@ window.LeucenaStreetView = (function () {
 
     svService.getPanorama({ location: latLng, radius: 100 }, (data, status) => {
       if (status === google.maps.StreetViewStatus.OK) {
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('streetview_show', null, null, { lat: data.location.latLng.lat(), lng: data.location.latLng.lng() });
+        }
         if (!panorama) {
           panorama = new google.maps.StreetViewPanorama(
             document.getElementById('streetview-pano'),

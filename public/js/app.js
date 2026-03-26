@@ -1080,6 +1080,7 @@ window.LeucenaApp = (function () {
 
     selectedCellId = cellId;
     selectedCellData = cellData;
+    logEvent('cell_select', cellId, null, { status: cellData ? cellData.grid_status : null });
 
     if (typeof LeucenaMap !== 'undefined') {
       LeucenaMap.setSelectedCell(cellId);
