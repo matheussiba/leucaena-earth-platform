@@ -59,9 +59,15 @@ window.LeucenaMap = (function () {
       map.setZoom(map.getZoom() - 1);
     });
 
+    let _prevPointScale = getPointScale();
     map.addListener('zoom_changed', () => {
       updateZoomButtons();
       updateAreaLabelsForZoom();
+      const newScale = getPointScale();
+      if (newScale !== _prevPointScale) {
+        _prevPointScale = newScale;
+        refreshPointIcons();
+      }
     });
 
     svCoverageLayer = new google.maps.StreetViewCoverageLayer();
@@ -526,26 +532,43 @@ window.LeucenaMap = (function () {
 
   const LAYER_STROKE_COLORS = {
     crowdmapping: '#DE9958',
-    inaturalist:  '#505752',
+    inaturalist:  '#1B9E3E',
     gbif:         '#2B526D',
     insthorus:    '#000000',
     specieslink:  '#7F2E74'
   };
 
+  function getPointScale() {
+    if (!map) return 4;
+    const z = map.getZoom();
+    return z >= 15 ? 4 : 3;
+  }
+
   function getPointIcon(status, layer) {
+    const s = getPointScale();
     if (status === 1) {
-      return { path: google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#ef4444', fillOpacity: 0.9, strokeColor: '#991b1b', strokeWeight: 0.8 };
+      return { path: google.maps.SymbolPath.CIRCLE, scale: s, fillColor: '#ef4444', fillOpacity: 0.9, strokeColor: '#991b1b', strokeWeight: 1.6 };
     }
     if (status === 2) {
-      return { path: google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#ef4444', fillOpacity: 0.9, strokeColor: '#ffffff', strokeWeight: 0.8 };
+      return { path: google.maps.SymbolPath.CIRCLE, scale: s, fillColor: '#ef4444', fillOpacity: 0.9, strokeColor: '#ffffff', strokeWeight: 1.6 };
     }
     const strokeColor = LAYER_STROKE_COLORS[layer] || '#000000';
-    return { path: google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#84cc16', fillOpacity: 0.9, strokeColor, strokeWeight: 0.8 };
+    return { path: google.maps.SymbolPath.CIRCLE, scale: s, fillColor: '#84cc16', fillOpacity: 0.9, strokeColor, strokeWeight: 1.6 };
   }
 
   function getSelectedPointIcon(status, layer) {
     const base = getPointIcon(status, layer);
-    return { ...base, strokeColor: SELECTED_STROKE, strokeWeight: base.strokeWeight * 2, scale: base.scale + 1 };
+    return { ...base, strokeColor: SELECTED_STROKE, strokeWeight: 2.4, scale: base.scale + 1 };
+  }
+
+  function refreshPointIcons() {
+    for (const entry of Object.values(pointMarkersById)) {
+      if (selectedPointIds.has(entry.data.id)) {
+        entry.marker.setIcon(getSelectedPointIcon(entry.data.status || entry.data.not_valid || 0, entry.data.layer));
+      } else {
+        entry.marker.setIcon(getPointIcon(entry.data.status || entry.data.not_valid || 0, entry.data.layer));
+      }
+    }
   }
 
   function getOriginalPosition(pointId) {
