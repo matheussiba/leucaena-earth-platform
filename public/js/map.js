@@ -3,6 +3,7 @@ window.LeucenaMap = (function () {
   let svCoverageLayer = null;
   const gridPolygons = {};
   const gridData = {};
+  const gridCellBounds = {};
   const pointMarkersById = {};
   const POINT_LAYERS = ['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink'];
   let activeFilters = new Set(['not_yet_finished', 'in_use', 'mapping', 'no_points', 'finished']);
@@ -20,6 +21,7 @@ window.LeucenaMap = (function () {
   const SPIDERFY_OFFSET = 0.00015;
   let previewMode = false;
   let previewTimer = null;
+  let pointClusterer = null;
 
   const SELECTED_STROKE = '#00FFFF';
 
@@ -57,7 +59,10 @@ window.LeucenaMap = (function () {
       map.setZoom(map.getZoom() - 1);
     });
 
-    map.addListener('zoom_changed', updateZoomButtons);
+    map.addListener('zoom_changed', () => {
+      updateZoomButtons();
+      updateAreaLabelsForZoom();
+    });
 
     svCoverageLayer = new google.maps.StreetViewCoverageLayer();
 
@@ -219,6 +224,11 @@ window.LeucenaMap = (function () {
         }
       }
       map.fitBounds(gridBounds);
+      map.addListener('idle', () => {
+        refreshGridVisibility();
+        refreshPointVisibility();
+        if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
+      });
       google.maps.event.addListenerOnce(map, 'idle', () => {
         initialZoom = map.getZoom();
         initialCenter = map.getCenter();
@@ -281,10 +291,16 @@ window.LeucenaMap = (function () {
     const paths = rings.map(ring => ring.map(c => ({ lat: c[1], lng: c[0] })));
     const style = getStyleForCell(props, cellId);
 
+    const cellBnds = new google.maps.LatLngBounds();
+    for (const coord of rings[0]) {
+      cellBnds.extend({ lat: coord[1], lng: coord[0] });
+    }
+    gridCellBounds[cellId] = cellBnds;
+
     const poly = new google.maps.Polygon({
       paths: paths,
       ...style,
-      map: shouldShowCell(props) ? map : null,
+      map: null,
       clickable: true
     });
 
@@ -391,53 +407,111 @@ window.LeucenaMap = (function () {
     return gridData[cellId] || null;
   }
 
+  function createPointMarkerObj(pointId, lat, lng, status, layer, fid) {
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map: null,
+      icon: getPointIcon(status, layer),
+      title: getPointTitle(fid, status),
+      zIndex: 5
+    });
+
+    marker.addListener('click', () => {
+      clickedOnFeature = true;
+      if (LeucenaStreetView.isActive()) {
+        LeucenaStreetView.showAt(marker.getPosition());
+        return;
+      }
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
+        LeucenaApp.handleDeletionClick(marker.getPosition());
+        return;
+      }
+      if (LeucenaDrawing.getActiveMode() === 'select') {
+        handlePointClick(pointId);
+      }
+    });
+
+    marker.addListener('rightclick', () => {
+      if (previewMode) return;
+      if (selectedPointIds.has(pointId)) {
+        togglePointValidity(pointId);
+      }
+    });
+
+    marker.setClickable(false);
+    return marker;
+  }
+
+  function clusterRenderer({ count, position }) {
+    let bg, bgOuter, text;
+    if (count >= 100)     { bg = '#F97316'; bgOuter = 'rgba(249,115,22,0.25)'; text = '#7c2d12'; }
+    else if (count >= 20) { bg = '#FACC15'; bgOuter = 'rgba(250,204,21,0.25)'; text = '#713f12'; }
+    else                  { bg = '#7DD3FC'; bgOuter = 'rgba(125,211,252,0.25)'; text = '#0c4a6e'; }
+    const r = Math.min(14 + Math.floor(Math.log10(count)) * 4, 20);
+    const outerR = r + 5;
+    const size = outerR * 2 + 2;
+    const cx = size / 2;
+    const cy = size / 2;
+    const fontSize = count >= 1000 ? 9 : 10;
+    const label = count >= 1000 ? Math.round(count / 1000) + 'k' : String(count);
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+        `<circle cx="${cx}" cy="${cy}" r="${outerR}" fill="${bgOuter}"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${bg}" opacity="0.9"/>` +
+        `<circle cx="${cx}" cy="${cy}" r="${r - 3}" fill="white" opacity="0.25"/>` +
+        `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" ` +
+          `fill="${text}" font-size="${fontSize}" font-weight="700" font-family="system-ui,sans-serif">${label}</text>` +
+      `</svg>`;
+    return new google.maps.Marker({
+      position,
+      icon: {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+        scaledSize: new google.maps.Size(size, size),
+        anchor: new google.maps.Point(cx, cy)
+      },
+      zIndex: 1000 + count
+    });
+  }
+
+  function ensureClusterer() {
+    if (!pointClusterer && map && typeof markerClusterer !== 'undefined') {
+      pointClusterer = new markerClusterer.MarkerClusterer({
+        map,
+        markers: [],
+        algorithmOptions: { maxZoom: 11 },
+        renderer: { render: clusterRenderer }
+      });
+    }
+  }
+
   async function loadPoints() {
     try {
       const res = await fetch('/api/points');
       const fc = await res.json();
+      const visibleMarkers = [];
       for (const feature of fc.features) {
         const [lng, lat] = feature.geometry.coordinates;
         const pointId = feature.properties.id;
         const status = feature.properties.status || 0;
         const layer = feature.properties.layer || 'crowdmapping';
 
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map: isPointLayerVisible(layer) ? map : null,
-          icon: getPointIcon(status, layer),
-          title: getPointTitle(feature.properties.fid, status),
-          zIndex: 5
-        });
-
-        marker.addListener('click', () => {
-          clickedOnFeature = true;
-          if (LeucenaStreetView.isActive()) {
-            LeucenaStreetView.showAt(marker.getPosition());
-            return;
-          }
-          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
-            LeucenaApp.handleDeletionClick(marker.getPosition());
-            return;
-          }
-          if (LeucenaDrawing.getActiveMode() === 'select') {
-            handlePointClick(pointId);
-          }
-        });
-
-        marker.addListener('rightclick', () => {
-          if (previewMode) return;
-          if (selectedPointIds.has(pointId)) {
-            togglePointValidity(pointId);
-          }
-        });
-
-        marker.setClickable(false);
+        const marker = createPointMarkerObj(pointId, lat, lng, status, layer, feature.properties.fid);
 
         pointMarkersById[pointId] = {
           marker,
           data: feature.properties
         };
+
+        if (isPointLayerVisible(layer)) {
+          visibleMarkers.push(marker);
+        }
       }
+
+      ensureClusterer();
+      if (pointClusterer) {
+        pointClusterer.addMarkers(visibleMarkers, true);
+      }
+
       updateFilterCounts();
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.pointsLoadFail'), 'error');
@@ -885,9 +959,11 @@ window.LeucenaMap = (function () {
   }
 
   function refreshGridVisibility() {
+    const viewport = map ? map.getBounds() : null;
     for (const [cellId, poly] of Object.entries(gridPolygons)) {
       const props = gridData[cellId];
-      poly.setMap(shouldShowCell(props) ? map : null);
+      const inViewport = viewport && gridCellBounds[cellId] ? viewport.intersects(gridCellBounds[cellId]) : true;
+      poly.setMap(shouldShowCell(props) && inViewport ? map : null);
     }
   }
 
@@ -965,6 +1041,13 @@ window.LeucenaMap = (function () {
     document.getElementById('tool-zoom-in').disabled = (zoom >= maxZoom);
   }
 
+  function updateAreaLabelsForZoom() {
+    if (typeof LeucenaDrawing === 'undefined' || typeof LeucenaApp === 'undefined') return;
+    const zoom = map.getZoom();
+    const cellLocked = LeucenaApp.isEditing && LeucenaApp.isEditing();
+    LeucenaDrawing.setAreaLabelsVisible(cellLocked && zoom >= 16);
+  }
+
   function showStreetViewCoverage(show) {
     svCoverageLayer.setMap(show ? map : null);
   }
@@ -1023,39 +1106,18 @@ window.LeucenaMap = (function () {
     if (pointMarkersById[id]) return pointMarkersById[id].marker;
     const [lng, lat] = geometry.coordinates;
 
-    const marker = new google.maps.Marker({
-      position: { lat, lng },
-      map: isPointLayerVisible(layer) ? map : null,
-      icon: getPointIcon(status, layer),
-      title: getPointTitle(fid, status),
-      zIndex: 5
-    });
-
-    marker.addListener('click', () => {
-      clickedOnFeature = true;
-      if (LeucenaStreetView.isActive()) {
-        LeucenaStreetView.showAt(marker.getPosition());
-        return;
-      }
-      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
-        LeucenaApp.handleDeletionClick(marker.getPosition());
-        return;
-      }
-      if (LeucenaDrawing.getActiveMode() === 'select') {
-        handlePointClick(id);
-      }
-    });
-
-    marker.addListener('rightclick', () => {
-      if (previewMode) return;
-      if (selectedPointIds.has(id)) {
-        togglePointValidity(id);
-      }
-    });
-
-    marker.setClickable(false);
+    const marker = createPointMarkerObj(id, lat, lng, status, layer, fid);
 
     pointMarkersById[id] = { marker, data: { id, fid, status, layer, not_valid: status } };
+
+    ensureClusterer();
+    if (pointClusterer && isPointLayerVisible(layer)) {
+      const viewport = map ? map.getBounds() : null;
+      if (!viewport || viewport.contains(marker.getPosition())) {
+        pointClusterer.addMarker(marker, true);
+      }
+    }
+
     updateFilterCounts();
     return marker;
   }
@@ -1066,10 +1128,30 @@ window.LeucenaMap = (function () {
   }
 
   function refreshPointVisibility() {
+    const viewport = map ? map.getBounds() : null;
+    ensureClusterer();
+    if (!pointClusterer) {
+      for (const entry of Object.values(pointMarkersById)) {
+        const layer = entry.data.layer || 'crowdmapping';
+        const inView = !viewport || viewport.contains(entry.marker.getPosition());
+        entry.marker.setMap(isPointLayerVisible(layer) && inView ? map : null);
+      }
+      return;
+    }
+    const toAdd = [];
+    const toRemove = [];
     for (const entry of Object.values(pointMarkersById)) {
       const layer = entry.data.layer || 'crowdmapping';
-      entry.marker.setMap(isPointLayerVisible(layer) ? map : null);
+      const inView = !viewport || viewport.contains(entry.marker.getPosition());
+      if (isPointLayerVisible(layer) && inView) {
+        toAdd.push(entry.marker);
+      } else {
+        toRemove.push(entry.marker);
+      }
     }
+    if (toRemove.length) pointClusterer.removeMarkers(toRemove, true);
+    if (toAdd.length) pointClusterer.addMarkers(toAdd, true);
+    pointClusterer.render();
   }
 
   function removePointMarker(pointId) {
@@ -1081,6 +1163,9 @@ window.LeucenaMap = (function () {
       if (item && item.line) item.line.setMap(null);
       spiderfiedGroup.items = spiderfiedGroup.items.filter(i => i.id !== pointId);
       if (spiderfiedGroup.items.length <= 1) unspiderfy();
+    }
+    if (pointClusterer) {
+      pointClusterer.removeMarker(entry.marker, true);
     }
     entry.marker.setMap(null);
     delete pointMarkersById[pointId];
@@ -1176,6 +1261,7 @@ window.LeucenaMap = (function () {
     hasSelectedPoints: () => selectedPointIds.size > 0,
     unspiderfy,
     togglePointValidity,
-    cellHasCrowdmapping
+    cellHasCrowdmapping,
+    updateAreaLabelsForZoom
   };
 })();

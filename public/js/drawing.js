@@ -2,6 +2,7 @@ window.LeucenaDrawing = (function () {
   let drawingManager = null;
   let activeMode = 'select';
   const drawnPolygons = {};
+  const polyBounds = {};
   let holeTargetId = null;
 
   const deleteUndoStack = [];
@@ -364,8 +365,20 @@ window.LeucenaDrawing = (function () {
       attachPathListeners(id, poly);
     }
 
+    const bnds = new google.maps.LatLngBounds();
+    for (const coord of geometry.coordinates[0]) {
+      bnds.extend({ lat: coord[1], lng: coord[0] });
+    }
+    polyBounds[id] = bnds;
+
+    const viewport = map ? map.getBounds() : null;
+    const inView = !viewport || viewport.intersects(bnds);
+    const show = visible && inView;
+
+    if (!show) poly.setMap(null);
+
     const areaHa = props.area_ha != null ? props.area_ha : calcAreaHa(geometry);
-    const showLabel = visible && _areaLabelsVisible;
+    const showLabel = show && _areaLabelsVisible;
     const areaLabel = createAreaLabel(geometry, areaHa, showLabel ? map : null);
     drawnPolygons[id] = { gmapsPoly: poly, areaLabel, data: { id, ...props, geometry } };
   }
@@ -1152,6 +1165,7 @@ window.LeucenaDrawing = (function () {
       entry.gmapsPoly.setMap(null);
       if (entry.areaLabel) entry.areaLabel.setMap(null);
       delete drawnPolygons[id];
+      delete polyBounds[id];
       deleteUndoStack.push(backup);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleted'), 'success');
@@ -1176,9 +1190,11 @@ window.LeucenaDrawing = (function () {
 
   function setVisible(visible) {
     const map = LeucenaMap.getMap();
-    for (const entry of Object.values(drawnPolygons)) {
+    const viewport = map ? map.getBounds() : null;
+    for (const [id, entry] of Object.entries(drawnPolygons)) {
       const crole = entry.data.created_by_role || 'contributor';
-      const show = visible && shouldShowPoly(crole);
+      const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
+      const show = visible && shouldShowPoly(crole) && inView;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
@@ -1197,9 +1213,11 @@ window.LeucenaDrawing = (function () {
   function refreshPolyVisibility() {
     const globalShow = LeucenaMap.getShowPolygons();
     const map = LeucenaMap.getMap();
-    for (const entry of Object.values(drawnPolygons)) {
+    const viewport = map ? map.getBounds() : null;
+    for (const [id, entry] of Object.entries(drawnPolygons)) {
       const crole = entry.data.created_by_role || 'contributor';
-      const show = globalShow && shouldShowPoly(crole);
+      const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
+      const show = globalShow && shouldShowPoly(crole) && inView;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
@@ -1249,6 +1267,7 @@ window.LeucenaDrawing = (function () {
     entry.gmapsPoly.setMap(null);
     if (entry.areaLabel) entry.areaLabel.setMap(null);
     delete drawnPolygons[id];
+    delete polyBounds[id];
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
   }
 
@@ -1275,10 +1294,12 @@ window.LeucenaDrawing = (function () {
     _areaLabelsVisible = visible;
     const map = LeucenaMap.getMap();
     const globalShow = LeucenaMap.getShowPolygons();
-    for (const entry of Object.values(drawnPolygons)) {
+    const viewport = map ? map.getBounds() : null;
+    for (const [id, entry] of Object.entries(drawnPolygons)) {
       if (!entry.areaLabel) continue;
       const crole = entry.data.created_by_role || 'contributor';
-      const show = visible && globalShow && shouldShowPoly(crole);
+      const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
+      const show = visible && globalShow && shouldShowPoly(crole) && inView;
       entry.areaLabel.setMap(show ? map : null);
     }
   }
@@ -1300,6 +1321,7 @@ window.LeucenaDrawing = (function () {
     getPolygonCounts,
     clearUndoHistory,
     setAreaLabelsVisible,
+    refreshPolyVisibility,
     isPolygonInProgress,
     isEditModified() { return _editModified; },
     exitEditMode() { if (activeMode === 'edit') { setMode('select'); } }

@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const compression = require('compression');
 const crypto = require('crypto');
 
 try {
@@ -76,6 +77,7 @@ app.use((req, res, next) => {
 });
 
 app.use(cors());
+app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 
 const MAP_HOSTS = ['map.leucaena.earth', 'localhost', '127.0.0.1'];

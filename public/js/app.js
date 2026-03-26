@@ -146,7 +146,11 @@ window.LeucenaApp = (function () {
         return r.querySelector('.debug-key').textContent + ' ' + r.querySelector('.debug-val').textContent;
       });
       const text = lines.join('\n');
-      navigator.clipboard.writeText(text).then(() => showToast('Copiado!', 'success', 2000)).catch(() => showToast(text, 'info', 6000));
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(() => showToast('Copiado!', 'success', 2000)).catch(() => { fallbackCopy(text); showToast('Copiado!', 'success', 2000); });
+        } else { fallbackCopy(text); showToast('Copiado!', 'success', 2000); }
+      } catch (_) { fallbackCopy(text); showToast('Copiado!', 'success', 2000); }
     });
 
     document.getElementById('user-badge').addEventListener('click', () => openProfileModal());
@@ -200,6 +204,32 @@ window.LeucenaApp = (function () {
     handleHash();
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('beforeunload', _flushLogs);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const modalCloseMap = [
+        ['auth-modal', closeAuthModal],
+        ['reset-modal', closeResetModal],
+        ['unlock-modal', closeUnlockModal],
+        ['tool-switch-modal', () => { document.getElementById('tool-switch-modal').classList.add('hidden'); }],
+        ['delete-warn-modal', () => { document.getElementById('delete-warn-modal').classList.add('hidden'); }],
+        ['addpoints-modal', () => { document.getElementById('addpoints-modal').classList.add('hidden'); }],
+        ['docs-modal', closeDocsModal],
+        ['admin-users-modal', closeAdminUsersModal],
+        ['welcome-modal', () => Onboarding.closeWelcome(false)],
+        ['debug-modal', closeDebugModal],
+        ['profile-modal', closeProfileModal],
+        ['guide-modal', closeGuideModal],
+      ];
+      for (const [id, closeFn] of modalCloseMap) {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden')) {
+          e.preventDefault();
+          closeFn();
+          return;
+        }
+      }
+    });
 
   }
 
@@ -1271,6 +1301,7 @@ window.LeucenaApp = (function () {
       enableTools(false);
       LeucenaDrawing.setAreaLabelsVisible(false);
       LeucenaDrawing.deactivate();
+      if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateAreaLabelsForZoom) LeucenaMap.updateAreaLabelsForZoom();
 
       if (selectedCellData) {
         document.getElementById('cell-status-display').textContent = formatStatus(finalStatus);
@@ -1334,7 +1365,7 @@ window.LeucenaApp = (function () {
       badge.classList.remove('hidden');
 
       showToast(LeucenaI18n.t('toast.cellLocked', displayId), 'success');
-      LeucenaDrawing.setAreaLabelsVisible(true);
+      if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateAreaLabelsForZoom) LeucenaMap.updateAreaLabelsForZoom();
 
       if (lockHeartbeatInterval) clearInterval(lockHeartbeatInterval);
       lockHeartbeatInterval = setInterval(() => {
@@ -1644,15 +1675,24 @@ window.LeucenaApp = (function () {
     const body = document.getElementById('debug-info-body');
     body.innerHTML = rows.map(r => {
       const v = String(r.val);
-      const vJs = JSON.stringify(v);
       return `<div class="debug-row">
         <span class="debug-key">${escHtml(r.key)}:</span>
         <span class="debug-val">${escHtml(v)}</span>
-        <button type="button" class="debug-copy-btn" title="Copiar" onclick="navigator.clipboard.writeText(${vJs}).then(function(){LeucenaApp.showToast('Copiado!','success',1500);})">
+        <button type="button" class="debug-copy-btn" data-copy="${escHtml(v)}" title="Copiar">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
       </div>`;
     }).join('');
+    body.querySelectorAll('.debug-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-copy');
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(val).then(() => showToast('Copiado!', 'success', 1500)).catch(() => { fallbackCopy(val); showToast('Copiado!', 'success', 1500); });
+          } else { fallbackCopy(val); showToast('Copiado!', 'success', 1500); }
+        } catch (_) { fallbackCopy(val); showToast('Copiado!', 'success', 1500); }
+      });
+    });
     const vc = document.getElementById('view-counter');
     if (vc) vc.classList.add('view-counter-modal-open');
     document.getElementById('debug-modal').classList.remove('hidden');
