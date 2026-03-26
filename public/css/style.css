@@ -2085,24 +2085,75 @@ html, body {
   overflow-y: auto;
 }
 
-.admin-user-row {
+/* User cards */
+.admin-user-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  transition: border-color 0.15s;
+}
+.admin-user-card:hover {
+  border-color: var(--accent);
+}
+.admin-user-card.admin-user-online {
+  border-left: 3px solid #22c55e;
+}
+
+.admin-card-header {
   display: flex;
-  flex-direction: column;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
 }
-
-.admin-user-row:last-child {
-  border-bottom: none;
+.admin-card-photo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
-
-.admin-row-line1 {
+.admin-card-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.admin-card-identity {
+  flex: 1;
+  min-width: 0;
+}
+.admin-card-name-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
-  min-width: 0;
+  flex-wrap: wrap;
+}
+.admin-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.admin-card-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+.admin-card-fullname {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .admin-user-name {
@@ -2112,7 +2163,6 @@ html, body {
   white-space: nowrap;
   flex-shrink: 0;
 }
-
 .admin-user-email {
   font-size: 12px;
   color: var(--green);
@@ -2121,30 +2171,39 @@ html, body {
   min-width: 0;
 }
 
-.admin-row-line2 {
+.admin-card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.admin-card-stat {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 11px;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.admin-card-stat svg {
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
-.admin-row-line-stats {
+.admin-card-footer {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  flex-wrap: wrap;
+}
+.admin-card-dates {
+  display: flex;
+  gap: 16px;
   font-size: 11px;
   color: var(--text-muted);
-}
-
-.admin-meta {
-  white-space: nowrap;
-}
-
-.admin-meta-sep {
-  color: var(--border);
+  flex-wrap: wrap;
 }
 
 .admin-active-now {
@@ -2152,15 +2211,40 @@ html, body {
   font-weight: 600;
 }
 
-.admin-stat {
-  display: inline-flex;
+.admin-metric-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.admin-title-row {
+  display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 1px 5px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.admin-title-row h2 {
+  margin: 0;
+}
+.admin-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  transition: border-color 0.15s;
+}
+.admin-view-toggle:hover {
+  border-color: var(--accent);
+}
+.admin-view-toggle input {
+  accent-color: var(--accent);
 }
 
 .admin-export-row {
@@ -2742,7 +2826,7 @@ html, body {
     min-width: 180px;
   }
 
-  .admin-row-line1 {
+  .admin-card-name-row {
     flex-wrap: wrap;
   }
 
@@ -2750,9 +2834,17 @@ html, body {
     flex-wrap: wrap;
   }
 
-  .admin-row-line2,
-  .admin-row-line-stats {
-    gap: 6px;
+  .admin-card-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-card-dates {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .admin-global-metrics {
+    flex-wrap: wrap;
   }
 
   .about-cards {

@@ -160,7 +160,13 @@
   <div id="admin-users-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-docs">
       <button id="admin-users-close" class="modal-close">&times;</button>
-      <h2 data-i18n="admin.usersTitle">Painel do Admin</h2>
+      <div class="admin-title-row">
+        <h2 data-i18n="admin.usersTitle">Painel do Admin</h2>
+        <label id="admin-view-toggle" class="admin-view-toggle hidden">
+          <input type="checkbox" id="admin-view-as-admin-cb">
+          <span data-i18n="admin.viewAsAdmin">Ver como Admin</span>
+        </label>
+      </div>
       <div id="admin-global-metrics" class="admin-global-metrics"></div>
       <div id="admin-passcode-display" class="admin-passcode-box"></div>
       <div id="admin-users-list" class="admin-users-list"></div>

@@ -10,6 +10,7 @@ window.LeucenaApp = (function () {
   let pendingUncoveredPointIds = null;
   let mapsLoaded = false;
   let mapsInitialized = false;
+  let _adminViewMode = false;
 
   function getUsername() { return username; }
   function getAuthToken() { return authToken; }
@@ -1741,8 +1742,35 @@ window.LeucenaApp = (function () {
         pcBox.innerHTML = '';
       }
 
+      const contributorCount = data.users.filter(u => (u.role || 'contributor') === 'contributor').length;
+
       const metricsEl = document.getElementById('admin-global-metrics');
-      metricsEl.innerHTML = `<div class="admin-metric"><span class="admin-metric-value">${data.globalMasks.toLocaleString()}</span><span class="admin-metric-label">${t('admin.totalMasks')}</span></div><div class="admin-metric"><span class="admin-metric-value">${data.globalAreaHa.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span><span class="admin-metric-label">${t('admin.totalArea')}</span></div>`;
+      metricsEl.innerHTML = `
+        <div class="admin-metric">
+          <span class="admin-metric-value">${data.users.length}</span>
+          <span class="admin-metric-label">${t('admin.totalUsers')}</span>
+          <span class="admin-metric-sub">${contributorCount} ${t('admin.collaborators')}</span>
+        </div>
+        <div class="admin-metric">
+          <span class="admin-metric-value">${data.globalMasks.toLocaleString()}</span>
+          <span class="admin-metric-label">${t('admin.totalMasks')}</span>
+        </div>
+        <div class="admin-metric">
+          <span class="admin-metric-value">${data.globalAreaHa.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
+          <span class="admin-metric-label">${t('admin.totalArea')}</span>
+        </div>`;
+
+      // Superadmin can toggle to see the panel as a regular admin would
+      const viewToggleEl = document.getElementById('admin-view-toggle');
+      if (data.callerRole === 'superadmin') {
+        viewToggleEl.classList.remove('hidden');
+        const cb = document.getElementById('admin-view-as-admin-cb');
+        cb.checked = _adminViewMode;
+        cb.onchange = () => { _adminViewMode = cb.checked; openAdminUsersModal(); };
+      } else {
+        viewToggleEl.classList.add('hidden');
+      }
+      const effectiveSuperAdmin = callerIsSuperAdmin && !_adminViewMode;
 
       const listEl = document.getElementById('admin-users-list');
       listEl.innerHTML = '';
@@ -1762,7 +1790,7 @@ window.LeucenaApp = (function () {
         </div>
       </div>`;
 
-      if (callerIsSuperAdmin) {
+      if (effectiveSuperAdmin) {
         // Section: Users & Data
         gridHtml += `<div class="admin-tools-section">
           <div class="admin-tools-label">${t('admin.sectionData')}</div>
@@ -2093,12 +2121,13 @@ window.LeucenaApp = (function () {
         const role = user.role || 'contributor';
         const totalMs = user.total_time_ms || 0;
         const timeStr = formatDuration(totalMs);
+        const isOnline = onlineSet.has(user.username);
         const row = document.createElement('div');
-        row.className = 'admin-user-row';
+        row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '');
 
         let roleSelectHtml = '';
         let founderCheckboxHtml = '';
-        if (callerIsSuperAdmin) {
+        if (effectiveSuperAdmin) {
           roleSelectHtml = `<select class="admin-role-select" data-user-id="${user.id}">${allRoles.map(r => `<option value="${r}"${role === r ? ' selected' : ''}>${roleLabelMap[r]}</option>`).join('')}</select>`;
           if (role === 'superadmin' || role === 'admin' || role === 'team') {
             const isFounder = user.is_founder ? 'checked' : '';
@@ -2114,36 +2143,61 @@ window.LeucenaApp = (function () {
           </div>`;
         }
 
-        const canDelete = callerIsSuperAdmin && role !== 'superadmin';
-        const emailDisplay = user.email ? `<span class="admin-user-email">${user.email}</span>` : '';
+        const canDelete = effectiveSuperAdmin && role !== 'superadmin';
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '—';
         const lastActiveHtml = formatLastActive(user.last_active, user.username);
+        const initial = user.username.charAt(0).toUpperCase();
+        const photoHtml = user.photo
+          ? `<img src="${user.photo}" class="admin-card-photo" alt="">`
+          : `<div class="admin-card-avatar">${initial}</div>`;
 
         row.innerHTML = `
-          <div class="admin-row-line1">
-            ${founderCheckboxHtml}
-            <span class="admin-user-name">${user.username}</span>
-            <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
-            ${roleSelectHtml}
-            ${emailDisplay}
+          <div class="admin-card-header">
+            ${photoHtml}
+            <div class="admin-card-identity">
+              <div class="admin-card-name-row">
+                ${founderCheckboxHtml}
+                <span class="admin-user-name">${user.username}</span>
+                ${isOnline ? '<span class="admin-online-dot"></span>' : ''}
+                <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
+                ${roleSelectHtml}
+              </div>
+              <div class="admin-card-meta">
+                ${user.full_name ? `<span class="admin-card-fullname">${user.full_name}</span>` : ''}
+                ${user.email ? `<span class="admin-user-email">${user.email}</span>` : ''}
+              </div>
+            </div>
           </div>
-          <div class="admin-row-line2">
-            <span class="admin-meta">${t('admin.createdAt')}: ${createdDate}</span>
-            <span class="admin-meta-sep">·</span>
-            <span class="admin-meta">${t('admin.lastAccess')}: ${lastActiveHtml}</span>
+          <div class="admin-card-stats">
+            <div class="admin-card-stat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>${user.mask_count || 0} ${t('admin.masks')}</span>
+            </div>
+            <div class="admin-card-stat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+              <span>${(user.mask_area_ha || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
+            </div>
+            <div class="admin-card-stat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              <span>${user.login_count || 0} logins</span>
+            </div>
+            <div class="admin-card-stat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>${timeStr}</span>
+            </div>
           </div>
-          <div class="admin-row-line-stats">
-            <span class="admin-stat" title="${t('admin.masks')}">🗺 ${user.mask_count || 0}</span>
-            <span class="admin-stat" title="${t('admin.area')}">📐 ${(user.mask_area_ha || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
-            <span class="admin-stat" title="${t('admin.logins')}">🔑 ${user.login_count || 0}</span>
-            <span class="admin-stat" title="${t('admin.timeOnline')}">⏱ ${timeStr}</span>
-          </div>
-          ${testerRadioHtml}
-          <div class="admin-user-actions">
-            <button class="admin-profile-btn">${t('admin.editProfile')}</button>
-            <button class="admin-pw-btn">${t('admin.changePassword')}</button>
-            <button class="admin-reset-btn">${t('admin.generateResetCode')}</button>
-            ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
+          <div class="admin-card-footer">
+            <div class="admin-card-dates">
+              <span>${t('admin.createdAt')}: ${createdDate}</span>
+              <span>${t('admin.lastAccess')}: ${lastActiveHtml}</span>
+            </div>
+            ${testerRadioHtml}
+            <div class="admin-user-actions">
+              <button class="admin-profile-btn">${t('admin.editProfile')}</button>
+              <button class="admin-pw-btn">${t('admin.changePassword')}</button>
+              <button class="admin-reset-btn">${t('admin.generateResetCode')}</button>
+              ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
+            </div>
           </div>
         `;
 
