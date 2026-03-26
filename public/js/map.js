@@ -21,6 +21,9 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   const SPIDERFY_OFFSET = 0.00015;
   let previewMode = false;
   let previewTimer = null;
+  let _editMinZoom = 12;
+  let _editZoomEnforced = false;
+  let _zoomWarnCount = 0;
   let pointClusterer = null; // MarkerClusterer; lazily created in ensureClusterer()
 
   const SELECTED_STROKE = '#00FFFF';
@@ -61,6 +64,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     let _prevPointScale = getPointScale(); // icon scale flips at zoom 14↔15 only—skip refresh on every zoom tick
     map.addListener('zoom_changed', () => {
+      if (_editZoomEnforced && map.getZoom() <= _editMinZoom && _zoomWarnCount < 1) {
+        _zoomWarnCount++;
+        LeucenaApp.showToast(LeucenaI18n.t('toast.zoomMinEdit'), 'warning');
+      }
       updateZoomButtons();
       updateAreaLabelsForZoom();
       const newScale = getPointScale();
@@ -104,6 +111,37 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       }
       deselectFromMap();
     });
+
+    // Log map interactions when a cell is locked for editing
+    map.addListener('click', (e) => {
+      if (LeucenaApp.isEditing && LeucenaApp.isEditing()) {
+        LeucenaApp.logEvent('map_click_left', LeucenaApp.getSelectedCellId(), null, {
+          lat: e.latLng.lat(), lng: e.latLng.lng()
+        });
+      }
+    });
+    map.addListener('rightclick', (e) => {
+      if (LeucenaApp.isEditing && LeucenaApp.isEditing()) {
+        LeucenaApp.logEvent('map_click_right', LeucenaApp.getSelectedCellId(), null, {
+          lat: e.latLng.lat(), lng: e.latLng.lng()
+        });
+      }
+    });
+    map.addListener('dragend', () => {
+      if (LeucenaApp.isEditing && LeucenaApp.isEditing()) {
+        const c = map.getCenter();
+        LeucenaApp.logEvent('map_pan', LeucenaApp.getSelectedCellId(), null, {
+          lat: c.lat(), lng: c.lng(), zoom: map.getZoom()
+        });
+      }
+    });
+    map.getDiv().addEventListener('wheel', () => {
+      if (LeucenaApp.isEditing && LeucenaApp.isEditing()) {
+        LeucenaApp.logEvent('map_scroll', LeucenaApp.getSelectedCellId(), null, {
+          zoom: map.getZoom()
+        });
+      }
+    }, { passive: true });
 
     setupRightClickCopy();
     setupBasemapToggle();
@@ -315,6 +353,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       const lng = e.latLng.lng().toFixed(6);
       lastCoords = `${lat}, ${lng}`;
       document.getElementById('coords-display').textContent = lastCoords;
+      // Keep drawing.js cursor position in sync when grid cells capture mousemove
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.updateMouseLatLng) {
+        LeucenaDrawing.updateMouseLatLng(e.latLng);
+      }
     });
 
     poly.addListener('click', (e) => {
@@ -329,6 +371,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) {
         return;
+      }
+      // In draw/hole/delete mode, grid cell clicks should not trigger cell selection
+      if (typeof LeucenaDrawing !== 'undefined') {
+        const dm = LeucenaDrawing.getActiveMode();
+        if (dm === 'draw' || dm === 'hole' || dm === 'delete') return;
       }
       clickedOnFeature = true;
       deselectPoint();
@@ -827,7 +874,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     google.maps.event.addListenerOnce(map, 'idle', () => {
       map.setZoom(map.getZoom() + 1);
-      restrictPanToCell(cellId);
+      // Wait for the +1 zoom to settle, then lock to this exact viewport
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        restrictPanToCell(cellId);
+      });
     });
   }
 
@@ -848,49 +898,47 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   let panWarningListener = null;
-  let panWarningShown = false;
+  let _editSafeCenter = null;
+  let _editAllowedBounds = null;
 
   function restrictPanToCell(cellId) {
-    const bounds = getCellBounds(cellId);
-    if (!bounds) return;
+    const cellBounds = getCellBounds(cellId);
+    if (!cellBounds) return;
 
-    const ne = bounds.getNorthEast();
-    const sw = bounds.getSouthWest();
-    const latSpan = ne.lat() - sw.lat();
-    const lngSpan = ne.lng() - sw.lng();
+    // Lock to the zoom level zoomToCell settled on
+    _editMinZoom = map.getZoom();
+    _editZoomEnforced = true;
+    _zoomWarnCount = 0;
+    map.setOptions({ minZoom: _editMinZoom });
 
-    const expanded = new google.maps.LatLngBounds(
-      { lat: sw.lat() - latSpan * 0.80, lng: sw.lng() - lngSpan * 0.80 },
-      { lat: ne.lat() + latSpan * 0.80, lng: ne.lng() + lngSpan * 0.80 }
-    );
+    // No API restriction — we handle pan enforcement manually via snap-back
+    map.setOptions({ restriction: null });
 
-    map.setOptions({
-      restriction: {
-        latLngBounds: expanded,
-        strictBounds: false
-      }
-    });
+    _editSafeCenter = map.getCenter();
+    _editAllowedBounds = map.getBounds();
 
-    panWarningShown = false;
+    updateZoomButtons();
+
     if (panWarningListener) google.maps.event.removeListener(panWarningListener);
     panWarningListener = map.addListener('dragend', () => {
       const center = map.getCenter();
-      if (!bounds.contains(center)) {
-        if (!panWarningShown) {
-          panWarningShown = true;
-          LeucenaApp.showToast(LeucenaI18n.t('toast.panWarning'), 'warning', 5000);
-          setTimeout(() => { panWarningShown = false; }, 6000);
-        }
+      if (_editAllowedBounds && !_editAllowedBounds.contains(center)) {
+        map.panTo(_editSafeCenter);
+        LeucenaApp.showToast(LeucenaI18n.t('toast.panWarning'), 'warning', 5000);
       }
     });
   }
 
   function releasePanRestriction() {
+    _editZoomEnforced = false;
+    _editMinZoom = 12;
+    _editSafeCenter = null;
+    _editAllowedBounds = null;
+    map.setOptions({ minZoom: initialZoom != null ? initialZoom : null });
     if (panWarningListener) {
       google.maps.event.removeListener(panWarningListener);
       panWarningListener = null;
     }
-    panWarningShown = false;
     map.setOptions({
       restriction: gridBounds ? { latLngBounds: gridBounds, strictBounds: false } : null
     });
@@ -1058,7 +1106,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
   function updateZoomButtons() {
     const zoom = map.getZoom();
-    const minZoom = initialZoom != null ? initialZoom : (map.minZoom || 0);
+    const minZoom = _editZoomEnforced ? _editMinZoom : (initialZoom != null ? initialZoom : (map.minZoom || 0));
     const maxZoom = map.maxZoom || 22;
     document.getElementById('tool-zoom-out').disabled = (zoom <= minZoom);
     document.getElementById('tool-zoom-in').disabled = (zoom >= maxZoom);

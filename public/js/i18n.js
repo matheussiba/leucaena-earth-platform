@@ -337,6 +337,7 @@ window.LeucenaI18n = (function () {
     'toast.markedValid': { pt: 'Ponto marcado como válido', en: 'Point marked as valid', es: 'Punto marcado como válido' },
     'toast.markedDoubt': { pt: 'Ponto marcado como incerto', en: 'Point marked as uncertain', es: 'Punto marcado como incierto' },
     'toast.panWarning': { pt: 'Você está se afastando da célula em edição. Clique em "Desbloquear" para parar de editar.', en: 'You are moving away from the editing cell. Click "Unlock" to stop editing.', es: 'Se está alejando de la celda en edición. Haga clic en "Desbloquear" para dejar de editar.' },
+    'toast.zoomMinEdit': { pt: 'Zoom mínimo durante edição. Desbloqueie a célula para navegar livremente.', en: 'Minimum zoom while editing. Unlock the cell to navigate freely.', es: 'Zoom mínimo durante edición. Desbloquee la celda para navegar libremente.' },
 
     // ── Toast messages (drawing.js) ──
     'toast.polyLoadFail': { pt: 'Falha ao carregar polígonos', en: 'Failed to load polygons', es: 'Error al cargar polígonos' },

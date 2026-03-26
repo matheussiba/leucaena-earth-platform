@@ -187,6 +187,10 @@ window.LeucenaDrawing = (function () {
 
       const cellLocked = typeof LeucenaApp !== 'undefined' && LeucenaApp.isEditing && LeucenaApp.isEditing();
 
+      if (cellLocked && typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('keypress', LeucenaApp.getSelectedCellId(), null, { key: e.key, shift: e.shiftKey, ctrl: e.ctrlKey, mode: activeMode });
+      }
+
       if (e.shiftKey && (e.key === 'C' || e.key === 'c') && cellLocked) {
         e.preventDefault();
         if (activeMode === 'draw') {
@@ -239,8 +243,8 @@ window.LeucenaDrawing = (function () {
         return;
       }
 
-      if ((e.key === 'v' || e.key === 'V') && !e.shiftKey && !e.ctrlKey && !e.metaKey && _lastMouseLatLng) {
-        if (activeMode === 'draw' && manualDrawState) {
+      if ((e.key === 'v' || e.key === 'V') && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        if (activeMode === 'draw' && manualDrawState && _lastMouseLatLng) {
           e.preventDefault();
           manualDrawState.addVertex(_lastMouseLatLng);
           if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
@@ -248,10 +252,23 @@ window.LeucenaDrawing = (function () {
           }
           return;
         }
-        if (activeMode === 'hole' && manualHoleState) {
+        if (activeMode === 'hole') {
           e.preventDefault();
-          manualHoleState.addVertex(_lastMouseLatLng);
+          if (manualHoleState && _lastMouseLatLng) {
+            manualHoleState.addVertex(_lastMouseLatLng);
+            if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+              LeucenaApp.logEvent('hotkey_hole_vertex', LeucenaApp.getSelectedCellId(), manualHoleState.targetId, { lat: _lastMouseLatLng.lat(), lng: _lastMouseLatLng.lng(), count: manualHoleState.vertices.length });
+            }
+          } else {
+            LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
+            if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+              LeucenaApp.logEvent('hotkey_v_no_target', LeucenaApp.getSelectedCellId(), null, { mode: activeMode });
+            }
+          }
           return;
+        }
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent && cellLocked) {
+          LeucenaApp.logEvent('hotkey_v_ignored', LeucenaApp.getSelectedCellId(), null, { mode: activeMode, hasDrawState: !!manualDrawState, hasHoleState: !!manualHoleState, hasMousePos: !!_lastMouseLatLng });
         }
         return;
       }
@@ -388,6 +405,8 @@ window.LeucenaDrawing = (function () {
       zIndex: 10
     });
 
+    // Clickable polygons capture mousemove from the map; keep _lastMouseLatLng in sync
+    poly.addListener('mousemove', (e) => { _lastMouseLatLng = e.latLng; });
     poly.addListener('click', () => {
       if (activeMode === 'delete') {
         selectForDeletion(id);
@@ -607,6 +626,8 @@ window.LeucenaDrawing = (function () {
       if (mode === 'edit') {
         makeAllEditableInCell();
       } else if (mode === 'hole') {
+        // Grid cells off so clicks reach mask polygons for target selection
+        LeucenaMap.setGridClickable(false);
         LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
       }
     }
@@ -648,6 +669,9 @@ window.LeucenaDrawing = (function () {
     clearHoleTarget();
     holeTargetId = id;
     entry.gmapsPoly.setOptions(HOLE_HIGHLIGHT);
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('hole_target_selected', LeucenaApp.getSelectedCellId(), id, null);
+    }
     LeucenaApp.showToast(LeucenaI18n.t('toast.holeDrawNow'), 'info');
     startHoleDrawing(id);
   }
@@ -661,6 +685,7 @@ window.LeucenaDrawing = (function () {
   }
 
   function cleanupManualHole() {
+    LeucenaMap.setGridClickable(true);
     if (!manualHoleState) return;
     const s = manualHoleState;
     s.vertexMarkers.forEach(m => m.setMap(null));
@@ -670,8 +695,11 @@ window.LeucenaDrawing = (function () {
     google.maps.event.removeListener(s.moveListener);
     google.maps.event.removeListener(s.dblClickListener);
     google.maps.event.removeListener(s.rightClickListener);
-    setClickable(true);
     const map = LeucenaMap.getMap();
+    if (map && s.contextMenuHandler) {
+      map.getDiv().removeEventListener('contextmenu', s.contextMenuHandler);
+    }
+    setClickable(true);
     if (map) map.setOptions({ draggableCursor: null, disableDoubleClickZoom: false });
     manualHoleState = null;
   }
@@ -721,6 +749,9 @@ window.LeucenaDrawing = (function () {
     const clickListener = map.addListener('click', (e) => {
       if (activeMode !== 'hole' || !manualHoleState) return;
       addVertex(e.latLng);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_vertex_click', LeucenaApp.getSelectedCellId(), targetId, { lat: e.latLng.lat(), lng: e.latLng.lng(), count: vertices.length });
+      }
     });
 
     const moveListener = map.addListener('mousemove', (e) => {
@@ -739,9 +770,19 @@ window.LeucenaDrawing = (function () {
       if (vertices.length >= 3) completeManualHole();
     });
 
+    // DOM-level fallback: map rightclick may not fire when cursor is over a polygon overlay
+    const mapDiv = map.getDiv();
+    const contextMenuHandler = (e) => {
+      if (activeMode !== 'hole' || !manualHoleState) return;
+      e.preventDefault();
+      if (vertices.length >= 3) completeManualHole();
+    };
+    mapDiv.addEventListener('contextmenu', contextMenuHandler);
+
     manualHoleState = {
       targetId, vertices, vertexMarkers, previewPoly, guideLine,
       clickListener, moveListener, dblClickListener, rightClickListener,
+      contextMenuHandler,
       addVertex, removeLastVertex
     };
   }
@@ -1413,6 +1454,7 @@ window.LeucenaDrawing = (function () {
     setAreaLabelsVisible,
     refreshPolyVisibility,
     isPolygonInProgress,
+    updateMouseLatLng(latLng) { _lastMouseLatLng = latLng; },
     isEditModified() { return _editModified; },
     exitEditMode() { if (activeMode === 'edit') { setMode('select'); } }
   };
