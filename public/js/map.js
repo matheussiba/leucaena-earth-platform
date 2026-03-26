@@ -1,13 +1,13 @@
-window.LeucenaMap = (function () {
+window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points, filters, viewport-based perf
   let map = null;
   let svCoverageLayer = null;
   const gridPolygons = {};
   const gridData = {};
-  const gridCellBounds = {};
+  const gridCellBounds = {}; // LatLngBounds per cell for viewport culling
   const pointMarkersById = {};
   const POINT_LAYERS = ['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink'];
   let activeFilters = new Set(['not_yet_finished', 'in_use', 'mapping', 'no_points', 'finished']);
-  let visiblePointLayers = new Set(['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink']);
+  let visiblePointLayers = new Set(['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink']); // all layers on load so every point type shows
   let showGrid = true;
   let showPoints = true;
   let showPolygons = true;
@@ -21,7 +21,7 @@ window.LeucenaMap = (function () {
   const SPIDERFY_OFFSET = 0.00015;
   let previewMode = false;
   let previewTimer = null;
-  let pointClusterer = null;
+  let pointClusterer = null; // MarkerClusterer; lazily created in ensureClusterer()
 
   const SELECTED_STROKE = '#00FFFF';
 
@@ -59,7 +59,7 @@ window.LeucenaMap = (function () {
       map.setZoom(map.getZoom() - 1);
     });
 
-    let _prevPointScale = getPointScale();
+    let _prevPointScale = getPointScale(); // icon scale flips at zoom 14↔15 only—skip refresh on every zoom tick
     map.addListener('zoom_changed', () => {
       updateZoomButtons();
       updateAreaLabelsForZoom();
@@ -230,7 +230,7 @@ window.LeucenaMap = (function () {
         }
       }
       map.fitBounds(gridBounds);
-      map.addListener('idle', () => {
+      map.addListener('idle', () => { // after pan/zoom: viewport cull grids, points, and drawing polygons
         refreshGridVisibility();
         refreshPointVisibility();
         if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
@@ -297,7 +297,7 @@ window.LeucenaMap = (function () {
     const paths = rings.map(ring => ring.map(c => ({ lat: c[1], lng: c[0] })));
     const style = getStyleForCell(props, cellId);
 
-    const cellBnds = new google.maps.LatLngBounds();
+    const cellBnds = new google.maps.LatLngBounds(); // bounds for culling; polygon stays map:null until idle shows in-viewport cells
     for (const coord of rings[0]) {
       cellBnds.extend({ lat: coord[1], lng: coord[0] });
     }
@@ -413,7 +413,7 @@ window.LeucenaMap = (function () {
     return gridData[cellId] || null;
   }
 
-  function createPointMarkerObj(pointId, lat, lng, status, layer, fid) {
+  function createPointMarkerObj(pointId, lat, lng, status, layer, fid) { // factory: map:null; clusterer or idle attaches
     const marker = new google.maps.Marker({
       position: { lat, lng },
       map: null,
@@ -448,7 +448,7 @@ window.LeucenaMap = (function () {
     return marker;
   }
 
-  function clusterRenderer({ count, position }) {
+  function clusterRenderer({ count, position }) { // custom SVG: 3 count tiers, log-scaled radius, abbreviated labels (e.g. 1k)
     let bg, bgOuter, text;
     if (count >= 100)     { bg = '#F97316'; bgOuter = 'rgba(249,115,22,0.25)'; text = '#7c2d12'; }
     else if (count >= 20) { bg = '#FACC15'; bgOuter = 'rgba(250,204,21,0.25)'; text = '#713f12'; }
@@ -484,13 +484,13 @@ window.LeucenaMap = (function () {
       pointClusterer = new markerClusterer.MarkerClusterer({
         map,
         markers: [],
-        algorithmOptions: { maxZoom: 10 },
+        algorithmOptions: { maxZoom: 10 }, // above this zoom, algorithm stops clustering—individual markers when zoomed in further
         renderer: { render: clusterRenderer }
       });
     }
   }
 
-  async function loadPoints() {
+  async function loadPoints() { // batch-add layer-visible markers to clusterer; idle then syncs to viewport
     try {
       const res = await fetch('/api/points');
       const fc = await res.json();
@@ -530,7 +530,7 @@ window.LeucenaMap = (function () {
     return LeucenaI18n.t('point.title', fid);
   }
 
-  const LAYER_STROKE_COLORS = {
+  const LAYER_STROKE_COLORS = { // distinct outlines per data source for at-a-glance identification
     crowdmapping: '#DE9958',
     inaturalist:  '#1B9E3E',
     gbif:         '#2B526D',
@@ -538,7 +538,7 @@ window.LeucenaMap = (function () {
     specieslink:  '#7F2E74'
   };
 
-  function getPointScale() {
+  function getPointScale() { // smaller markers below zoom 15 to cut clutter at medium zoom
     if (!map) return 4;
     const z = map.getZoom();
     return z >= 15 ? 4 : 3;
@@ -561,7 +561,7 @@ window.LeucenaMap = (function () {
     return { ...base, strokeColor: SELECTED_STROKE, strokeWeight: 2.4, scale: base.scale + 1 };
   }
 
-  function refreshPointIcons() {
+  function refreshPointIcons() { // full pass on icons—only invoked on scale-threshold zoom crossings
     for (const entry of Object.values(pointMarkersById)) {
       if (selectedPointIds.has(entry.data.id)) {
         entry.marker.setIcon(getSelectedPointIcon(entry.data.status || entry.data.not_valid || 0, entry.data.layer));
@@ -981,7 +981,7 @@ window.LeucenaMap = (function () {
     syncPointsParent();
   }
 
-  function refreshGridVisibility() {
+  function refreshGridVisibility() { // viewport cull: setMap(map) only when cell bounds intersect viewport
     const viewport = map ? map.getBounds() : null;
     for (const [cellId, poly] of Object.entries(gridPolygons)) {
       const props = gridData[cellId];
@@ -1122,7 +1122,7 @@ window.LeucenaMap = (function () {
     }
   }
 
-  function addPointMarker(pointData) {
+  function addPointMarker(pointData) { // realtime (e.g. socket): add to clusterer when layer on and in viewport
     const { id, fid, geometry } = pointData;
     const status = pointData.status || 0;
     const layer = pointData.layer || 'crowdmapping';
@@ -1150,7 +1150,7 @@ window.LeucenaMap = (function () {
     return showPoints && visiblePointLayers.has(key);
   }
 
-  function refreshPointVisibility() {
+  function refreshPointVisibility() { // layer toggles + viewport: clusterer add/remove (or direct setMap fallback)
     const viewport = map ? map.getBounds() : null;
     ensureClusterer();
     if (!pointClusterer) {
@@ -1177,7 +1177,7 @@ window.LeucenaMap = (function () {
     pointClusterer.render();
   }
 
-  function removePointMarker(pointId) {
+  function removePointMarker(pointId) { // removeMarker from clusterer before setMap(null) to avoid orphan clusters
     const entry = pointMarkersById[pointId];
     if (!entry) return;
     selectedPointIds.delete(pointId);

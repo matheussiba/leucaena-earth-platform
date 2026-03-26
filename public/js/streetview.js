@@ -1,4 +1,5 @@
 window.LeucenaStreetView = (function () {
+  // Wraps StreetViewService + StreetViewPanorama for map-embedded Street View (coverage + pano panel).
   let panorama = null;
   let svService = null;
   let active = false;
@@ -15,6 +16,7 @@ window.LeucenaStreetView = (function () {
     const btn = document.getElementById('tool-streetview');
     if (active) {
       const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
+      // Idle draw mode → select so SV map clicks open panos instead of starting a polygon.
       if (drawMode === 'draw' && !LeucenaDrawing.isPolygonInProgress()) {
         LeucenaDrawing.setMode('select');
       }
@@ -42,6 +44,7 @@ window.LeucenaStreetView = (function () {
     const container = document.getElementById('streetview-container');
     container.classList.remove('hidden');
 
+    // Nearest panorama within radius (m); toast when Street View has no coverage there.
     svService.getPanorama({ location: latLng, radius: 100 }, (data, status) => {
       if (status === google.maps.StreetViewStatus.OK) {
         if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
@@ -70,6 +73,7 @@ window.LeucenaStreetView = (function () {
   }
 
   function close() {
+    // Hide pano panel and Street View coverage so the map returns to normal editing/interaction.
     document.getElementById('streetview-container').classList.add('hidden');
     active = false;
     document.getElementById('tool-streetview').classList.remove('active');

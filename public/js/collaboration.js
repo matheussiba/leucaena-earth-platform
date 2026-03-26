@@ -1,4 +1,5 @@
 window.LeucenaCollab = (function () {
+  // Socket.IO client: propagates cell locks, polygon CRUD, and point CRUD to all connected clients.
   let socket = null;
   let username = null;
 
@@ -21,6 +22,7 @@ window.LeucenaCollab = (function () {
       document.getElementById('user-count').textContent = users.length;
     });
 
+    // cell:locked / cell:unlocked: remote peers update grid styling and lock UI via LeucenaMap helpers.
     socket.on('cell:locked', (data) => {
       if (data.username !== username) {
         const gd = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getGridData(data.cellId) : null;
@@ -50,6 +52,7 @@ window.LeucenaCollab = (function () {
       }
     });
 
+    // Point streams: keep markers, clusterer, and validity appearance aligned without reload.
     socket.on('point:validityChanged', (data) => {
       if (typeof LeucenaMap !== 'undefined') {
         LeucenaMap.updatePointAppearance(data.id, data.status != null ? data.status : data.not_valid);
@@ -68,6 +71,7 @@ window.LeucenaCollab = (function () {
       }
     });
 
+    // Polygon streams: remote add/edit/delete applied through LeucenaDrawing (no page refresh).
     socket.on('polygon:created', (data) => {
       if (data.created_by !== username && typeof LeucenaDrawing !== 'undefined') {
         LeucenaDrawing.addRemotePolygon(data);

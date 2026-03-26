@@ -1,3 +1,4 @@
+// IIFE app shell: init() wires auth, sidebar, admin panel, document hotkeys, and modals (runs at script load).
 window.LeucenaApp = (function () {
   let username = null;
   let authToken = null;
@@ -205,6 +206,7 @@ window.LeucenaApp = (function () {
     window.addEventListener('hashchange', handleHash);
     window.addEventListener('beforeunload', _flushLogs);
 
+    // Escape: close the first visible modal in modalCloseMap (global dismiss, not a stack).
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const modalCloseMap = [
@@ -596,6 +598,7 @@ window.LeucenaApp = (function () {
   }
 
   // ── Onboarding Controller ──
+  // Guided tour: dim overlay + spotlight on target + tooltip positioned within the viewport.
   const WELCOME_VERSION = 'v1_howto_video';
   const TOUR_VERSION = 'v2';
   let _tourStartedFrom = null;
@@ -1454,6 +1457,7 @@ window.LeucenaApp = (function () {
       }
     });
 
+    // Point modes: L / Ctrl+Z here; Shift+C/V/E etc. live in drawing.js (gated by cell lock + not typing in inputs).
     document.addEventListener('keydown', handlePointModeKey);
   }
 
@@ -1586,6 +1590,7 @@ window.LeucenaApp = (function () {
   }
 
   // ── Admin user management ──
+  // User CRUD + role hierarchy: superadmin-only affordances for admin-tier users and privileged actions.
 
   function toRoman(n) {
     if (n === 0) return 'X';
@@ -1602,7 +1607,7 @@ window.LeucenaApp = (function () {
     return code.split('').map(d => toRoman(parseInt(d))).join('.');
   }
 
-  function fallbackCopy(text) {
+  function fallbackCopy(text) { // execCommand copy path when navigator.clipboard is missing or blocked (e.g. non-HTTPS).
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
@@ -1627,6 +1632,7 @@ window.LeucenaApp = (function () {
     if (vc) vc.classList.remove('view-counter-modal-open');
   }
 
+  // Debug modal: map/cell/admin context; row copy buttons use data-copy + post-render click handlers (not inline onclick on escaped values).
   function openDebugModal() {
     const map = LeucenaMap.getMap();
     const viewsEl = document.getElementById('view-count');
@@ -1822,6 +1828,7 @@ window.LeucenaApp = (function () {
           fileInput.value = '';
           fileInput.click();
         });
+        // GeoJSON import: validate FeatureCollection, POST features batch, toast imported / duplicate / skipped counts.
         fileInput.addEventListener('change', async () => {
           const file = fileInput.files[0];
           if (!file) return;

@@ -1,4 +1,5 @@
 window.LeucenaExport = (function () {
+  // GeoJSON export UX: authenticated fetch + blob download for server-built FeatureCollections.
   function init() {
     const exportBtn = document.getElementById('export-btn');
     const exportMenu = document.getElementById('export-menu');
@@ -13,9 +14,10 @@ window.LeucenaExport = (function () {
       exportMenu.classList.remove('show');
     });
 
+    // Server bundles all polygons with cell metadata into one GeoJSON FeatureCollection.
     document.getElementById('export-geojson').addEventListener('click', (e) => {
       e.preventDefault();
-      if (LeucenaApp.getUserRole() === 'contributor') return;
+      if (!LeucenaApp.isTeamOrAbove()) return;
       exportMenu.classList.remove('show');
       if (LeucenaApp.logEvent) LeucenaApp.logEvent('export_start', null, null, { type: 'masks' });
       downloadFile('/api/export/geojson', 'leucena_polygons.geojson');
@@ -28,9 +30,10 @@ window.LeucenaExport = (function () {
       downloadFile('/api/export/grid-status', 'grid_status.geojson');
     });
 
+    // Points export: occurrence features include layer/validity fields in GeoJSON properties.
     document.getElementById('export-points').addEventListener('click', (e) => {
       e.preventDefault();
-      if (LeucenaApp.getUserRole() === 'contributor') return;
+      if (!LeucenaApp.isTeamOrAbove()) return;
       exportMenu.classList.remove('show');
       if (LeucenaApp.logEvent) LeucenaApp.logEvent('export_start', null, null, { type: 'points' });
       downloadFile('/api/export/points', 'leucena_points.geojson');
@@ -49,8 +52,7 @@ window.LeucenaExport = (function () {
       warn.classList.add('hidden');
       links.forEach(a => a.classList.remove('disabled'));
 
-      const role = LeucenaApp.getUserRole();
-      if (role === 'contributor') {
+      if (!LeucenaApp.isTeamOrAbove()) {
         [maskLink, pointsLink].forEach(el => {
           if (el) { el.classList.add('disabled'); el.style.opacity = '0.4'; el.style.pointerEvents = 'none'; }
         });

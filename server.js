@@ -147,6 +147,7 @@ const RESET_TOKEN_TTL = 30 * 60 * 1000;
 const connectedUsers = new Map();
 const sessions = new Map();
 const LOCK_TIMEOUT_MS = 30 * 60 * 1000;
+// Role ladder: superadmin > admin > team > contributor > tester; testers use tester_mode as their effective role for caps.
 function getUserRole(username) {
   const user = queryOne('SELECT role FROM users WHERE username = ?', [username]);
   return (user && user.role) || 'contributor';
@@ -170,11 +171,13 @@ function canDeleteMask(username, maskCreator) {
   return maskCreator === username;
 }
 
+// SHA-256 + fixed app salt — predictable, not production-grade vs slow KDFs + per-user salt.
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password + '***REDACTED_SALT***').digest('hex');
 }
 
 let _logCleanupCounter = 0;
+// Amortized retention: every 50 inserts, purge activity_logs older than 48h.
 function logActivity(username, action, cellId, objectId, details) {
   try {
     const dets = (details && typeof details === 'object') ? JSON.stringify(details) : (details || null);
@@ -214,6 +217,7 @@ function releaseExpiredLocks() {
 
 setInterval(releaseExpiredLocks, 30000);
 
+// Ray casting on lng/lat plane; odd intersection count ⇒ inside (not true geodesic).
 function pointInPolygon(point, ring) {
   const [px, py] = point;
   let inside = false;
@@ -243,6 +247,7 @@ function pointNearPolygonEdge(point, ring, toleranceDeg) {
   return false;
 }
 
+// Spherical excess on R=6371km → geodesic ring area in m² (Shoelace on the sphere).
 function ringAreaM2(ring) {
   const toRad = Math.PI / 180;
   const R = 6371000;
@@ -265,6 +270,7 @@ function polygonAreaHa(geometry) {
   return Math.max(0, area) / 10000;
 }
 
+// If multiple cells contain the point, pick the one with smallest bbox (inner over outer overlap).
 function findGridForPoint(lng, lat) {
   const cells = queryAll('SELECT id, geometry, grid_status FROM grid_cells');
   let bestCell = null;
@@ -289,6 +295,7 @@ function findGridForPoint(lng, lat) {
   return bestCell;
 }
 
+// Block "finished" unless every status=0 point in the cell lies in a mask exterior or within ~5.5m of the outer ring.
 function validateFinished(cellId) {
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [cellId]);
   if (!cell) return { valid: false, error: 'Célula não encontrada' };
@@ -361,6 +368,7 @@ app.get('/api/stats/views', (req, res) => {
 
 // ── Auth ──
 
+// Invite passcode: sequential 4-digit code from contributor count, spreading remainder across digits via modular bumps.
 function getNextPasscode() {
   const row = queryOne("SELECT COUNT(*) as cnt FROM users WHERE role NOT IN ('admin','superadmin','tester') AND username != 'deleted'");
   const n = row.cnt;
@@ -895,6 +903,7 @@ app.put('/api/grid/:id/status', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// Lock: cell → in_use, append locker to worked_by (comma-separated attribution trail).
 app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
   const { id } = req.params;
   const username = req.username;
@@ -933,6 +942,7 @@ app.post('/api/grid/:id/heartbeat', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// Unlock: clear lock; if client sends not_yet_finished, refine to mapping / no_points / not_yet_finished; finished runs validateFinished.
 app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -1135,6 +1145,7 @@ app.delete('/api/polygons/:id', requireAuth, (req, res) => {
 
 // ── Import GeoJSON points (Super Admin) ──
 
+// Dedup by lng/lat rounded to 5 decimals (~1.1m); each new point emits point:created for live clients.
 app.post('/api/admin/points/import', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
 
@@ -1339,7 +1350,8 @@ app.put('/api/points/:id/validity', requireAuth, (req, res) => {
   if (!point) return res.status(404).json({ error: 'Ponto não encontrado' });
 
   const currentStatus = point.status || 0;
-  const newStatus = (currentStatus + 1) % 3; // 0→1→2→0
+  // Validity: 0=valid, 1=invalid, 2=uncertain — single field advances mod 3 (mirrored to not_valid).
+  const newStatus = (currentStatus + 1) % 3;
   runSQL('UPDATE occurrence_points SET status = ?, not_valid = ? WHERE id = ?', [newStatus, newStatus, Number(id)]);
 
   io.emit('point:validityChanged', { id: Number(id), not_valid: newStatus, status: newStatus });
@@ -1457,6 +1469,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
+      // Abrupt leave: auto-unlock all cells held by this user, persist, accumulate session_ms into total_time_ms.
       logActivity(user.username, 'disconnect', null, null, null);
       const now = new Date().toISOString();
       const locked = queryAll('SELECT id FROM grid_cells WHERE locked_by = ?', [user.username]);
@@ -1490,6 +1503,7 @@ const PORT = process.env.PORT || 3000;
 async function start() {
   await initDB();
 
+  // Startup backfill: legacy polygons missing area_ha get polygonAreaHa() before API traffic relies on it.
   const emptyArea = queryAll('SELECT id, geometry FROM polygons WHERE area_ha IS NULL OR area_ha = 0');
   if (emptyArea.length > 0) {
     for (const p of emptyArea) {
