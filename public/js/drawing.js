@@ -778,6 +778,7 @@ window.LeucenaDrawing = (function () {
     }
 
     LeucenaMap.setGridClickable(true);
+    setClickable(true);
     hideDrawOverlay();
 
     if (map) map.setOptions({ draggableCursor: null });
