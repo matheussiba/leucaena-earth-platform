@@ -7,7 +7,7 @@ window.LeucenaMap = (function () {
   const pointMarkersById = {};
   const POINT_LAYERS = ['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink'];
   let activeFilters = new Set(['not_yet_finished', 'in_use', 'mapping', 'no_points', 'finished']);
-  let visiblePointLayers = new Set(['crowdmapping']);
+  let visiblePointLayers = new Set(['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink']);
   let showGrid = true;
   let showPoints = true;
   let showPolygons = true;
@@ -447,8 +447,8 @@ window.LeucenaMap = (function () {
     if (count >= 100)     { bg = '#F97316'; bgOuter = 'rgba(249,115,22,0.25)'; text = '#7c2d12'; }
     else if (count >= 20) { bg = '#FACC15'; bgOuter = 'rgba(250,204,21,0.25)'; text = '#713f12'; }
     else                  { bg = '#7DD3FC'; bgOuter = 'rgba(125,211,252,0.25)'; text = '#0c4a6e'; }
-    const r = Math.min(14 + Math.floor(Math.log10(count)) * 4, 20);
-    const outerR = r + 5;
+    const r = Math.min(10 + Math.floor(Math.log10(count)) * 3, 15);
+    const outerR = r + 4;
     const size = outerR * 2 + 2;
     const cx = size / 2;
     const cy = size / 2;
