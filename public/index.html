@@ -180,13 +180,19 @@
         </div>
       </div>
       <input type="file" id="admin-import-geojson-input" accept=".geojson,.json" class="hidden">
-      <!-- Checkbox Debug desativado temporariamente
-      <div class="admin-debug-section">
-        <label class="admin-debug-label">
-          <input type="checkbox" id="admin-debug-toggle"> Debug
-        </label>
+    </div>
+  </div>
+
+  <!-- Modal: Deduplicação de Pontos -->
+  <div id="dedup-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <button id="dedup-modal-close" class="modal-close">&times;</button>
+      <h2 id="dedup-modal-title" data-i18n="admin.dedupModalTitle">Remover Pontos Duplicados</h2>
+      <p id="dedup-modal-text"></p>
+      <div id="dedup-modal-actions" class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+        <button class="btn btn-secondary" id="dedup-modal-cancel" data-i18n="admin.dedupModalCancel">Cancelar</button>
+        <button class="btn btn-danger" id="dedup-modal-confirm" data-i18n="admin.dedupModalConfirm">Confirmar Remoção</button>
       </div>
-      -->
     </div>
   </div>
 

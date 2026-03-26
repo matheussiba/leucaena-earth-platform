@@ -531,8 +531,26 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       pointClusterer = new markerClusterer.MarkerClusterer({
         map,
         markers: [],
-        algorithmOptions: { maxZoom: 10 }, // above this zoom, algorithm stops clustering—individual markers when zoomed in further
-        renderer: { render: clusterRenderer }
+        algorithmOptions: { maxZoom: 10 },
+        renderer: { render: clusterRenderer },
+        onClusterClick: (event, cluster, gMap) => {
+          const pos = cluster.position || (event && event.latLng);
+          if (!pos) return;
+          const fromZoom = gMap.getZoom();
+          const toZoom = Math.min(fromZoom + 3, 18);
+          const clickLat = event && event.latLng ? event.latLng.lat() : null;
+          const clickLng = event && event.latLng ? event.latLng.lng() : null;
+          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+            LeucenaApp.logEvent('cluster_click', LeucenaApp.getSelectedCellId(), null, {
+              clickLat, clickLng,
+              clusterLat: pos.lat(), clusterLng: pos.lng(),
+              count: cluster.markers ? cluster.markers.length : 0,
+              fromZoom, toZoom
+            });
+          }
+          gMap.setZoom(toZoom);
+          gMap.panTo(pos);
+        }
       });
     }
   }
@@ -1186,6 +1204,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       const viewport = map ? map.getBounds() : null;
       if (!viewport || viewport.contains(marker.getPosition())) {
         pointClusterer.addMarker(marker, true);
+        pointClusterer.render();
       }
     }
 

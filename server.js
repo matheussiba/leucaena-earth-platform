@@ -1234,6 +1234,96 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
   });
 });
 
+// ── Deduplicate points (Super Admin) ──
+
+// In-memory backup of deleted duplicates for undo within the same server session
+let _dedupUndoBackup = null;
+
+app.get('/api/admin/points/duplicates/preview', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+
+  const points = queryAll('SELECT id, fid, geometry, layer, status FROM occurrence_points ORDER BY id ASC');
+  const seen = new Map();
+  const duplicates = [];
+
+  for (const p of points) {
+    const g = JSON.parse(p.geometry);
+    const key = `${Number(g.coordinates[0]).toFixed(5)}_${Number(g.coordinates[1]).toFixed(5)}`;
+    if (seen.has(key)) {
+      duplicates.push({ id: p.id, fid: p.fid, layer: p.layer, lat: g.coordinates[1], lng: g.coordinates[0], kept_id: seen.get(key) });
+    } else {
+      seen.set(key, p.id);
+    }
+  }
+
+  res.json({ total_points: points.length, duplicate_count: duplicates.length, duplicates: duplicates.slice(0, 100) });
+});
+
+app.post('/api/admin/points/duplicates/remove', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+
+  const points = queryAll('SELECT id, fid, geometry, layer, status, not_valid FROM occurrence_points ORDER BY id ASC');
+  const seen = new Map();
+  const toDelete = [];
+
+  for (const p of points) {
+    const g = JSON.parse(p.geometry);
+    const key = `${Number(g.coordinates[0]).toFixed(5)}_${Number(g.coordinates[1]).toFixed(5)}`;
+    if (seen.has(key)) {
+      toDelete.push({ id: p.id, fid: p.fid, geometry: p.geometry, layer: p.layer, status: p.status, not_valid: p.not_valid });
+    } else {
+      seen.set(key, p.id);
+    }
+  }
+
+  if (toDelete.length === 0) {
+    return res.json({ success: true, removed: 0 });
+  }
+
+  _dedupUndoBackup = { timestamp: new Date().toISOString(), username: req.username, points: toDelete };
+
+  const ids = toDelete.map(d => d.id);
+  const placeholders = ids.map(() => '?').join(',');
+  runSQL(`DELETE FROM occurrence_points WHERE id IN (${placeholders})`, ids);
+  persist();
+
+  logActivity(req.username, 'dedup_points', null, null, { removed: toDelete.length });
+
+  for (const d of toDelete) {
+    io.emit('point:deleted', { id: d.id });
+  }
+
+  res.json({ success: true, removed: toDelete.length });
+});
+
+app.post('/api/admin/points/duplicates/undo', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+
+  if (!_dedupUndoBackup || !_dedupUndoBackup.points || _dedupUndoBackup.points.length === 0) {
+    return res.status(400).json({ error: 'Nenhuma deduplicação para desfazer' });
+  }
+
+  let restored = 0;
+  for (const p of _dedupUndoBackup.points) {
+    runSQL(
+      'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, ?, ?, ?)',
+      [p.fid, p.geometry, p.not_valid || 0, p.layer || 'crowdmapping', p.status || 0]
+    );
+    const row = queryOne('SELECT id FROM occurrence_points WHERE fid = ?', [p.fid]);
+    if (row) {
+      io.emit('point:created', { id: row.id, fid: p.fid, not_valid: p.not_valid || 0, status: p.status || 0, layer: p.layer || 'crowdmapping', geometry: JSON.parse(p.geometry) });
+    }
+    restored++;
+  }
+
+  persist();
+  logActivity(req.username, 'dedup_undo', null, null, { restored });
+
+  const backup = _dedupUndoBackup;
+  _dedupUndoBackup = null;
+  res.json({ success: true, restored, original_timestamp: backup.timestamp });
+});
+
 // ── Occurrence points ──
 
 app.get('/api/points', (req, res) => {

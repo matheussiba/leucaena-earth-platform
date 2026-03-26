@@ -1,5 +1,18 @@
 // IIFE module: polygon draw/edit/delete tools and a central mode state machine.
 window.LeucenaDrawing = (function () {
+  // Ray-casting point-in-ring test (matches server-side pointInPolygon)
+  function pointInRing(lng, lat, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+      if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
   let drawingManager = null;
   let activeMode = 'select';
   const drawnPolygons = {}; // keyed by polygon UUID
@@ -171,6 +184,22 @@ window.LeucenaDrawing = (function () {
     const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
     if (map) {
       map.addListener('mousemove', (e) => { _lastMouseLatLng = e.latLng; });
+
+      // DOM-level fallback: Google Maps mousemove can miss events when overlays
+      // intercept them. An OverlayView projection converts pixel → lat/lng reliably.
+      const projOverlay = new google.maps.OverlayView();
+      projOverlay.onAdd = projOverlay.draw = projOverlay.onRemove = function () {};
+      projOverlay.setMap(map);
+      map.getDiv().addEventListener('mousemove', (e) => {
+        try {
+          const proj = projOverlay.getProjection();
+          if (!proj) return;
+          const rect = map.getDiv().getBoundingClientRect();
+          _lastMouseLatLng = proj.fromContainerPixelToLatLng(
+            new google.maps.Point(e.clientX - rect.left, e.clientY - rect.top)
+          );
+        } catch (_) { /* projection not ready yet */ }
+      });
     }
   }
 
@@ -688,6 +717,12 @@ window.LeucenaDrawing = (function () {
     LeucenaMap.setGridClickable(true);
     if (!manualHoleState) return;
     const s = manualHoleState;
+    const mouseMoves = s.getMouseMoveCount ? s.getMouseMoveCount() : -1;
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('hole_cleanup', LeucenaApp.getSelectedCellId(), s.targetId, {
+        vertices: s.vertices.length, mouseMoves
+      });
+    }
     s.vertexMarkers.forEach(m => m.setMap(null));
     s.previewPoly.setMap(null);
     s.guideLine.setMap(null);
@@ -707,10 +742,16 @@ window.LeucenaDrawing = (function () {
   // Manual vertex-by-vertex hole drawing (mirrors startDrawing but saves as inner ring)
   function startHoleDrawing(targetId) {
     cleanupManualHole();
-    // Disable polygon clicks so map clicks pass through for vertex placement
     setClickable(false);
+    LeucenaMap.setGridClickable(false);
     const map = LeucenaMap.getMap();
     map.setOptions({ draggableCursor: 'crosshair', disableDoubleClickZoom: true });
+
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('hole_draw_start', LeucenaApp.getSelectedCellId(), targetId, {
+        gridClickable: false, polyClickable: false, hasMousePos: !!_lastMouseLatLng
+      });
+    }
 
     const vertices = [];
     const vertexMarkers = [];
@@ -744,6 +785,9 @@ window.LeucenaDrawing = (function () {
       vertices.pop();
       if (vertexMarkers.length) vertexMarkers.pop().setMap(null);
       updatePreview();
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_vertex_undo', LeucenaApp.getSelectedCellId(), targetId, { remaining: vertices.length });
+      }
     }
 
     const clickListener = map.addListener('click', (e) => {
@@ -754,27 +798,37 @@ window.LeucenaDrawing = (function () {
       }
     });
 
+    let _holeMouseMoveCount = 0;
     const moveListener = map.addListener('mousemove', (e) => {
       _lastMouseLatLng = e.latLng;
+      _holeMouseMoveCount++;
       guideLine.setPath(vertices.length ? [vertices[vertices.length - 1], e.latLng] : []);
     });
 
     const dblClickListener = map.addListener('dblclick', () => {
       if (activeMode !== 'hole' || !manualHoleState) return;
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_finish_dblclick', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length, mouseMoves: _holeMouseMoveCount });
+      }
       if (vertices.length > 0) removeLastVertex();
       completeManualHole();
     });
 
     const rightClickListener = map.addListener('rightclick', () => {
       if (activeMode !== 'hole' || !manualHoleState) return;
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_finish_rightclick', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length, mouseMoves: _holeMouseMoveCount });
+      }
       if (vertices.length >= 3) completeManualHole();
     });
 
-    // DOM-level fallback: map rightclick may not fire when cursor is over a polygon overlay
     const mapDiv = map.getDiv();
     const contextMenuHandler = (e) => {
       if (activeMode !== 'hole' || !manualHoleState) return;
       e.preventDefault();
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_finish_contextmenu', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length, mouseMoves: _holeMouseMoveCount });
+      }
       if (vertices.length >= 3) completeManualHole();
     };
     mapDiv.addEventListener('contextmenu', contextMenuHandler);
@@ -783,28 +837,57 @@ window.LeucenaDrawing = (function () {
       targetId, vertices, vertexMarkers, previewPoly, guideLine,
       clickListener, moveListener, dblClickListener, rightClickListener,
       contextMenuHandler,
-      addVertex, removeLastVertex
+      addVertex, removeLastVertex,
+      getMouseMoveCount: () => _holeMouseMoveCount
     };
   }
 
   async function completeManualHole() {
     if (!manualHoleState) return;
     const { targetId, vertices } = manualHoleState;
-    if (vertices.length < 3) {
-      if (vertices.length > 0) LeucenaApp.showToast(LeucenaI18n.t('toast.min3Vertices'), 'warning');
-      cleanupManualHole();
-      clearHoleTarget();
+    const mouseMoves = manualHoleState.getMouseMoveCount ? manualHoleState.getMouseMoveCount() : -1;
+
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('hole_complete_start', LeucenaApp.getSelectedCellId(), targetId, {
+        vertices: vertices.length, mouseMoves
+      });
+    }
+
+    const vertexCoords = vertices.map(p => [p.lng(), p.lat()]);
+    cleanupManualHole();
+    clearHoleTarget();
+
+    if (vertexCoords.length < 3) {
+      if (vertexCoords.length > 0) LeucenaApp.showToast(LeucenaI18n.t('toast.min3Vertices'), 'warning');
       setMode('select');
       return;
     }
 
     const entry = drawnPolygons[targetId];
-    if (!entry) { cleanupManualHole(); clearHoleTarget(); setMode('select'); return; }
+    if (!entry) { setMode('select'); return; }
 
-    const holeRing = vertices.map(p => [p.lng(), p.lat()]);
-    holeRing.push(holeRing[0]);
+    const holeRing = [...vertexCoords, vertexCoords[0]];
 
     const currentCoords = pathsToGeoJSONCoords(entry.gmapsPoly);
+
+    // Every hole vertex must be inside the outer ring AND outside all existing holes
+    const outerRing = currentCoords[0];
+    const existingHoles = currentCoords.slice(1);
+    for (const [lng, lat] of vertexCoords) {
+      if (!pointInRing(lng, lat, outerRing)) {
+        LeucenaApp.showToast(LeucenaI18n.t('toast.holeOutsidePoly'), 'warning');
+        setMode('select');
+        return;
+      }
+      for (const hole of existingHoles) {
+        if (pointInRing(lng, lat, hole)) {
+          LeucenaApp.showToast(LeucenaI18n.t('toast.holeInsideHole'), 'warning');
+          setMode('select');
+          return;
+        }
+      }
+    }
+
     currentCoords.push(holeRing);
     const newGeometry = { type: 'Polygon', coordinates: currentCoords };
 
@@ -817,7 +900,7 @@ window.LeucenaDrawing = (function () {
       if (!res.ok) {
         const err = await res.json();
         LeucenaApp.showToast(err.error, 'error');
-        cleanupManualHole(); clearHoleTarget(); setMode('select');
+        setMode('select');
         return;
       }
       const holeResult = await res.json();
@@ -829,11 +912,15 @@ window.LeucenaDrawing = (function () {
       }
       LeucenaApp.showToast(LeucenaI18n.t('toast.holeCreated'), 'success');
     } catch (e) {
+      console.error('completeManualHole error:', e);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_complete_error', LeucenaApp.getSelectedCellId(), targetId, {
+          error: e.message || String(e), vertices: vertexCoords.length
+        });
+      }
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaveFail'), 'error');
     }
 
-    cleanupManualHole();
-    clearHoleTarget();
     setMode('select');
   }
 

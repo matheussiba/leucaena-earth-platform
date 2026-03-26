@@ -222,6 +222,7 @@ window.LeucenaApp = (function () {
         ['debug-modal', closeDebugModal],
         ['profile-modal', closeProfileModal],
         ['guide-modal', closeGuideModal],
+        ['dedup-modal', () => { document.getElementById('dedup-modal').classList.add('hidden'); }],
       ];
       for (const [id, closeFn] of modalCloseMap) {
         const el = document.getElementById(id);
@@ -991,13 +992,8 @@ window.LeucenaApp = (function () {
 
   async function logout() {
     _flushLogs();
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: authHeaders()
-      });
-    } catch (e) { /* ignore */ }
 
+    // Unlock cell before invalidating the token
     if (selectedCellId && selectedCellData && selectedCellData.locked_by === username) {
       try {
         await fetch(`/api/grid/${selectedCellId}/unlock`, {
@@ -1008,6 +1004,13 @@ window.LeucenaApp = (function () {
         LeucenaMap.releasePanRestriction();
       } catch (e) { /* ignore */ }
     }
+
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: authHeaders()
+      });
+    } catch (e) { /* ignore */ }
 
     authToken = null;
     username = null;
@@ -1744,17 +1747,43 @@ window.LeucenaApp = (function () {
       const listEl = document.getElementById('admin-users-list');
       listEl.innerHTML = '';
 
-      const exportRow = document.createElement('div');
-      exportRow.className = 'admin-export-row';
-      const backupBtnHtml = callerIsSuperAdmin ? `<button id="admin-backup-db" class="admin-export-btn">💾 ${t('admin.backupDb')}</button>` : '';
-      const createUserBtnHtml = callerIsSuperAdmin ? `<button id="admin-create-user-btn" class="admin-export-btn admin-create-user-btn">➕ ${t('admin.createUser')}</button>` : '';
-      const importPointsBtnHtml = callerIsSuperAdmin ? `<button id="admin-import-points-btn" class="admin-export-btn admin-import-points-btn">📍 ${t('admin.importPoints')}</button>` : '';
-      exportRow.innerHTML = `${createUserBtnHtml}<button id="admin-export-csv" class="admin-export-btn">${t('admin.exportCsv')}</button>
-        <button id="admin-export-logs" class="admin-export-btn">📋 ${t('admin.exportLogs')}</button>
-        <button id="admin-copy-recent-logs" class="admin-export-btn admin-copy-log-btn">📄 ${t('admin.copyRecentLogs')}</button>
-        ${importPointsBtnHtml}
-        ${backupBtnHtml}`;
-      listEl.appendChild(exportRow);
+      const toolsGrid = document.createElement('div');
+      toolsGrid.className = 'admin-tools-grid';
+
+      let gridHtml = '';
+
+      // Section: Logs & Export
+      gridHtml += `<div class="admin-tools-section">
+        <div class="admin-tools-label">${t('admin.sectionLogs')}</div>
+        <div class="admin-tools-buttons">
+          <button id="admin-export-csv" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${t('admin.exportCsv')}</button>
+          <button id="admin-export-logs" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ${t('admin.exportLogs')}</button>
+          <button id="admin-copy-recent-logs" class="admin-tool-btn admin-tool-ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> ${t('admin.copyRecentLogs')}</button>
+        </div>
+      </div>`;
+
+      if (callerIsSuperAdmin) {
+        // Section: Users & Data
+        gridHtml += `<div class="admin-tools-section">
+          <div class="admin-tools-label">${t('admin.sectionData')}</div>
+          <div class="admin-tools-buttons">
+            <button id="admin-create-user-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg> ${t('admin.createUser')}</button>
+            <button id="admin-import-points-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> ${t('admin.importPoints')}</button>
+            <button id="admin-backup-db" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> ${t('admin.backupDb')}</button>
+          </div>
+        </div>`;
+
+        // Section: Maintenance
+        gridHtml += `<div class="admin-tools-section">
+          <div class="admin-tools-label">${t('admin.sectionMaintenance')}</div>
+          <div class="admin-tools-buttons">
+            <button id="admin-dedup-btn" class="admin-tool-btn admin-tool-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ${t('admin.dedupBtn')}</button>
+          </div>
+        </div>`;
+      }
+
+      toolsGrid.innerHTML = gridHtml;
+      listEl.appendChild(toolsGrid);
       document.getElementById('admin-export-csv').addEventListener('click', async () => {
         try {
           const r = await fetch('/api/admin/users/export-csv', { headers: authHeaders() });
@@ -1891,6 +1920,95 @@ window.LeucenaApp = (function () {
             showToast('Erro ao ler arquivo', 'error');
           }
         });
+      }
+
+      // Dedup button: preview → confirm modal → execute → undo toast
+      const dedupBtn = document.getElementById('admin-dedup-btn');
+      if (dedupBtn) {
+        dedupBtn.addEventListener('click', async () => {
+          dedupBtn.disabled = true;
+          dedupBtn.textContent = `⏳ ${t('admin.dedupScanning')}`;
+          try {
+            const r = await fetch('/api/admin/points/duplicates/preview', { headers: authHeaders() });
+            if (!r.ok) { showToast('Error', 'error'); return; }
+            const data = await r.json();
+            if (data.duplicate_count === 0) {
+              showToast(t('admin.dedupNone'), 'success');
+              return;
+            }
+            const modal = document.getElementById('dedup-modal');
+            document.getElementById('dedup-modal-text').textContent = t('admin.dedupConfirm', data.duplicate_count);
+            const confirmBtn = document.getElementById('dedup-modal-confirm');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = t('admin.dedupModalConfirm');
+            modal.classList.remove('hidden');
+
+            const onConfirm = async () => {
+              confirmBtn.removeEventListener('click', onConfirm);
+              cancelBtn.removeEventListener('click', onCancel);
+              confirmBtn.disabled = true;
+              confirmBtn.textContent = `⏳ ${t('admin.dedupRemoving')}`;
+              try {
+                const res = await fetch('/api/admin/points/duplicates/remove', { method: 'POST', headers: authHeaders() });
+                const result = await res.json();
+                modal.classList.add('hidden');
+                if (res.ok && result.removed > 0) {
+                  showToast(t('admin.dedupSuccess', result.removed), 'success', 10000);
+                  showDedupUndoToast(result.removed);
+                } else if (res.ok && result.removed === 0) {
+                  showToast(t('admin.dedupNone'), 'info');
+                } else {
+                  showToast(result.error || t('admin.dedupFail'), 'error');
+                }
+              } catch (e) {
+                modal.classList.add('hidden');
+                showToast(t('admin.dedupFail'), 'error');
+              }
+            };
+            const cancelBtn = document.getElementById('dedup-modal-cancel');
+            const onCancel = () => {
+              confirmBtn.removeEventListener('click', onConfirm);
+              cancelBtn.removeEventListener('click', onCancel);
+              modal.classList.add('hidden');
+            };
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+            document.getElementById('dedup-modal-close').onclick = onCancel;
+          } catch (e) {
+            showToast(t('admin.dedupFail'), 'error');
+          } finally {
+            dedupBtn.disabled = false;
+            dedupBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ${t('admin.dedupBtn')}`;
+          }
+        });
+      }
+
+      function showDedupUndoToast(count) {
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:14px;';
+        container.innerHTML = `<span>${t('admin.dedupSuccess', count)}</span>`;
+        const undoBtn = document.createElement('button');
+        undoBtn.textContent = `↩ ${t('admin.dedupUndo')}`;
+        undoBtn.style.cssText = 'background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;';
+        undoBtn.addEventListener('click', async () => {
+          undoBtn.disabled = true;
+          undoBtn.textContent = '⏳';
+          try {
+            const res = await fetch('/api/admin/points/duplicates/undo', { method: 'POST', headers: authHeaders() });
+            const result = await res.json();
+            if (res.ok && result.restored > 0) {
+              showToast(t('admin.dedupUndoSuccess', result.restored), 'success', 6000);
+            } else {
+              showToast(result.error || t('admin.dedupUndoFail'), 'error');
+            }
+          } catch (e) {
+            showToast(t('admin.dedupUndoFail'), 'error');
+          }
+          container.remove();
+        });
+        container.appendChild(undoBtn);
+        document.body.appendChild(container);
+        setTimeout(() => { if (container.parentNode) container.remove(); }, 30000);
       }
 
       const createUserBtn = document.getElementById('admin-create-user-btn');

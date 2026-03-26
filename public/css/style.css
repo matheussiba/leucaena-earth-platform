@@ -2188,6 +2188,80 @@ html, body {
   opacity: 0.85;
 }
 
+/* ── Admin tools grid (organized sections) ── */
+
+.admin-tools-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-tools-section {
+  padding: 6px 14px;
+}
+
+.admin-tools-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+
+.admin-tools-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.admin-tool-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.admin-tool-btn svg { flex-shrink: 0; }
+
+.admin-tool-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.admin-tool-primary:hover { filter: brightness(1.1); }
+
+.admin-tool-secondary {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.admin-tool-secondary:hover { background: var(--bg-tertiary); }
+
+.admin-tool-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+.admin-tool-ghost:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+
+.admin-tool-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+.admin-tool-danger:hover { background: #b91c1c; }
+
 .admin-copy-log-btn {
   background: var(--bg-tertiary);
   border-color: var(--border);
