@@ -12,6 +12,7 @@ window.LeucenaDrawing = (function () {
   let _pendingToolSwitch = null;
   let _suppressDrawRestart = false;
   let _pendingDeleteId = null;
+  let _lastMouseLatLng = null;
 
   const POLY_STYLE_MEMBER = {
     strokeColor: '#84cc16',
@@ -162,10 +163,65 @@ window.LeucenaDrawing = (function () {
     loadAllPolygons();
     setupToolbar();
     setupUndoHandler();
+    setTimeout(() => {
+      const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
+      if (map) {
+        map.addListener('mousemove', (e) => { _lastMouseLatLng = e.latLng; });
+      }
+    }, 500);
+  }
+
+  function isInputFocused() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
   }
 
   function setupUndoHandler() {
     document.addEventListener('keydown', (e) => {
+      if (isInputFocused()) return;
+
+      const cellLocked = typeof LeucenaApp !== 'undefined' && LeucenaApp.isEditing && LeucenaApp.isEditing();
+
+      if (e.shiftKey && (e.key === 'C' || e.key === 'c') && cellLocked) {
+        e.preventDefault();
+        if (activeMode === 'draw') {
+          if (isPolygonInProgress()) {
+            _pendingToolSwitch = 'select';
+            document.getElementById('tool-switch-modal').classList.remove('hidden');
+          } else {
+            setMode('select');
+          }
+        } else {
+          requestToolSwitch('draw');
+        }
+        return;
+      }
+
+      if (e.shiftKey && (e.key === 'E' || e.key === 'e') && cellLocked) {
+        e.preventDefault();
+        if (activeMode === 'edit') {
+          setMode('select');
+        } else {
+          requestToolSwitch('edit');
+        }
+        return;
+      }
+
+      if (e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        const svBtn = document.getElementById('tool-streetview');
+        if (svBtn && !svBtn.disabled) svBtn.click();
+        return;
+      }
+
+      if ((e.key === 'v' || e.key === 'V') && !e.shiftKey && !e.ctrlKey && !e.metaKey && activeMode === 'draw' && manualDrawState && _lastMouseLatLng) {
+        e.preventDefault();
+        manualDrawState.addVertex(_lastMouseLatLng);
+        return;
+      }
+
       if (e.key === 'Enter' && activeMode === 'draw' && manualDrawState) {
         e.preventDefault();
         completeManualDraw();
@@ -680,6 +736,7 @@ window.LeucenaDrawing = (function () {
     });
 
     const moveListener = map.addListener('mousemove', (e) => {
+      _lastMouseLatLng = e.latLng;
       if (vertices.length > 0) {
         guideLine.setPath([vertices[vertices.length - 1], e.latLng]);
       } else {
@@ -703,7 +760,7 @@ window.LeucenaDrawing = (function () {
     manualDrawState = {
       vertices, vertexMarkers, previewPoly, guideLine,
       clickListener, moveListener, dblClickListener, rightClickListener,
-      removeLastVertex, prevDblClickZoom
+      removeLastVertex, addVertex, prevDblClickZoom
     };
   }
 
@@ -783,6 +840,7 @@ window.LeucenaDrawing = (function () {
 
     if (map) map.setOptions({ draggableCursor: null });
 
+    _lastMouseLatLng = null;
     manualDrawState = null;
   }
 

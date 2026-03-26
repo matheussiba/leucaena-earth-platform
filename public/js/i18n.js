@@ -370,7 +370,7 @@ window.LeucenaI18n = (function () {
     'toast.drawCancelled': { pt: 'Desenho cancelado', en: 'Drawing cancelled', es: 'Dibujo cancelado' },
 
     // ── Tool hint badges ──
-    'badge.draw': { pt: 'Clique direito ou Enter = finalizar · Ctrl+Z = desfazer', en: 'Right-click or Enter = finish · Ctrl+Z = undo', es: 'Clic derecho o Enter = finalizar · Ctrl+Z = deshacer' },
+    'badge.draw': { pt: 'V = vértice · Clique direito ou Enter = finalizar · Ctrl+Z = desfazer', en: 'V = vertex · Right-click or Enter = finish · Ctrl+Z = undo', es: 'V = vértice · Clic derecho o Enter = finalizar · Ctrl+Z = deshacer' },
     'badge.delete': { pt: 'Clique em um polígono para selecioná-lo', en: 'Click a polygon to select it', es: 'Haga clic en un polígono para seleccionarlo' },
     'badge.deleteConfirm': { pt: 'Aperte Delete para excluir · Esc para cancelar · Ctrl+Z = restaurar', en: 'Press Delete to remove · Esc to cancel · Ctrl+Z = restore', es: 'Presione Delete para eliminar · Esc para cancelar · Ctrl+Z = restaurar' },
     'badge.edit': { pt: 'Ctrl+Z = desfazer edição', en: 'Ctrl+Z = undo edit', es: 'Ctrl+Z = deshacer edición' },
