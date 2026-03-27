@@ -87,8 +87,23 @@ html, body {
 }
 
 .modal-card-small {
-  width: 320px;
+  width: 340px;
   padding: 32px 28px 24px;
+}
+
+#admin-pw-modal {
+  z-index: 10001;
+}
+
+.admin-pw-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+.admin-pw-modal-body .password-wrapper input {
+  font-size: 14px;
+  padding: 10px 40px 10px 12px;
 }
 
 .modal-close, .modal-cancel {
@@ -2021,7 +2036,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
 .admin-metric-value {
   font-size: 22px;
@@ -2215,6 +2230,10 @@ html, body {
   font-size: 11px;
   color: var(--text-muted);
   font-weight: 400;
+  line-height: 1.4;
+}
+.admin-metric-sub + .admin-metric-sub {
+  margin-top: -1px;
 }
 
 .admin-title-row {

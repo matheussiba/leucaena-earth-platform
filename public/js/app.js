@@ -122,6 +122,15 @@ window.LeucenaApp = (function () {
       if (e.target === e.currentTarget) closeAdminUsersModal();
     });
 
+    const closePwModal = () => document.getElementById('admin-pw-modal').classList.add('hidden');
+    document.getElementById('admin-pw-modal-close').addEventListener('click', closePwModal);
+    document.getElementById('admin-pw-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closePwModal();
+    });
+    document.getElementById('admin-pw-modal-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('admin-pw-modal-confirm').click();
+    });
+
     const adminDebugToggle = document.getElementById('admin-debug-toggle');
     if (adminDebugToggle) {
       adminDebugToggle.addEventListener('change', (e) => {
@@ -211,6 +220,7 @@ window.LeucenaApp = (function () {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const modalCloseMap = [
+        ['admin-pw-modal', closePwModal],
         ['auth-modal', closeAuthModal],
         ['reset-modal', closeResetModal],
         ['unlock-modal', closeUnlockModal],
@@ -1742,22 +1752,35 @@ window.LeucenaApp = (function () {
         pcBox.innerHTML = '';
       }
 
-      const contributorCount = data.users.filter(u => (u.role || 'contributor') === 'contributor').length;
+      const isMember = u => ['superadmin','admin','team'].includes(u.role);
+      const isCollab = u => !isMember(u);
+      const members = data.users.filter(isMember);
+      const collabs = data.users.filter(isCollab);
+      const memberMasks = members.reduce((s, u) => s + (u.mask_count || 0), 0);
+      const collabMasks = collabs.reduce((s, u) => s + (u.mask_count || 0), 0);
+      const memberArea = members.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
+      const collabArea = collabs.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
+      const fmtArea = v => v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
       const metricsEl = document.getElementById('admin-global-metrics');
       metricsEl.innerHTML = `
         <div class="admin-metric">
           <span class="admin-metric-value">${data.users.length}</span>
           <span class="admin-metric-label">${t('admin.totalUsers')}</span>
-          <span class="admin-metric-sub">${contributorCount} ${t('admin.collaborators')}</span>
+          <span class="admin-metric-sub">${members.length} ${t('admin.members')}</span>
+          <span class="admin-metric-sub">${collabs.length} ${t('admin.collaborators')}</span>
         </div>
         <div class="admin-metric">
           <span class="admin-metric-value">${data.globalMasks.toLocaleString()}</span>
           <span class="admin-metric-label">${t('admin.totalMasks')}</span>
+          <span class="admin-metric-sub">${memberMasks.toLocaleString()} ${t('admin.members')}</span>
+          <span class="admin-metric-sub">${collabMasks.toLocaleString()} ${t('admin.collaborators')}</span>
         </div>
         <div class="admin-metric">
-          <span class="admin-metric-value">${data.globalAreaHa.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
+          <span class="admin-metric-value">${fmtArea(data.globalAreaHa)} ha</span>
           <span class="admin-metric-label">${t('admin.totalArea')}</span>
+          <span class="admin-metric-sub">${fmtArea(memberArea)} ha ${t('admin.members')}</span>
+          <span class="admin-metric-sub">${fmtArea(collabArea)} ha ${t('admin.collaborators')}</span>
         </div>`;
 
       // Superadmin can toggle to see the panel as a regular admin would
@@ -2259,14 +2282,33 @@ window.LeucenaApp = (function () {
         });
 
         const pwBtn = row.querySelector('.admin-pw-btn');
-        pwBtn.addEventListener('click', async () => {
-          const newPw = prompt(t('admin.newPassword', user.username));
-          if (!newPw || newPw.length < 3) return;
-          const r = await fetch(`/api/admin/users/${user.id}/password`, {
-            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: newPw })
-          });
-          if (r.ok) { showToast(t('admin.passwordChanged'), 'success'); }
-          else { const err = await r.json(); showToast(err.error, 'error'); }
+        pwBtn.addEventListener('click', () => {
+          const modal = document.getElementById('admin-pw-modal');
+          const titleEl = document.getElementById('admin-pw-modal-title');
+          const input = document.getElementById('admin-pw-modal-input');
+          const confirmBtn = document.getElementById('admin-pw-modal-confirm');
+          titleEl.textContent = t('admin.changePasswordTitle', user.username);
+          input.value = '';
+          input.type = 'password';
+          const eyeOpen = modal.querySelector('.pw-eye-open');
+          const eyeClosed = modal.querySelector('.pw-eye-closed');
+          if (eyeOpen) eyeOpen.classList.remove('hidden');
+          if (eyeClosed) eyeClosed.classList.add('hidden');
+          modal.classList.remove('hidden');
+          setTimeout(() => input.focus(), 100);
+          const handler = async () => {
+            const newPw = input.value;
+            if (!newPw || newPw.length < 3) { showToast(LeucenaI18n.t('profile.pwTooShort'), 'warning'); return; }
+            const r = await fetch(`/api/admin/users/${user.id}/password`, {
+              method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: newPw })
+            });
+            if (r.ok) { showToast(t('admin.passwordChanged'), 'success'); }
+            else { const err = await r.json(); showToast(err.error, 'error'); }
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', handler);
+          };
+          confirmBtn.onclick = null;
+          confirmBtn.addEventListener('click', handler);
         });
 
         const resetBtn = row.querySelector('.admin-reset-btn');
