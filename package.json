@@ -4,7 +4,7 @@
   "description": "Collaborative online mapping platform for Leucaena occurrence mapping",
   "main": "server.js",
   "scripts": {
-    "seed": "node seed.js",
+    "seed": "node seed-data/seed.js",
     "start": "node server.js",
     "dev": "node server.js"
   },

@@ -131,10 +131,13 @@ Full i18n support with automatic browser language detection:
 leucena-mapping/
 ├── server.js              # Express server, API routes, Socket.IO, auth
 ├── db.js                  # SQLite schema, migrations, query helpers
-├── seed.js                # Grid cell seeder from GeoJSON
 ├── package.json
 ├── data/
 │   └── leucena.db         # SQLite database (auto-created)
+├── seed-data/
+│   ├── seed.js            # Database seeder script
+│   ├── grid-aoi.geojson   # Grid cells (area of interest)
+│   └── leucaena-points.geojson  # Initial occurrence points
 └── public/
     ├── index.html          # Main map application
     ├── landing.html        # Landing page (leucaena.earth)

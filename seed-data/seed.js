@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { initDB, runSQL, queryOne, persist } = require('./db');
+const { initDB, runSQL, queryOne, persist } = require('../db');
 
 const STATUS_MAP = {
   'no point': 'no_points',
