@@ -115,45 +115,12 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN email TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN last_active TEXT'); } catch (e) { /* already exists */ }
 
-  try { db.run("UPDATE users SET role = 'superadmin' WHERE username = 'msb' AND role IN ('admin', 'contributor')"); } catch (e) {}
-  try { db.run("UPDATE users SET role = 'admin' WHERE username = 'mpf' AND (role IS NULL OR role = 'contributor')"); } catch (e) {}
-  try { db.run("UPDATE users SET role = 'team' WHERE username IN ('rafael.perin', 'judith.alves') AND (role IS NULL OR role = 'contributor')"); } catch (e) {}
-
-  const socialLinks = [
-    { username: 'msb', linkedin: 'https://www.linkedin.com/in/msbarrosgis/', scholar: 'https://scholar.google.com/citations?user=YxpVjt0AAAAJ&hl=en' },
-    { username: 'mpf', linkedin: 'https://www.linkedin.com/in/matheus-pinheiro-ferreira-02a04123/', scholar: 'https://scholar.google.com/citations?user=Ype1B9wAAAAJ&hl=pt-BR' },
-    { username: 'rafael.perin', linkedin: 'https://www.linkedin.com/in/rafael-perin-menassi-7b591139a/', scholar: null }
-  ];
-  for (const s of socialLinks) {
-    try {
-      const row = db.exec(`SELECT linkedin FROM users WHERE username = '${s.username}'`);
-      if (row.length && (!row[0].values[0][0])) {
-        db.run('UPDATE users SET linkedin = ?, scholar = ? WHERE username = ?', [s.linkedin, s.scholar, s.username]);
-      }
-    } catch (e) { /* ignore */ }
-  }
-
   // Migrate not_valid → status for existing rows that haven't been migrated
   try {
     db.run('UPDATE occurrence_points SET status = not_valid WHERE status IS NULL OR (status = 0 AND not_valid = 1)');
   } catch (e) { /* ignore */ }
 
-  const crypto = require('crypto');
-  function seedHash(pw) { return crypto.createHash('sha256').update(pw + '***REDACTED_SALT***').digest('hex'); }
-
-  const adminUsers = [
-    { username: 'msb', password: '***REDACTED***' },
-    { username: 'mpf', password: '***REDACTED***' }
-  ];
-  for (const u of adminUsers) {
-    const exists = db.exec(`SELECT id FROM users WHERE username = '${u.username}'`);
-    if (exists.length === 0 || exists[0].values.length === 0) {
-      const hash = seedHash(u.password);
-      const now = new Date().toISOString();
-      db.run('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)', [u.username, hash, now]);
-    }
-  }
-
+  // Ensure the placeholder "deleted" user exists (masks are transferred here on user deletion)
   const delExists = db.exec("SELECT id FROM users WHERE username = 'deleted'");
   if (delExists.length === 0 || delExists[0].values.length === 0) {
     const now = new Date().toISOString();

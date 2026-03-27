@@ -171,17 +171,17 @@ npm install
 
 ### Environment Variables
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` and fill in the values:
 
-```env
-GOOGLE_MAPS_KEY=your_google_maps_api_key
-PORT=3000
-DATA_PATH=./data
+```bash
+cp .env.example .env
 ```
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GOOGLE_MAPS_KEY` | Yes | Google Maps JavaScript API key |
+| `PASSWORD_SALT` | Yes | Salt string for password hashing |
+| `GOOGLE_ANALYTICS_ID` | No | Google Analytics tracking ID (omit to disable) |
 | `PORT` | No | Server port (default: 3000) |
 | `DATA_PATH` | No | Directory for SQLite DB and backups (default: `./data`) |
 | `NODE_ENV` | No | Set to `production` for HTTPS redirect and domain enforcement |
@@ -192,6 +192,22 @@ DATA_PATH=./data
 ```bash
 npm run seed
 ```
+
+### Create the First Admin
+
+On a fresh install, create a superadmin account:
+
+```bash
+node create-admin.js <username> <password> [email]
+```
+
+Example:
+
+```bash
+node create-admin.js admin mySecurePass admin@example.com
+```
+
+After this, log in at `http://localhost:3000` and manage all other users from the admin panel.
 
 ### Run
 
@@ -208,8 +224,13 @@ The application will be available at `http://localhost:3000`.
 1. Create a **Web Service** on [Render](https://render.com) connected to the GitHub repository
 2. Set build command: `npm install`
 3. Set start command: `node server.js`
-4. Add environment variables (`GOOGLE_MAPS_KEY`, `NODE_ENV=production`)
-5. Attach a **Persistent Disk** mounted at `/data` and set `DATA_PATH=/data`
+4. Add environment variables:
+   - `GOOGLE_MAPS_KEY` — your Google Maps API key
+   - `PASSWORD_SALT` — your password hashing salt
+   - `GOOGLE_ANALYTICS_ID` — your Google Analytics ID (optional)
+   - `NODE_ENV` = `production`
+   - `DATA_PATH` = `/data`
+5. Attach a **Persistent Disk** mounted at `/data`
 6. Configure custom domain: `map.leucaena.earth`
 
 ---

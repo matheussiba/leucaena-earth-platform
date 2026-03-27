@@ -23,6 +23,11 @@ const io = new Server(server);
 const fs = require('fs');
 
 const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || '';
+const GA_ID = process.env.GOOGLE_ANALYTICS_ID || '';
+const GA_SCRIPT = GA_ID
+  ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_ID}"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');</script>`
+  : '';
 
 app.set('trust proxy', 1);
 
@@ -91,7 +96,7 @@ app.get('/', (req, res) => {
   if (isMapHost(req)) {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
     const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry&callback=initGoogleMapsCallback`;
-    res.send(html.replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl));
+    res.send(html.replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl).replace('__GA_SCRIPT__', GA_SCRIPT));
   } else {
     const mapUrl = `https://map.leucaena.earth`;
     const html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
@@ -171,9 +176,10 @@ function canDeleteMask(username, maskCreator) {
   return maskCreator === username;
 }
 
-// SHA-256 + fixed app salt — predictable, not production-grade vs slow KDFs + per-user salt.
+const PASSWORD_SALT = process.env.PASSWORD_SALT || 'default_salt';
+
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(password + '***REDACTED_SALT***').digest('hex');
+  return crypto.createHash('sha256').update(password + PASSWORD_SALT).digest('hex');
 }
 
 let _logCleanupCounter = 0;
