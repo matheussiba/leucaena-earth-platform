@@ -121,8 +121,8 @@ async function seed() {
     return;
   }
 
-  console.log('Loading grid-sp.geojson...');
-  const gridData = JSON.parse(fs.readFileSync(path.join(__dirname, 'grid-sp.geojson'), 'utf8'));
+  console.log('Loading grid-aoi.geojson...');
+  const gridData = JSON.parse(fs.readFileSync(path.join(__dirname, 'grid-aoi.geojson'), 'utf8'));
 
   console.log('Assigning unique GRID_IDs...');
   assignUniqueGridIds(gridData.features);
@@ -146,8 +146,8 @@ async function seed() {
   }
   console.log(`Inserted ${gridData.features.length} grid cells.`);
 
-  console.log('Loading pontos_leucena.geojson...');
-  const pointsData = JSON.parse(fs.readFileSync(path.join(__dirname, 'pontos_leucena.geojson'), 'utf8'));
+  console.log('Loading leucaena-points.geojson...');
+  const pointsData = JSON.parse(fs.readFileSync(path.join(__dirname, 'leucaena-points.geojson'), 'utf8'));
 
   console.log(`Inserting ${pointsData.features.length} occurrence points...`);
   for (const feature of pointsData.features) {

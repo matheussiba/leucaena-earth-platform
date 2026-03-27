@@ -1,5 +1,5 @@
 node_modules/
-leucena-deploy.zip
+leucena-deploy*.zip
 .env
 data/leucena.db
 *.db
