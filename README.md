@@ -133,7 +133,7 @@ leucena-mapping/
 ├── db.js                  # SQLite schema, migrations, query helpers
 ├── package.json
 ├── data/
-│   └── leucena.db         # SQLite database (auto-created)
+│   └── leucaena-earth.db   # SQLite database (auto-created)
 ├── seed-data/
 │   ├── seed.js            # Database seeder script
 │   ├── grid-aoi.geojson   # Grid cells (area of interest)

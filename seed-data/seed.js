@@ -117,7 +117,7 @@ async function seed() {
   const existing = queryOne('SELECT COUNT(*) as count FROM grid_cells');
   if (existing && existing.count > 0) {
     console.log(`Database already seeded (${existing.count} grid cells). Skipping.`);
-    console.log('Delete data/leucena.db to re-seed.');
+    console.log('Delete data/leucaena-earth.db to re-seed.');
     return;
   }
 
@@ -165,7 +165,7 @@ async function seed() {
   console.log(`Inserted ${pointsData.features.length} occurrence points.`);
 
   persist();
-  console.log('Seed complete! Database saved to data/leucena.db');
+  console.log('Seed complete! Database saved to data/leucaena-earth.db');
 }
 
 seed().catch(err => {
