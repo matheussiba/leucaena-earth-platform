@@ -1,3 +1,6 @@
+> **Part of the [PhD Leucaena Mapping Project](https://github.com/matheussiba/phd-leucaena-mapping)** — Mapping and Biomass Estimation of *Leucaena leucocephala* with Deep Learning (ESALQ/USP).
+> See also: [leucaena-earth-segmentation](https://github.com/matheussiba/leucaena-earth-segmentation) (deep learning pipeline)
+
 <p align="center">
   <img src="public/img/leucaena-earth-logo.png" alt="leucaena.earth" width="120">
 </p>
