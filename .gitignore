@@ -2,3 +2,5 @@ node_modules/
 leucena-deploy.zip
 .env
 data/leucena.db
+*.db
+leucena_backup_*

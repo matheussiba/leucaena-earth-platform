@@ -100,14 +100,14 @@ app.get('/', (req, res) => {
   } else {
     const mapUrl = `https://map.leucaena.earth`;
     const html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
-    res.send(html.replace(/__MAP_URL__/g, mapUrl));
+    res.send(html.replace(/__MAP_URL__/g, mapUrl).replace('__GA_SCRIPT__', GA_SCRIPT));
   }
 });
 
 app.get('/landing', (req, res) => {
   const mapUrl = req.protocol + '://' + req.get('host');
   const html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');
-  res.send(html.replace(/__MAP_URL__/g, mapUrl));
+  res.send(html.replace(/__MAP_URL__/g, mapUrl).replace('__GA_SCRIPT__', GA_SCRIPT));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
