@@ -7,9 +7,17 @@ const crypto = require('crypto');
 
 try {
   const envFile = require('fs').readFileSync(require('path').join(__dirname, '.env'), 'utf8');
-  for (const line of envFile.split('\n')) {
-    const [key, ...val] = line.split('=');
-    if (key && val.length) process.env[key.trim()] = val.join('=').trim();
+  for (let line of envFile.split(/\r?\n/)) {
+    line = line.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq <= 0) continue;
+    let key = line.slice(0, eq).trim();
+    let val = line.slice(eq + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    process.env[key] = val;
   }
 } catch (e) { /* no .env file, use system env vars */ }
 const path = require('path');
@@ -22,8 +30,20 @@ const io = new Server(server);
 
 const fs = require('fs');
 
+const { Resend } = require('resend');
+
 const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || '';
 const GA_ID = process.env.GOOGLE_ANALYTICS_ID || '';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_FROM = process.env.RESEND_FROM || 'leucaena.earth <noreply@leucaena.earth>';
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
+function getBaseUrl(req) {
+  if (process.env.NODE_ENV === 'production') return 'https://map.leucaena.earth';
+  return req.protocol + '://' + req.get('host');
+}
 const GA_SCRIPT = GA_ID
   ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_ID}"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');</script>`
@@ -140,7 +160,7 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
-const loginLimiter = rateLimit('login', 8, 15 * 60 * 1000);
+const loginLimiter = rateLimit('login', 20, 15 * 60 * 1000);
 const registerLimiter = rateLimit('register', 5, 60 * 60 * 1000);
 const resetLimiter = rateLimit('reset', 5, 15 * 60 * 1000);
 
@@ -148,6 +168,8 @@ const resetLimiter = rateLimit('reset', 5, 15 * 60 * 1000);
 
 const resetTokens = new Map();
 const RESET_TOKEN_TTL = 30 * 60 * 1000;
+const verifyEmailSentAt = new Map();
+const VERIFY_RATE_LIMIT_MS = 2 * 60 * 1000;
 
 const connectedUsers = new Map();
 const sessions = new Map();
@@ -204,10 +226,26 @@ function getUsernameFromToken(req) {
   return sessions.get(token) || null;
 }
 
+function maskEmail(email) {
+  if (!email) return '';
+  const [local, domain] = email.split('@');
+  if (!domain) return email;
+  return local.charAt(0) + '***@' + domain;
+}
+
 function requireAuth(req, res, next) {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Login necessário' });
   req.username = username;
+  next();
+}
+
+function requireVerified(req, res, next) {
+  const user = queryOne('SELECT email_verified, auth_provider, role FROM users WHERE username = ?', [req.username]);
+  if (!user) return res.status(401).json({ error: 'Usuário não encontrado' });
+  if (user.auth_provider === 'google') return next();
+  if (user.role === 'tester') return next();
+  if (!user.email_verified) return res.status(403).json({ error: 'Verifique seu e-mail antes de usar a plataforma', code: 'EMAIL_NOT_VERIFIED' });
   next();
 }
 
@@ -374,20 +412,10 @@ app.get('/api/stats/views', (req, res) => {
 
 // ── Auth ──
 
-// Invite passcode: sequential 4-digit code from contributor count, spreading remainder across digits via modular bumps.
-function getNextPasscode() {
-  const row = queryOne("SELECT COUNT(*) as cnt FROM users WHERE role NOT IN ('admin','superadmin','tester') AND username != 'deleted'");
-  const n = row.cnt;
-  const d0 = Math.floor(n / 4);
-  const rem = n % 4;
-  const d1 = d0 + (rem >= 1 ? 1 : 0);
-  const d2 = d0 + (rem >= 2 ? 1 : 0);
-  const d3 = d0 + (rem >= 3 ? 1 : 0);
-  return `${d1}${d2}${d3}${d0}`;
-}
+// [REMOVED] Passcode system replaced by Google OAuth + email/password registration
 
-app.post('/api/auth/register', registerLimiter, (req, res) => {
-  const { username, password, passcode, email } = req.body;
+app.post('/api/auth/register', registerLimiter, async (req, res) => {
+  const { username, password, email } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
   if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
   if (!/^[a-z0-9.]+$/.test(username)) return res.status(400).json({ error: 'O usuário deve conter apenas letras minúsculas, números e ponto (ex: joao.silva)' });
@@ -395,23 +423,41 @@ app.post('/api/auth/register', registerLimiter, (req, res) => {
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
 
-  const expectedPasscode = getNextPasscode();
-  if (!passcode || passcode.trim() !== expectedPasscode) {
-    return res.status(403).json({ error: 'Código de acesso inválido. Solicite um por e-mail.' });
-  }
+  const existingUsername = queryOne('SELECT id FROM users WHERE username = ?', [username]);
+  if (existingUsername) return res.status(409).json({ error: 'Nome de usuário já em uso' });
 
-  const existing = queryOne('SELECT id FROM users WHERE username = ?', [username]);
-  if (existing) return res.status(409).json({ error: 'Nome de usuário já em uso' });
+  const existingEmail = queryOne('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
+  if (existingEmail) return res.status(409).json({ error: 'Este e-mail já está em uso por outra conta' });
 
   const hash = hashPassword(password);
   const now = new Date().toISOString();
-  runSQL('INSERT INTO users (username, password_hash, created_at, email) VALUES (?, ?, ?, ?)', [username, hash, now, email]);
+  const verifyToken = uuidv4();
+  const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  runSQL(
+    `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires)
+     VALUES (?, ?, ?, ?, 'local', 0, ?, ?)`,
+    [username, hash, now, email, verifyToken, verifyExpires]
+  );
   logActivity(username, 'register', null, null, null);
 
-  const token = uuidv4();
-  sessions.set(token, username);
-  const role = getUserRole(username);
-  res.json({ token, username, role, tester_mode: 'contributor' });
+  if (resend) {
+    const baseUrl = getBaseUrl(req);
+    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+    try {
+      await resend.emails.send({
+        from: RESEND_FROM,
+        to: email,
+        subject: 'Verifique seu e-mail — leucaena.earth',
+        html: `<p>Olá <strong>${username}</strong>,</p>
+               <p>Clique no link abaixo para verificar seu e-mail e ativar sua conta:</p>
+               <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
+               <p>Se você não criou essa conta, ignore este e-mail.</p>
+               <p>— leucaena.earth</p>`
+      });
+    } catch (e) { console.error('Resend email error:', e.message); }
+  }
+
+  res.json({ success: true, needs_verification: true, username });
 });
 
 app.post('/api/auth/login', loginLimiter, (req, res) => {
@@ -424,29 +470,85 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   const hash = hashPassword(password);
   if (user.password_hash !== hash) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
+  const userRole = (user.role || 'contributor');
+  if (user.auth_provider !== 'google' && userRole !== 'tester' && !user.email_verified) {
+    if (!user.email) {
+      return res.status(403).json({ error: 'Seu cadastro não tem e-mail. Entre em contato com o administrador.', code: 'EMAIL_NOT_VERIFIED' });
+    }
+
+    const masked = maskEmail(user.email);
+    const lastSent = verifyEmailSentAt.get(username.toLowerCase());
+    if (lastSent && (Date.now() - lastSent) < VERIFY_RATE_LIMIT_MS) {
+      return res.status(403).json({ error: `Um link de verificação já foi enviado para ${masked}. Verifique sua caixa de entrada ou aguarde 2 minutos.`, code: 'EMAIL_NOT_VERIFIED', masked_email: masked });
+    }
+
+    const verifyToken = uuidv4();
+    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    runSQL('UPDATE users SET verification_token = ?, verification_expires = ? WHERE id = ?', [verifyToken, verifyExpires, user.id]);
+
+    if (resend) {
+      const baseUrl = getBaseUrl(req);
+      const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+      resend.emails.send({
+        from: RESEND_FROM,
+        to: user.email,
+        subject: 'Verifique seu e-mail — leucaena.earth',
+        html: `<p>Olá <strong>${username}</strong>,</p>
+               <p>Clique no link abaixo para verificar seu e-mail e ativar sua conta:</p>
+               <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
+               <p>Se você não solicitou isso, ignore este e-mail.</p>
+               <p>— leucaena.earth</p>`
+      }).catch(e => console.error('Resend email error:', e.message));
+    }
+
+    verifyEmailSentAt.set(username.toLowerCase(), Date.now());
+    persist();
+    return res.status(403).json({ error: `Enviamos um link de verificação para ${masked}. Verifique sua caixa de entrada.`, code: 'EMAIL_NOT_VERIFIED', masked_email: masked });
+  }
+
   runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), username]);
   logActivity(username, 'login', null, null, null);
 
   const token = uuidv4();
   sessions.set(token, username);
   const role = getUserRole(username);
-  const tm = queryOne('SELECT tester_mode FROM users WHERE username = ?', [username]);
-  res.json({ token, username, role, tester_mode: (tm && tm.tester_mode) || 'contributor' });
+  const showMigrationBanner = !user.google_id && user.auth_provider !== 'google';
+  res.json({
+    token, username, role,
+    tester_mode: user.tester_mode || 'contributor',
+    auth_provider: user.auth_provider || 'local',
+    email_verified: !!user.email_verified,
+    has_google: !!user.google_id,
+    show_migration_banner: showMigrationBanner
+  });
 });
 
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role, tester_mode, email FROM users WHERE username = ?', [username]);
-  res.json({ username, role: user?.role || 'contributor', tester_mode: user?.tester_mode || 'contributor', full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null, linkedin: user?.linkedin || null, scholar: user?.scholar || null, email: user?.email || null });
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role, tester_mode, email, auth_provider, email_verified, google_id, login_count FROM users WHERE username = ?', [username]);
+  const showMigrationBanner = user && !user.google_id && (user.auth_provider || 'local') !== 'google';
+  const maskRow = queryOne('SELECT COUNT(*) as cnt FROM polygons WHERE created_by = ?', [username]);
+  res.json({
+    username, role: user?.role || 'contributor', tester_mode: user?.tester_mode || 'contributor',
+    full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null,
+    linkedin: user?.linkedin || null, scholar: user?.scholar || null, email: user?.email || null,
+    auth_provider: user?.auth_provider || 'local', email_verified: !!(user?.email_verified),
+    has_google: !!(user?.google_id), show_migration_banner: showMigrationBanner,
+    login_count: user?.login_count || 0, mask_count: maskRow ? maskRow.cnt : 0
+  });
 });
 
 // ── Profile (for Quem Somos) ──
 
 app.get('/api/profile', requireAuth, (req, res) => {
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, email FROM users WHERE username = ?', [req.username]);
+  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, email, auth_provider, email_verified, google_id FROM users WHERE username = ?', [req.username]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-  res.json({ username: user.username, full_name: user.full_name || null, description: user.description || null, photo: user.photo || null, linkedin: user.linkedin || null, scholar: user.scholar || null, email: user.email || null });
+  res.json({
+    username: user.username, full_name: user.full_name || null, description: user.description || null,
+    photo: user.photo || null, linkedin: user.linkedin || null, scholar: user.scholar || null, email: user.email || null,
+    auth_provider: user.auth_provider || 'local', email_verified: !!(user.email_verified), has_google: !!(user.google_id)
+  });
 });
 
 app.put('/api/profile', requireAuth, (req, res) => {
@@ -506,11 +608,12 @@ app.get('/api/landing-stats', (req, res) => {
 });
 
 app.get('/api/quem-somos', (req, res) => {
-  const polygonCounts = queryAll(
-    "SELECT created_by AS username, COUNT(*) AS cnt FROM polygons WHERE created_by IS NOT NULL AND created_by != 'deleted' GROUP BY created_by"
+  const polygonStats = queryAll(
+    "SELECT created_by AS username, COUNT(*) AS cnt, COALESCE(SUM(area_ha), 0) AS total_area FROM polygons WHERE created_by IS NOT NULL AND created_by != 'deleted' GROUP BY created_by"
   );
   const countByUser = {};
-  polygonCounts.forEach(r => { countByUser[r.username] = r.cnt; });
+  const areaByUser = {};
+  polygonStats.forEach(r => { countByUser[r.username] = r.cnt; areaByUser[r.username] = r.total_area; });
 
   const excludeUsers = ['deleted', 'teste'];
   const allUsers = queryAll('SELECT username, full_name, description, photo, linkedin, scholar, role, is_founder FROM users');
@@ -529,10 +632,46 @@ app.get('/api/quem-somos', (req, res) => {
 
   const colaboradores = allUsers
     .filter(u => u.role === 'contributor' && !excludeUsers.includes(u.username) && (countByUser[u.username] || 0) >= 5)
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0 }))
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0, area_ha: Math.round((areaByUser[u.username] || 0) * 100) / 100 }))
     .sort((a, b) => b.mask_count - a.mask_count);
 
   res.json({ equipe, colaboradores });
+});
+
+app.get('/api/my-ranking', requireAuth, (req, res) => {
+  const excludeUsers = ['deleted', 'teste'];
+  const allContribs = queryAll(
+    "SELECT u.username, u.full_name, COUNT(p.id) as mask_count, COALESCE(SUM(p.area_ha), 0) as area_ha " +
+    "FROM users u LEFT JOIN polygons p ON p.created_by = u.username " +
+    "WHERE u.role = 'contributor' AND u.username NOT IN ('" + excludeUsers.join("','") + "') " +
+    "GROUP BY u.username ORDER BY mask_count DESC, area_ha DESC"
+  );
+
+  const top3 = allContribs.slice(0, 3).map(u => ({
+    name: u.full_name || u.username,
+    mask_count: u.mask_count,
+    area_ha: Math.round((u.area_ha || 0) * 100) / 100
+  }));
+
+  let userPosition = 0;
+  let userMaskCount = 0;
+  let userAreaHa = 0;
+  for (let i = 0; i < allContribs.length; i++) {
+    if (allContribs[i].username === req.username) {
+      userPosition = i + 1;
+      userMaskCount = allContribs[i].mask_count;
+      userAreaHa = Math.round((allContribs[i].area_ha || 0) * 100) / 100;
+      break;
+    }
+  }
+
+  res.json({
+    top3,
+    user_position: userPosition,
+    user_mask_count: userMaskCount,
+    user_area_ha: userAreaHa,
+    total_contributors: allContribs.filter(u => u.mask_count > 0).length
+  });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -545,6 +684,164 @@ app.post('/api/auth/logout', (req, res) => {
   }
   if (logUser) logActivity(logUser, 'logout', null, null, null);
   res.json({ success: true });
+});
+
+// ── Google OAuth ──
+
+app.get('/auth/google', (req, res) => {
+  if (!GOOGLE_CLIENT_ID) return res.status(500).send('Google OAuth not configured');
+  const redirectUri = getBaseUrl(req) + '/auth/google/callback';
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'offline',
+    prompt: 'select_account'
+  });
+  res.redirect('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString());
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.redirect('/?auth_error=no_code');
+
+  try {
+    const redirectUri = getBaseUrl(req) + '/auth/google/callback';
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      }).toString()
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) return res.redirect('/?auth_error=token_failed');
+
+    const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    });
+    const profile = await profileRes.json();
+    if (!profile.id || !profile.email) return res.redirect('/?auth_error=profile_failed');
+
+    const googleId = profile.id;
+    const googleEmail = profile.email.toLowerCase();
+    const googleName = profile.name || '';
+
+    let user = queryOne('SELECT * FROM users WHERE google_id = ?', [googleId]);
+
+    if (!user) {
+      user = queryOne('SELECT * FROM users WHERE LOWER(email) = ? AND username != ?', [googleEmail, 'deleted']);
+      if (user) {
+        runSQL('UPDATE users SET google_id = ?, auth_provider = ?, email_verified = 1 WHERE id = ?', [googleId, 'google', user.id]);
+        logActivity(user.username, 'google_auto_link', null, null, { google_email: googleEmail });
+        user.google_id = googleId;
+      }
+    }
+
+    if (!user) {
+      let baseUsername = googleEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9.]/g, '').substring(0, 25);
+      if (baseUsername.length < 2) baseUsername = 'user' + baseUsername;
+      let finalUsername = baseUsername;
+      let counter = 1;
+      while (queryOne('SELECT id FROM users WHERE username = ?', [finalUsername])) {
+        finalUsername = baseUsername + counter;
+        counter++;
+      }
+      const now = new Date().toISOString();
+      const randomHash = hashPassword(crypto.randomBytes(32).toString('hex'));
+      runSQL(
+        `INSERT INTO users (username, password_hash, created_at, email, google_id, auth_provider, email_verified, full_name)
+         VALUES (?, ?, ?, ?, ?, 'google', 1, ?)`,
+        [finalUsername, randomHash, now, googleEmail, googleId, googleName]
+      );
+      user = queryOne('SELECT * FROM users WHERE username = ?', [finalUsername]);
+      logActivity(user.username, 'register_google', null, null, { google_email: googleEmail });
+    }
+
+    runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE id = ?', [new Date().toISOString(), user.id]);
+    logActivity(user.username, 'login_google', null, null, null);
+
+    const sessionToken = uuidv4();
+    sessions.set(sessionToken, user.username);
+
+    res.redirect(`/?google_auth_token=${sessionToken}`);
+  } catch (err) {
+    console.error('Google OAuth error:', err);
+    res.redirect('/?auth_error=server_error');
+  }
+});
+
+// ── Email verification ──
+
+app.get('/api/auth/verify-email', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send('Token ausente');
+
+  const user = queryOne('SELECT * FROM users WHERE verification_token = ?', [token]);
+  if (!user) return res.send(verifyResultHtml('error', 'Token inválido ou já utilizado.'));
+  if (new Date(user.verification_expires) < new Date()) {
+    return res.send(verifyResultHtml('error', 'Token expirado. Solicite um novo na plataforma.'));
+  }
+
+  runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
+  logActivity(user.username, 'email_verified', null, null, null);
+  persist();
+  res.send(verifyResultHtml('success', 'E-mail verificado com sucesso! Você já pode usar a plataforma normalmente.'));
+});
+
+function verifyResultHtml(type, message) {
+  const color = type === 'success' ? '#22c55e' : '#ef4444';
+  const icon = type === 'success' ? '✓' : '✗';
+  return `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>leucaena.earth</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.card{text-align:center;max-width:420px;padding:40px 32px;border:1px solid #1e293b;border-radius:16px;background:#1e293b}
+.icon{font-size:48px;margin-bottom:16px;color:${color}}p{font-size:15px;line-height:1.6;color:#94a3b8;margin-top:12px}
+a{display:inline-block;margin-top:20px;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600}</style>
+</head><body><div class="card"><div class="icon">${icon}</div><p>${message}</p><a href="https://map.leucaena.earth">Ir para a plataforma</a></div></body></html>`;
+}
+
+app.post('/api/auth/resend-verification', requireAuth, async (req, res) => {
+  const user = queryOne('SELECT * FROM users WHERE username = ?', [req.username]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (user.email_verified) return res.json({ success: true, already_verified: true });
+  if (!user.email) return res.status(400).json({ error: 'Nenhum e-mail cadastrado' });
+  if (!resend) return res.status(500).json({ error: 'Serviço de e-mail não configurado' });
+
+  const verifyToken = uuidv4();
+  const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  runSQL('UPDATE users SET verification_token = ?, verification_expires = ? WHERE id = ?', [verifyToken, verifyExpires, user.id]);
+
+  const baseUrl = getBaseUrl(req);
+  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+  try {
+    await resend.emails.send({
+      from: RESEND_FROM,
+      to: user.email,
+      subject: 'Verifique seu e-mail — leucaena.earth',
+      html: `<p>Olá <strong>${user.username}</strong>,</p>
+             <p>Clique no link abaixo para verificar seu e-mail:</p>
+             <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
+             <p>— leucaena.earth</p>`
+    });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Resend error:', e.message);
+    res.status(500).json({ error: 'Falha ao enviar e-mail' });
+  }
+});
+
+// ── Link Google to existing profile ──
+
+app.post('/api/profile/link-google', requireAuth, (req, res) => {
+  const user = queryOne('SELECT * FROM users WHERE username = ?', [req.username]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (user.google_id) return res.json({ success: true, already_linked: true });
+  res.json({ redirect: '/auth/google?link=true' });
 });
 
 // ── Password reset ──
@@ -577,7 +874,7 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -596,9 +893,8 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
     u.mask_count = maskMap[u.username] || 0;
     u.mask_area_ha = Math.round((areaMap[u.username] || 0) * 100) / 100;
   }
-  const passcode = isAdmin(req.username) ? getNextPasscode() : null;
   const onlineUsernames = Array.from(connectedUsers.values()).map(u => u.username);
-  res.json({ users, nextPasscode: passcode, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100, callerRole: getUserRole(req.username), onlineUsers: onlineUsernames });
+  res.json({ users, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100, callerRole: getUserRole(req.username), onlineUsers: onlineUsernames });
 });
 
 app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
@@ -681,6 +977,7 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
     if (uname === user.username) sessions.delete(token);
   }
 
+  runSQL('UPDATE users SET email = NULL, google_id = NULL, verification_token = NULL, verification_expires = NULL WHERE id = ?', [Number(req.params.id)]);
   runSQL('DELETE FROM users WHERE id = ?', [Number(req.params.id)]);
   logActivity(req.username, 'user_delete', null, null, { deleted_user: user.username, deleted_role: user.role });
   persist();
@@ -717,6 +1014,34 @@ app.put('/api/admin/users/:id/tester-mode', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Apenas Super Admin pode alterar nomes de usuário' });
+  const { new_username } = req.body;
+  if (!new_username || !/^[a-z0-9.]+$/.test(new_username) || !/[a-z]/.test(new_username)) {
+    return res.status(400).json({ error: 'Nome de usuário inválido. Use apenas letras minúsculas, números e ponto.' });
+  }
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  const oldUsername = user.username;
+  if (oldUsername === new_username) return res.json({ success: true });
+  const existing = queryOne('SELECT id FROM users WHERE username = ?', [new_username]);
+  if (existing) return res.status(409).json({ error: 'Nome de usuário já em uso' });
+
+  runSQL('UPDATE users SET username = ? WHERE id = ?', [new_username, Number(req.params.id)]);
+  runSQL('UPDATE polygons SET created_by = ? WHERE created_by = ?', [new_username, oldUsername]);
+  runSQL('UPDATE grid_cells SET locked_by = ? WHERE locked_by = ?', [new_username, oldUsername]);
+  runSQL('UPDATE grid_cells SET finished_by = ? WHERE finished_by = ?', [new_username, oldUsername]);
+  try { runSQL('UPDATE activity_logs SET username = ? WHERE username = ?', [new_username, oldUsername]); } catch (e) { /* ignore */ }
+
+  for (const [token, sessUser] of sessions.entries()) {
+    if (sessUser === oldUsername) sessions.set(token, new_username);
+  }
+
+  logActivity(req.username, 'username_change', null, null, { from: oldUsername, to: new_username });
+  persist();
+  res.json({ success: true, old_username: oldUsername, new_username });
+});
+
 app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   const { is_founder } = req.body;
@@ -738,10 +1063,7 @@ app.post('/api/admin/users/:id/reset-token', requireAuth, (req, res) => {
   res.json({ success: true, code, username: user.username, expiresInMinutes: RESET_TOKEN_TTL / 60000 });
 });
 
-app.get('/api/admin/passcode', requireAuth, (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
-  res.json({ passcode: getNextPasscode() });
-});
+// [REMOVED] /api/admin/passcode — passcode system removed
 
 app.get('/api/admin/logs', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
@@ -875,7 +1197,7 @@ app.get('/api/grid', (req, res) => {
   res.json({ type: 'FeatureCollection', features });
 });
 
-app.put('/api/grid/:id/status', requireAuth, (req, res) => {
+app.put('/api/grid/:id/status', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const username = req.username;
@@ -910,7 +1232,7 @@ app.put('/api/grid/:id/status', requireAuth, (req, res) => {
 });
 
 // Lock: cell → in_use, append locker to worked_by (comma-separated attribution trail).
-app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
+app.post('/api/grid/:id/lock', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const username = req.username;
 
@@ -940,7 +1262,7 @@ app.post('/api/grid/:id/lock', requireAuth, (req, res) => {
   res.json({ success: true, worked_by: workedBy.join(',') });
 });
 
-app.post('/api/grid/:id/heartbeat', requireAuth, (req, res) => {
+app.post('/api/grid/:id/heartbeat', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(id)]);
   if (!cell || cell.locked_by !== req.username) return res.status(400).json({ error: 'Not locked by you' });
@@ -949,7 +1271,7 @@ app.post('/api/grid/:id/heartbeat', requireAuth, (req, res) => {
 });
 
 // Unlock: clear lock; if client sends not_yet_finished, refine to mapping / no_points / not_yet_finished; finished runs validateFinished.
-app.post('/api/grid/:id/unlock', requireAuth, (req, res) => {
+app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const username = req.username;
@@ -1063,7 +1385,7 @@ app.get('/api/polygons', (req, res) => {
   res.json({ type: 'FeatureCollection', features });
 });
 
-app.post('/api/polygons', requireAuth, (req, res) => {
+app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
   const { grid_cell_id, geometry } = req.body;
   const username = req.username;
   if (!geometry || !grid_cell_id) {
@@ -1099,7 +1421,7 @@ app.post('/api/polygons', requireAuth, (req, res) => {
   res.json(polygon);
 });
 
-app.put('/api/polygons/:id', requireAuth, (req, res) => {
+app.put('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const { geometry } = req.body;
   const username = req.username;
@@ -1126,7 +1448,7 @@ app.put('/api/polygons/:id', requireAuth, (req, res) => {
   res.json({ success: true, area_ha: areaHa });
 });
 
-app.delete('/api/polygons/:id', requireAuth, (req, res) => {
+app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const username = req.username;
 
@@ -1342,7 +1664,7 @@ app.get('/api/points', (req, res) => {
   res.json({ type: 'FeatureCollection', features });
 });
 
-app.post('/api/points', requireAuth, (req, res) => {
+app.post('/api/points', requireAuth, requireVerified, (req, res) => {
   const { lat, lng } = req.body;
   const username = req.username;
 
@@ -1394,7 +1716,7 @@ app.post('/api/points', requireAuth, (req, res) => {
   res.json(pointData);
 });
 
-app.delete('/api/points/:id', requireAuth, (req, res) => {
+app.delete('/api/points/:id', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const username = req.username;
 
@@ -1437,7 +1759,7 @@ app.delete('/api/points/:id', requireAuth, (req, res) => {
   res.json({ success: true, gridStatusChanged });
 });
 
-app.put('/api/points/:id/validity', requireAuth, (req, res) => {
+app.put('/api/points/:id/validity', requireAuth, requireVerified, (req, res) => {
   if (!isTeamOrAbove(req.username)) {
     return res.status(403).json({ error: 'Apenas membros e administradores podem alterar a validade de pontos' });
   }
@@ -1542,6 +1864,8 @@ app.get('/api/users', (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
+
+  socket.emit('users:updated', Array.from(connectedUsers.values()));
 
   socket.on('user:join', (data) => {
     connectedUsers.set(socket.id, {

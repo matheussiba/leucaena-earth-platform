@@ -1088,6 +1088,7 @@ window.LeucenaDrawing = (function () {
       renderPolygon(result.id, geometry, result, false);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaved'), 'success');
+      if (typeof LeucenaApp.onPolygonSaved === 'function') LeucenaApp.onPolygonSaved();
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaveFail'), 'error');
     }

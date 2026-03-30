@@ -2,10 +2,21 @@ window.LeucenaCollab = (function () {
   // Socket.IO client: propagates cell locks, polygon CRUD, and point CRUD to all connected clients.
   let socket = null;
   let username = null;
+  let _anonSocket = null;
+
+  function initAnonymous() {
+    if (_anonSocket || socket) return;
+    _anonSocket = io();
+    _anonSocket.on('users:updated', (users) => {
+      renderUsersList(users);
+      document.getElementById('user-count').textContent = users.length;
+    });
+  }
 
   function init(user) {
     if (socket && username === user) return;
     username = user;
+    if (_anonSocket) { _anonSocket.disconnect(); _anonSocket = null; }
     if (socket) { socket.disconnect(); }
     socket = io();
 
@@ -126,5 +137,5 @@ window.LeucenaCollab = (function () {
     }
   }
 
-  return { init, notifyEditingCell };
+  return { init, initAnonymous, notifyEditingCell };
 })();

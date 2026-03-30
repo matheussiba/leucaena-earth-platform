@@ -22,12 +22,6 @@ window.LeucenaI18n = (function () {
     'auth.registerSubtitle': { pt: 'Crie uma conta para começar a mapear', en: 'Create an account to start mapping', es: 'Cree una cuenta para empezar a mapear' },
     'auth.userPlaceholder': { pt: 'joao.silva', en: 'joao.silva', es: 'joao.silva' },
     'auth.passPlaceholder': { pt: 'Senha', en: 'Password', es: 'Contraseña' },
-    'auth.passcodePlaceholder': { pt: 'Código de acesso', en: 'Access code', es: 'Código de acceso' },
-    'auth.passcodeHint': {
-      pt: 'Se não possui o código, envie um e-mail para <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>',
-      en: 'If you don\'t have the code, email <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>',
-      es: 'Si no tiene el código, envíe un correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>'
-    },
     'auth.emailPlaceholder': { pt: 'seu@email.com', en: 'your@email.com', es: 'su@email.com' },
     'auth.usernameHint': { pt: 'Apenas letras minúsculas, números e ponto', en: 'Only lowercase letters, numbers, and dot', es: 'Solo letras minúsculas, números y punto' },
     'auth.usernameInvalid': { pt: 'Usuário inválido. Use apenas letras minúsculas, números e ponto (ex: joao.silva)', en: 'Invalid username. Use only lowercase letters, numbers, and dot (e.g. joao.silva)', es: 'Usuario inválido. Use solo letras minúsculas, números y punto (ej: joao.silva)' },
@@ -41,6 +35,24 @@ window.LeucenaI18n = (function () {
     'auth.loginToEdit': { pt: 'Faça login para Editar', en: 'Sign in to Edit', es: 'Inicie sesión para Editar' },
     'auth.logout': { pt: 'Sair', en: 'Logout', es: 'Salir' },
     'auth.forgotPassword': { pt: 'Esqueci minha senha', en: 'Forgot my password', es: 'Olvidé mi contraseña' },
+    'auth.orSeparator': { pt: 'ou', en: 'or', es: 'o' },
+    'auth.googleSignIn': { pt: 'Entrar com Google', en: 'Sign in with Google', es: 'Iniciar sesión con Google' },
+    'auth.googleSignUp': { pt: 'Cadastrar com Google', en: 'Sign up with Google', es: 'Registrarse con Google' },
+    'auth.verifyEmailSent': { pt: 'Um e-mail de verificação foi enviado para {0}. Verifique sua caixa de entrada.', en: 'A verification email was sent to {0}. Check your inbox.', es: 'Se envió un correo de verificación a {0}. Revise su bandeja.' },
+    'auth.resendVerification': { pt: 'Reenviar e-mail de verificação', en: 'Resend verification email', es: 'Reenviar correo de verificación' },
+    'auth.resendSuccess': { pt: 'E-mail de verificação reenviado!', en: 'Verification email resent!', es: '¡Correo de verificación reenviado!' },
+    'auth.verificationRequired': { pt: 'Verifique seu e-mail para poder editar o mapa.', en: 'Verify your email to be able to edit the map.', es: 'Verifique su correo para poder editar el mapa.' },
+    'auth.emailNotVerifiedAction': { pt: 'Verifique seu e-mail antes de usar esta função.', en: 'Verify your email before using this feature.', es: 'Verifique su correo antes de usar esta función.' },
+    'auth.verifyLinkSent': { pt: 'Enviamos um link de verificação para {0}. Verifique sua caixa de entrada.', en: 'We sent a verification link to {0}. Check your inbox.', es: 'Enviamos un enlace de verificación a {0}. Revise su bandeja.' },
+    'auth.verifyLinkRecentlySent': { pt: 'Um link de verificação já foi enviado para {0}. Verifique sua caixa de entrada ou aguarde 2 minutos.', en: 'A verification link was already sent to {0}. Check your inbox or wait 2 minutes.', es: 'Ya se envió un enlace de verificación a {0}. Revise su bandeja o espere 2 minutos.' },
+    'auth.noEmailContactAdmin': { pt: 'Seu cadastro não tem e-mail. Entre em contato com o administrador.', en: 'Your account has no email. Contact the administrator.', es: 'Su cuenta no tiene correo. Contacte al administrador.' },
+    'auth.migrationBanner': { pt: 'Vincule sua conta ao Google para login mais rápido e seguro', en: 'Link your account to Google for faster and safer login', es: 'Vincule su cuenta a Google para un inicio de sesión más rápido y seguro' },
+    'auth.migrationBannerLink': { pt: 'Vincular agora', en: 'Link now', es: 'Vincular ahora' },
+    'auth.migrationBannerDismiss': { pt: 'Depois', en: 'Later', es: 'Después' },
+    'profile.linkGoogle': { pt: 'Vincular conta Google', en: 'Link Google account', es: 'Vincular cuenta de Google' },
+    'profile.googleLinked': { pt: 'Conta Google vinculada', en: 'Google account linked', es: 'Cuenta de Google vinculada' },
+    'profile.emailNotVerified': { pt: 'E-mail não verificado', en: 'Email not verified', es: 'Correo no verificado' },
+    'profile.emailVerified': { pt: 'E-mail verificado', en: 'Email verified', es: 'Correo verificado' },
 
     // ── Top bar ──
     'topbar.export': { pt: 'Exportar', en: 'Export', es: 'Exportar' },
@@ -158,7 +170,6 @@ window.LeucenaI18n = (function () {
 
     // ── Admin ──
     'admin.usersTitle': { pt: 'Painel do Admin', en: 'Admin Panel', es: 'Panel de Admin' },
-    'admin.nextPasscode': { pt: 'Próximo código de acesso:', en: 'Next access code:', es: 'Próximo código de acceso:' },
     'admin.changePassword': { pt: 'Alterar Senha', en: 'Change Password', es: 'Cambiar Contraseña' },
     'admin.deleteUser': { pt: 'Excluir', en: 'Delete', es: 'Eliminar' },
     'admin.confirmDelete': { pt: 'Tem certeza que deseja excluir o usuário "{0}"? As máscaras serão transferidas para o usuário "deleted".', en: 'Are you sure you want to delete user "{0}"? Masks will be transferred to the "deleted" user.', es: '¿Está seguro de que desea eliminar al usuario "{0}"? Las máscaras serán transferidas al usuario "deleted".' },
@@ -182,7 +193,6 @@ window.LeucenaI18n = (function () {
     'admin.viewAsAdmin': { pt: 'Ver como Admin', en: 'View as Admin', es: 'Ver como Admin' },
     'admin.totalMasks': { pt: 'Total de máscaras', en: 'Total masks', es: 'Total de máscaras' },
     'admin.totalArea': { pt: 'Área total mapeada', en: 'Total mapped area', es: 'Área total mapeada' },
-    'admin.copyPasscode': { pt: 'Copiar código', en: 'Copy code', es: 'Copiar código' },
     'admin.exportCsv': { pt: 'Exportar Usuários', en: 'Export Users', es: 'Exportar Usuarios' },
     'admin.exportLogs': { pt: 'Logs (48h)', en: 'Logs (48h)', es: 'Logs (48h)' },
     'admin.copyRecentLogs': { pt: 'Copiar log (5 min)', en: 'Copy log (5 min)', es: 'Copiar log (5 min)' },
@@ -212,6 +222,9 @@ window.LeucenaI18n = (function () {
     'admin.resetCodeGenerated': { pt: 'Código de recuperação para "{0}":', en: 'Recovery code for "{0}":', es: 'Código de recuperación para "{0}":' },
     'admin.resetCodeExpires': { pt: 'Válido por {0} minutos.', en: 'Valid for {0} minutes.', es: 'Válido por {0} minutos.' },
     'admin.resetCodeCopied': { pt: 'Código copiado para a área de transferência', en: 'Code copied to clipboard', es: 'Código copiado al portapapeles' },
+    'admin.renameUser': { pt: 'Renomear', en: 'Rename', es: 'Renombrar' },
+    'admin.renamePrompt': { pt: 'Novo nome de usuário para "{0}":', en: 'New username for "{0}":', es: 'Nuevo nombre de usuario para "{0}":' },
+    'admin.renameSuccess': { pt: 'Usuário "{0}" renomeado para "{1}"', en: 'User "{0}" renamed to "{1}"', es: 'Usuario "{0}" renombrado a "{1}"' },
     'admin.createdAt': { pt: 'Criado em', en: 'Created', es: 'Creado' },
     'admin.lastAccess': { pt: 'Último acesso', en: 'Last access', es: 'Último acceso' },
     'admin.activeNow': { pt: 'Ativo agora', en: 'Active now', es: 'Activo ahora' },
@@ -278,11 +291,21 @@ window.LeucenaI18n = (function () {
       es: 'La leyenda explica los colores y símbolos que ve en el mapa.'
     },
     'tour.step5': {
+      pt: 'Alterne entre a vista de satélite e o mapa padrão para facilitar a identificação de leucaenas.',
+      en: 'Switch between satellite view and the standard map to help identify leucaenas.',
+      es: 'Alterne entre la vista satelital y el mapa estándar para facilitar la identificación de leucaenas.'
+    },
+    'tour.step6': {
+      pt: 'Ative os rótulos para exibir nomes de ruas e referências no mapa.',
+      en: 'Enable labels to show street names and references on the map.',
+      es: 'Active las etiquetas para mostrar nombres de calles y referencias en el mapa.'
+    },
+    'tour.step7': {
       pt: 'Faça login ou crie sua conta para começar a desenhar polígonos de leucaena!',
       en: 'Log in or create your account to start drawing leucaena polygons!',
       es: '¡Inicie sesión o cree su cuenta para empezar a dibujar polígonos de leucaena!'
     },
-    'tour.step6': {
+    'tour.step8': {
       pt: 'Depois de logado, clique aqui para editar seu perfil e ver suas informações.',
       en: 'After logging in, click here to edit your profile and see your info.',
       es: 'Después de iniciar sesión, haga clic aquí para editar su perfil y ver su información.'
@@ -299,6 +322,7 @@ window.LeucenaI18n = (function () {
     'reset.newPasswordPlaceholder': { pt: 'Nova senha (mínimo 3 caracteres)', en: 'New password (min. 3 characters)', es: 'Nueva contraseña (mín. 3 caracteres)' },
     'reset.submit': { pt: 'Redefinir Senha', en: 'Reset Password', es: 'Restablecer Contraseña' },
     'reset.success': { pt: 'Senha redefinida com sucesso! Redirecionando para o login...', en: 'Password reset successfully! Redirecting to login...', es: 'Contraseña restablecida exitosamente! Redirigiendo al login...' },
+    'reset.contactHint': { pt: 'Em caso de qualquer problema, entre em contato: <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>', en: 'If you have any issues, contact: <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>', es: 'Si tiene algún problema, contacte: <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>' },
     'reset.backToLogin': { pt: 'Voltar ao login', en: 'Back to login', es: 'Volver al login' },
 
     // ── Profile (Quem Somos) ──
@@ -423,7 +447,24 @@ window.LeucenaI18n = (function () {
     // ── Point markers ──
     'point.title': { pt: 'Ponto #{0}', en: 'Point #{0}', es: 'Punto #{0}' },
     'point.titleInvalid': { pt: 'Ponto #{0} (inválido)', en: 'Point #{0} (invalid)', es: 'Punto #{0} (inválido)' },
-    'point.titleDoubt': { pt: 'Ponto #{0} (incerto)', en: 'Point #{0} (uncertain)', es: 'Punto #{0} (incierto)' }
+    'point.titleDoubt': { pt: 'Ponto #{0} (incerto)', en: 'Point #{0} (uncertain)', es: 'Punto #{0} (incierto)' },
+
+    // ── Ranking ──
+    'ranking.title': { pt: 'Ranking de Colaboradores', en: 'Collaborators Ranking', es: 'Ranking de Colaboradores' },
+    'ranking.position': { pt: 'Você está em {0}º lugar de {1} colaboradores', en: 'You are in {0}th place out of {1} collaborators', es: 'Estás en {0}º lugar de {1} colaboradores' },
+    'ranking.stats': { pt: '{0} máscaras · {1} ha mapeados', en: '{0} masks · {1} ha mapped', es: '{0} máscaras · {1} ha mapeados' },
+    'ranking.widgetPosition': { pt: 'Ranking: {0}º de {1}', en: 'Ranking: {0}th of {1}', es: 'Ranking: {0}º de {1}' },
+    'ranking.widgetZero': { pt: 'Comece a mapear! Veja como', en: 'Start mapping! See how', es: '¡Empieza a mapear! Mira cómo' },
+    'ranking.zeroMasksMsg': { pt: 'Você ainda não mapeou nenhuma área. Comece agora!', en: "You haven't mapped any area yet. Start now!", es: '¡Aún no has mapeado ningún área. Empieza ahora!' },
+    'ranking.howToMap': { pt: 'Como mapear', en: 'How to map', es: 'Cómo mapear' },
+    'ranking.chooseCell': { pt: 'Escolher célula', en: 'Choose cell', es: 'Elegir celda' },
+    'ranking.maskCount': { pt: '{0} máscaras', en: '{0} masks', es: '{0} máscaras' },
+    'ranking.area': { pt: '{0} ha', en: '{0} ha', es: '{0} ha' },
+    'ranking.medalTooltip': { pt: '{0}º lugar no mapeamento de polígonos de leucaena', en: '{0}th place in leucaena polygon mapping', es: '{0}º lugar en el mapeo de polígonos de leucaena' },
+    'ranking.firstMaskTitle': { pt: 'Primeira máscara!', en: 'First mask!', es: '¡Primera máscara!' },
+    'ranking.firstMaskMsg': { pt: 'Parabéns! Você acabou de criar sua primeira máscara de leucaena. Continue mapeando para subir no ranking!', en: 'Congratulations! You just created your first leucaena mask. Keep mapping to climb the ranking!', es: '¡Felicidades! Acabas de crear tu primera máscara de leucaena. ¡Sigue mapeando para subir en el ranking!' },
+    'ranking.rankUpTitle': { pt: 'Subiu no ranking!', en: 'Rank up!', es: '¡Subiste en el ranking!' },
+    'ranking.rankUpMsg': { pt: 'Você subiu para o {0}º lugar no ranking de colaboradores!', en: 'You moved up to {0}th place in the collaborators ranking!', es: '¡Subiste al {0}º lugar en el ranking de colaboradores!' }
   };
 
   function t(key, ...args) {
@@ -580,7 +621,7 @@ window.LeucenaI18n = (function () {
 
     '<div class="guide-video"><h3>📺 Vídeo tutorial</h3><p>Assista ao vídeo abaixo para ver o passo a passo completo do mapeamento:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="Como mapear no leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
 
-    step(1, 'Crie sua conta', '<p>No canto superior direito, clique em <strong>"Entrar"</strong> e depois em <strong>"Cadastrar"</strong>. Você precisará de um <strong>código de acesso</strong> — solicite pelo e-mail <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
+    step(1, 'Crie sua conta', '<p>No canto superior direito, clique em <strong>"Entrar"</strong>. Você pode usar sua <strong>conta Google</strong> ou criar uma conta com <strong>nome de usuário e senha</strong>.</p>') +
 
     step(2, 'Entenda o mapa', '<p>O mapa está dividido em <strong>células (quadrados)</strong>. Cada célula tem um status indicado pela cor:</p>' +
       '<ul>' +
@@ -638,7 +679,7 @@ window.LeucenaI18n = (function () {
 
     '<div class="guide-video"><h3>📺 Video tutorial</h3><p>Watch the video below for a complete step-by-step mapping walkthrough:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="How to map on leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
 
-    step(1, 'Create your account', '<p>In the upper right corner, click <strong>"Sign In"</strong> then <strong>"Register"</strong>. You will need an <strong>access code</strong> — request one by emailing <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
+    step(1, 'Create your account', '<p>In the upper right corner, click <strong>"Sign In"</strong>. You can use your <strong>Google account</strong> or create an account with a <strong>username and password</strong>.</p>') +
 
     step(2, 'Understand the map', '<p>The map is divided into <strong>cells (squares)</strong>. Each cell has a status indicated by its color:</p>' +
       '<ul>' +
@@ -696,7 +737,7 @@ window.LeucenaI18n = (function () {
 
     '<div class="guide-video"><h3>📺 Video tutorial</h3><p>Mire el video a continuación para ver el paso a paso completo del mapeo:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="Cómo mapear en leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
 
-    step(1, 'Cree su cuenta', '<p>En la esquina superior derecha, haga clic en <strong>"Iniciar Sesión"</strong> y luego en <strong>"Registrarse"</strong>. Necesitará un <strong>código de acceso</strong> — solicítelo por correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.</p>') +
+    step(1, 'Cree su cuenta', '<p>En la esquina superior derecha, haga clic en <strong>"Iniciar Sesión"</strong>. Puede usar su <strong>cuenta de Google</strong> o crear una cuenta con <strong>nombre de usuario y contraseña</strong>.</p>') +
 
     step(2, 'Entienda el mapa', '<p>El mapa está dividido en <strong>celdas (cuadrados)</strong>. Cada celda tiene un estado indicado por su color:</p>' +
       '<ul>' +
@@ -885,11 +926,9 @@ window.LeucenaI18n = (function () {
   function getCollaborateContentPT() {
     return `<h2>Seja Colaborador</h2>
 <p>Você pode contribuir com o mapeamento de <em>Leucaena leucocephala</em> no estado de São Paulo. Veja como:</p>
-<h3>1. Solicite o código de acesso</h3>
-<p>Envie um e-mail para <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a> solicitando seu código de acesso.</p>
-<h3>2. Crie sua conta</h3>
-<p>Clique em <strong>"Entrar"</strong> no canto superior direito, depois em <strong>"Cadastrar"</strong>. Informe um nome de usuário, senha e o código de acesso recebido.</p>
-<h3>3. Comece a mapear!</h3>
+<h3>1. Crie sua conta</h3>
+<p>Clique em <strong>"Entrar"</strong> no canto superior direito. Você pode se cadastrar com sua <strong>conta Google</strong> (mais rápido) ou com <strong>nome de usuário e senha</strong>. Se optar por e-mail/senha, um e-mail de verificação será enviado.</p>
+<h3>2. Comece a mapear!</h3>
 <p>Selecione uma célula do grid, clique em <strong>"Bloquear e Editar"</strong> e comece a desenhar máscaras de leucena usando as ferramentas de edição.</p>
 <h3>Requisitos</h3>
 <ul>
@@ -902,11 +941,9 @@ window.LeucenaI18n = (function () {
   function getCollaborateContentEN() {
     return `<h2>Become a Collaborator</h2>
 <p>You can contribute to the mapping of <em>Leucaena leucocephala</em> in the state of São Paulo. Here's how:</p>
-<h3>1. Request the access code</h3>
-<p>Send an email to <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a> requesting your access code.</p>
-<h3>2. Create your account</h3>
-<p>Click <strong>"Sign In"</strong> in the upper right corner, then <strong>"Register"</strong>. Enter a username, password, and the access code you received.</p>
-<h3>3. Start mapping!</h3>
+<h3>1. Create your account</h3>
+<p>Click <strong>"Sign In"</strong> in the upper right corner. You can register with your <strong>Google account</strong> (fastest) or with a <strong>username and password</strong>. If you choose email/password, a verification email will be sent.</p>
+<h3>2. Start mapping!</h3>
 <p>Select a grid cell, click <strong>"Lock & Edit"</strong> and start drawing Leucaena masks using the editing tools.</p>
 <h3>Requirements</h3>
 <ul>
@@ -919,11 +956,9 @@ window.LeucenaI18n = (function () {
   function getCollaborateContentES() {
     return `<h2>Sea Colaborador</h2>
 <p>Puede contribuir con el mapeo de <em>Leucaena leucocephala</em> en el estado de São Paulo. Así es como:</p>
-<h3>1. Solicite el código de acceso</h3>
-<p>Envíe un correo a <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a> solicitando su código de acceso.</p>
-<h3>2. Cree su cuenta</h3>
-<p>Haga clic en <strong>"Iniciar Sesión"</strong> en la esquina superior derecha, luego en <strong>"Registrarse"</strong>. Ingrese un nombre de usuario, contraseña y el código de acceso recibido.</p>
-<h3>3. ¡Empiece a mapear!</h3>
+<h3>1. Cree su cuenta</h3>
+<p>Haga clic en <strong>"Iniciar Sesión"</strong> en la esquina superior derecha. Puede registrarse con su <strong>cuenta de Google</strong> (más rápido) o con <strong>nombre de usuario y contraseña</strong>. Si elige correo/contraseña, se enviará un correo de verificación.</p>
+<h3>2. ¡Empiece a mapear!</h3>
 <p>Seleccione una celda del grid, haga clic en <strong>"Bloquear y Editar"</strong> y comience a dibujar máscaras de leucaena usando las herramientas de edición.</p>
 <h3>Requisitos</h3>
 <ul>

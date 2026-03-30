@@ -27,6 +27,13 @@
       <h2 id="auth-modal-title" data-i18n="auth.login">Entrar</h2>
       <p id="auth-modal-subtitle" class="modal-subtitle" data-i18n="auth.loginSubtitle">Faça login para editar o mapa</p>
       <div id="auth-error" class="auth-error hidden"></div>
+      <div id="auth-success" class="auth-success hidden"></div>
+      <!-- Google OAuth button -->
+      <button type="button" class="btn-google" id="auth-google-btn">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        <span id="auth-google-label" data-i18n="auth.googleSignIn">Entrar com Google</span>
+      </button>
+      <div class="auth-divider"><span data-i18n="auth.orSeparator">ou</span></div>
       <form id="auth-form">
         <input type="text" id="auth-username" placeholder="joao.silva" data-i18n-placeholder="auth.userPlaceholder" required autocomplete="username" minlength="2" maxlength="30" pattern="[a-z0-9.]+">
         <p class="auth-field-hint hidden" id="auth-username-hint" data-i18n="auth.usernameHint">Apenas letras minúsculas, números e ponto</p>
@@ -36,10 +43,6 @@
         </div>
         <div id="email-group" class="hidden">
           <input type="email" id="auth-email" placeholder="seu@email.com" data-i18n-placeholder="auth.emailPlaceholder" autocomplete="email" maxlength="200">
-        </div>
-        <div id="passcode-group" class="hidden">
-          <input type="text" id="auth-passcode" placeholder="Código de acesso" data-i18n-placeholder="auth.passcodePlaceholder" autocomplete="off" maxlength="10">
-          <p class="passcode-hint" data-i18n-html="auth.passcodeHint">Se não possui o código, envie um e-mail para <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p>
         </div>
         <button type="submit" id="auth-submit-btn" data-i18n="auth.login">Entrar</button>
       </form>
@@ -70,6 +73,7 @@
         </div>
         <button type="submit" class="btn btn-primary btn-full" data-i18n="reset.submit">Redefinir Senha</button>
       </form>
+      <p class="reset-contact-hint" data-i18n-html="reset.contactHint">Em caso de qualquer problema, entre em contato: <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p>
       <p class="auth-switch">
         <a href="#" id="reset-back-login" data-i18n="reset.backToLogin">Voltar ao login</a>
       </p>
@@ -165,6 +169,20 @@
     </div>
   </div>
 
+  <!-- Modal: Renomear usuário (superadmin) -->
+  <div id="admin-rename-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-small">
+      <button id="admin-rename-modal-close" class="modal-close">&times;</button>
+      <h3 id="admin-rename-modal-title">Renomear usuário</h3>
+      <div class="admin-pw-modal-body">
+        <input type="text" id="admin-rename-modal-input" placeholder="novo.nome.de.usuario" autocomplete="off" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;">
+        <p id="admin-rename-modal-hint" style="margin:6px 0 10px;font-size:12px;color:var(--text-tertiary);">Apenas letras minúsculas, números e ponto.</p>
+        <p id="admin-rename-modal-error" style="margin:0 0 8px;font-size:12px;color:var(--danger);display:none;"></p>
+        <button type="button" class="btn btn-primary btn-full" id="admin-rename-modal-confirm">Renomear</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Admin: Editor de Usuários -->
   <div id="admin-users-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-docs">
@@ -177,7 +195,6 @@
         </label>
       </div>
       <div id="admin-global-metrics" class="admin-global-metrics"></div>
-      <div id="admin-passcode-display" class="admin-passcode-box"></div>
       <div id="admin-users-list" class="admin-users-list"></div>
       <!-- Modal inline: Criar Usuário -->
       <div id="admin-create-user" class="admin-create-user-section hidden">
@@ -271,6 +288,15 @@
           <input type="url" id="profile-linkedin" maxlength="200" placeholder="https://www.linkedin.com/in/seu-perfil/">
           <label class="profile-label">Google Scholar</label>
           <input type="url" id="profile-scholar" maxlength="200" placeholder="https://scholar.google.com/citations?user=...">
+        </div>
+        <div id="profile-google-section">
+          <div class="profile-separator"></div>
+          <label class="profile-label">Google</label>
+          <div id="profile-google-status" class="profile-google-status"></div>
+        </div>
+        <div id="profile-email-status-section" class="hidden">
+          <span id="profile-email-badge" class="profile-email-badge"></span>
+          <button type="button" class="btn btn-link btn-small" id="profile-resend-verify" data-i18n="auth.resendVerification">Reenviar e-mail de verificação</button>
         </div>
         <div id="profile-pw-section">
           <div class="profile-separator"></div>
@@ -397,6 +423,37 @@
     </div>
   </div>
 
+  <!-- Modal de Celebracao -->
+  <div id="celebration-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-celebration">
+      <button id="celebration-modal-close" class="modal-close">&times;</button>
+      <div class="celebration-emoji" id="celebration-emoji"></div>
+      <h2 class="celebration-title" id="celebration-title"></h2>
+      <p class="celebration-msg" id="celebration-msg"></p>
+      <button class="btn btn-primary celebration-ok-btn" id="celebration-ok">OK</button>
+    </div>
+  </div>
+
+  <!-- Modal de Ranking -->
+  <div id="ranking-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-ranking">
+      <button id="ranking-modal-close" class="modal-close">&times;</button>
+      <h2 class="ranking-modal-title">
+        <span class="ranking-trophy">🏆</span>
+        <span data-i18n="ranking.title">Ranking de Colaboradores</span>
+      </h2>
+      <div id="ranking-top3" class="ranking-top3"></div>
+      <div id="ranking-user-position" class="ranking-user-position"></div>
+      <div id="ranking-zero-cta" class="ranking-zero-cta hidden">
+        <p data-i18n="ranking.zeroMasksMsg">Você ainda não mapeou nenhuma área. Comece agora!</p>
+        <div class="ranking-zero-buttons">
+          <button class="btn btn-outline" id="ranking-howto-btn" data-i18n="ranking.howToMap">Como mapear</button>
+          <button class="btn btn-primary" id="ranking-choose-cell-btn" data-i18n="ranking.chooseCell">Escolher célula</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- App Principal -->
   <div id="app">
     <!-- Barra Superior -->
@@ -463,6 +520,19 @@
         </button>
       </div>
     </header>
+
+    <!-- Verification required banner -->
+    <div id="verification-banner" class="verification-banner hidden">
+      <span data-i18n="auth.verificationRequired">Verifique seu e-mail para poder editar o mapa.</span>
+      <button type="button" class="btn btn-link btn-small" id="verification-banner-resend" data-i18n="auth.resendVerification">Reenviar e-mail de verificação</button>
+    </div>
+
+    <!-- Migration banner: link Google account -->
+    <div id="migration-banner" class="migration-banner hidden">
+      <span data-i18n="auth.migrationBanner">Vincule sua conta ao Google para login mais rápido e seguro</span>
+      <a href="#" id="migration-banner-link" data-i18n="auth.migrationBannerLink">Vincular agora</a>
+      <button type="button" id="migration-banner-dismiss" class="migration-dismiss" data-i18n="auth.migrationBannerDismiss">Depois</button>
+    </div>
 
     <!-- Banner do Modo de Inserção de Pontos -->
     <div id="insertion-banner" class="insertion-banner hidden">
@@ -612,6 +682,13 @@
             <span id="cell-finished-by" class="cell-detail-value">--</span>
           </div>
           <button class="btn btn-primary btn-full" id="lock-cell-btn" data-i18n="sidebar.lockEdit">Bloquear e Editar</button>
+        </div>
+
+        <!-- Ranking Widget -->
+        <div id="sidebar-ranking-widget" class="sidebar-ranking-widget hidden">
+          <div class="ranking-widget-icon">🏆</div>
+          <div class="ranking-widget-text" id="ranking-widget-text"></div>
+          <div class="ranking-widget-arrow">›</div>
         </div>
 
         <!-- Usuários Online -->

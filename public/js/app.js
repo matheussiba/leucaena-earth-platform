@@ -131,6 +131,15 @@ window.LeucenaApp = (function () {
       if (e.key === 'Enter') document.getElementById('admin-pw-modal-confirm').click();
     });
 
+    const closeRenameModal = () => document.getElementById('admin-rename-modal').classList.add('hidden');
+    document.getElementById('admin-rename-modal-close').addEventListener('click', closeRenameModal);
+    document.getElementById('admin-rename-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeRenameModal();
+    });
+    document.getElementById('admin-rename-modal-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('admin-rename-modal-confirm').click();
+    });
+
     const adminDebugToggle = document.getElementById('admin-debug-toggle');
     if (adminDebugToggle) {
       adminDebugToggle.addEventListener('change', (e) => {
@@ -184,6 +193,37 @@ window.LeucenaApp = (function () {
       });
     });
 
+    // Ranking widget & modal
+    const rankWidget = document.getElementById('sidebar-ranking-widget');
+    if (rankWidget) {
+      rankWidget.addEventListener('click', () => {
+        const data = window._rankingData;
+        if (data && data.user_mask_count === 0) {
+          openGuideModal('howto');
+        } else {
+          openRankingModal();
+        }
+      });
+    }
+    document.getElementById('ranking-modal-close').addEventListener('click', closeRankingModal);
+    document.getElementById('ranking-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeRankingModal();
+    });
+    document.getElementById('ranking-howto-btn').addEventListener('click', () => {
+      closeRankingModal();
+      openGuideModal('howto');
+    });
+    document.getElementById('ranking-choose-cell-btn').addEventListener('click', () => {
+      closeRankingModal();
+      const main = document.getElementById('main-content');
+      if (!main.classList.contains('sidebar-open')) toggleSidebar();
+    });
+    document.getElementById('celebration-modal-close').addEventListener('click', closeCelebration);
+    document.getElementById('celebration-ok').addEventListener('click', closeCelebration);
+    document.getElementById('celebration-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeCelebration();
+    });
+
     document.getElementById('tour-next').addEventListener('click', () => Onboarding.nextStep());
     document.getElementById('tour-skip').addEventListener('click', () => Onboarding.endTour());
     document.getElementById('tour-overlay').addEventListener('click', (e) => {
@@ -207,7 +247,21 @@ window.LeucenaApp = (function () {
 
     document.getElementById('legend-toggle').addEventListener('click', toggleLegend);
 
+    document.getElementById('toggle-users-btn').addEventListener('click', () => {
+      const main = document.getElementById('main-content');
+      if (!main.classList.contains('sidebar-open')) toggleSidebar();
+      const panel = document.getElementById('users-panel');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.initAnonymous) {
+      LeucenaCollab.initAnonymous();
+    }
+
     setupAuthForm();
+    setupGoogleAuth();
+    setupMigrationBanner();
+    setupVerificationBanner();
     tryRestoreSession();
 
     LeucenaI18n.translatePage();
@@ -220,6 +274,7 @@ window.LeucenaApp = (function () {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const modalCloseMap = [
+        ['admin-rename-modal', closeRenameModal],
         ['admin-pw-modal', closePwModal],
         ['auth-modal', closeAuthModal],
         ['reset-modal', closeResetModal],
@@ -234,6 +289,8 @@ window.LeucenaApp = (function () {
         ['profile-modal', closeProfileModal],
         ['guide-modal', closeGuideModal],
         ['dedup-modal', () => { document.getElementById('dedup-modal').classList.add('hidden'); }],
+        ['ranking-modal', closeRankingModal],
+        ['celebration-modal', closeCelebration],
       ];
       for (const [id, closeFn] of modalCloseMap) {
         const el = document.getElementById(id);
@@ -406,12 +463,17 @@ window.LeucenaApp = (function () {
     modal.classList.remove('hidden');
 
     document.getElementById('auth-error').classList.add('hidden');
+    const authSuccess = document.getElementById('auth-success');
+    if (authSuccess) authSuccess.classList.add('hidden');
+    document.getElementById('auth-form').classList.remove('hidden');
+    document.querySelector('.auth-switch').classList.remove('hidden');
+    const googleBtn = document.getElementById('auth-google-btn');
+    if (googleBtn) googleBtn.classList.remove('hidden');
+    const divider = document.querySelector('.auth-divider');
+    if (divider) divider.classList.remove('hidden');
     document.getElementById('auth-username').value = '';
     document.getElementById('auth-password').value = '';
 
-    const passcodeGroup = document.getElementById('passcode-group');
-    const passcodeInput = document.getElementById('auth-passcode');
-    passcodeInput.value = '';
     const emailGroup = document.getElementById('email-group');
     const emailInput = document.getElementById('auth-email');
     emailInput.value = '';
@@ -419,30 +481,29 @@ window.LeucenaApp = (function () {
 
     const t = LeucenaI18n.t;
     const forgotGroup = document.getElementById('auth-forgot-group');
+    const googleLabel = document.getElementById('auth-google-label');
     if (mode === 'login') {
       document.getElementById('auth-modal-title').textContent = t('auth.login');
       document.getElementById('auth-modal-subtitle').textContent = t('auth.loginSubtitle');
       document.getElementById('auth-submit-btn').textContent = t('auth.login');
       document.getElementById('auth-switch-text').textContent = t('auth.noAccount');
       document.getElementById('auth-switch-link').textContent = t('auth.register');
-      passcodeGroup.classList.add('hidden');
-      passcodeInput.removeAttribute('required');
       emailGroup.classList.add('hidden');
       emailInput.removeAttribute('required');
       usernameHint.classList.add('hidden');
       forgotGroup.classList.remove('hidden');
+      if (googleLabel) googleLabel.textContent = t('auth.googleSignIn');
     } else {
       document.getElementById('auth-modal-title').textContent = t('auth.register');
       document.getElementById('auth-modal-subtitle').textContent = t('auth.registerSubtitle');
       document.getElementById('auth-submit-btn').textContent = t('auth.createAccount');
       document.getElementById('auth-switch-text').textContent = t('auth.hasAccount');
       document.getElementById('auth-switch-link').textContent = t('auth.login');
-      passcodeGroup.classList.remove('hidden');
-      passcodeInput.setAttribute('required', 'required');
       emailGroup.classList.remove('hidden');
       emailInput.setAttribute('required', 'required');
       usernameHint.classList.remove('hidden');
       forgotGroup.classList.add('hidden');
+      if (googleLabel) googleLabel.textContent = t('auth.googleSignUp');
     }
     document.getElementById('auth-username').focus();
   }
@@ -522,7 +583,6 @@ window.LeucenaApp = (function () {
     const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
     const payload = { username: user, password: pass };
     if (authMode === 'register') {
-      payload.passcode = document.getElementById('auth-passcode').value.trim();
       payload.email = document.getElementById('auth-email').value.trim();
     }
 
@@ -534,8 +594,35 @@ window.LeucenaApp = (function () {
       });
       const data = await res.json();
       if (!res.ok) {
-        errorEl.textContent = data.error;
-        errorEl.classList.remove('hidden');
+        if (data.code === 'EMAIL_NOT_VERIFIED' && authMode === 'login') {
+          errorEl.classList.add('hidden');
+          const successEl = document.getElementById('auth-success');
+          if (successEl) {
+            successEl.textContent = data.error;
+            successEl.classList.remove('hidden');
+          }
+        } else {
+          errorEl.textContent = data.error;
+          errorEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (data.needs_verification && !data.token) {
+        const email = document.getElementById('auth-email') ? document.getElementById('auth-email').value.trim() : '';
+        const successEl = document.getElementById('auth-success');
+        if (successEl) {
+          successEl.textContent = LeucenaI18n.t('auth.verifyEmailSent', email);
+          successEl.classList.remove('hidden');
+        }
+        document.getElementById('auth-form').classList.add('hidden');
+        document.querySelector('.auth-switch').classList.add('hidden');
+        const forgotGroup = document.getElementById('auth-forgot-group');
+        if (forgotGroup) forgotGroup.classList.add('hidden');
+        const googleBtn = document.getElementById('auth-google-btn');
+        if (googleBtn) googleBtn.classList.add('hidden');
+        const divider = document.querySelector('.auth-divider');
+        if (divider) divider.classList.add('hidden');
         return;
       }
 
@@ -545,6 +632,19 @@ window.LeucenaApp = (function () {
       testerMode = data.tester_mode || 'contributor';
       localStorage.setItem('leucena_token', authToken);
       localStorage.setItem('leucena_username', username);
+
+      _userAuthInfo = {
+        auth_provider: data.auth_provider || 'local',
+        email_verified: !!data.email_verified,
+        has_google: !!data.has_google,
+        login_count: data.login_count || 0,
+        mask_count: data.mask_count || 0,
+        role: data.role || 'contributor'
+      };
+
+      if (data.show_migration_banner) {
+        _showMigrationBanner = true;
+      }
 
       closeAuthModal();
       onLoginSuccess();
@@ -568,6 +668,8 @@ window.LeucenaApp = (function () {
         username = data.username;
         userRole = data.role || 'contributor';
         testerMode = data.tester_mode || 'contributor';
+        if (data.show_migration_banner) _showMigrationBanner = true;
+        _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor' };
         onLoginSuccess();
       } else {
         localStorage.removeItem('leucena_token');
@@ -599,6 +701,15 @@ window.LeucenaApp = (function () {
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
     Onboarding.onLogin();
 
+    if (_showMigrationBanner && !localStorage.getItem('leucena_migration_dismissed')) {
+      const banner = document.getElementById('migration-banner');
+      if (banner) banner.classList.remove('hidden');
+    }
+
+    showVerificationBannerIfNeeded();
+    loadRankingWidget();
+    checkProfileNudge();
+
     if (selectedCellId && selectedCellData) {
       const canLock = !selectedCellData.locked_by;
       if (canLock) {
@@ -606,6 +717,225 @@ window.LeucenaApp = (function () {
       } else {
         selectCell(selectedCellId, selectedCellData);
       }
+    }
+  }
+
+  function showVerificationBannerIfNeeded() {
+    const banner = document.getElementById('verification-banner');
+    if (!banner) return;
+    if (_userAuthInfo.auth_provider === 'google' || _userAuthInfo.email_verified) {
+      banner.classList.add('hidden');
+    } else if (isLoggedIn()) {
+      banner.classList.remove('hidden');
+    }
+  }
+
+  // ── Ranking Widget & Modal ──
+
+  async function loadRankingWidget() {
+    const widget = document.getElementById('sidebar-ranking-widget');
+    if (!widget) return;
+    const role = _userAuthInfo.role || userRole;
+    if (role !== 'contributor' || !isLoggedIn()) {
+      widget.classList.add('hidden');
+      return;
+    }
+    try {
+      const res = await fetch('/api/my-ranking', { headers: authHeaders() });
+      if (!res.ok) { widget.classList.add('hidden'); return; }
+      const data = await res.json();
+      window._rankingData = data;
+      const textEl = document.getElementById('ranking-widget-text');
+      if (data.user_mask_count === 0) {
+        textEl.textContent = LeucenaI18n.t('ranking.widgetZero');
+      } else {
+        textEl.textContent = LeucenaI18n.t('ranking.widgetPosition', data.user_position, data.total_contributors);
+      }
+      widget.classList.remove('hidden');
+    } catch (e) {
+      widget.classList.add('hidden');
+    }
+  }
+
+  function openRankingModal() {
+    const data = window._rankingData;
+    if (!data) return;
+
+    const top3El = document.getElementById('ranking-top3');
+    const posEl = document.getElementById('ranking-user-position');
+    const zeroEl = document.getElementById('ranking-zero-cta');
+    const t = LeucenaI18n.t;
+
+    const medalClasses = ['gold', 'silver', 'bronze'];
+    let top3Html = '';
+    data.top3.forEach((u, i) => {
+      const cls = medalClasses[i] || '';
+      top3Html += '<div class="ranking-top3-item ' + cls + '">' +
+        '<div class="ranking-medal ' + cls + '">' + (i + 1) + '</div>' +
+        '<div class="ranking-top3-name">' + escapeHtmlRanking(u.name) + '</div>' +
+        '<div class="ranking-top3-stats">' + t('ranking.maskCount', u.mask_count) + '<br>' + u.area_ha + ' ha</div>' +
+        '</div>';
+    });
+    top3El.innerHTML = top3Html;
+
+    if (data.user_mask_count === 0) {
+      posEl.innerHTML = '';
+      posEl.style.display = 'none';
+      zeroEl.classList.remove('hidden');
+    } else {
+      posEl.style.display = '';
+      posEl.innerHTML =
+        '<div class="ranking-user-position-text">' + t('ranking.position', data.user_position, data.total_contributors) + '</div>' +
+        '<div class="ranking-user-stats">' + t('ranking.stats', data.user_mask_count, data.user_area_ha) + '</div>';
+      zeroEl.classList.add('hidden');
+    }
+
+    document.getElementById('ranking-modal').classList.remove('hidden');
+  }
+
+  function closeRankingModal() {
+    document.getElementById('ranking-modal').classList.add('hidden');
+  }
+
+  function escapeHtmlRanking(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function showCelebration(emoji, titleKey, msgKey, msgArgs) {
+    const t = LeucenaI18n.t;
+    document.getElementById('celebration-emoji').textContent = emoji;
+    document.getElementById('celebration-title').textContent = t(titleKey);
+    document.getElementById('celebration-msg').textContent = msgArgs ? t(msgKey, ...msgArgs) : t(msgKey);
+    document.getElementById('celebration-modal').classList.remove('hidden');
+  }
+
+  function closeCelebration() {
+    document.getElementById('celebration-modal').classList.add('hidden');
+  }
+
+  async function onPolygonSaved() {
+    if (!isLoggedIn()) return;
+    const role = _userAuthInfo.role || userRole;
+    if (role !== 'contributor') { loadRankingWidget(); return; }
+
+    const prevPosition = window._rankingData ? window._rankingData.user_position : 0;
+    const prevMaskCount = window._rankingData ? window._rankingData.user_mask_count : 0;
+
+    try {
+      const res = await fetch('/api/my-ranking', { headers: authHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      window._rankingData = data;
+
+      const textEl = document.getElementById('ranking-widget-text');
+      const widget = document.getElementById('sidebar-ranking-widget');
+      if (data.user_mask_count === 0) {
+        textEl.textContent = LeucenaI18n.t('ranking.widgetZero');
+      } else {
+        textEl.textContent = LeucenaI18n.t('ranking.widgetPosition', data.user_position, data.total_contributors);
+      }
+      if (widget) widget.classList.remove('hidden');
+
+      if (prevMaskCount === 0 && data.user_mask_count === 1) {
+        showCelebration('🎉', 'ranking.firstMaskTitle', 'ranking.firstMaskMsg');
+      } else if (prevPosition > 0 && data.user_position > 0 && data.user_position < prevPosition) {
+        showCelebration('🏆', 'ranking.rankUpTitle', 'ranking.rankUpMsg', [data.user_position]);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // ── Profile Nudge ──
+
+  function checkProfileNudge() {
+    const role = _userAuthInfo.role || userRole;
+    if (role !== 'contributor') return;
+    if (localStorage.getItem('leucena_profile_nudge') === 'v1') return;
+    const loginCount = _userAuthInfo.login_count || 0;
+    const maskCount = _userAuthInfo.mask_count || 0;
+    if (loginCount >= 2 || maskCount >= 1) {
+      setTimeout(() => {
+        openProfileModal();
+        localStorage.setItem('leucena_profile_nudge', 'v1');
+      }, 1500);
+    }
+  }
+
+  // ── Google OAuth + Migration Banner ──
+
+  let _showMigrationBanner = false;
+  let _userAuthInfo = {};
+
+  function isEmailVerified() {
+    if (_userAuthInfo.auth_provider === 'google') return true;
+    return !!_userAuthInfo.email_verified;
+  }
+
+  function setupGoogleAuth() {
+    const googleBtn = document.getElementById('auth-google-btn');
+    if (googleBtn) {
+      googleBtn.addEventListener('click', () => {
+        window.location.href = '/auth/google';
+      });
+    }
+    handleGoogleAuthReturn();
+  }
+
+  function handleGoogleAuthReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const googleToken = params.get('google_auth_token');
+    const authError = params.get('auth_error');
+
+    if (googleToken) {
+      authToken = googleToken;
+      localStorage.setItem('leucena_token', authToken);
+      window.history.replaceState({}, '', window.location.pathname);
+      tryRestoreSession();
+    } else if (authError) {
+      window.history.replaceState({}, '', window.location.pathname);
+      const errorMap = {
+        no_code: 'Erro na autenticação Google (sem código)',
+        token_failed: 'Falha ao obter token do Google',
+        profile_failed: 'Falha ao obter perfil do Google',
+        server_error: 'Erro interno na autenticação Google'
+      };
+      showToast(errorMap[authError] || 'Erro na autenticação', 'error');
+    }
+  }
+
+  function setupMigrationBanner() {
+    const linkBtn = document.getElementById('migration-banner-link');
+    const dismissBtn = document.getElementById('migration-banner-dismiss');
+    if (linkBtn) {
+      linkBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = '/auth/google';
+      });
+    }
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        const banner = document.getElementById('migration-banner');
+        if (banner) banner.classList.add('hidden');
+        localStorage.setItem('leucena_migration_dismissed', '1');
+      });
+    }
+  }
+
+  function setupVerificationBanner() {
+    const resendBtn = document.getElementById('verification-banner-resend');
+    if (resendBtn) {
+      resendBtn.addEventListener('click', async () => {
+        try {
+          const res = await fetch('/api/auth/resend-verification', { method: 'POST', headers: authHeaders() });
+          const data = await res.json();
+          if (res.ok) {
+            showToast(LeucenaI18n.t('auth.resendSuccess'), 'success');
+          } else {
+            showToast(data.error || 'Erro', 'error');
+          }
+        } catch (e) { showToast(LeucenaI18n.t('auth.connectionError'), 'error'); }
+      });
     }
   }
 
@@ -622,8 +952,10 @@ window.LeucenaApp = (function () {
     { target: '#map',             text: 'tour.step2' },
     { target: '#sidebar-toggle',  text: 'tour.step3' },
     { target: '#legend-toggle',   text: 'tour.step4' },
-    { target: '#login-btn',       text: 'tour.step5' },
-    { target: '#user-badge',      text: 'tour.step6' },
+    { target: '#tool-maptype',    text: 'tour.step5' },
+    { target: '#label-toggle',    text: 'tour.step6' },
+    { target: '#login-btn',       text: 'tour.step7' },
+    { target: '#user-badge',      text: 'tour.step8' },
   ];
 
   const Onboarding = {
@@ -779,9 +1111,16 @@ window.LeucenaApp = (function () {
   async function loadUserProfile() {
     if (!isLoggedIn()) return;
     try {
-      const res = await fetch('/api/profile', { headers: authHeaders() });
+      const res = await fetch('/api/auth/me', { headers: authHeaders() });
       if (res.ok) {
-        const profile = await res.json();
+        const data = await res.json();
+        _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor' };
+        showVerificationBannerIfNeeded();
+        loadRankingWidget();
+      }
+      const profRes = await fetch('/api/profile', { headers: authHeaders() });
+      if (profRes.ok) {
+        const profile = await profRes.json();
         applyProfileToUI(profile);
       }
     } catch (e) { /* ignore */ }
@@ -825,6 +1164,10 @@ window.LeucenaApp = (function () {
         preview.textContent = (targetUser.full_name || targetUser.username).toString().charAt(0).toUpperCase();
       }
       document.getElementById('profile-photo-input').value = '';
+      const googleSectionOther = document.getElementById('profile-google-section');
+      if (googleSectionOther) googleSectionOther.style.display = 'none';
+      const emailStatusOther = document.getElementById('profile-email-status-section');
+      if (emailStatusOther) emailStatusOther.classList.add('hidden');
     } else {
       adminEditingUser = null;
       titleEl.textContent = t('profile.title');
@@ -853,9 +1196,60 @@ window.LeucenaApp = (function () {
         }
         document.getElementById('profile-photo-input').value = '';
         document.getElementById('profile-new-password').value = '';
+
+        updateProfileAuthUI(p);
+        const googleSection = document.getElementById('profile-google-section');
+        if (googleSection) googleSection.style.display = '';
+        const emailStatusSection = document.getElementById('profile-email-status-section');
+        if (emailStatusSection) emailStatusSection.style.display = '';
       } catch (e) { /* ignore */ }
     }
     document.getElementById('profile-modal').classList.remove('hidden');
+  }
+
+  function updateProfileAuthUI(profile) {
+    const t = LeucenaI18n.t;
+    const googleSection = document.getElementById('profile-google-section');
+    const googleStatus = document.getElementById('profile-google-status');
+    const emailStatusSection = document.getElementById('profile-email-status-section');
+    const emailBadge = document.getElementById('profile-email-badge');
+    const resendBtn = document.getElementById('profile-resend-verify');
+
+    if (googleSection && googleStatus) {
+      if (profile.has_google) {
+        googleStatus.innerHTML = '<span class="profile-google-linked">✓ ' + t('profile.googleLinked') + '</span>';
+      } else {
+        googleStatus.innerHTML = '<button type="button" class="btn btn-secondary btn-small" id="profile-link-google-btn">' + t('profile.linkGoogle') + '</button>';
+        const linkBtn = document.getElementById('profile-link-google-btn');
+        if (linkBtn) linkBtn.addEventListener('click', () => { window.location.href = '/auth/google'; });
+      }
+    }
+
+    if (emailStatusSection && emailBadge) {
+      if (profile.email_verified) {
+        emailBadge.className = 'profile-email-badge verified';
+        emailBadge.textContent = '✓ ' + t('profile.emailVerified');
+        emailStatusSection.classList.remove('hidden');
+        if (resendBtn) resendBtn.classList.add('hidden');
+      } else if (profile.email) {
+        emailBadge.className = 'profile-email-badge unverified';
+        emailBadge.textContent = '✗ ' + t('profile.emailNotVerified');
+        emailStatusSection.classList.remove('hidden');
+        if (resendBtn) {
+          resendBtn.classList.remove('hidden');
+          resendBtn.onclick = async () => {
+            try {
+              const res = await fetch('/api/auth/resend-verification', { method: 'POST', headers: authHeaders() });
+              const data = await res.json();
+              if (res.ok) showToast(t('auth.resendSuccess'), 'success');
+              else showToast(data.error || 'Erro', 'error');
+            } catch (e) { showToast(t('auth.connectionError'), 'error'); }
+          };
+        }
+      } else {
+        emailStatusSection.classList.add('hidden');
+      }
+    }
   }
 
   function closeProfileModal() {
@@ -863,6 +1257,12 @@ window.LeucenaApp = (function () {
     const wasAdminEditing = !!adminEditingUser;
     adminEditingUser = null;
     if (wasAdminEditing) openAdminUsersModal();
+
+    const badge = document.getElementById('user-badge');
+    if (badge && !wasAdminEditing) {
+      badge.classList.add('user-badge-pulse');
+      setTimeout(() => badge.classList.remove('user-badge-pulse'), 3200);
+    }
   }
 
   async function changeOwnPassword() {
@@ -963,13 +1363,20 @@ window.LeucenaApp = (function () {
       }
       const data = await res.json();
 
-      function cardHtml(person) {
+      function cardHtml(person, medalIndex) {
         const name = person.full_name || person.username;
         const desc = person.description || '';
         const thumb = person.photo
           ? '<img src="' + person.photo + '" alt="">'
           : name.toString().charAt(0).toUpperCase();
-        return '<div class="about-card"><div class="about-card-thumb">' + thumb + '</div><div class="about-card-info"><div class="about-card-name">' + escapeHtml(name) + '</div><div class="about-card-desc">' + escapeHtml(desc) + '</div></div></div>';
+        let medalHtml = '';
+        if (medalIndex !== undefined && medalIndex < 3) {
+          const medalCls = ['medal-gold', 'medal-silver', 'medal-bronze'][medalIndex];
+          const tooltip = LeucenaI18n.t('ranking.medalTooltip', medalIndex + 1);
+          medalHtml = ' <span class="medal-badge ' + medalCls + '" title="' + escapeHtml(tooltip) + '">' + (medalIndex + 1) + '</span>';
+        }
+        const areaStr = person.area_ha ? ' · ' + person.area_ha + ' ha' : '';
+        return '<div class="about-card"><div class="about-card-thumb">' + thumb + '</div><div class="about-card-info"><div class="about-card-name">' + escapeHtml(name) + medalHtml + '</div><div class="about-card-desc">' + escapeHtml(desc) + areaStr + '</div></div></div>';
       }
 
       function escapeHtml(s) {
@@ -989,7 +1396,7 @@ window.LeucenaApp = (function () {
       }
       if (colaboradores.length > 0) {
         html += '<div class="about-section-title">' + t('about.colaboradores') + '</div><div class="about-cards">';
-        colaboradores.forEach(p => { html += cardHtml(p); });
+        colaboradores.forEach((p, i) => { html += cardHtml(p, i); });
         html += '</div>';
       }
       if (!equipe.length && !colaboradores.length) {
@@ -1042,6 +1449,16 @@ window.LeucenaApp = (function () {
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) {
       LeucenaMap.updateFilterCounts();
     }
+
+    _userAuthInfo = {};
+    window._rankingData = null;
+    const vBanner = document.getElementById('verification-banner');
+    if (vBanner) vBanner.classList.add('hidden');
+    const mBanner = document.getElementById('migration-banner');
+    if (mBanner) mBanner.classList.add('hidden');
+    const rWidget = document.getElementById('sidebar-ranking-widget');
+    if (rWidget) rWidget.classList.add('hidden');
+
     showToast(LeucenaI18n.t('auth.disconnected'), 'info');
   }
 
@@ -1349,6 +1766,10 @@ window.LeucenaApp = (function () {
   }
 
   async function lockCell(cellId) {
+    if (!isEmailVerified()) {
+      showToast(LeucenaI18n.t('auth.emailNotVerifiedAction'), 'error');
+      return;
+    }
     try {
       const res = await fetch(`/api/grid/${cellId}/lock`, {
         method: 'POST',
@@ -1606,21 +2027,6 @@ window.LeucenaApp = (function () {
   // ── Admin user management ──
   // User CRUD + role hierarchy: superadmin-only affordances for admin-tier users and privileged actions.
 
-  function toRoman(n) {
-    if (n === 0) return 'X';
-    const vals = [10, 9, 5, 4, 1];
-    const syms = ['X', 'IX', 'V', 'IV', 'I'];
-    let result = '';
-    for (let i = 0; i < vals.length; i++) {
-      while (n >= vals[i]) { result += syms[i]; n -= vals[i]; }
-    }
-    return result;
-  }
-
-  function passcodeToRoman(code) {
-    return code.split('').map(d => toRoman(parseInt(d))).join('.');
-  }
-
   function fallbackCopy(text) { // execCommand copy path when navigator.clipboard is missing or blocked (e.g. non-HTTPS).
     const ta = document.createElement('textarea');
     ta.value = text;
@@ -1729,28 +2135,6 @@ window.LeucenaApp = (function () {
       if (!res.ok) return;
       const data = await res.json();
       const callerIsSuperAdmin = data.callerRole === 'superadmin';
-
-      const pcBox = document.getElementById('admin-passcode-display');
-      if (data.nextPasscode) {
-        const romanCode = passcodeToRoman(data.nextPasscode);
-        pcBox.innerHTML = `<strong>${t('admin.nextPasscode')}</strong> <span class="admin-passcode-roman">${romanCode}</span><button type="button" class="admin-copy-btn" id="admin-copy-passcode" title="${t('admin.copyPasscode')}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>`;
-        document.getElementById('admin-copy-passcode').addEventListener('click', (e) => {
-          const code = String(data.nextPasscode);
-          const btn = e.currentTarget;
-          const showCopyFeedback = () => {
-            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
-            showToast('Código copiado!', 'success');
-            setTimeout(() => { btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>'; }, 1500);
-          };
-          try {
-            if (navigator.clipboard && window.isSecureContext) {
-              navigator.clipboard.writeText(code).then(showCopyFeedback).catch(() => { fallbackCopy(code); showCopyFeedback(); });
-            } else { fallbackCopy(code); showCopyFeedback(); }
-          } catch (err) { fallbackCopy(code); showCopyFeedback(); }
-        });
-      } else {
-        pcBox.innerHTML = '';
-      }
 
       const isMember = u => ['superadmin','admin','team'].includes(u.role);
       const isCollab = u => !isMember(u);
@@ -2219,6 +2603,7 @@ window.LeucenaApp = (function () {
               <button class="admin-profile-btn">${t('admin.editProfile')}</button>
               <button class="admin-pw-btn">${t('admin.changePassword')}</button>
               <button class="admin-reset-btn">${t('admin.generateResetCode')}</button>
+              ${effectiveSuperAdmin ? `<button class="admin-rename-btn">${t('admin.renameUser')}</button>` : ''}
               ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
             </div>
           </div>
@@ -2330,6 +2715,42 @@ window.LeucenaApp = (function () {
             } else { showToast(data.error, 'error'); }
           } catch (e) { showToast('Erro de conexão', 'error'); }
         });
+
+        const renameBtn = row.querySelector('.admin-rename-btn');
+        if (renameBtn) {
+          renameBtn.addEventListener('click', () => {
+            const modal = document.getElementById('admin-rename-modal');
+            const titleEl = document.getElementById('admin-rename-modal-title');
+            const input = document.getElementById('admin-rename-modal-input');
+            const confirmBtn = document.getElementById('admin-rename-modal-confirm');
+            const errorEl = document.getElementById('admin-rename-modal-error');
+            titleEl.textContent = t('admin.renamePrompt', user.username);
+            input.value = user.username;
+            errorEl.style.display = 'none';
+            modal.classList.remove('hidden');
+            setTimeout(() => { input.focus(); input.select(); }, 100);
+            const handler = async () => {
+              const newName = input.value.trim();
+              if (!newName || newName === user.username) { modal.classList.add('hidden'); return; }
+              if (!/^[a-z0-9.]+$/.test(newName) || !/[a-z]/.test(newName)) {
+                errorEl.textContent = 'Use apenas letras minúsculas, números e ponto.';
+                errorEl.style.display = 'block';
+                return;
+              }
+              try {
+                const r = await fetch(`/api/admin/users/${user.id}/username`, {
+                  method: 'PUT', headers: authHeaders(), body: JSON.stringify({ new_username: newName })
+                });
+                if (r.ok) {
+                  modal.classList.add('hidden');
+                  showToast(t('admin.renameSuccess', user.username, newName), 'success');
+                  openAdminUsersModal();
+                } else { const err = await r.json(); errorEl.textContent = err.error; errorEl.style.display = 'block'; }
+              } catch (e) { errorEl.textContent = 'Erro de conexão'; errorEl.style.display = 'block'; }
+            };
+            confirmBtn.onclick = handler;
+          });
+        }
 
         const delBtn = row.querySelector('.admin-del-btn');
         if (delBtn) {
@@ -2472,6 +2893,7 @@ window.LeucenaApp = (function () {
     isTeamOrAbove,
     getEffectiveRole,
     logEvent,
-    flushLogs: _flushLogs
+    flushLogs: _flushLogs,
+    onPolygonSaved
   };
 })();

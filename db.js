@@ -114,6 +114,16 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN is_founder INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN email TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN last_active TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN google_id TEXT'); } catch (e) { /* already exists */ }
+  try { db.run("ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'local'"); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN verification_token TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN verification_expires TEXT'); } catch (e) { /* already exists */ }
+
+  // One-time: mark pre-existing local users as email_verified so they aren't locked out
+  try {
+    db.run("UPDATE users SET email_verified = 1 WHERE email_verified = 0 AND verification_token IS NULL AND (auth_provider IS NULL OR auth_provider = 'local')");
+  } catch (e) { /* ignore */ }
 
   // Migrate not_valid → status for existing rows that haven't been migrated
   try {
