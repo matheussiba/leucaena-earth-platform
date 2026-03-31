@@ -967,6 +967,7 @@ window.LeucenaApp = (function () {
     { target: '#map',             text: 'tour.step2' },
     { target: '#sidebar-toggle',  text: 'tour.step3' },
     { target: '#legend-toggle',   text: 'tour.step4' },
+    { target: '#btn-my-location', text: 'tour.step4b' },
     { target: '#tool-maptype',    text: 'tour.step5' },
     { target: '#label-toggle',    text: 'tour.step6' },
     { target: '#login-btn',       text: 'tour.step7' },

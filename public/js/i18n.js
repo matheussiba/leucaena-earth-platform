@@ -296,6 +296,11 @@ window.LeucenaI18n = (function () {
       en: 'The legend explains the colors and symbols you see on the map.',
       es: 'La leyenda explica los colores y símbolos que ve en el mapa.'
     },
+    'tour.step4b': {
+      pt: 'Use "Minha localização" para centralizar o mapa na sua posição e se orientar (funciona no celular e no computador).',
+      en: 'Use “My location” to center the map on your position and get oriented (works on mobile and desktop).',
+      es: 'Use “Mi ubicación” para centrar el mapa en su posición y orientarse (funciona en móvil y escritorio).'
+    },
     'tour.step5': {
       pt: 'Alterne entre a vista de satélite e o mapa padrão para facilitar a identificação de leucaenas.',
       en: 'Switch between satellite view and the standard map to help identify leucaenas.',
