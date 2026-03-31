@@ -198,7 +198,7 @@ window.LeucenaApp = (function () {
     if (rankWidget) {
       rankWidget.addEventListener('click', () => {
         const data = window._rankingData;
-        if (data && data.user_mask_count === 0) {
+        if (isLoggedIn() && data && data.user_mask_count === 0) {
           openGuideModal('howto');
         } else {
           openRankingModal();
@@ -264,6 +264,7 @@ window.LeucenaApp = (function () {
     setupMigrationBanner();
     setupVerificationBanner();
     tryRestoreSession();
+    loadRankingWidget();
 
     LeucenaI18n.translatePage();
 
@@ -750,20 +751,24 @@ window.LeucenaApp = (function () {
     const widget = document.getElementById('sidebar-ranking-widget');
     if (!widget) return;
     const role = _userAuthInfo.role || userRole;
-    if (role !== 'contributor' || !isLoggedIn()) {
-      widget.classList.add('hidden');
-      return;
-    }
+    const isContrib = role === 'contributor' && isLoggedIn();
     try {
-      const res = await fetch('/api/my-ranking', { headers: authHeaders() });
+      const url = isContrib ? '/api/my-ranking' : '/api/ranking';
+      const opts = isContrib ? { headers: authHeaders() } : {};
+      const res = await fetch(url, opts);
       if (!res.ok) { widget.classList.add('hidden'); return; }
       const data = await res.json();
+      if (data.user_position === undefined) data.user_position = 0;
+      if (data.user_mask_count === undefined) data.user_mask_count = -1;
+      if (data.user_area_ha === undefined) data.user_area_ha = 0;
       window._rankingData = data;
       const textEl = document.getElementById('ranking-widget-text');
-      if (data.user_mask_count === 0) {
+      if (isContrib && data.user_mask_count === 0) {
         textEl.textContent = LeucenaI18n.t('ranking.widgetZero');
-      } else {
+      } else if (isContrib && data.user_mask_count > 0) {
         textEl.textContent = LeucenaI18n.t('ranking.widgetPosition', data.user_position, data.total_contributors);
+      } else {
+        textEl.textContent = LeucenaI18n.t('ranking.widgetPublic', data.total_contributors);
       }
       widget.classList.remove('hidden');
     } catch (e) {
@@ -780,6 +785,8 @@ window.LeucenaApp = (function () {
     const posEl = document.getElementById('ranking-user-position');
     const zeroEl = document.getElementById('ranking-zero-cta');
     const t = LeucenaI18n.t;
+    const role = _userAuthInfo.role || userRole;
+    const isContrib = role === 'contributor' && isLoggedIn();
 
     const medalClasses = ['gold', 'silver', 'bronze'];
     let top3Html = '';
@@ -793,15 +800,19 @@ window.LeucenaApp = (function () {
     });
     top3El.innerHTML = top3Html;
 
-    if (data.user_mask_count === 0) {
+    if (isContrib && data.user_mask_count === 0) {
       posEl.innerHTML = '';
       posEl.style.display = 'none';
       zeroEl.classList.remove('hidden');
-    } else {
+    } else if (isContrib && data.user_mask_count > 0) {
       posEl.style.display = '';
       posEl.innerHTML =
         '<div class="ranking-user-position-text">' + t('ranking.position', data.user_position, data.total_contributors) + '</div>' +
         '<div class="ranking-user-stats">' + t('ranking.stats', data.user_mask_count, data.user_area_ha) + '</div>';
+      zeroEl.classList.add('hidden');
+    } else {
+      posEl.innerHTML = '';
+      posEl.style.display = 'none';
       zeroEl.classList.add('hidden');
     }
 
@@ -1475,8 +1486,7 @@ window.LeucenaApp = (function () {
     if (vBanner) vBanner.classList.add('hidden');
     const mBanner = document.getElementById('migration-banner');
     if (mBanner) mBanner.classList.add('hidden');
-    const rWidget = document.getElementById('sidebar-ranking-widget');
-    if (rWidget) rWidget.classList.add('hidden');
+    loadRankingWidget();
 
     showToast(LeucenaI18n.t('auth.disconnected'), 'info');
   }

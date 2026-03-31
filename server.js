@@ -679,6 +679,22 @@ app.get('/api/quem-somos', (req, res) => {
   res.json({ equipe, colaboradores });
 });
 
+app.get('/api/ranking', (req, res) => {
+  const excludeUsers = ['deleted', 'teste'];
+  const allContribs = queryAll(
+    "SELECT u.username, u.full_name, COUNT(p.id) as mask_count, COALESCE(SUM(p.area_ha), 0) as area_ha " +
+    "FROM users u LEFT JOIN polygons p ON p.created_by = u.username " +
+    "WHERE u.role = 'contributor' AND u.username NOT IN ('" + excludeUsers.join("','") + "') " +
+    "GROUP BY u.username ORDER BY mask_count DESC, area_ha DESC"
+  );
+  const top3 = allContribs.slice(0, 3).map(u => ({
+    name: u.full_name || u.username,
+    mask_count: u.mask_count,
+    area_ha: Math.round((u.area_ha || 0) * 100) / 100
+  }));
+  res.json({ top3, total_contributors: allContribs.filter(u => u.mask_count > 0).length });
+});
+
 app.get('/api/my-ranking', requireAuth, (req, res) => {
   const excludeUsers = ['deleted', 'teste'];
   const allContribs = queryAll(

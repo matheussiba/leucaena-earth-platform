@@ -453,6 +453,7 @@ window.LeucenaI18n = (function () {
     'ranking.stats': { pt: '{0} máscaras · {1} ha mapeados', en: '{0} masks · {1} ha mapped', es: '{0} máscaras · {1} ha mapeados' },
     'ranking.widgetPosition': { pt: 'Ranking: {0}º de {1}', en: 'Ranking: {0}th of {1}', es: 'Ranking: {0}º de {1}' },
     'ranking.widgetZero': { pt: 'Comece a mapear! Veja como', en: 'Start mapping! See how', es: '¡Empieza a mapear! Mira cómo' },
+    'ranking.widgetPublic': { pt: 'Top colaboradores ({0})', en: 'Top collaborators ({0})', es: 'Top colaboradores ({0})' },
     'ranking.zeroMasksMsg': { pt: 'Você ainda não mapeou nenhuma área. Comece agora!', en: "You haven't mapped any area yet. Start now!", es: '¡Aún no has mapeado ningún área. Empieza ahora!' },
     'ranking.howToMap': { pt: 'Como mapear', en: 'How to map', es: 'Cómo mapear' },
     'ranking.chooseCell': { pt: 'Escolher célula', en: 'Choose cell', es: 'Elegir celda' },
