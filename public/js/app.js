@@ -244,6 +244,7 @@ window.LeucenaApp = (function () {
     trackPageView();
 
     document.getElementById('tool-home').addEventListener('click', handleHomeClick);
+    document.getElementById('btn-my-location').addEventListener('click', handleMyLocation);
 
     document.getElementById('legend-toggle').addEventListener('click', toggleLegend);
 
@@ -482,6 +483,7 @@ window.LeucenaApp = (function () {
 
     const t = LeucenaI18n.t;
     const forgotGroup = document.getElementById('auth-forgot-group');
+    const contactHint = document.getElementById('auth-contact-hint');
     const googleLabel = document.getElementById('auth-google-label');
     if (mode === 'login') {
       document.getElementById('auth-modal-title').textContent = t('auth.login');
@@ -493,6 +495,7 @@ window.LeucenaApp = (function () {
       emailInput.removeAttribute('required');
       usernameHint.classList.add('hidden');
       forgotGroup.classList.remove('hidden');
+      if (contactHint) contactHint.classList.add('hidden');
       const u = document.getElementById('auth-username');
       if (u) u.removeAttribute('pattern');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignIn');
@@ -506,6 +509,7 @@ window.LeucenaApp = (function () {
       emailInput.setAttribute('required', 'required');
       usernameHint.classList.remove('hidden');
       forgotGroup.classList.add('hidden');
+      if (contactHint) contactHint.classList.remove('hidden');
       const u = document.getElementById('auth-username');
       if (u) u.setAttribute('pattern', '[a-z0-9.]+');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignUp');
@@ -521,11 +525,10 @@ window.LeucenaApp = (function () {
     const modal = document.getElementById('reset-modal');
     document.getElementById('reset-error').classList.add('hidden');
     document.getElementById('reset-success').classList.add('hidden');
-    document.getElementById('reset-username').value = '';
-    document.getElementById('reset-code').value = '';
-    document.getElementById('reset-password').value = '';
+    document.getElementById('reset-email').value = '';
+    document.getElementById('reset-form').classList.remove('hidden');
     modal.classList.remove('hidden');
-    document.getElementById('reset-username').focus();
+    document.getElementById('reset-email').focus();
   }
 
   function closeResetModal() {
@@ -534,19 +537,17 @@ window.LeucenaApp = (function () {
 
   async function handleResetSubmit(e) {
     e.preventDefault();
-    const username = document.getElementById('reset-username').value.trim();
-    const code = document.getElementById('reset-code').value.trim();
-    const password = document.getElementById('reset-password').value;
+    const email = document.getElementById('reset-email').value.trim();
     const errorEl = document.getElementById('reset-error');
     const successEl = document.getElementById('reset-success');
     errorEl.classList.add('hidden');
     successEl.classList.add('hidden');
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, code, password })
+        body: JSON.stringify({ email })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -554,13 +555,14 @@ window.LeucenaApp = (function () {
         errorEl.classList.remove('hidden');
         return;
       }
-      successEl.textContent = LeucenaI18n.t('reset.success');
+      if (data.google) {
+        errorEl.textContent = LeucenaI18n.t('reset.googleOnly');
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      successEl.textContent = LeucenaI18n.t('reset.emailSent');
       successEl.classList.remove('hidden');
-      document.getElementById('reset-form').reset();
-      setTimeout(() => {
-        closeResetModal();
-        openAuthModal('login');
-      }, 2000);
+      document.getElementById('reset-form').classList.add('hidden');
     } catch (err) {
       errorEl.textContent = LeucenaI18n.t('auth.connectionError');
       errorEl.classList.remove('hidden');
@@ -1105,7 +1107,7 @@ window.LeucenaApp = (function () {
   function applyProfileToUI(profile) {
     const nameEl = document.getElementById('user-display-name');
     const avatarEl = document.getElementById('user-avatar');
-    const displayName = profile && profile.full_name ? profile.full_name : username;
+    const displayName = profile && profile.full_name ? profile.full_name.split(' ')[0] : username;
     nameEl.textContent = displayName;
     if (profile && profile.photo) {
       avatarEl.innerHTML = '<img src="' + profile.photo + '" alt="">';
@@ -1376,14 +1378,17 @@ window.LeucenaApp = (function () {
         const thumb = person.photo
           ? '<img src="' + person.photo + '" alt="">'
           : name.toString().charAt(0).toUpperCase();
-        let medalHtml = '';
+        let rankBadgeHtml = '';
         if (medalIndex !== undefined && medalIndex < 3) {
-          const medalCls = ['medal-gold', 'medal-silver', 'medal-bronze'][medalIndex];
-          const tooltip = LeucenaI18n.t('ranking.medalTooltip', medalIndex + 1);
-          medalHtml = ' <span class="medal-badge ' + medalCls + '" title="' + escapeHtml(tooltip) + '">' + (medalIndex + 1) + '</span>';
+          const cls = medalIndex === 0
+            ? 'team-rank-badge team-rank-badge--gold'
+            : medalIndex === 1
+              ? 'team-rank-badge team-rank-badge--silver'
+              : 'team-rank-badge team-rank-badge--bronze';
+          rankBadgeHtml = '<div class="' + cls + '">Top ' + (medalIndex + 1) + '</div>';
         }
         const areaStr = person.area_ha ? ' · ' + person.area_ha + ' ha' : '';
-        return '<div class="about-card"><div class="about-card-thumb">' + thumb + '</div><div class="about-card-info"><div class="about-card-name">' + escapeHtml(name) + medalHtml + '</div><div class="about-card-desc">' + escapeHtml(desc) + areaStr + '</div></div></div>';
+        return '<div class="about-card"><div class="about-card-thumb">' + thumb + '</div><div class="about-card-info">' + rankBadgeHtml + '<div class="about-card-name">' + escapeHtml(name) + '</div><div class="about-card-desc">' + escapeHtml(desc) + areaStr + '</div></div></div>';
       }
 
       function escapeHtml(s) {
@@ -1514,10 +1519,13 @@ window.LeucenaApp = (function () {
 
   function updateLegendVisibility(sidebarOpen) {
     const legend = document.getElementById('map-legend');
+    const locBtn = document.getElementById('btn-my-location');
     if (sidebarOpen) {
       legend.classList.add('legend-hidden');
+      if (locBtn) locBtn.classList.add('legend-hidden');
     } else {
       legend.classList.remove('legend-hidden');
+      if (locBtn) locBtn.classList.remove('legend-hidden');
     }
   }
 
@@ -1829,6 +1837,60 @@ window.LeucenaApp = (function () {
     } else {
       LeucenaMap.zoomToInitialView();
     }
+  }
+
+  let _locationMarker = null;
+  function handleMyLocation() {
+    if (!navigator.geolocation) {
+      showToast(LeucenaI18n.t('map.geoNotSupported'), 'error');
+      return;
+    }
+    const btn = document.getElementById('btn-my-location');
+    btn.classList.add('locating');
+
+    function onSuccess(pos) {
+      btn.classList.remove('locating');
+      const gMap = LeucenaMap.getMap();
+      if (!gMap) return;
+      const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const isMobile = window.innerWidth <= 768;
+      gMap.setCenter(latlng);
+      gMap.setZoom(isMobile ? 13 : 12);
+      if (_locationMarker) _locationMarker.setMap(null);
+      _locationMarker = new google.maps.Marker({
+        position: latlng,
+        map: gMap,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#3b82f6',
+          fillOpacity: 0.9,
+          strokeColor: '#ffffff',
+          strokeWeight: 2.5
+        },
+        title: LeucenaI18n.t('map.youAreHere'),
+        zIndex: 9999
+      });
+      setTimeout(() => { if (_locationMarker) _locationMarker.setMap(null); _locationMarker = null; }, 30000);
+    }
+
+    function onError(err) {
+      btn.classList.remove('locating');
+      if (err.code === 1) {
+        showToast(LeucenaI18n.t('map.geoDenied'), 'error');
+      } else {
+        showToast(LeucenaI18n.t('map.geoError'), 'error');
+      }
+    }
+
+    navigator.geolocation.getCurrentPosition(onSuccess, function(err) {
+      if (err.code === 2 || err.code === 3) {
+        navigator.geolocation.getCurrentPosition(onSuccess, onError,
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+      } else {
+        onError(err);
+      }
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
 
   function formatStatus(s) {

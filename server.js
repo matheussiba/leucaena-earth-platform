@@ -104,6 +104,7 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: false }));
 
 const MAP_HOSTS = ['map.leucaena.earth', 'localhost', '127.0.0.1'];
 
@@ -849,30 +850,141 @@ app.post('/api/profile/link-google', requireAuth, (req, res) => {
   res.json({ redirect: '/auth/google?link=true' });
 });
 
-// ── Password reset ──
+// ── Password reset (self-service via email) ──
+
+app.post('/api/auth/forgot-password', resetLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-mail é obrigatório' });
+
+  const genericMsg = 'Se o e-mail estiver cadastrado, você receberá um link de recuperação.';
+
+  const user = queryOne("SELECT * FROM users WHERE LOWER(email) = ? AND username != 'deleted'", [email.trim().toLowerCase()]);
+  if (!user) return res.json({ success: true, message: genericMsg });
+
+  if (user.auth_provider === 'google' && !user.password_hash) {
+    return res.json({ success: true, google: true, message: 'Esta conta usa login Google. Use o botão "Entrar com Google".' });
+  }
+
+  if (!resend) return res.status(500).json({ error: 'Serviço de e-mail não configurado' });
+
+  const token = uuidv4();
+  const expires = new Date(Date.now() + RESET_TOKEN_TTL).toISOString();
+  runSQL('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?', [token, expires, user.id]);
+
+  const baseUrl = getBaseUrl(req);
+  const resetUrl = `${baseUrl}/api/auth/reset-password?token=${token}`;
+  try {
+    await resend.emails.send({
+      from: RESEND_FROM,
+      to: user.email,
+      subject: 'Redefinir sua senha — leucaena.earth',
+      html: `<p>Olá <strong>${user.full_name || user.username}</strong>,</p>
+             <p>Recebemos uma solicitação para redefinir sua senha. Clique no botão abaixo:</p>
+             <p><a href="${resetUrl}" style="display:inline-block;padding:12px 28px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Redefinir Senha</a></p>
+             <p>Este link expira em 30 minutos.</p>
+             <p>Se você não solicitou a redefinição, ignore este e-mail.</p>
+             <p>— leucaena.earth</p>`
+    });
+  } catch (e) { console.error('Resend reset email error:', e.message); }
+
+  logActivity(user.username, 'password_reset_requested', null, null, null);
+  res.json({ success: true, message: genericMsg });
+});
+
+function resetPasswordPageHtml(type, content) {
+  const color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6';
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : '🔒';
+  return `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redefinir Senha — leucaena.earth</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.card{text-align:center;max-width:420px;width:90%;padding:40px 32px;border:1px solid #1e293b;border-radius:16px;background:#1e293b}
+.icon{font-size:48px;margin-bottom:16px;color:${color}}h2{font-size:20px;margin-bottom:16px;color:#f1f5f9}p{font-size:14px;line-height:1.6;color:#94a3b8;margin-top:8px}
+input{width:100%;padding:10px 14px;margin-top:12px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none}
+input:focus{border-color:#22c55e}
+.btn{display:inline-block;margin-top:16px;padding:10px 24px;background:#22c55e;color:#fff;border:none;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;cursor:pointer;width:100%}
+.btn:hover{background:#16a34a}
+.error{color:#ef4444;font-size:13px;margin-top:8px;display:none}
+a.link{display:inline-block;margin-top:20px;color:#22c55e;text-decoration:none;font-size:13px}
+</style></head><body><div class="card"><div class="icon">${icon}</div>${content}</div></body></html>`;
+}
+
+app.get('/api/auth/reset-password', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send(resetPasswordPageHtml('error', '<p>Token ausente.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+
+  const user = queryOne('SELECT * FROM users WHERE reset_token = ?', [token]);
+  if (!user) return res.send(resetPasswordPageHtml('error', '<p>Link inválido ou já utilizado.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+  if (new Date(user.reset_token_expires) < new Date()) {
+    runSQL('UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = ?', [user.id]);
+    return res.send(resetPasswordPageHtml('error', '<p>Link expirado. Solicite um novo na plataforma.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+  }
+
+  const formHtml = `<h2>Redefinir Senha</h2>
+    <p>Crie uma nova senha para <strong>${user.username}</strong></p>
+    <form id="rf" method="POST" action="/api/auth/reset-password">
+      <input type="hidden" name="token" value="${token}">
+      <input type="password" name="password" id="pw1" placeholder="Nova senha (mínimo 3 caracteres)" required minlength="3">
+      <input type="password" name="password_confirm" id="pw2" placeholder="Confirmar nova senha" required minlength="3">
+      <p class="error" id="err"></p>
+      <button type="submit" class="btn">Redefinir Senha</button>
+    </form>
+    <a class="link" href="https://map.leucaena.earth">Voltar para a plataforma</a>
+    <script>document.getElementById('rf').addEventListener('submit',function(e){
+      var p1=document.getElementById('pw1').value,p2=document.getElementById('pw2').value,err=document.getElementById('err');
+      if(p1!==p2){e.preventDefault();err.textContent='As senhas não coincidem.';err.style.display='block';return;}
+      if(p1.length<3){e.preventDefault();err.textContent='A senha deve ter pelo menos 3 caracteres.';err.style.display='block';return;}
+    });</script>`;
+  res.send(resetPasswordPageHtml('form', formHtml));
+});
 
 app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
-  const { username, code, password } = req.body;
-  if (!username || !code || !password) return res.status(400).json({ error: 'Usuário, código e nova senha são obrigatórios' });
-  if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+  const { token, password, password_confirm, username, code } = req.body;
 
-  const entry = resetTokens.get(username.toLowerCase());
-  if (!entry) return res.status(400).json({ error: 'Nenhum código de recuperação encontrado. Solicite ao administrador.' });
-  if (Date.now() > entry.expires) {
+  // Legacy admin-code flow (in-memory tokens)
+  if (code && username) {
+    if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
+    if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+    const entry = resetTokens.get(username.toLowerCase());
+    if (!entry) return res.status(400).json({ error: 'Nenhum código de recuperação encontrado.' });
+    if (Date.now() > entry.expires) {
+      resetTokens.delete(username.toLowerCase());
+      return res.status(400).json({ error: 'Código expirado.' });
+    }
+    if (entry.code !== code.trim()) return res.status(400).json({ error: 'Código inválido' });
+    const u = queryOne('SELECT id FROM users WHERE username = ?', [username]);
+    if (!u) return res.status(404).json({ error: 'Usuário não encontrado' });
+    const hash = hashPassword(password);
+    runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, username]);
     resetTokens.delete(username.toLowerCase());
-    return res.status(400).json({ error: 'Código expirado. Solicite um novo ao administrador.' });
+    logActivity(username, 'password_reset_used', null, null, null);
+    persist();
+    return res.json({ success: true });
   }
-  if (entry.code !== code.trim()) return res.status(400).json({ error: 'Código inválido' });
 
-  const user = queryOne('SELECT id FROM users WHERE username = ?', [username]);
-  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  // Email-link flow (DB tokens)
+  if (!token || !password) {
+    return res.status(400).send(resetPasswordPageHtml('error', '<p>Dados incompletos.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+  }
+  if (password.length < 3) {
+    return res.status(400).send(resetPasswordPageHtml('error', '<p>A senha deve ter pelo menos 3 caracteres.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+  }
+  if (password_confirm && password !== password_confirm) {
+    return res.status(400).send(resetPasswordPageHtml('error', '<p>As senhas não coincidem.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+  }
+
+  const user = queryOne('SELECT * FROM users WHERE reset_token = ?', [token]);
+  if (!user) {
+    return res.status(400).send(resetPasswordPageHtml('error', '<p>Link inválido ou já utilizado.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+  }
+  if (new Date(user.reset_token_expires) < new Date()) {
+    runSQL('UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = ?', [user.id]);
+    return res.status(400).send(resetPasswordPageHtml('error', '<p>Link expirado. Solicite um novo na plataforma.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
+  }
 
   const hash = hashPassword(password);
-  runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, username]);
-  resetTokens.delete(username.toLowerCase());
-  logActivity(username, 'password_reset_used', null, null, null);
+  runSQL('UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?', [hash, user.id]);
+  logActivity(user.username, 'password_reset_used', null, null, null);
   persist();
-  res.json({ success: true });
+  res.send(resetPasswordPageHtml('success', '<h2>Senha redefinida!</h2><p>Sua senha foi atualizada com sucesso.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
 });
 
 // ── Admin: user management ──

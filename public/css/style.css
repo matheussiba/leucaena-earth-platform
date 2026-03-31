@@ -1576,6 +1576,49 @@ html, body {
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ── My Location button ── */
+.btn-my-location {
+  position: absolute;
+  bottom: 56px;
+  right: 12px;
+  z-index: 150;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, opacity 0.2s, visibility 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.btn-my-location:hover {
+  background: rgba(71, 85, 105, 0.8);
+  color: white;
+}
+
+.btn-my-location.locating {
+  animation: pulse-loc 1s ease-in-out infinite;
+}
+
+@keyframes pulse-loc {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.btn-my-location.legend-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* ── Map Legend (accordion) ── */
 .map-legend {
   position: absolute;
@@ -2729,6 +2772,36 @@ html, body {
   line-height: 1.4;
 }
 
+/* ── Ranking badge (Top 1/2/3) ── */
+.team-rank-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin: 0 0 10px 0;
+}
+
+.team-rank-badge--gold {
+  background: linear-gradient(135deg, #fcd34d, #f59e0b);
+  color: #422006;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.35);
+}
+
+.team-rank-badge--silver {
+  background: linear-gradient(135deg, #e5e7eb, #9ca3af);
+  color: #1f2937;
+  box-shadow: 0 2px 12px rgba(156, 163, 175, 0.2);
+}
+
+.team-rank-badge--bronze {
+  background: linear-gradient(135deg, #d97757, #92400e);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(146, 64, 14, 0.25);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   :root {
@@ -2950,6 +3023,11 @@ html, body {
     bottom: 48px;
     left: 8px;
     min-width: 150px;
+  }
+
+  .btn-my-location {
+    bottom: 48px;
+    right: 8px;
   }
 
   .legend-body {

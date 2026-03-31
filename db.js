@@ -119,6 +119,8 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN verification_token TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN verification_expires TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN reset_token TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN reset_token_expires TEXT'); } catch (e) { /* already exists */ }
 
   // One-time: mark pre-existing local users as email_verified so they aren't locked out
   try {

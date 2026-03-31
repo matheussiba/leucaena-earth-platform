@@ -256,7 +256,11 @@
     /* ── Team ── */
     #team { background: linear-gradient(180deg, #0d1424, var(--bg)); text-align: center; }
     .team-grid { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; margin-top: 48px; }
-    .team-card { width: 220px; padding: 32px 20px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); text-align: center; transition: all 0.3s; }
+    .team-card { width: 220px; padding: 32px 20px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); text-align: center; transition: all 0.3s; position: relative; }
+    .team-rank-badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; margin-bottom: 12px; }
+    .team-rank-badge--gold { background: linear-gradient(135deg, #fcd34d, #f59e0b); color: #422006; box-shadow: 0 2px 12px rgba(245, 158, 11, 0.35); }
+    .team-rank-badge--silver { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; box-shadow: 0 2px 12px rgba(156, 163, 175, 0.2); }
+    .team-rank-badge--bronze { background: linear-gradient(135deg, #d97757, #92400e); color: #fff; box-shadow: 0 2px 12px rgba(146, 64, 14, 0.25); }
     .team-card:hover { border-color: rgba(34,197,94,0.2); transform: translateY(-4px); box-shadow: 0 8px 40px rgba(34,197,94,0.06); }
     .team-avatar { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 16px; overflow: hidden; background: linear-gradient(135deg, var(--green-dim), var(--lime)); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: white; border: 3px solid var(--border); }
     .team-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -811,7 +815,11 @@
     };
 
     const teamRoles = { pt: { i: 'Idealizador', m: 'Membro', c: 'Colaborador' }, en: { i: 'Founder', m: 'Member', c: 'Contributor' }, es: { i: 'Idealizador', m: 'Miembro', c: 'Colaborador' } };
-    const sectionLabels = { pt: { idealizadores: 'Idealizadores', team: 'Equipe', contributors: 'Colaboradores' }, en: { idealizadores: 'Founders', team: 'Team', contributors: 'Contributors' }, es: { idealizadores: 'Creadores', team: 'Equipo', contributors: 'Colaboradores' } };
+    const sectionLabels = {
+      pt: { idealizadores: 'Idealizadores', team: 'Equipe', contributors: 'Colaboradores', top1: 'Top 1', top2: 'Top 2', top3: 'Top 3' },
+      en: { idealizadores: 'Founders', team: 'Team', contributors: 'Contributors', top1: 'Top 1', top2: 'Top 2', top3: 'Top 3' },
+      es: { idealizadores: 'Creadores', team: 'Equipo', contributors: 'Colaboradores', top1: 'Top 1', top2: 'Top 2', top3: 'Top 3' }
+    };
     
     function detectLang() {
       const saved = localStorage.getItem('leucena_lang');
@@ -879,7 +887,15 @@
     const linkedinSvg = '<svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>';
     const scholarSvg = '<svg viewBox="0 0 24 24"><path d="M5.242 13.769L0 9.5 12 0l12 9.5-5.242 4.269C17.548 11.249 14.978 9.5 12 9.5c-2.977 0-5.548 1.748-6.758 4.269zM12 10a7 7 0 100 14 7 7 0 000-14z"/></svg>';
 
-    function buildCard(u, roleLabel) {
+    function contributorRankBadge(index, labels) {
+      if (index === 0) return '<div class="team-rank-badge team-rank-badge--gold">' + labels.top1 + '</div>';
+      if (index === 1) return '<div class="team-rank-badge team-rank-badge--silver">' + labels.top2 + '</div>';
+      if (index === 2) return '<div class="team-rank-badge team-rank-badge--bronze">' + labels.top3 + '</div>';
+      return '';
+    }
+
+    function buildCard(u, roleLabel, rankBadgeHtml) {
+      rankBadgeHtml = rankBadgeHtml || '';
       const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       const avContent = u.photo ? '<img src="' + u.photo + '" alt="' + (u.full_name || u.username) + '">' : initials;
       const avInner = u.scholar
@@ -892,7 +908,7 @@
         if (u.scholar) social += '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + scholarSvg + '</a>';
         social += '</div>';
       }
-      return '<article class="team-card"><div class="team-avatar">' + avInner + '</div><div class="team-name">' + (u.full_name || u.username) + '</div><div class="team-role">' + roleLabel + '</div><div class="team-desc">' + (u.description || '') + '</div>' + social + '</article>';
+      return '<article class="team-card">' + rankBadgeHtml + '<div class="team-avatar">' + avInner + '</div><div class="team-name">' + (u.full_name || u.username) + '</div><div class="team-role">' + roleLabel + '</div><div class="team-desc">' + (u.description || '') + '</div>' + social + '</article>';
     }
 
     function renderTeam() {
@@ -913,7 +929,7 @@
       if (contribs.length > 0) {
         if (equipe.length > 0) grid.innerHTML += '<div class="team-section-divider"></div>';
         grid.innerHTML += '<div class="team-section-label">' + labels.contributors + '</div>';
-        grid.innerHTML += '<div class="team-section-grid">' + contribs.map(u => buildCard(u, roles.c)).join('') + '</div>';
+        grid.innerHTML += '<div class="team-section-grid">' + contribs.map((u, idx) => buildCard(u, roles.c, idx < 3 ? contributorRankBadge(idx, labels) : '')).join('') + '</div>';
       }
       if (equipe.length === 0 && contribs.length === 0) {
          grid.innerHTML = '<p style="color:var(--text-muted)">—</p>';
