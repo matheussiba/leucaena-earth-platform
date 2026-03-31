@@ -1206,15 +1206,7 @@ app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/admin/users/:id/reset-token', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
-  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  resetTokens.set(user.username.toLowerCase(), { code, expires: Date.now() + RESET_TOKEN_TTL });
-  logActivity(req.username, 'reset_token_generated', null, null, { target_user: user.username });
-  res.json({ success: true, code, username: user.username, expiresInMinutes: RESET_TOKEN_TTL / 60000 });
-});
+// [REMOVED] admin reset-token route — password reset is now self-service via email
 
 // [REMOVED] /api/admin/passcode — passcode system removed
 

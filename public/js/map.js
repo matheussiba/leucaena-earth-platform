@@ -45,7 +45,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     map = new google.maps.Map(document.getElementById('map'), {
       center: { lat: -22.5, lng: -48.5 },
       zoom: 7,
-      mapTypeId: 'satellite',
+      mapTypeId: 'hybrid',
       mapTypeControl: false,
       zoomControl: false,
       cameraControl: false,
@@ -153,12 +153,15 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   let isSatellite = true;
-  let showLabels = false;
+  let showLabels = true;
+  let labelsUserControlled = false;
 
   function setupBasemapToggle() {
     const mapBtn = document.getElementById('tool-maptype');
     const labelsCheckbox = document.getElementById('tool-labels');
     const labelToggle = document.getElementById('label-toggle');
+
+    labelsCheckbox.checked = true;
 
     mapBtn.addEventListener('click', () => {
       isSatellite = !isSatellite;
@@ -175,9 +178,19 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
 
     labelsCheckbox.addEventListener('change', () => {
+      labelsUserControlled = true;
       showLabels = labelsCheckbox.checked;
       applyMapType();
     });
+  }
+
+  function collapseLabelsOnFirstZoom() {
+    if (labelsUserControlled) return;
+    labelsUserControlled = true;
+    showLabels = false;
+    const cb = document.getElementById('tool-labels');
+    if (cb) cb.checked = false;
+    applyMapType();
   }
 
   function applyMapType() {
@@ -289,6 +302,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
           if (typeof LeucenaApp !== 'undefined' && LeucenaApp.collapseLegendOnFirstZoom) {
             LeucenaApp.collapseLegendOnFirstZoom();
           }
+          collapseLabelsOnFirstZoom();
         });
       });
       updateFilterCounts();
@@ -1072,6 +1086,23 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     setText('count-mapping', statusCounts.mapping);
     setText('count-no_points', statusCounts.no_points);
     setText('count-finished', statusCounts.finished);
+
+    const relevant = statusCounts.not_yet_finished + statusCounts.in_use + statusCounts.mapping + statusCounts.finished;
+    if (relevant > 0) {
+      const finishedPct = (statusCounts.finished / relevant * 100);
+      const mappingPct = ((statusCounts.mapping + statusCounts.in_use) / relevant * 100);
+      const tomapPct = (statusCounts.not_yet_finished / relevant * 100);
+      const setW = (id, v) => { const el = document.getElementById(id); if (el) el.style.width = v.toFixed(1) + '%'; };
+      setW('progress-finished', finishedPct);
+      setW('progress-mapping', mappingPct);
+      setW('progress-tomap', tomapPct);
+      const lbl = document.getElementById('progress-pct-label');
+      if (lbl) lbl.textContent = finishedPct.toFixed(1) + '%';
+      const setPct = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toFixed(1) + '%'; };
+      setPct('progress-finished-pct', finishedPct);
+      setPct('progress-mapping-pct', mappingPct);
+      setPct('progress-tomap-pct', tomapPct);
+    }
 
     const layerCounts = { crowdmapping: 0, inaturalist: 0, gbif: 0, insthorus: 0, specieslink: 0 };
     let pointsTotal = 0;

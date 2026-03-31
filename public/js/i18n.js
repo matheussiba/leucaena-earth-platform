@@ -114,6 +114,10 @@ window.LeucenaI18n = (function () {
     'sidebar.onlineUsers': { pt: 'Usuários Online', en: 'Online Users', es: 'Usuarios en Línea' },
     'sidebar.mobilePanelTitle': { pt: 'Painel', en: 'Panel', es: 'Panel' },
     'sidebar.closePanel': { pt: 'Fechar painel', en: 'Close panel', es: 'Cerrar panel' },
+    'sidebar.mappingProgress': { pt: 'Progresso', en: 'Progress', es: 'Progreso' },
+    'sidebar.progressFinished': { pt: 'Finalizado', en: 'Finished', es: 'Finalizado' },
+    'sidebar.progressMapping': { pt: 'Mapeando', en: 'Mapping', es: 'Mapeando' },
+    'sidebar.progressToMap': { pt: 'A mapear', en: 'To map', es: 'Por mapear' },
 
     // ── Status labels ──
     'status.not_yet_finished': { pt: 'Ainda não finalizado', en: 'Not yet finished', es: 'Aún no finalizado' },
@@ -224,10 +228,7 @@ window.LeucenaI18n = (function () {
     'admin.createUserCancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
     'admin.createUserAllFields': { pt: 'Preencha todos os campos', en: 'Fill in all fields', es: 'Complete todos los campos' },
     'admin.createUserSuccess': { pt: 'Usuário "{0}" criado com sucesso', en: 'User "{0}" created successfully', es: 'Usuario "{0}" creado exitosamente' },
-    'admin.generateResetCode': { pt: 'Recuperar Senha', en: 'Reset Password', es: 'Recuperar Contraseña' },
-    'admin.resetCodeGenerated': { pt: 'Código de recuperação para "{0}":', en: 'Recovery code for "{0}":', es: 'Código de recuperación para "{0}":' },
-    'admin.resetCodeExpires': { pt: 'Válido por {0} minutos.', en: 'Valid for {0} minutes.', es: 'Válido por {0} minutos.' },
-    'admin.resetCodeCopied': { pt: 'Código copiado para a área de transferência', en: 'Code copied to clipboard', es: 'Código copiado al portapapeles' },
+    
     'admin.renameUser': { pt: 'Renomear', en: 'Rename', es: 'Renombrar' },
     'admin.renamePrompt': { pt: 'Novo nome de usuário para "{0}":', en: 'New username for "{0}":', es: 'Nuevo nombre de usuario para "{0}":' },
     'admin.renameSuccess': { pt: 'Usuário "{0}" renomeado para "{1}"', en: 'User "{0}" renamed to "{1}"', es: 'Usuario "{0}" renombrado a "{1}"' },

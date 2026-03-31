@@ -564,6 +564,24 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
+        <!-- Progresso do Mapeamento -->
+        <div class="sidebar-section sidebar-progress-section" id="mapping-progress">
+          <h3 data-i18n="sidebar.mappingProgress">Progresso</h3>
+          <div class="progress-bar-container">
+            <div class="progress-bar-track">
+              <div class="progress-segment progress-finished" id="progress-finished" style="width:0%"></div>
+              <div class="progress-segment progress-mapping" id="progress-mapping" style="width:0%"></div>
+              <div class="progress-segment progress-tomap" id="progress-tomap" style="width:0%"></div>
+            </div>
+            <div class="progress-pct" id="progress-pct-label">0%</div>
+          </div>
+          <div class="progress-legend-row">
+            <span class="progress-legend-item"><span class="progress-dot" style="background:#22c55e"></span><span id="progress-finished-pct">0%</span> <span data-i18n="sidebar.progressFinished">Finalizado</span></span>
+            <span class="progress-legend-item"><span class="progress-dot" style="background:#eab308"></span><span id="progress-mapping-pct">0%</span> <span data-i18n="sidebar.progressMapping">Mapeando</span></span>
+            <span class="progress-legend-item"><span class="progress-dot" style="background:#7c3aed"></span><span id="progress-tomap-pct">0%</span> <span data-i18n="sidebar.progressToMap">A mapear</span></span>
+          </div>
+        </div>
+
         <!-- Filtros -->
         <div class="sidebar-section">
           <h3 data-i18n="sidebar.filters">Filtros</h3>

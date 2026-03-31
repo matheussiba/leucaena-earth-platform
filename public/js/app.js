@@ -2714,7 +2714,7 @@ window.LeucenaApp = (function () {
             <div class="admin-user-actions">
               <button class="admin-profile-btn">${t('admin.editProfile')}</button>
               <button class="admin-pw-btn">${t('admin.changePassword')}</button>
-              <button class="admin-reset-btn">${t('admin.generateResetCode')}</button>
+              
               ${effectiveSuperAdmin ? `<button class="admin-rename-btn">${t('admin.renameUser')}</button>` : ''}
               ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
             </div>
@@ -2806,26 +2806,6 @@ window.LeucenaApp = (function () {
           };
           confirmBtn.onclick = null;
           confirmBtn.addEventListener('click', handler);
-        });
-
-        const resetBtn = row.querySelector('.admin-reset-btn');
-        resetBtn.addEventListener('click', async () => {
-          try {
-            const r = await fetch(`/api/admin/users/${user.id}/reset-token`, {
-              method: 'POST', headers: authHeaders()
-            });
-            const data = await r.json();
-            if (r.ok) {
-              const msg = `${t('admin.resetCodeGenerated', user.username)}\n\n${data.code}\n\n${t('admin.resetCodeExpires', data.expiresInMinutes)}`;
-              try {
-                if (navigator.clipboard && window.isSecureContext) {
-                  await navigator.clipboard.writeText(data.code);
-                } else { fallbackCopy(data.code); }
-              } catch (_) { fallbackCopy(data.code); }
-              alert(msg);
-              showToast(t('admin.resetCodeCopied'), 'success');
-            } else { showToast(data.error, 'error'); }
-          } catch (e) { showToast('Erro de conexão', 'error'); }
         });
 
         const renameBtn = row.querySelector('.admin-rename-btn');
