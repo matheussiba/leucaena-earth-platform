@@ -639,13 +639,19 @@ app.get('/api/landing-stats', (req, res) => {
     const masks = queryOne('SELECT COUNT(*) as cnt FROM polygons');
     const points = queryOne('SELECT COUNT(*) as cnt FROM occurrence_points');
     const collabs = queryOne("SELECT COUNT(DISTINCT username) as cnt FROM users WHERE username != 'deleted'");
+    const finished = queryOne("SELECT COUNT(*) as cnt FROM grid_cells WHERE grid_status = 'finished'");
+    const mapping = queryOne("SELECT COUNT(*) as cnt FROM grid_cells WHERE grid_status IN ('mapping','in_use')");
+    const tomap = queryOne("SELECT COUNT(*) as cnt FROM grid_cells WHERE grid_status = 'not_yet_finished'");
     res.json({
       cells: cells ? cells.cnt : 0,
       masks: masks ? masks.cnt : 0,
       points: points ? points.cnt : 0,
-      collabs: collabs ? collabs.cnt : 0
+      collabs: collabs ? collabs.cnt : 0,
+      grid_finished: finished ? finished.cnt : 0,
+      grid_mapping: mapping ? mapping.cnt : 0,
+      grid_tomap: tomap ? tomap.cnt : 0
     });
-  } catch (e) { res.json({ cells: 0, masks: 0, points: 0, collabs: 0 }); }
+  } catch (e) { res.json({ cells: 0, masks: 0, points: 0, collabs: 0, grid_finished: 0, grid_mapping: 0, grid_tomap: 0 }); }
 });
 
 app.get('/api/quem-somos', (req, res) => {

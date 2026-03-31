@@ -199,6 +199,37 @@
     .hero-stat-num { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #22c55e, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .hero-stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
+    /* ── Hero Progress Card ── */
+    .hero-progress-card {
+      display: block; max-width: 520px; width: 100%; margin: 48px auto 0; padding: 24px 28px 20px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
+      text-decoration: none; color: inherit; transition: all 0.35s;
+      cursor: pointer; position: relative; overflow: hidden;
+    }
+    .hero-progress-card::before {
+      content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.35s;
+      background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(132,204,22,0.04));
+    }
+    .hero-progress-card:hover { border-color: rgba(34,197,94,0.3); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(34,197,94,0.12); }
+    .hero-progress-card:hover::before { opacity: 1; }
+    .hero-progress-card > * { position: relative; z-index: 1; }
+    .hero-progress-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .hero-progress-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); }
+    .hero-progress-pct { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #22c55e, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-progress-track { height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: hidden; display: flex; margin-bottom: 12px; }
+    .hero-progress-seg { height: 100%; transition: width 0.8s ease; }
+    .hero-progress-finished { background: #22c55e; }
+    .hero-progress-mapping { background: #eab308; }
+    .hero-progress-tomap { background: #7c3aed; }
+    .hero-progress-legend { display: flex; justify-content: center; gap: 20px; font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+    .hp-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+    .hero-progress-cta {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 14px; font-weight: 600; color: var(--green); letter-spacing: 0.3px;
+    }
+    .hero-progress-cta svg { transition: transform 0.3s; }
+    .hero-progress-card:hover .hero-progress-cta svg { transform: translateX(4px); }
+
     /* ── Sections ── */
     section { padding: 100px 24px; position: relative; }
     .section-inner { max-width: 1100px; margin: 0 auto; }
@@ -352,6 +383,9 @@
       .hero-stats { gap: 16px; }
       .hero-stat-num { font-size: 22px; }
       .hero-stat-label { font-size: 11px; }
+      .hero-progress-card { padding: 18px 20px 16px; margin-top: 32px; }
+      .hero-progress-legend { gap: 12px; font-size: 11px; flex-wrap: wrap; justify-content: center; }
+      .hero-progress-pct { font-size: 18px; }
       .nav-title { font-size: 15px; }
       .nav-logo { width: 30px; height: 30px; }
       .method-flow { grid-template-columns: 1fr; }
@@ -437,6 +471,29 @@
       <div class="hero-stat"><div class="hero-stat-num" id="stat-points">—</div><div class="hero-stat-label" data-i18n-land="stats.points"></div></div>
       <div class="hero-stat"><div class="hero-stat-num" id="stat-collabs">—</div><div class="hero-stat-label" data-i18n-land="stats.collabs"></div></div>
     </div>
+
+    <!-- Progress Card -->
+    <a href="__MAP_URL__" class="hero-progress-card" id="hero-progress-card" style="display:none">
+      <div class="hero-progress-header">
+        <span class="hero-progress-title" data-i18n-land="progress.title"></span>
+        <span class="hero-progress-pct" id="hero-progress-pct">0%</span>
+      </div>
+      <div class="hero-progress-track">
+        <div class="hero-progress-seg hero-progress-finished" id="hero-pg-finished"></div>
+        <div class="hero-progress-seg hero-progress-mapping" id="hero-pg-mapping"></div>
+        <div class="hero-progress-seg hero-progress-tomap" id="hero-pg-tomap"></div>
+      </div>
+      <div class="hero-progress-legend">
+        <span><span class="hp-dot" style="background:#22c55e"></span><span id="hero-pg-finished-pct">0%</span> <span data-i18n-land="progress.finished"></span></span>
+        <span><span class="hp-dot" style="background:#eab308"></span><span id="hero-pg-mapping-pct">0%</span> <span data-i18n-land="progress.mapping"></span></span>
+        <span><span class="hp-dot" style="background:#7c3aed"></span><span id="hero-pg-tomap-pct">0%</span> <span data-i18n-land="progress.tomap"></span></span>
+      </div>
+      <div class="hero-progress-cta">
+        <span data-i18n-land="progress.cta"></span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+    </a>
+
   </header>
 
   <main>
@@ -799,6 +856,12 @@
       'cta.desc': { pt: 'Cada máscara desenhada ajuda a entender a distribuição dessa espécie invasora e apoia ações de erradicação.', en: 'Each drawn mask helps understand the distribution of this invasive species and supports eradication efforts.', es: 'Cada máscara dibujada ayuda a entender la distribución de esta especie invasora y apoya acciones de erradicación.' },
       'cta.btn': { pt: 'Acessar o Mapa', en: 'Access the Map', es: 'Acceder al Mapa' },
 
+      'progress.title': { pt: 'Progresso do Mapeamento', en: 'Mapping Progress', es: 'Progreso del Mapeo' },
+      'progress.finished': { pt: 'Finalizado', en: 'Finished', es: 'Finalizado' },
+      'progress.mapping': { pt: 'Mapeando', en: 'Mapping', es: 'Mapeando' },
+      'progress.tomap': { pt: 'A mapear', en: 'To map', es: 'Por mapear' },
+      'progress.cta': { pt: 'Ver no mapa interativo', en: 'View on interactive map', es: 'Ver en el mapa interactivo' },
+
       'footer.navTitle': { pt: 'Navegação', en: 'Navigation', es: 'Navegación' },
       'footer.refsTitle': { pt: 'Referências', en: 'References', es: 'Referencias' },
       'footer.desc': {
@@ -880,6 +943,21 @@
       document.getElementById('stat-masks').textContent = fmt(d.masks);
       document.getElementById('stat-points').textContent = fmt(d.points);
       document.getElementById('stat-collabs').textContent = fmt(d.collabs);
+
+      const relevant = (d.grid_finished || 0) + (d.grid_mapping || 0) + (d.grid_tomap || 0);
+      if (relevant > 0) {
+        const fPct = d.grid_finished / relevant * 100;
+        const mPct = d.grid_mapping / relevant * 100;
+        const tPct = d.grid_tomap / relevant * 100;
+        document.getElementById('hero-pg-finished').style.width = fPct.toFixed(1) + '%';
+        document.getElementById('hero-pg-mapping').style.width = mPct.toFixed(1) + '%';
+        document.getElementById('hero-pg-tomap').style.width = tPct.toFixed(1) + '%';
+        document.getElementById('hero-progress-pct').textContent = (fPct + mPct).toFixed(1) + '%';
+        document.getElementById('hero-pg-finished-pct').textContent = fPct.toFixed(1) + '%';
+        document.getElementById('hero-pg-mapping-pct').textContent = mPct.toFixed(1) + '%';
+        document.getElementById('hero-pg-tomap-pct').textContent = tPct.toFixed(1) + '%';
+        document.getElementById('hero-progress-card').style.display = '';
+      }
     }).catch(() => {});
 
     /* Team */
