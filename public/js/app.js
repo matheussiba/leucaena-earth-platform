@@ -381,6 +381,7 @@ window.LeucenaApp = (function () {
   // ── Docs modal ──
 
   function openDocsModal() {
+    logEvent('docs_open');
     LeucenaI18n.translatePage();
     document.getElementById('docs-modal').classList.remove('hidden');
     setHash('docs');
@@ -394,8 +395,9 @@ window.LeucenaApp = (function () {
   // ── Guide modal ──
 
   function openGuideModal(page) {
-    LeucenaI18n.translatePage();
     const target = (typeof page === 'string') ? page : 'main';
+    logEvent('guide_open', null, null, { page: target });
+    LeucenaI18n.translatePage();
     showGuidePage(target);
     document.getElementById('guide-modal').classList.remove('hidden');
     if (target === 'about') loadQuemSomosContent();
@@ -407,6 +409,7 @@ window.LeucenaApp = (function () {
   }
 
   function showGuidePage(page) {
+    logEvent('guide_page', null, null, { page: page });
     GUIDE_PAGES.forEach(p => {
       const el = document.getElementById('guide-' + p);
       if (el) el.classList.add('hidden');
@@ -460,6 +463,7 @@ window.LeucenaApp = (function () {
   }
 
   function openAuthModal(mode) {
+    logEvent('auth_modal_open', null, null, { mode: mode });
     authMode = mode;
     const modal = document.getElementById('auth-modal');
     modal.classList.remove('hidden');
@@ -522,6 +526,7 @@ window.LeucenaApp = (function () {
   }
 
   function openResetModal() {
+    logEvent('reset_modal_open');
     const modal = document.getElementById('reset-modal');
     document.getElementById('reset-error').classList.add('hidden');
     document.getElementById('reset-success').classList.add('hidden');
@@ -767,6 +772,7 @@ window.LeucenaApp = (function () {
   }
 
   function openRankingModal() {
+    logEvent('ranking_open');
     const data = window._rankingData;
     if (!data) return;
 
@@ -1140,6 +1146,7 @@ window.LeucenaApp = (function () {
 
   async function openProfileModal(targetUser) {
     if (!isLoggedIn()) return;
+    logEvent('profile_open', null, null, targetUser ? { target: targetUser.username } : null);
     document.getElementById('profile-error').classList.add('hidden');
     profilePhotoDataUrl = null;
 
@@ -1275,6 +1282,7 @@ window.LeucenaApp = (function () {
   }
 
   async function changeOwnPassword() {
+    logEvent('password_change_attempt');
     const pwInput = document.getElementById('profile-new-password');
     const pw = pwInput.value;
     if (!pw || pw.length < 3) {
@@ -1319,6 +1327,7 @@ window.LeucenaApp = (function () {
 
   async function saveProfile(e) {
     e.preventDefault();
+    logEvent('profile_save');
     const full_name = document.getElementById('profile-full-name').value.trim() || null;
     const description = document.getElementById('profile-description').value.trim() || null;
     const emailInput = document.getElementById('profile-email');
@@ -1483,6 +1492,7 @@ window.LeucenaApp = (function () {
   function toggleSidebar() {
     const main = document.getElementById('main-content');
     const isOpen = main.classList.toggle('sidebar-open');
+    logEvent(isOpen ? 'sidebar_open' : 'sidebar_close');
     updateToggleArrow(isOpen);
     updateLegendVisibility(isOpen);
     if (!isOpen && !isEditing()) {
@@ -1508,7 +1518,8 @@ window.LeucenaApp = (function () {
 
   function toggleLegend() {
     legendUserControlled = true;
-    document.getElementById('map-legend').classList.toggle('collapsed');
+    const collapsed = document.getElementById('map-legend').classList.toggle('collapsed');
+    logEvent(collapsed ? 'legend_collapse' : 'legend_expand');
   }
 
   function collapseLegendOnFirstZoom() {
@@ -1684,6 +1695,7 @@ window.LeucenaApp = (function () {
       showToast(LeucenaI18n.t('toast.noCellLocked'), 'warning');
       return;
     }
+    logEvent('unlock_modal_open', selectedCellId);
     document.getElementById('unlock-error').classList.add('hidden');
 
     const finBtn = document.getElementById('unlock-finished');
@@ -1707,6 +1719,7 @@ window.LeucenaApp = (function () {
 
   async function confirmUnlock(status) {
     if (!selectedCellId) return;
+    logEvent('cell_unlock_confirm', selectedCellId, null, { status: status });
     const cellId = selectedCellId;
 
     try {
@@ -1832,6 +1845,7 @@ window.LeucenaApp = (function () {
   }
 
   function handleHomeClick() {
+    logEvent('home_click', selectedCellId);
     if (selectedCellData && selectedCellData.locked_by === username && selectedCellId) {
       LeucenaMap.zoomToCell(selectedCellId);
     } else {
@@ -1848,6 +1862,8 @@ window.LeucenaApp = (function () {
     const btn = document.getElementById('btn-my-location');
     btn.classList.add('locating');
 
+    logEvent('geolocation_click');
+
     function onSuccess(pos) {
       btn.classList.remove('locating');
       const gMap = LeucenaMap.getMap();
@@ -1856,6 +1872,7 @@ window.LeucenaApp = (function () {
       const isMobile = window.innerWidth <= 768;
       gMap.setCenter(latlng);
       gMap.setZoom(isMobile ? 13 : 12);
+      logEvent('geolocation_success', null, null, { lat: latlng.lat, lng: latlng.lng, accuracy: pos.coords.accuracy });
       if (_locationMarker) _locationMarker.setMap(null);
       _locationMarker = new google.maps.Marker({
         position: latlng,
@@ -1876,6 +1893,8 @@ window.LeucenaApp = (function () {
 
     function onError(err) {
       btn.classList.remove('locating');
+      var reason = err.code === 1 ? 'permission_denied' : err.code === 2 ? 'position_unavailable' : 'timeout';
+      logEvent('geolocation_error', null, null, { reason: reason, code: err.code });
       if (err.code === 1) {
         showToast(LeucenaI18n.t('map.geoDenied'), 'error');
       } else {
@@ -2123,6 +2142,7 @@ window.LeucenaApp = (function () {
 
   // Debug modal: map/cell/admin context; row copy buttons use data-copy + post-render click handlers (not inline onclick on escaped values).
   function openDebugModal() {
+    logEvent('debug_modal_open');
     const map = LeucenaMap.getMap();
     const viewsEl = document.getElementById('view-count');
     const viewsVal = viewsEl ? viewsEl.textContent.trim() : '—';
@@ -2195,6 +2215,7 @@ window.LeucenaApp = (function () {
 
   async function openAdminUsersModal() {
     if (!isAdminUser()) return;
+    logEvent('admin_users_open');
     const t = LeucenaI18n.t;
     const modal = document.getElementById('admin-users-modal');
     modal.classList.remove('hidden');

@@ -56,9 +56,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
 
     document.getElementById('tool-zoom-in').addEventListener('click', () => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('zoom_in', null, null, { zoom: map.getZoom() + 1 });
       map.setZoom(map.getZoom() + 1);
     });
     document.getElementById('tool-zoom-out').addEventListener('click', () => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('zoom_out', null, null, { zoom: map.getZoom() - 1 });
       map.setZoom(map.getZoom() - 1);
     });
 

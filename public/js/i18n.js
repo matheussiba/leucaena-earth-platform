@@ -492,8 +492,12 @@ window.LeucenaI18n = (function () {
 
   function setLang(lang) {
     if (!['pt', 'en', 'es'].includes(lang)) return;
+    const prev = currentLang;
     currentLang = lang;
     localStorage.setItem('leucena_lang', lang);
+    if (prev !== lang && typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('lang_change', null, null, { from: prev, to: lang });
+    }
     translatePage();
   }
 
