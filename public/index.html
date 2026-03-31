@@ -18,6 +18,13 @@
   <!-- Splash Screen -->
   <div id="splash-screen" class="splash-screen">
     <img src="/img/leucaena-splash.png" alt="Leucaena Mapping" class="splash-logo">
+    <div class="splash-partners">
+      <img src="/img/sponsors/fapesp.png" alt="FAPESP" class="splash-partner-logo">
+      <img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP" class="splash-partner-logo">
+      <img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP" class="splash-partner-logo">
+      <img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO" class="splash-partner-logo">
+      <img src="/img/partners/IGC.jpg" alt="IGC" class="splash-partner-logo">
+    </div>
   </div>
 
   <!-- Modal de Login -->
@@ -35,7 +42,7 @@
       </button>
       <div class="auth-divider"><span data-i18n="auth.orSeparator">ou</span></div>
       <form id="auth-form">
-        <input type="text" id="auth-username" placeholder="joao.silva" data-i18n-placeholder="auth.userPlaceholder" required autocomplete="username" minlength="2" maxlength="30" pattern="[a-z0-9.]+">
+        <input type="text" id="auth-username" placeholder="joao.silva" data-i18n-placeholder="auth.userOrEmailPlaceholder" required autocomplete="username" minlength="2" maxlength="200" pattern="[a-z0-9.]+">
         <p class="auth-field-hint hidden" id="auth-username-hint" data-i18n="auth.usernameHint">Apenas letras minúsculas, números e ponto</p>
         <div class="password-wrapper">
           <input type="password" id="auth-password" placeholder="Senha" data-i18n-placeholder="auth.passPlaceholder" required autocomplete="current-password" minlength="3">

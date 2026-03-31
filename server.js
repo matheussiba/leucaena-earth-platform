@@ -461,15 +461,20 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
 });
 
 app.post('/api/auth/login', loginLimiter, (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
+  const { identifier, username, email, password } = req.body;
+  const idRaw = (identifier || email || username || '').trim();
+  if (!idRaw || !password) return res.status(400).json({ error: 'Usuário/e-mail e senha obrigatórios' });
 
-  const user = queryOne('SELECT * FROM users WHERE username = ?', [username]);
+  const isEmail = idRaw.includes('@');
+  const user = isEmail
+    ? queryOne('SELECT * FROM users WHERE email = ?', [idRaw.toLowerCase()])
+    : queryOne('SELECT * FROM users WHERE username = ?', [idRaw]);
   if (!user) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
   const hash = hashPassword(password);
   if (user.password_hash !== hash) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
+  const realUsername = user.username;
   const userRole = (user.role || 'contributor');
   if (user.auth_provider !== 'google' && userRole !== 'tester' && !user.email_verified) {
     if (!user.email) {
@@ -477,7 +482,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     }
 
     const masked = maskEmail(user.email);
-    const lastSent = verifyEmailSentAt.get(username.toLowerCase());
+    const lastSent = verifyEmailSentAt.get(realUsername.toLowerCase());
     if (lastSent && (Date.now() - lastSent) < VERIFY_RATE_LIMIT_MS) {
       return res.status(403).json({ error: `Um link de verificação já foi enviado para ${masked}. Verifique sua caixa de entrada ou aguarde 2 minutos.`, code: 'EMAIL_NOT_VERIFIED', masked_email: masked });
     }
@@ -493,7 +498,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
         from: RESEND_FROM,
         to: user.email,
         subject: 'Verifique seu e-mail — leucaena.earth',
-        html: `<p>Olá <strong>${username}</strong>,</p>
+        html: `<p>Olá <strong>${realUsername}</strong>,</p>
                <p>Clique no link abaixo para verificar seu e-mail e ativar sua conta:</p>
                <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
                <p>Se você não solicitou isso, ignore este e-mail.</p>
@@ -501,20 +506,20 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
       }).catch(e => console.error('Resend email error:', e.message));
     }
 
-    verifyEmailSentAt.set(username.toLowerCase(), Date.now());
+    verifyEmailSentAt.set(realUsername.toLowerCase(), Date.now());
     persist();
     return res.status(403).json({ error: `Enviamos um link de verificação para ${masked}. Verifique sua caixa de entrada.`, code: 'EMAIL_NOT_VERIFIED', masked_email: masked });
   }
 
-  runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), username]);
-  logActivity(username, 'login', null, null, null);
+  runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), realUsername]);
+  logActivity(realUsername, 'login', null, null, null);
 
   const token = uuidv4();
-  sessions.set(token, username);
-  const role = getUserRole(username);
+  sessions.set(token, realUsername);
+  const role = getUserRole(realUsername);
   const showMigrationBanner = !user.google_id && user.auth_provider !== 'google';
   res.json({
-    token, username, role,
+    token, username: realUsername, role,
     tester_mode: user.tester_mode || 'contributor',
     auth_provider: user.auth_provider || 'local',
     email_verified: !!user.email_verified,

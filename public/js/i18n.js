@@ -21,6 +21,7 @@ window.LeucenaI18n = (function () {
     'auth.loginSubtitle': { pt: 'Faça login para editar o mapa', en: 'Sign in to edit the map', es: 'Inicie sesión para editar el mapa' },
     'auth.registerSubtitle': { pt: 'Crie uma conta para começar a mapear', en: 'Create an account to start mapping', es: 'Cree una cuenta para empezar a mapear' },
     'auth.userPlaceholder': { pt: 'joao.silva', en: 'joao.silva', es: 'joao.silva' },
+    'auth.userOrEmailPlaceholder': { pt: 'Usuário ou e-mail', en: 'Username or email', es: 'Usuario o correo' },
     'auth.passPlaceholder': { pt: 'Senha', en: 'Password', es: 'Contraseña' },
     'auth.emailPlaceholder': { pt: 'seu@email.com', en: 'your@email.com', es: 'su@email.com' },
     'auth.usernameHint': { pt: 'Apenas letras minúsculas, números e ponto', en: 'Only lowercase letters, numbers, and dot', es: 'Solo letras minúsculas, números y punto' },
@@ -910,15 +911,87 @@ window.LeucenaI18n = (function () {
   // ── Docs content per language ──
 
   function getDocsPT(month, year) {
-    return `<h2>Documentação</h2><h3>Título do Projeto</h3><p><em>Revelando a distribuição espacial e a biomassa aérea de <strong>Leucaena leucocephala</strong> no Estado de São Paulo usando sensoriamento remoto e inteligência artificial</em></p><h3>Pesquisador</h3><p>Matheus Siqueira Barros<br>Doutorando</p><h3>Orientador</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidade de São Paulo</p><h3>Descrição do Projeto</h3><p>Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, Brasil. O projeto combina imagens ópticas de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com técnicas de inteligência artificial para detectar áreas dominadas por essa espécie e estimar sua biomassa.</p><p>O projeto desenvolve métodos de aprendizado profundo, especialmente redes neurais convolucionais (CNNs), para realizar a fusão de dados LiDAR e ópticos e mapear áreas dominadas por <em>Leucaena</em> em escala estadual.</p><h3>Objetivo da Plataforma</h3><p>Esta plataforma foi desenvolvida para apoiar a pesquisa permitindo:</p><ul><li>Mapeamento colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalização de máscaras da copa por colaboradores</li><li>Validação entre pontos e polígonos mapeados</li><li>Rastreamento das contribuições de cada participante</li><li>Exportação dos dados mapeados para análises posteriores</li></ul><h3>Contribuidores</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contato</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Local</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>`;
+    return `<h2>Documentação</h2>
+<p><strong>Estamos construindo um trabalho coletivo</strong> que integra <strong>IA</strong>, <strong>sensoriamento remoto</strong> e <strong>mapeamento colaborativo</strong> para mapear <em>Leucaena leucocephala</em> e estimar a biomassa associada.</p>
+<p>A iniciativa está vinculada à pesquisa desenvolvida na <strong>ESALQ/USP</strong>, sob orientação do <strong>Prof. Dr. Matheus Pinheiro Ferreira</strong>, com financiamento da <strong>FAPESP</strong> e vinculada ao projeto <em>“Tecnologia LiDAR para Monitoramento Florestal em São Paulo: Apoio a Políticas Públicas de Mitigação das Mudanças Climáticas”</em> (processo nº <strong>24/15211-1</strong>) e ao <strong>CCARBON/USP</strong> – Center for Carbon Research in Tropical Agriculture.</p>
+<p>Atualmente, nossos esforços estão concentrados no estado de <strong>São Paulo</strong>, onde estamos estruturando a base de dados e os métodos. Ao mesmo tempo, a plataforma está sendo desenvolvida de forma <strong>aberta</strong> e <strong>escalável</strong>, permitindo sua aplicação em outras regiões e contextos no futuro.</p>
+<p>Se você se interessa por espécies invasoras, geotecnologias ou carbono, vale muito a pena dar uma olhada em <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
+
+<div class="docs-logos">
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Parceiros</div>
+    <div class="docs-logos-grid">
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/IGC.jpg" alt="IGC"></div>
+    </div>
+  </div>
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Financiamento</div>
+    <div class="docs-logos-grid">
+      <div class="docs-logo-card docs-logo-img"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></div>
+    </div>
+  </div>
+</div>
+
+<h3>Título do Projeto</h3><p><em>Revelando a distribuição espacial e a biomassa aérea de <strong>Leucaena leucocephala</strong> no Estado de São Paulo usando sensoriamento remoto e inteligência artificial</em></p><h3>Pesquisador</h3><p>Matheus Siqueira Barros<br>Doutorando</p><h3>Orientador</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidade de São Paulo</p><h3>Descrição do Projeto</h3><p>Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, Brasil. O projeto combina imagens ópticas de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com técnicas de inteligência artificial para detectar áreas dominadas por essa espécie e estimar sua biomassa.</p><p>O projeto desenvolve métodos de aprendizado profundo, especialmente redes neurais convolucionais (CNNs), para realizar a fusão de dados LiDAR e ópticos e mapear áreas dominadas por <em>Leucaena</em> em escala estadual.</p><h3>Objetivo da Plataforma</h3><p>Esta plataforma foi desenvolvida para apoiar a pesquisa permitindo:</p><ul><li>Mapeamento colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalização de máscaras da copa por colaboradores</li><li>Validação entre pontos e polígonos mapeados</li><li>Rastreamento das contribuições de cada participante</li><li>Exportação dos dados mapeados para análises posteriores</li></ul><h3>Equipe do projeto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contato</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Local</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>`;
   }
 
   function getDocsEN(month, year) {
-    return `<h2>Documentation</h2><h3>Project Title</h3><p><em>Revealing the spatial distribution and aboveground biomass of <strong>Leucaena leucocephala</strong> in the State of São Paulo using remote sensing and artificial intelligence</em></p><h3>Researcher</h3><p>Matheus Siqueira Barros<br>PhD Candidate</p><h3>Advisor</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – University of São Paulo</p><h3>Project Description</h3><p>This research investigates the spatial distribution and aboveground biomass of the invasive species <em>Leucaena leucocephala</em> across the state of São Paulo, Brazil. The project combines very high spatial resolution optical imagery (25 cm GSD) and LiDAR data with artificial intelligence techniques to detect areas dominated by this species and estimate its biomass.</p><p>The project develops deep learning methods, especially convolutional neural networks (CNNs), to fuse LiDAR and optical data and map <em>Leucaena</em>-dominated areas at the state scale.</p><h3>Platform Objective</h3><p>This platform was developed to support the research by enabling:</p><ul><li>Collaborative mapping of <em>Leucaena leucocephala</em> patches</li><li>Canopy mask digitization by contributors</li><li>Validation between mapped points and polygons</li><li>Tracking of each participant's contributions</li><li>Export of mapped data for further analysis</li></ul><h3>Contributors</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contact</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Location</h3><p>Piracicaba – São Paulo – Brazil<br>${month} ${year}</p>`;
+    return `<h2>Documentation</h2>
+<p><strong>We are building a collective effort</strong> integrating <strong>AI</strong>, <strong>remote sensing</strong>, and <strong>collaborative mapping</strong> to map <em>Leucaena leucocephala</em> and estimate associated biomass.</p>
+<p>This initiative is linked to research at <strong>ESALQ/USP</strong>, supervised by <strong>Prof. Dr. Matheus Pinheiro Ferreira</strong>, funded by <strong>FAPESP</strong> and connected to the project <em>“LiDAR Technology for Forest Monitoring in São Paulo: Support for Public Policies to Mitigate Climate Change”</em> (grant process no. <strong>24/15211-1</strong>) and to <strong>CCARBON/USP</strong> – Center for Carbon Research in Tropical Agriculture.</p>
+<p>Our current efforts focus on the state of <strong>São Paulo</strong>, where we are structuring the database and methods. At the same time, the platform is being developed in an <strong>open</strong> and <strong>scalable</strong> way, allowing future application in other regions and contexts.</p>
+<p>If you are interested in invasive species, geotechnologies, or carbon, take a look at <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
+
+<div class="docs-logos">
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Partners</div>
+    <div class="docs-logos-grid">
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/IGC.jpg" alt="IGC"></div>
+    </div>
+  </div>
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Funding</div>
+    <div class="docs-logos-grid">
+      <div class="docs-logo-card docs-logo-img"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></div>
+    </div>
+  </div>
+</div>
+
+<h3>Project Title</h3><p><em>Revealing the spatial distribution and aboveground biomass of <strong>Leucaena leucocephala</strong> in the State of São Paulo using remote sensing and artificial intelligence</em></p><h3>Researcher</h3><p>Matheus Siqueira Barros<br>PhD Candidate</p><h3>Advisor</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – University of São Paulo</p><h3>Project Description</h3><p>This research investigates the spatial distribution and aboveground biomass of the invasive species <em>Leucaena leucocephala</em> across the state of São Paulo, Brazil. The project combines very high spatial resolution optical imagery (25 cm GSD) and LiDAR data with artificial intelligence techniques to detect areas dominated by this species and estimate its biomass.</p><p>The project develops deep learning methods, especially convolutional neural networks (CNNs), to fuse LiDAR and optical data and map <em>Leucaena</em>-dominated areas at the state scale.</p><h3>Platform Objective</h3><p>This platform was developed to support the research by enabling:</p><ul><li>Collaborative mapping of <em>Leucaena leucocephala</em> patches</li><li>Canopy mask digitization by contributors</li><li>Validation between mapped points and polygons</li><li>Tracking of each participant's contributions</li><li>Export of mapped data for further analysis</li></ul><h3>Project team</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contact</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Location</h3><p>Piracicaba – São Paulo – Brazil<br>${month} ${year}</p>`;
   }
 
   function getDocsES(month, year) {
-    return `<h2>Documentación</h2><h3>Título del Proyecto</h3><p><em>Revelando la distribución espacial y la biomasa aérea de <strong>Leucaena leucocephala</strong> en el Estado de São Paulo usando teledetección e inteligencia artificial</em></p><h3>Investigador</h3><p>Matheus Siqueira Barros<br>Doctorando</p><h3>Director</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidad de São Paulo</p><h3>Descripción del Proyecto</h3><p>Esta investigación estudia la distribución espacial y la biomasa aérea de la especie invasora <em>Leucaena leucocephala</em> en todo el estado de São Paulo, Brasil. El proyecto combina imágenes ópticas de muy alta resolución espacial (25 cm de GSD) y datos LiDAR con técnicas de inteligencia artificial para detectar áreas dominadas por esta especie y estimar su biomasa.</p><p>El proyecto desarrolla métodos de aprendizaje profundo, especialmente redes neuronales convolucionales (CNNs), para fusionar datos LiDAR y ópticos y mapear áreas dominadas por <em>Leucaena</em> a escala estatal.</p><h3>Objetivo de la Plataforma</h3><p>Esta plataforma fue desarrollada para apoyar la investigación permitiendo:</p><ul><li>Mapeo colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalización de máscaras de copa por colaboradores</li><li>Validación entre puntos y polígonos mapeados</li><li>Seguimiento de las contribuciones de cada participante</li><li>Exportación de los datos mapeados para análisis posteriores</li></ul><h3>Colaboradores</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contacto</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Ubicación</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>`;
+    return `<h2>Documentación</h2>
+<p><strong>Estamos construyendo un esfuerzo colectivo</strong> que integra <strong>IA</strong>, <strong>teledetección</strong> y <strong>mapeo colaborativo</strong> para mapear <em>Leucaena leucocephala</em> y estimar la biomasa asociada.</p>
+<p>La iniciativa está vinculada a la investigación desarrollada en <strong>ESALQ/USP</strong>, bajo la dirección del <strong>Prof. Dr. Matheus Pinheiro Ferreira</strong>, con financiación de <strong>FAPESP</strong> y vinculada al proyecto <em>“Tecnología LiDAR para el Monitoreo Forestal en São Paulo: Apoyo a Políticas Públicas de Mitigación del Cambio Climático”</em> (proceso nº <strong>24/15211-1</strong>) y al <strong>CCARBON/USP</strong> – Center for Carbon Research in Tropical Agriculture.</p>
+<p>Actualmente, nuestros esfuerzos se concentran en el estado de <strong>São Paulo</strong>, donde estamos estructurando la base de datos y los métodos. Al mismo tiempo, la plataforma se desarrolla de forma <strong>abierta</strong> y <strong>escalable</strong>, permitiendo su aplicación en otras regiones y contextos en el futuro.</p>
+<p>Si te interesan las especies invasoras, las geotecnologías o el carbono, vale la pena visitar <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
+
+<div class="docs-logos">
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Socios</div>
+    <div class="docs-logos-grid">
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO"></div>
+      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/IGC.jpg" alt="IGC"></div>
+    </div>
+  </div>
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Financiación</div>
+    <div class="docs-logos-grid">
+      <div class="docs-logo-card docs-logo-img"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></div>
+    </div>
+  </div>
+</div>
+
+<h3>Título del Proyecto</h3><p><em>Revelando la distribución espacial y la biomasa aérea de <strong>Leucaena leucocephala</strong> en el Estado de São Paulo usando teledetección e inteligencia artificial</em></p><h3>Investigador</h3><p>Matheus Siqueira Barros<br>Doctorando</p><h3>Director</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidad de São Paulo</p><h3>Descripción del Proyecto</h3><p>Esta investigación estudia la distribución espacial y la biomasa aérea de la especie invasora <em>Leucaena leucocephala</em> en todo el estado de São Paulo, Brasil. El proyecto combina imágenes ópticas de muy alta resolución espacial (25 cm de GSD) y datos LiDAR con técnicas de inteligencia artificial para detectar áreas dominadas por esta especie y estimar su biomasa.</p><p>El proyecto desarrolla métodos de aprendizaje profundo, especialmente redes neuronales convolucionales (CNNs), para fusionar datos LiDAR y ópticos y mapear áreas dominadas por <em>Leucaena</em> a escala estatal.</p><h3>Objetivo de la Plataforma</h3><p>Esta plataforma fue desarrollada para apoyar la investigación permitiendo:</p><ul><li>Mapeo colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalización de máscaras de copa por colaboradores</li><li>Validación entre puntos y polígonos mapeados</li><li>Seguimiento de las contribuciones de cada participante</li><li>Exportación de los datos mapeados para análisis posteriores</li></ul><h3>Equipo del proyecto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contacto</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Ubicación</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>`;
   }
 
   // ── Collaborate content ──

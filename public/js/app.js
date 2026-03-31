@@ -431,6 +431,7 @@ window.LeucenaApp = (function () {
     document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
     const usernameInput = document.getElementById('auth-username');
     usernameInput.addEventListener('input', () => {
+      if (authMode === 'login' && usernameInput.value.includes('@')) return;
       usernameInput.value = usernameInput.value
         .toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -492,6 +493,8 @@ window.LeucenaApp = (function () {
       emailInput.removeAttribute('required');
       usernameHint.classList.add('hidden');
       forgotGroup.classList.remove('hidden');
+      const u = document.getElementById('auth-username');
+      if (u) u.removeAttribute('pattern');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignIn');
     } else {
       document.getElementById('auth-modal-title').textContent = t('auth.register');
@@ -503,6 +506,8 @@ window.LeucenaApp = (function () {
       emailInput.setAttribute('required', 'required');
       usernameHint.classList.remove('hidden');
       forgotGroup.classList.add('hidden');
+      const u = document.getElementById('auth-username');
+      if (u) u.setAttribute('pattern', '[a-z0-9.]+');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignUp');
     }
     document.getElementById('auth-username').focus();
@@ -581,7 +586,9 @@ window.LeucenaApp = (function () {
     }
 
     const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-    const payload = { username: user, password: pass };
+    const payload = authMode === 'login'
+      ? { identifier: user, username: user, password: pass }
+      : { username: user, password: pass };
     if (authMode === 'register') {
       payload.email = document.getElementById('auth-email').value.trim();
     }
