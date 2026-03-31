@@ -3501,10 +3501,19 @@ html, body {
 
 /* .view-counter.debug-active — reservado se o checkbox Debug voltar ao HTML */
 
+#debug-modal .modal-card {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .debug-info-body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .debug-row {
