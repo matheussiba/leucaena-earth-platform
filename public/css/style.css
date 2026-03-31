@@ -1633,13 +1633,18 @@ html, body {
   min-width: 170px;
   pointer-events: auto;
   overflow: hidden;
-  transition: opacity 0.2s, visibility 0.2s;
+  transition: opacity 0.2s, visibility 0.2s, left 0.3s ease;
 }
 
 .map-legend.legend-hidden {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+
+/* When sidebar opens on desktop, slide legend right instead of hiding it */
+#main-content.sidebar-open .map-legend {
+  left: calc(12px + var(--sidebar-width));
 }
 
 .legend-toggle {

@@ -977,7 +977,7 @@ window.LeucenaApp = (function () {
     { target: '#guide-btn',       text: 'tour.step1' },
     { target: '#user-badge',      text: 'tour.step2' },
     { target: '#sidebar-toggle',  text: 'tour.step3' },
-    { target: '#tool-maptype',    text: 'tour.step4' },
+    { target: '#tool-maptools',   text: 'tour.step4' },
     { target: '#btn-my-location', text: 'tour.step5' },
     { target: '#map',             text: 'tour.step6' },
   ];
@@ -1539,13 +1539,9 @@ window.LeucenaApp = (function () {
   function updateLegendVisibility(sidebarOpen) {
     const legend = document.getElementById('map-legend');
     const locBtn = document.getElementById('btn-my-location');
-    if (sidebarOpen) {
-      legend.classList.add('legend-hidden');
-      if (locBtn) locBtn.classList.add('legend-hidden');
-    } else {
-      legend.classList.remove('legend-hidden');
-      if (locBtn) locBtn.classList.remove('legend-hidden');
-    }
+    // Sidebar should not hide legend/location; legend is shifted via CSS when sidebar is open.
+    if (legend) legend.classList.remove('legend-hidden');
+    if (locBtn) locBtn.classList.remove('legend-hidden');
   }
 
   // ── Map init ──
