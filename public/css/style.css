@@ -3892,9 +3892,13 @@ html, body {
 
 .progress-legend-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
+  margin-top: 4px;
+  gap: 12px;
+}
+
+.progress-legend-row:first-of-type {
   margin-top: 6px;
-  gap: 4px;
 }
 
 .progress-legend-item {

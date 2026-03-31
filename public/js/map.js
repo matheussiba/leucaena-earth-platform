@@ -1097,7 +1097,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       setW('progress-mapping', mappingPct);
       setW('progress-tomap', tomapPct);
       const lbl = document.getElementById('progress-pct-label');
-      if (lbl) lbl.textContent = finishedPct.toFixed(1) + '%';
+      if (lbl) lbl.textContent = (finishedPct + mappingPct).toFixed(1) + '%';
       const setPct = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toFixed(1) + '%'; };
       setPct('progress-finished-pct', finishedPct);
       setPct('progress-mapping-pct', mappingPct);
