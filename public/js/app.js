@@ -768,7 +768,7 @@ window.LeucenaApp = (function () {
       } else if (isContrib && data.user_mask_count > 0) {
         textEl.textContent = LeucenaI18n.t('ranking.widgetPosition', data.user_position, data.total_contributors);
       } else {
-        textEl.textContent = LeucenaI18n.t('ranking.widgetPublic', data.total_contributors);
+        textEl.textContent = LeucenaI18n.t('ranking.widgetPublic');
       }
       widget.classList.remove('hidden');
     } catch (e) {
