@@ -957,21 +957,18 @@ window.LeucenaApp = (function () {
   // ── Onboarding Controller ──
   // Guided tour: dim overlay + spotlight on target + tooltip positioned within the viewport.
   const WELCOME_VERSION = 'v1_howto_video';
-  const TOUR_VERSION = 'v2';
+  const TOUR_VERSION = 'v3';
   let _tourStartedFrom = null;
   let _tourStep = 0;
   let _tourSpotlight = null;
 
   const TOUR_STEPS = [
     { target: '#guide-btn',       text: 'tour.step1' },
-    { target: '#map',             text: 'tour.step2' },
+    { target: '#user-badge',      text: 'tour.step2' },
     { target: '#sidebar-toggle',  text: 'tour.step3' },
-    { target: '#legend-toggle',   text: 'tour.step4' },
-    { target: '#btn-my-location', text: 'tour.step4b' },
-    { target: '#tool-maptype',    text: 'tour.step5' },
-    { target: '#label-toggle',    text: 'tour.step6' },
-    { target: '#login-btn',       text: 'tour.step7' },
-    { target: '#user-badge',      text: 'tour.step8' },
+    { target: '#tool-maptype',    text: 'tour.step4' },
+    { target: '#btn-my-location', text: 'tour.step5' },
+    { target: '#map',             text: 'tour.step6' },
   ];
 
   const Onboarding = {

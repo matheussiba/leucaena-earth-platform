@@ -277,14 +277,14 @@ window.LeucenaI18n = (function () {
     'tour.next': { pt: 'Próximo', en: 'Next', es: 'Siguiente' },
     'tour.finish': { pt: 'Entendi!', en: 'Got it!', es: '¡Entendido!' },
     'tour.step1': {
-      pt: 'Bem-vindo! Aqui você encontra documentação, tutoriais em vídeo e informações sobre o projeto.',
-      en: 'Welcome! Here you\'ll find documentation, video tutorials, and project info.',
-      es: '¡Bienvenido! Aquí encontrará documentación, tutoriales en video e información del proyecto.'
+      pt: 'Comece por aqui: documentação, tutoriais em vídeo e informações sobre o projeto.',
+      en: 'Start here: documentation, video tutorials, and project information.',
+      es: 'Empiece aquí: documentación, tutoriales en video e información del proyecto.'
     },
     'tour.step2': {
-      pt: 'Este é o mapa. Clique em uma célula da grade para ver seu status e começar a mapear leucaenas.',
-      en: 'This is the map. Click a grid cell to see its status and start mapping leucaenas.',
-      es: 'Este es el mapa. Haga clic en una celda de la grilla para ver su estado y empezar a mapear.'
+      pt: 'Seu perfil: após login, clique aqui para ver e editar suas informações.',
+      en: 'Your profile: after login, click here to view and edit your info.',
+      es: 'Su perfil: después de iniciar sesión, haga clic aquí para ver y editar su información.'
     },
     'tour.step3': {
       pt: 'Abra o painel lateral para ver filtros, informações da célula selecionada e os usuários online.',
@@ -292,34 +292,19 @@ window.LeucenaI18n = (function () {
       es: 'Abra el panel lateral para ver filtros, información de la celda y usuarios en línea.'
     },
     'tour.step4': {
-      pt: 'A legenda explica as cores e símbolos que você vê no mapa.',
-      en: 'The legend explains the colors and symbols you see on the map.',
-      es: 'La leyenda explica los colores y símbolos que ve en el mapa.'
-    },
-    'tour.step4b': {
-      pt: 'Use "Minha localização" para centralizar o mapa na sua posição e se orientar (funciona no celular e no computador).',
-      en: 'Use “My location” to center the map on your position and get oriented (works on mobile and desktop).',
-      es: 'Use “Mi ubicación” para centrar el mapa en su posición y orientarse (funciona en móvil y escritorio).'
+      pt: 'Ferramentas do mapa: alterne Satélite/Mapa e ative Rótulos para facilitar a navegação.',
+      en: 'Map tools: switch Satellite/Map and enable Labels to navigate more easily.',
+      es: 'Herramientas del mapa: cambie Satélite/Mapa y active Etiquetas para navegar mejor.'
     },
     'tour.step5': {
-      pt: 'Alterne entre a vista de satélite e o mapa padrão para facilitar a identificação de leucaenas.',
-      en: 'Switch between satellite view and the standard map to help identify leucaenas.',
-      es: 'Alterne entre la vista satelital y el mapa estándar para facilitar la identificación de leucaenas.'
+      pt: 'Minha localização: centralize o mapa na sua posição para se orientar (celular e computador).',
+      en: 'My location: center the map on your position to get oriented (mobile and desktop).',
+      es: 'Mi ubicación: centre el mapa en su posición para orientarse (móvil y escritorio).'
     },
     'tour.step6': {
-      pt: 'Ative os rótulos para exibir nomes de ruas e referências no mapa.',
-      en: 'Enable labels to show street names and references on the map.',
-      es: 'Active las etiquetas para mostrar nombres de calles y referencias en el mapa.'
-    },
-    'tour.step7': {
-      pt: 'Faça login ou crie sua conta para começar a desenhar polígonos de leucaena!',
-      en: 'Log in or create your account to start drawing leucaena polygons!',
-      es: '¡Inicie sesión o cree su cuenta para empezar a dibujar polígonos de leucaena!'
-    },
-    'tour.step8': {
-      pt: 'Depois de logado, clique aqui para editar seu perfil e ver suas informações.',
-      en: 'After logging in, click here to edit your profile and see your info.',
-      es: 'Después de iniciar sesión, haga clic aquí para editar su perfil y ver su información.'
+      pt: 'Este é o mapa: clique nas células e explore para começar a mapear.',
+      en: 'This is the map: click grid cells and explore to start mapping.',
+      es: 'Este es el mapa: haga clic en las celdas y explore para empezar a mapear.'
     },
 
     // ── Debug (map / stats modal) ──
