@@ -395,10 +395,27 @@ function validateFinished(cellId) {
   return { valid: true };
 }
 
+// ── Device detection helper ──
+
+function isMobileUA(req) {
+  const ua = (req.headers['user-agent'] || '').toLowerCase();
+  return /mobile|android|iphone|ipad|ipod|webos|blackberry|opera mini|iemobile/.test(ua);
+}
+
+function bumpStat(key) {
+  const exists = queryOne('SELECT value FROM site_stats WHERE key = ?', [key]);
+  if (exists) {
+    runSQL('UPDATE site_stats SET value = value + 1 WHERE key = ?', [key]);
+  } else {
+    runSQL('INSERT INTO site_stats (key, value) VALUES (?, 1)', [key]);
+  }
+}
+
 // ── View counter ──
 
 app.post('/api/stats/view', (req, res) => {
   runSQL("UPDATE site_stats SET value = value + 1 WHERE key = 'view_count'");
+  bumpStat(isMobileUA(req) ? 'view_count_mobile' : 'view_count_desktop');
   res.json({ success: true });
 });
 
@@ -409,6 +426,23 @@ app.get('/api/stats/views', (req, res) => {
   }
   const row = queryOne("SELECT value FROM site_stats WHERE key = 'view_count'");
   res.json({ views: row ? row.value : 0 });
+});
+
+app.get('/api/stats/platform', (req, res) => {
+  const username = getUsernameFromToken(req);
+  if (!username || !isAdmin(username)) {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+  function stat(key) {
+    const r = queryOne('SELECT value FROM site_stats WHERE key = ?', [key]);
+    return r ? r.value : 0;
+  }
+  const totalMasks = queryOne('SELECT COUNT(*) as cnt FROM polygons');
+  res.json({
+    views:          { total: stat('view_count'), desktop: stat('view_count_desktop'), mobile: stat('view_count_mobile') },
+    logins:         { desktop: stat('login_count_desktop'), mobile: stat('login_count_mobile') },
+    masks_created:  { total: totalMasks ? totalMasks.cnt : 0, desktop: stat('mask_count_desktop'), mobile: stat('mask_count_mobile') }
+  });
 });
 
 // ── Auth ──
@@ -513,6 +547,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   }
 
   runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), realUsername]);
+  bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
   logActivity(realUsername, 'login', null, null, null);
 
   const token = uuidv4();
@@ -770,6 +805,7 @@ app.get('/auth/google/callback', async (req, res) => {
     }
 
     runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE id = ?', [new Date().toISOString(), user.id]);
+    bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
     logActivity(user.username, 'login_google', null, null, null);
 
     const sessionToken = uuidv4();
@@ -1533,6 +1569,7 @@ app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
   const polyRole = effRole === 'superadmin' ? 'admin' : effRole;
   const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: polyRole, created_at: now, updated_at: now, area_ha: areaHa };
   io.emit('polygon:created', polygon);
+  bumpStat(isMobileUA(req) ? 'mask_count_mobile' : 'mask_count_desktop');
   logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
   persist();
   res.json(polygon);

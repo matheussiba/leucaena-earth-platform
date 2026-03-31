@@ -2140,7 +2140,34 @@ window.LeucenaApp = (function () {
     if (vc) vc.classList.remove('view-counter-modal-open');
   }
 
-  // Debug modal: map/cell/admin context; row copy buttons use data-copy + post-render click handlers (not inline onclick on escaped values).
+  function escDebugHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function renderDebugRows(rows) {
+    const body = document.getElementById('debug-info-body');
+    body.innerHTML = rows.map(r => {
+      const v = String(r.val);
+      return `<div class="debug-row${r.section ? ' debug-section' : ''}">
+        <span class="debug-key">${escDebugHtml(r.key)}:</span>
+        <span class="debug-val">${escDebugHtml(v)}</span>
+        <button type="button" class="debug-copy-btn" data-copy="${escDebugHtml(v)}" title="Copiar">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+    body.querySelectorAll('.debug-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.getAttribute('data-copy');
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(val).then(() => showToast('Copiado!', 'success', 1500)).catch(() => { fallbackCopy(val); showToast('Copiado!', 'success', 1500); });
+          } else { fallbackCopy(val); showToast('Copiado!', 'success', 1500); }
+        } catch (_) { fallbackCopy(val); showToast('Copiado!', 'success', 1500); }
+      });
+    });
+  }
+
   function openDebugModal() {
     logEvent('debug_modal_open');
     const map = LeucenaMap.getMap();
@@ -2180,37 +2207,34 @@ window.LeucenaApp = (function () {
       );
     }
 
-    function escHtml(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-    const body = document.getElementById('debug-info-body');
-    body.innerHTML = rows.map(r => {
-      const v = String(r.val);
-      return `<div class="debug-row">
-        <span class="debug-key">${escHtml(r.key)}:</span>
-        <span class="debug-val">${escHtml(v)}</span>
-        <button type="button" class="debug-copy-btn" data-copy="${escHtml(v)}" title="Copiar">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        </button>
-      </div>`;
-    }).join('');
-    body.querySelectorAll('.debug-copy-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const val = btn.getAttribute('data-copy');
-        try {
-          if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(val).then(() => showToast('Copiado!', 'success', 1500)).catch(() => { fallbackCopy(val); showToast('Copiado!', 'success', 1500); });
-          } else { fallbackCopy(val); showToast('Copiado!', 'success', 1500); }
-        } catch (_) { fallbackCopy(val); showToast('Copiado!', 'success', 1500); }
-      });
-    });
+    renderDebugRows(rows);
     const vc = document.getElementById('view-counter');
     if (vc) vc.classList.add('view-counter-modal-open');
     document.getElementById('debug-modal').classList.remove('hidden');
+
+    if (isAdminUser()) {
+      fetch('/api/stats/platform', { headers: authHeaders() })
+        .then(r => r.ok ? r.json() : null)
+        .then(stats => {
+          if (!stats) return;
+          const fmt = n => (n || 0).toLocaleString();
+          const extra = [
+            { key: '── Acessos ──', val: '', section: true },
+            { key: 'Total', val: fmt(stats.views.total) },
+            { key: 'Desktop', val: fmt(stats.views.desktop) },
+            { key: 'Mobile', val: fmt(stats.views.mobile) },
+            { key: '── Logins ──', val: '', section: true },
+            { key: 'Desktop', val: fmt(stats.logins.desktop) },
+            { key: 'Mobile', val: fmt(stats.logins.mobile) },
+            { key: '── Máscaras criadas ──', val: '', section: true },
+            { key: 'Total', val: fmt(stats.masks_created.total) },
+            { key: 'Desktop', val: fmt(stats.masks_created.desktop) },
+            { key: 'Mobile', val: fmt(stats.masks_created.mobile) },
+          ];
+          renderDebugRows(rows.concat(extra));
+        })
+        .catch(() => {});
+    }
   }
 
   async function openAdminUsersModal() {
