@@ -137,5 +137,7 @@ window.LeucenaCollab = (function () {
     }
   }
 
+  initAnonymous();
+
   return { init, initAnonymous, notifyEditingCell };
 })();
