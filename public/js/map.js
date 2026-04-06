@@ -1,9 +1,13 @@
 window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points, filters, viewport-based perf
   let map = null;
   let svCoverageLayer = null;
-  const gridPolygons = {};
+  let gridLayer = null;         // google.maps.Data — single layer replaces per-cell Polygons
   const gridData = {};
-  const gridCellBounds = {}; // LatLngBounds per cell for viewport culling
+  const gridCellBounds = {};
+  const gridCache = {};         // client-side cache: state key → FeatureCollection
+  let _currentState = null;     // loaded state UF (null = all)
+  let _gridClickable = true;
+  let _gridsHollow = false;
   const pointMarkersById = {};
   const POINT_LAYERS = ['crowdmapping', 'inaturalist', 'gbif', 'insthorus', 'specieslink'];
   let activeFilters = new Set(['not_yet_finished', 'in_use', 'mapping', 'no_points', 'finished']);
@@ -87,6 +91,9 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       const lng = e.latLng.lng().toFixed(6);
       lastCoords = `${lat}, ${lng}`;
       document.getElementById('coords-display').textContent = lastCoords;
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.updateMouseLatLng) {
+        LeucenaDrawing.updateMouseLatLng(e.latLng);
+      }
     });
 
     map.addListener('click', (e) => {
@@ -148,6 +155,40 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     setupRightClickCopy();
     setupBasemapToggle();
+
+    gridLayer = new google.maps.Data({ map: map });
+    gridLayer.addListener('click', (event) => {
+      const cellId = event.feature.getId();
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'edit' && LeucenaDrawing.isEditModified()) {
+        clickedOnFeature = true;
+        LeucenaDrawing.exitEditMode();
+        return;
+      }
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
+        LeucenaApp.handleDeletionClick(event.latLng);
+        return;
+      }
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) {
+        return;
+      }
+      if (typeof LeucenaDrawing !== 'undefined') {
+        const dm = LeucenaDrawing.getActiveMode();
+        if (dm === 'draw' || dm === 'hole' || dm === 'delete') return;
+      }
+      clickedOnFeature = true;
+      deselectPoint();
+      if (LeucenaStreetView.isActive()) {
+        LeucenaStreetView.showAt(event.latLng);
+        return;
+      }
+      const currentData = LeucenaApp.getSelectedCellData();
+      if (currentData && currentData.locked_by && currentData.locked_by === LeucenaApp.getUsername() && cellId !== LeucenaApp.getSelectedCellId()) {
+        LeucenaApp.showToast(LeucenaI18n.t('toast.editingWarning'), 'warning');
+        return;
+      }
+      LeucenaApp.selectCell(cellId, gridData[cellId]);
+    });
+
     loadGrid();
     loadPoints();
     setupFilters();
@@ -354,26 +395,42 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     );
   }
 
-  async function loadGrid() {
-    try {
-      const res = await fetch('/api/grid');
-      const fc = await res.json();
-      gridBounds = new google.maps.LatLngBounds();
-      for (const feature of fc.features) {
-        const props = feature.properties;
-        gridData[props.id] = props;
-        createGridPolygon(props.id, feature.geometry, props);
-        const rings = getGeometryRings(feature.geometry);
-        for (const ring of rings) {
-          for (const coord of ring) {
-            gridBounds.extend({ lat: coord[1], lng: coord[0] });
-          }
+  function applyGridGeoJson(fc) {
+    gridBounds = new google.maps.LatLngBounds();
+    for (const feature of fc.features) {
+      const props = feature.properties;
+      gridData[props.id] = props;
+      const rings = getGeometryRings(feature.geometry);
+      const cellBnds = new google.maps.LatLngBounds();
+      for (const ring of rings) {
+        for (const coord of ring) {
+          const ll = { lat: coord[1], lng: coord[0] };
+          gridBounds.extend(ll);
+          cellBnds.extend(ll);
         }
       }
+      gridCellBounds[props.id] = cellBnds;
+    }
+    gridLayer.addGeoJson(fc, { idPropertyName: 'id' });
+    gridLayer.setStyle(gridStyleCallback);
+  }
+
+  async function loadGrid() {
+    try {
+      const url = _currentState ? `/api/grid?state=${_currentState}` : '/api/grid';
+      const cacheKey = _currentState || '_all';
+      let fc;
+      if (gridCache[cacheKey]) {
+        fc = gridCache[cacheKey];
+      } else {
+        const res = await fetch(url);
+        fc = await res.json();
+        gridCache[cacheKey] = fc;
+      }
+      applyGridGeoJson(fc);
       restrictionBounds = bufferBounds(gridBounds, 0.15);
       map.fitBounds(gridBounds);
-      map.addListener('idle', () => { // after pan/zoom: viewport cull grids, points, and drawing polygons
-        refreshGridVisibility();
+      map.addListener('idle', () => {
         refreshPointVisibility();
         if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
       });
@@ -395,6 +452,30 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.gridLoadFail'), 'error');
     }
+  }
+
+  async function loadStateGrid(uf) {
+    gridLayer.forEach(f => gridLayer.remove(f));
+    Object.keys(gridData).forEach(k => delete gridData[k]);
+    Object.keys(gridCellBounds).forEach(k => delete gridCellBounds[k]);
+    _currentState = uf || null;
+    const cacheKey = _currentState || '_all';
+    let fc;
+    if (gridCache[cacheKey]) {
+      fc = gridCache[cacheKey];
+    } else {
+      const url = _currentState ? `/api/grid?state=${_currentState}` : '/api/grid';
+      const res = await fetch(url);
+      fc = await res.json();
+      gridCache[cacheKey] = fc;
+    }
+    applyGridGeoJson(fc);
+    restrictionBounds = bufferBounds(gridBounds, 0.15);
+    map.setOptions({
+      restriction: { latLngBounds: restrictionBounds, strictBounds: false }
+    });
+    map.fitBounds(gridBounds);
+    updateFilterCounts();
   }
 
   function getStyleForCell(props, cellId) {
@@ -432,68 +513,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     };
   }
 
-  function createGridPolygon(cellId, geometry, props) {
-    const rings = getGeometryRings(geometry);
-    const paths = rings.map(ring => ring.map(c => ({ lat: c[1], lng: c[0] })));
+  function gridStyleCallback(feature) {
+    const cellId = feature.getId();
+    const props = gridData[cellId];
+    if (!props || !shouldShowCell(props)) return { visible: false };
     const style = getStyleForCell(props, cellId);
-
-    const cellBnds = new google.maps.LatLngBounds(); // bounds for culling; polygon stays map:null until idle shows in-viewport cells
-    for (const coord of rings[0]) {
-      cellBnds.extend({ lat: coord[1], lng: coord[0] });
-    }
-    gridCellBounds[cellId] = cellBnds;
-
-    const poly = new google.maps.Polygon({
-      paths: paths,
-      ...style,
-      map: null,
-      clickable: true
-    });
-
-    poly.addListener('mousemove', (e) => {
-      const lat = e.latLng.lat().toFixed(6);
-      const lng = e.latLng.lng().toFixed(6);
-      lastCoords = `${lat}, ${lng}`;
-      document.getElementById('coords-display').textContent = lastCoords;
-      // Keep drawing.js cursor position in sync when grid cells capture mousemove
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.updateMouseLatLng) {
-        LeucenaDrawing.updateMouseLatLng(e.latLng);
-      }
-    });
-
-    poly.addListener('click', (e) => {
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'edit' && LeucenaDrawing.isEditModified()) {
-        clickedOnFeature = true;
-        LeucenaDrawing.exitEditMode();
-        return;
-      }
-      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
-        LeucenaApp.handleDeletionClick(e.latLng);
-        return;
-      }
-      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) {
-        return;
-      }
-      // In draw/hole/delete mode, grid cell clicks should not trigger cell selection
-      if (typeof LeucenaDrawing !== 'undefined') {
-        const dm = LeucenaDrawing.getActiveMode();
-        if (dm === 'draw' || dm === 'hole' || dm === 'delete') return;
-      }
-      clickedOnFeature = true;
-      deselectPoint();
-      if (LeucenaStreetView.isActive()) {
-        LeucenaStreetView.showAt(e.latLng);
-        return;
-      }
-      const currentData = LeucenaApp.getSelectedCellData();
-      if (currentData && currentData.locked_by && currentData.locked_by === LeucenaApp.getUsername() && cellId !== LeucenaApp.getSelectedCellId()) {
-        LeucenaApp.showToast(LeucenaI18n.t('toast.editingWarning'), 'warning');
-        return;
-      }
-      LeucenaApp.selectCell(cellId, gridData[cellId]);
-    });
-
-    gridPolygons[cellId] = poly;
+    if (_gridsHollow) style.fillOpacity = 0;
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) style.fillOpacity = 0;
+    style.clickable = _gridClickable;
+    style.cursor = _gridClickable ? 'pointer' : '';
+    return style;
   }
 
   function shouldShowCell(props) {
@@ -503,32 +532,13 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
   function updateCellAppearance(cellId, data) {
     gridData[cellId] = { ...gridData[cellId], ...data };
-    const poly = gridPolygons[cellId];
-    if (!poly) return;
-
-    const props = gridData[cellId];
-    const style = getStyleForCell(props, cellId);
-
-    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) {
-      style.fillOpacity = 0.0;
-    }
-
-    poly.setOptions({
-      ...style,
-      map: shouldShowCell(props) ? map : null
-    });
+    if (gridLayer) gridLayer.setStyle(gridStyleCallback);
   }
 
   function setSelectedCell(cellId) {
     deselectPoint();
-    const prevId = selectedCellId;
     selectedCellId = cellId;
-    if (prevId != null && gridData[prevId]) {
-      updateCellAppearance(prevId, gridData[prevId]);
-    }
-    if (cellId != null && gridData[cellId]) {
-      updateCellAppearance(cellId, gridData[cellId]);
-    }
+    if (gridLayer) gridLayer.setStyle(gridStyleCallback);
   }
 
   function onCellLocked(cellId, lockedBy) {
@@ -1172,13 +1182,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     syncPointsParent();
   }
 
-  function refreshGridVisibility() { // viewport cull: setMap(map) only when cell bounds intersect viewport
-    const viewport = map ? map.getBounds() : null;
-    for (const [cellId, poly] of Object.entries(gridPolygons)) {
-      const props = gridData[cellId];
-      const inViewport = viewport && gridCellBounds[cellId] ? viewport.intersects(gridCellBounds[cellId]) : true;
-      poly.setMap(shouldShowCell(props) && inViewport ? map : null);
-    }
+  function refreshGridVisibility() {
+    if (gridLayer) gridLayer.setStyle(gridStyleCallback);
   }
 
   function updateFilterCounts() {
@@ -1259,9 +1264,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   function setGridClickable(clickable) {
-    for (const poly of Object.values(gridPolygons)) {
-      poly.setOptions({ clickable });
-    }
+    _gridClickable = clickable;
+    if (gridLayer) gridLayer.setStyle(gridStyleCallback);
   }
 
   function updateZoomButtons() {
@@ -1286,13 +1290,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function getMap() { return map; }
 
   function getCellBounds(cellId) {
-    const poly = gridPolygons[cellId];
-    if (!poly) return null;
-    const bounds = new google.maps.LatLngBounds();
-    poly.getPaths().forEach(path => {
-      path.forEach(p => bounds.extend(p));
-    });
-    return bounds;
+    return gridCellBounds[cellId] || null;
   }
 
   function cellHasCrowdmapping(cellId) {
@@ -1310,15 +1308,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function getShowPolygons() { return showPolygons; }
 
   function setGridsHollow(hollow) {
-    for (const [cellId, poly] of Object.entries(gridPolygons)) {
-      if (hollow) {
-        poly.setOptions({ fillOpacity: 0.0 });
-      } else {
-        const props = gridData[cellId];
-        const style = getStyleForCell(props, cellId);
-        poly.setOptions({ fillOpacity: style.fillOpacity });
-      }
-    }
+    _gridsHollow = hollow;
+    if (gridLayer) gridLayer.setStyle(gridStyleCallback);
   }
 
   function setMapBorder(show) {
@@ -1487,6 +1478,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     findNearestPoint,
     getPointData,
     zoomToInitialView,
+    loadStateGrid,
     refreshLabelToggleTitleForLang,
     updateFilterCounts,
     selectPoint,
