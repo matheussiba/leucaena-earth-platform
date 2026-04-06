@@ -696,6 +696,7 @@
         <div class="sidebar-section hidden" id="cell-actions">
           <h3 data-i18n="sidebar.cellInfo">Informações da Célula</h3>
           <p class="cell-id-label"><span data-i18n="sidebar.cell">Célula</span> #<span id="cell-id-display"></span></p>
+          <button class="btn btn-primary btn-full" id="lock-cell-btn" data-i18n="sidebar.lockEdit">Bloquear e Editar</button>
           <div class="cell-detail">
             <span class="cell-detail-label" data-i18n="sidebar.status">Status:</span>
             <span id="cell-status-display" class="cell-detail-value">--</span>
@@ -704,15 +705,14 @@
             <span class="cell-detail-label" data-i18n="sidebar.numpoints">Nº de pontos:</span>
             <span id="cell-numpoints" class="cell-detail-value">--</span>
           </div>
-          <div class="cell-detail">
+          <div class="cell-detail" id="cell-worked-by-row">
             <span class="cell-detail-label" data-i18n="sidebar.workedBy">Trabalhado por:</span>
             <span id="cell-worked-by" class="cell-detail-value">--</span>
           </div>
-          <div class="cell-detail">
+          <div class="cell-detail" id="cell-finished-by-row">
             <span class="cell-detail-label" data-i18n="sidebar.finishedBy">Finalizado por:</span>
             <span id="cell-finished-by" class="cell-detail-value">--</span>
           </div>
-          <button class="btn btn-primary btn-full" id="lock-cell-btn" data-i18n="sidebar.lockEdit">Bloquear e Editar</button>
         </div>
 
         <!-- Ranking Widget -->

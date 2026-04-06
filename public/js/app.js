@@ -1739,10 +1739,14 @@ window.LeucenaApp = (function () {
     const numpointsEl = document.getElementById('cell-numpoints');
     if (numpointsEl) numpointsEl.textContent = numpoints;
 
-    const workedBy = cellData.worked_by || '--';
-    document.getElementById('cell-worked-by').textContent = workedBy === '--' ? '--' : workedBy.split(',').join(', ');
-
-    document.getElementById('cell-finished-by').textContent = cellData.finished_by || '--';
+    const workedByRow = document.getElementById('cell-worked-by-row');
+    const finishedByRow = document.getElementById('cell-finished-by-row');
+    const hasWorked = cellData.worked_by && cellData.worked_by !== '--';
+    const hasFinished = !!cellData.finished_by;
+    if (workedByRow) workedByRow.classList.toggle('hidden', !hasWorked);
+    if (finishedByRow) finishedByRow.classList.toggle('hidden', !hasFinished);
+    if (hasWorked) document.getElementById('cell-worked-by').textContent = cellData.worked_by.split(',').join(', ');
+    if (hasFinished) document.getElementById('cell-finished-by').textContent = cellData.finished_by;
 
     const lockBtn = document.getElementById('lock-cell-btn');
     const unlockToolBtn = document.getElementById('tool-unlock');
@@ -1911,9 +1915,16 @@ window.LeucenaApp = (function () {
 
       if (selectedCellData) {
         document.getElementById('cell-status-display').textContent = formatStatus(finalStatus);
+        const workedByRow = document.getElementById('cell-worked-by-row');
+        const finishedByRow = document.getElementById('cell-finished-by-row');
         if (finalStatus === 'finished') {
+          selectedCellData.finished_by = username;
+          if (finishedByRow) finishedByRow.classList.remove('hidden');
           document.getElementById('cell-finished-by').textContent = username;
+        } else {
+          if (finishedByRow) finishedByRow.classList.toggle('hidden', !selectedCellData.finished_by);
         }
+        if (workedByRow) workedByRow.classList.toggle('hidden', !selectedCellData.worked_by);
       }
 
       const displayId = selectedCellData ? (selectedCellData.grid_id || cellId) : cellId;
@@ -3196,6 +3207,24 @@ window.LeucenaApp = (function () {
   function applyRoleRestrictions() {
   }
 
+  function onCellStatusChanged(data) {
+    if (!selectedCellId || data.cellId !== selectedCellId) return;
+    if (selectedCellData) {
+      selectedCellData.grid_status = data.status;
+      if (data.finished_by !== undefined) selectedCellData.finished_by = data.finished_by;
+      if (data.worked_by !== undefined) selectedCellData.worked_by = data.worked_by;
+    }
+    document.getElementById('cell-status-display').textContent = formatStatus(data.status);
+    const workedByRow = document.getElementById('cell-worked-by-row');
+    const finishedByRow = document.getElementById('cell-finished-by-row');
+    const hasWorked = selectedCellData && selectedCellData.worked_by;
+    const hasFinished = selectedCellData && selectedCellData.finished_by;
+    if (workedByRow) workedByRow.classList.toggle('hidden', !hasWorked);
+    if (finishedByRow) finishedByRow.classList.toggle('hidden', !hasFinished);
+    if (hasWorked) document.getElementById('cell-worked-by').textContent = selectedCellData.worked_by.split(',').join(', ');
+    if (hasFinished) document.getElementById('cell-finished-by').textContent = selectedCellData.finished_by;
+  }
+
   setupPointModes();
 
   init();
@@ -3226,6 +3255,7 @@ window.LeucenaApp = (function () {
     getEffectiveRole,
     logEvent,
     flushLogs: _flushLogs,
-    onPolygonSaved
+    onPolygonSaved,
+    onCellStatusChanged
   };
 })();

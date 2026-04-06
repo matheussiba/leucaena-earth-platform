@@ -464,8 +464,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function onCellStatusChanged(cellId, status, extra) {
     if (gridData[cellId]) {
       gridData[cellId].grid_status = status;
-      if (extra && extra.finished_by) {
+      if (extra && extra.finished_by !== undefined) {
         gridData[cellId].finished_by = extra.finished_by;
+      }
+      if (extra && extra.worked_by !== undefined) {
+        gridData[cellId].worked_by = extra.worked_by;
       }
       updateCellAppearance(cellId, gridData[cellId]);
       updateFilterCounts();

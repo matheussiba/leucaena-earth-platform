@@ -1770,6 +1770,27 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   runSQL('DELETE FROM polygons WHERE id = ?', [id]);
   io.emit('polygon:deleted', { id, grid_cell_id: poly.grid_cell_id });
   logActivity(username, 'polygon_delete', poly.grid_cell_id, id, null);
+
+  if (cell) {
+    const remaining = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [poly.grid_cell_id]);
+    if (remaining.length === 0 && (cell.grid_status === 'finished' || cell.grid_status === 'mapping')) {
+      const cellGeom = JSON.parse(cell.geometry);
+      const cellRings = cellGeom.type === 'MultiPolygon'
+        ? cellGeom.coordinates.map(p => p[0])
+        : [cellGeom.coordinates[0]];
+      const allPoints = queryAll('SELECT geometry FROM occurrence_points');
+      const hasPoints = allPoints.some(p => {
+        const g = JSON.parse(p.geometry);
+        return cellRings.some(ring => pointInPolygon([g.coordinates[0], g.coordinates[1]], ring));
+      });
+      const newStatus = hasPoints ? 'not_yet_finished' : 'no_points';
+      const now = new Date().toISOString();
+      runSQL('UPDATE grid_cells SET grid_status = ?, finished_by = NULL, worked_by = NULL, updated_at = ? WHERE id = ?',
+        [newStatus, now, poly.grid_cell_id]);
+      io.emit('cell:statusChanged', { cellId: poly.grid_cell_id, status: newStatus, username, finished_by: null, worked_by: null });
+    }
+  }
+
   persist();
   res.json({ success: true });
 });

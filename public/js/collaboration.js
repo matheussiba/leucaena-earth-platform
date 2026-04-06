@@ -59,7 +59,10 @@ window.LeucenaCollab = (function () {
 
     socket.on('cell:statusChanged', (data) => {
       if (typeof LeucenaMap !== 'undefined') {
-        LeucenaMap.onCellStatusChanged(data.cellId, data.status, { finished_by: data.finished_by });
+        LeucenaMap.onCellStatusChanged(data.cellId, data.status, { finished_by: data.finished_by, worked_by: data.worked_by });
+      }
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.onCellStatusChanged) {
+        LeucenaApp.onCellStatusChanged(data);
       }
     });
 
