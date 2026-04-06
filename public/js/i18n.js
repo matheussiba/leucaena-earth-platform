@@ -48,6 +48,7 @@ window.LeucenaI18n = (function () {
     'auth.googleSignIn': { pt: 'Entrar com Google', en: 'Sign in with Google', es: 'Iniciar sesión con Google' },
     'auth.googleSignUp': { pt: 'Cadastrar com Google', en: 'Sign up with Google', es: 'Registrarse con Google' },
     'auth.verifyEmailSent': { pt: 'Um e-mail de verificação foi enviado para {0}. Verifique sua caixa de entrada.', en: 'A verification email was sent to {0}. Check your inbox.', es: 'Se envió un correo de verificación a {0}. Revise su bandeja.' },
+    'auth.accountDeactivated': { pt: 'Conta desativada. Entre em contato com o administrador.', en: 'Account deactivated. Contact the administrator.', es: 'Cuenta desactivada. Contacte al administrador.' },
     'auth.resendVerification': { pt: 'Reenviar e-mail de verificação', en: 'Resend verification email', es: 'Reenviar correo de verificación' },
     'auth.resendSuccess': { pt: 'E-mail de verificação reenviado!', en: 'Verification email resent!', es: '¡Correo de verificación reenviado!' },
     'auth.verificationRequired': { pt: 'Verifique seu e-mail para poder editar o mapa.', en: 'Verify your email to be able to edit the map.', es: 'Verifique su correo para poder editar el mapa.' },
@@ -68,7 +69,7 @@ window.LeucenaI18n = (function () {
     'topbar.loginToDownload': { pt: 'Faça login para baixar', en: 'Login to download', es: 'Inicie sesión para descargar' },
     'topbar.pointsGeoJSON': { pt: 'Pontos de Ocorrência (GeoJSON)', en: 'Occurrence Points (GeoJSON)', es: 'Puntos de Ocurrencia (GeoJSON)' },
     'topbar.gridGeoJSON': { pt: 'Grade SP (GeoJSON)', en: 'Grid SP (GeoJSON)', es: 'Cuadrícula SP (GeoJSON)' },
-    'topbar.polygonsGeoJSON': { pt: 'Máscaras de Leucena (GeoJSON)', en: 'Leucaena Masks (GeoJSON)', es: 'Máscaras de Leucena (GeoJSON)' },
+    'topbar.polygonsGeoJSON': { pt: 'Polígonos de Leucena (GeoJSON)', en: 'Leucaena Polygons (GeoJSON)', es: 'Polígonos de Leucena (GeoJSON)' },
     'topbar.onlineUsers': { pt: 'Usuários online', en: 'Online users', es: 'Usuarios en línea' },
 
     // ── Unlock modal ──
@@ -102,8 +103,8 @@ window.LeucenaI18n = (function () {
     'sidebar.gridCells': { pt: 'Células do Grid', en: 'Grid Cells', es: 'Celdas de Grilla' },
     'sidebar.occurrencePoints': { pt: 'Pontos de Ocorrência', en: 'Occurrence Points', es: 'Puntos de Ocurrencia' },
     'sidebar.showPoints': { pt: 'Exibir pontos', en: 'Show points', es: 'Mostrar puntos' },
-    'sidebar.leucenaMasks': { pt: 'Máscaras de Leucenas', en: 'Leucaena Masks', es: 'Máscaras de Leucenas' },
-    'sidebar.showLeucenaMasks': { pt: 'Exibir máscaras', en: 'Show masks', es: 'Mostrar máscaras' },
+    'sidebar.leucenaMasks': { pt: 'Polígonos de Leucena', en: 'Leucaena Polygons', es: 'Polígonos de Leucena' },
+    'sidebar.showLeucenaMasks': { pt: 'Exibir polígonos', en: 'Show polygons', es: 'Mostrar polígonos' },
     'sidebar.masksMember': { pt: 'Membros', en: 'Members', es: 'Miembros' },
     'sidebar.masksContributor': { pt: 'Colaboradores', en: 'Contributors', es: 'Colaboradores' },
     'sidebar.mappedPolygons': { pt: 'Polígonos Mapeados', en: 'Mapped Polygons', es: 'Polígonos Mapeados' },
@@ -116,7 +117,7 @@ window.LeucenaI18n = (function () {
     'sidebar.cell': { pt: 'Célula', en: 'Cell', es: 'Celda' },
     'sidebar.status': { pt: 'Status:', en: 'Status:', es: 'Estado:' },
     'sidebar.numpoints': { pt: 'Nº de pontos:', en: 'Nº of points:', es: 'Nº de puntos:' },
-    'sidebar.masks': { pt: 'Máscaras:', en: 'Masks:', es: 'Máscaras:' },
+    'sidebar.masks': { pt: 'Polígonos:', en: 'Polygons:', es: 'Polígonos:' },
     'sidebar.workedBy': { pt: 'Trabalhado por:', en: 'Worked by:', es: 'Trabajado por:' },
     'sidebar.finishedBy': { pt: 'Finalizado por:', en: 'Finished by:', es: 'Finalizado por:' },
     'sidebar.lockEdit': { pt: 'Bloquear e Editar', en: 'Lock & Edit', es: 'Bloquear y Editar' },
@@ -142,12 +143,16 @@ window.LeucenaI18n = (function () {
     'tool.map': { pt: 'Mapa', en: 'Map', es: 'Mapa' },
     'tool.satellite': { pt: 'Satélite', en: 'Satellite', es: 'Satélite' },
     'tool.labels': { pt: 'Rótulos', en: 'Labels', es: 'Etiquetas' },
+    'tool.labelsTooltip': { pt: 'Mostrar ou ocultar nomes de ruas e lugares (modo satélite)', en: 'Show or hide street and place names (satellite mode)', es: 'Mostrar u ocultar calles y lugares (modo satélite)' },
+    'tool.labelsReenableHint': { pt: 'Clique aqui para voltar a mostrar os rótulos', en: 'Click here to show labels again', es: 'Haga clic aquí para volver a mostrar las etiquetas' },
     'tool.addPoints': { pt: 'Add Pontos', en: 'Add Points', es: 'Agregar Puntos' },
     'tool.delPoints': { pt: 'Remover Pontos', en: 'Remove Points', es: 'Remover Puntos' },
     'tool.draw': { pt: 'Desenhar Polígono (Shift+C)', en: 'Draw Polygon (Shift+C)', es: 'Dibujar Polígono (Shift+C)' },
     'tool.edit': { pt: 'Editar Polígono (Shift+E)', en: 'Edit Polygon (Shift+E)', es: 'Editar Polígono (Shift+E)' },
     'tool.deletePoly': { pt: 'Excluir Polígono (Shift+D)', en: 'Delete Polygon (Shift+D)', es: 'Eliminar Polígono (Shift+D)' },
     'tool.hole': { pt: 'Criar Buraco (Shift+H)', en: 'Hole Tool (Shift+H)', es: 'Crear Agujero (Shift+H)' },
+    'tool.undo': { pt: 'Desfazer (Ctrl+Z)', en: 'Undo (Ctrl+Z)', es: 'Deshacer (Ctrl+Z)' },
+    'tool.finishDraw': { pt: 'Finalizar desenho', en: 'Finish drawing', es: 'Finalizar dibujo' },
     'tool.home': { pt: 'Visão inicial', en: 'Initial view', es: 'Vista inicial' },
     'tool.zoomIn': { pt: 'Zoom +', en: 'Zoom +', es: 'Zoom +' },
     'tool.zoomOut': { pt: 'Zoom -', en: 'Zoom -', es: 'Zoom -' },
@@ -160,9 +165,11 @@ window.LeucenaI18n = (function () {
 
     // ── Legend ──
     'legend.title': { pt: 'Legenda', en: 'Legend', es: 'Leyenda' },
+    'legend.toggleTooltip': { pt: 'Abrir ou fechar a legenda', en: 'Open or close the legend', es: 'Abrir o cerrar la leyenda' },
+    'legend.expandHint': { pt: 'Clique para ver a legenda de novo', en: 'Click to show the legend again', es: 'Haga clic para ver la leyenda de nuevo' },
     'legend.cells': { pt: 'Células', en: 'Cells', es: 'Celdas' },
     'legend.leucenaPoints': { pt: 'Pontos de Leucena', en: 'Leucaena Points', es: 'Puntos de Leucaena' },
-    'legend.leucenaMask': { pt: 'Máscara de Leucena', en: 'Leucaena Mask', es: 'Máscara de Leucaena' },
+    'legend.leucenaMask': { pt: 'Polígono de Leucena', en: 'Leucaena Polygon', es: 'Polígono de Leucena' },
     'legend.validPoint': { pt: 'Válido', en: 'Valid', es: 'Válido' },
     'legend.invalidPoint': { pt: 'Inválido', en: 'Invalid', es: 'Inválido' },
     'legend.doubtPoint': { pt: 'Incerto', en: 'Uncertain', es: 'Incierto' },
@@ -190,8 +197,16 @@ window.LeucenaI18n = (function () {
     // ── Admin ──
     'admin.usersTitle': { pt: 'Painel do Admin', en: 'Admin Panel', es: 'Panel de Admin' },
     'admin.changePassword': { pt: 'Alterar Senha', en: 'Change Password', es: 'Cambiar Contraseña' },
+    'admin.deactivateUser': { pt: 'Desativar', en: 'Deactivate', es: 'Desactivar' },
+    'admin.reactivateUser': { pt: 'Reativar', en: 'Reactivate', es: 'Reactivar' },
+    'admin.permanentDelete': { pt: 'Excluir permanente', en: 'Permanent delete', es: 'Eliminar permanente' },
+    'admin.confirmDeactivate': { pt: 'Desativar o usuário "{0}"? Ele não poderá mais fazer login, mas seus dados e contribuições serão preservados.', en: 'Deactivate user "{0}"? They will no longer be able to log in, but their data and contributions will be preserved.', es: 'Desactivar al usuario "{0}"? No podrá iniciar sesión, pero sus datos y contribuciones se conservarán.' },
+    'admin.confirmPermanentDelete': { pt: 'EXCLUIR PERMANENTEMENTE o usuário "{0}"? Esta ação é irreversível. Os polígonos serão transferidos para o usuário "deleted".', en: 'PERMANENTLY DELETE user "{0}"? This action is irreversible. Polygons will be transferred to the "deleted" user.', es: 'ELIMINAR PERMANENTEMENTE al usuario "{0}"? Esta acción es irreversible. Los polígonos serán transferidos al usuario "deleted".' },
+    'admin.userDeactivated': { pt: 'Usuário desativado', en: 'User deactivated', es: 'Usuario desactivado' },
+    'admin.userReactivated': { pt: 'Usuário reativado', en: 'User reactivated', es: 'Usuario reactivado' },
+    'admin.inactive': { pt: 'Inativo', en: 'Inactive', es: 'Inactivo' },
     'admin.deleteUser': { pt: 'Excluir', en: 'Delete', es: 'Eliminar' },
-    'admin.confirmDelete': { pt: 'Tem certeza que deseja excluir o usuário "{0}"? As máscaras serão transferidas para o usuário "deleted".', en: 'Are you sure you want to delete user "{0}"? Masks will be transferred to the "deleted" user.', es: '¿Está seguro de que desea eliminar al usuario "{0}"? Las máscaras serán transferidas al usuario "deleted".' },
+    'admin.confirmDelete': { pt: 'Tem certeza que deseja excluir o usuário "{0}"? Os polígonos serão transferidos para o usuário "deleted".', en: 'Are you sure you want to delete user "{0}"? Polygons will be transferred to the "deleted" user.', es: '¿Está seguro de que desea eliminar al usuario "{0}"? Los polígonos serán transferidos al usuario "deleted".' },
     'admin.newPassword': { pt: 'Nova senha para "{0}":', en: 'New password for "{0}":', es: 'Nueva contraseña para "{0}":' },
     'admin.changePasswordTitle': { pt: 'Alterar senha de {0}', en: 'Change password for {0}', es: 'Cambiar contraseña de {0}' },
     'admin.changePasswordBtn': { pt: 'Alterar senha', en: 'Change password', es: 'Cambiar contraseña' },
@@ -202,7 +217,7 @@ window.LeucenaI18n = (function () {
     'admin.editDescription': { pt: 'Descrição para "{0}":', en: 'Description for "{0}":', es: 'Descripción para "{0}":' },
     'admin.profileUpdated': { pt: 'Perfil atualizado', en: 'Profile updated', es: 'Perfil actualizado' },
     'admin.editProfileTitle': { pt: 'Editar perfil de {0}', en: 'Edit profile of {0}', es: 'Editar perfil de {0}' },
-    'admin.masks': { pt: 'Máscaras', en: 'Masks', es: 'Máscaras' },
+    'admin.masks': { pt: 'Polígonos', en: 'Polygons', es: 'Polígonos' },
     'admin.area': { pt: 'Área mapeada', en: 'Mapped area', es: 'Área mapeada' },
     'admin.logins': { pt: 'Logins', en: 'Logins', es: 'Logins' },
     'admin.timeOnline': { pt: 'Tempo Online', en: 'Time Online', es: 'Tiempo Online' },
@@ -210,7 +225,7 @@ window.LeucenaI18n = (function () {
     'admin.members': { pt: 'membros', en: 'members', es: 'miembros' },
     'admin.collaborators': { pt: 'colaboradores', en: 'collaborators', es: 'colaboradores' },
     'admin.viewAsAdmin': { pt: 'Ver como Admin', en: 'View as Admin', es: 'Ver como Admin' },
-    'admin.totalMasks': { pt: 'Total de máscaras', en: 'Total masks', es: 'Total de máscaras' },
+    'admin.totalMasks': { pt: 'Total de polígonos', en: 'Total polygons', es: 'Total de polígonos' },
     'admin.totalArea': { pt: 'Área total mapeada', en: 'Total mapped area', es: 'Área total mapeada' },
     'admin.exportCsv': { pt: 'Exportar Usuários', en: 'Export Users', es: 'Exportar Usuarios' },
     'admin.exportLogs': { pt: 'Logs (48h)', en: 'Logs (48h)', es: 'Logs (48h)' },
@@ -282,9 +297,9 @@ window.LeucenaI18n = (function () {
       es: 'Se agregó un video en la sección "Cómo Mapear" que explica el procedimiento de mapeo.'
     },
     'welcome.objective': {
-      pt: 'O objetivo é que sejam desenhadas máscaras (polígonos) de leucaenas sobre as imagens de satélite. O vídeo explica como fazer isso passo a passo!',
-      en: 'The goal is to draw leucaena masks (polygons) over satellite imagery. The video explains how to do it step by step!',
-      es: 'El objetivo es dibujar máscaras (polígonos) de leucaenas sobre las imágenes de satélite. ¡El video explica cómo hacerlo paso a paso!'
+      pt: 'O objetivo é que sejam desenhados polígonos ao redor dos aglomerados de leucena (áreas onde há duas ou mais leucenas juntas) sobre as imagens de satélite. O vídeo explica como fazer isso passo a passo!',
+      en: 'The goal is to draw polygons around leucaena clusters (areas where two or more leucaena trees grow together) over satellite imagery. The video explains how to do it step by step!',
+      es: 'El objetivo es dibujar polígonos alrededor de los aglomerados de leucena (áreas donde hay dos o más leucenas juntas) sobre las imágenes de satélite. ¡El video explica cómo hacerlo paso a paso!'
     },
     'welcome.dontShowAgain': { pt: 'Não mostrar novamente', en: "Don't show again", es: 'No mostrar de nuevo' },
     'welcome.goToVideo': { pt: 'Ver vídeo', en: 'Watch video', es: 'Ver video' },
@@ -344,7 +359,7 @@ window.LeucenaI18n = (function () {
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
     'profile.clickHintTooltip': { pt: 'Clique aqui para abrir seu perfil', en: 'Click here to open your profile', es: 'Haga clic aquí para abrir su perfil' },
     'profile.subtitleMember': { pt: 'Estas informações aparecem na seção "Quem Somos" do site.', en: 'This information appears in the "About Us" section of the site.', es: 'Esta información aparece en la sección "Quiénes Somos" del sitio.' },
-    'profile.subtitleContributor': { pt: 'Crie 5+ máscaras para aparecer no nosso site como colaborador(a) da leucaena.earth!', en: 'Create 5+ masks to be featured on our site as a leucaena.earth collaborator!', es: '¡Cree 5+ máscaras para aparecer en nuestro sitio como colaborador(a) de leucaena.earth!' },
+    'profile.subtitleContributor': { pt: 'Crie 1+ polígono de leucena para aparecer no nosso site como colaborador(a) da leucaena.earth!', en: 'Create 1+ leucaena polygon to be featured on our site as a leucaena.earth collaborator!', es: '¡Cree 1+ polígono de leucena para aparecer en nuestro sitio como colaborador(a) de leucaena.earth!' },
     'profile.fullName': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
     'profile.description': { pt: 'Descrição', en: 'Description', es: 'Descripción' },
     'profile.photo': { pt: 'Foto', en: 'Photo', es: 'Foto' },
@@ -412,8 +427,8 @@ window.LeucenaI18n = (function () {
     'toast.lockCellToEdit': { pt: 'Bloqueie a célula para editar seus polígonos', en: 'Lock the cell to edit its polygons', es: 'Bloquee la celda para editar sus polígonos' },
     'toast.polyEditSaveFail': { pt: 'Falha ao salvar alterações do polígono', en: 'Failed to save polygon changes', es: 'Error al guardar cambios del polígono' },
     'toast.polyBelongsAdmin': { pt: 'Este polígono pertence a {0}. Somente ele ou o administrador pode excluí-lo.', en: 'This polygon belongs to {0}. Only they or the admin can delete it.', es: 'Este polígono pertenece a {0}. Solo él o el administrador puede eliminarlo.' },
-    'toast.contributorNoDelete': { pt: 'Colaboradores não podem deletar máscaras', en: 'Contributors cannot delete masks', es: 'Colaboradores no pueden eliminar máscaras' },
-    'export.masksDisclaimer': { pt: 'Os pontos de ocorrência e as máscaras ainda estão em fase de validação e não estão disponíveis para download no momento. Esses dados estarão abertos ao público a partir do segundo semestre de 2026, quando o processo de validação será concluído.', en: 'Occurrence points and masks are still undergoing validation and are not available for download at this time. This data will be publicly available starting in the second semester of 2026, once the validation process is complete.', es: 'Los puntos de ocurrencia y las máscaras aún están en fase de validación y no están disponibles para descarga en este momento. Estos datos estarán abiertos al público a partir del segundo semestre de 2026, cuando se complete el proceso de validación.' },
+    'toast.contributorNoDelete': { pt: 'Colaboradores não podem deletar polígonos', en: 'Contributors cannot delete polygons', es: 'Colaboradores no pueden eliminar polígonos' },
+    'export.masksDisclaimer': { pt: 'Os pontos de ocorrência e os polígonos de leucena ainda estão em fase de validação e não estão disponíveis para download no momento. Esses dados estarão abertos ao público a partir do segundo semestre de 2026, quando o processo de validação será concluído.', en: 'Occurrence points and leucaena polygons are still undergoing validation and are not available for download at this time. This data will be publicly available starting in the second semester of 2026, once the validation process is complete.', es: 'Los puntos de ocurrencia y los polígonos de leucena aún están en fase de validación y no están disponibles para descarga en este momento. Estos datos estarán abiertos al público a partir del segundo semestre de 2026, cuando se complete el proceso de validación.' },
     'toolSwitch.title': { pt: '⚠️ Polígono em andamento', en: '⚠️ Polygon in progress', es: '⚠️ Polígono en progreso' },
     'toolSwitch.message': { pt: 'Você tem um polígono sendo desenhado. O que deseja fazer?', en: 'You have a polygon being drawn. What would you like to do?', es: 'Tiene un polígono en proceso de dibujo. ¿Qué desea hacer?' },
     'toolSwitch.cancelDraw': { pt: 'Cancelar polígono e trocar ferramenta', en: 'Cancel polygon and switch tool', es: 'Cancelar polígono y cambiar herramienta' },
@@ -423,10 +438,10 @@ window.LeucenaI18n = (function () {
     'deleteWarn.message': { pt: 'Você está prestes a excluir polígonos. Clique em um polígono no mapa para removê-lo permanentemente.', en: 'You are about to delete polygons. Click a polygon on the map to permanently remove it.', es: 'Está a punto de eliminar polígonos. Haga clic en un polígono en el mapa para eliminarlo permanentemente.' },
     'deleteWarn.ok': { pt: 'Entendi, continuar', en: 'I understand, continue', es: 'Entendido, continuar' },
     'deleteWarn.cancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
-    'toast.holeSelectMask': { pt: 'Clique em uma máscara para criar um buraco', en: 'Click a mask to create a hole', es: 'Haga clic en una máscara para crear un agujero' },
-    'toast.holeDrawNow': { pt: 'Desenhe o buraco dentro da máscara selecionada', en: 'Draw the hole inside the selected mask', es: 'Dibuje el agujero dentro de la máscara seleccionada' },
-    'toast.holeCreated': { pt: 'Buraco criado na máscara', en: 'Hole created in mask', es: 'Agujero creado en la máscara' },
-    'toast.holeOutsidePoly': { pt: 'O buraco deve estar dentro da máscara', en: 'Hole must be inside the mask', es: 'El agujero debe estar dentro de la máscara' },
+    'toast.holeSelectMask': { pt: 'Clique em um polígono para criar um buraco', en: 'Click a polygon to create a hole', es: 'Haga clic en un polígono para crear un agujero' },
+    'toast.holeDrawNow': { pt: 'Desenhe o buraco dentro do polígono selecionado', en: 'Draw the hole inside the selected polygon', es: 'Dibuje el agujero dentro del polígono seleccionado' },
+    'toast.holeCreated': { pt: 'Buraco criado no polígono', en: 'Hole created in polygon', es: 'Agujero creado en el polígono' },
+    'toast.holeOutsidePoly': { pt: 'O buraco deve estar dentro do polígono', en: 'Hole must be inside the polygon', es: 'El agujero debe estar dentro del polígono' },
     'toast.holeInsideHole': { pt: 'Não é possível criar um buraco dentro de outro buraco', en: 'Cannot create a hole inside another hole', es: 'No se puede crear un agujero dentro de otro agujero' },
     'toast.lockCellToDelete': { pt: 'Bloqueie a célula para excluir seus polígonos', en: 'Lock the cell to delete its polygons', es: 'Bloquee la celda para eliminar sus polígonos' },
     'toast.polyDeleted': { pt: 'Polígono excluído', en: 'Polygon deleted', es: 'Polígono eliminado' },
@@ -437,9 +452,14 @@ window.LeucenaI18n = (function () {
 
     // ── Tool hint badges ──
     'badge.draw': { pt: 'V = vértice · Clique direito ou Enter = finalizar · Ctrl+Z = desfazer', en: 'V = vertex · Right-click or Enter = finish · Ctrl+Z = undo', es: 'V = vértice · Clic derecho o Enter = finalizar · Ctrl+Z = deshacer' },
+    'badge.drawTouch': { pt: 'Toque no mapa para adicionar vértices', en: 'Tap on the map to add vertices', es: 'Toque en el mapa para añadir vértices' },
     'badge.delete': { pt: 'Clique em um polígono para selecioná-lo', en: 'Click a polygon to select it', es: 'Haga clic en un polígono para seleccionarlo' },
     'badge.deleteConfirm': { pt: 'Aperte Delete para excluir · Esc para cancelar · Ctrl+Z = restaurar', en: 'Press Delete to remove · Esc to cancel · Ctrl+Z = restore', es: 'Presione Delete para eliminar · Esc para cancelar · Ctrl+Z = restaurar' },
+    'badge.deleteConfirmTouch': { pt: 'Polígono selecionado', en: 'Polygon selected', es: 'Polígono seleccionado' },
+    'badge.deleteBtn': { pt: 'Excluir', en: 'Delete', es: 'Eliminar' },
+    'badge.cancelBtn': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
     'badge.edit': { pt: 'Ctrl+Z = desfazer edição', en: 'Ctrl+Z = undo edit', es: 'Ctrl+Z = deshacer edición' },
+    'badge.editTouch': { pt: 'Arraste os vértices para editar', en: 'Drag vertices to edit', es: 'Arrastre los vértices para editar' },
     'badge.pointSelected': { pt: 'Clique com o botão direito para mudar de status', en: 'Right-click to change status', es: 'Clic derecho para cambiar estado' },
 
     // ── Toast messages (streetview.js) ──
@@ -468,18 +488,18 @@ window.LeucenaI18n = (function () {
     // ── Ranking ──
     'ranking.title': { pt: 'Ranking de Colaboradores', en: 'Collaborators Ranking', es: 'Ranking de Colaboradores' },
     'ranking.position': { pt: 'Você está em {0}º lugar de {1} colaboradores', en: 'You are in {0}th place out of {1} collaborators', es: 'Estás en {0}º lugar de {1} colaboradores' },
-    'ranking.stats': { pt: '{0} máscaras · {1} ha mapeados', en: '{0} masks · {1} ha mapped', es: '{0} máscaras · {1} ha mapeados' },
+    'ranking.stats': { pt: '{0} polígonos · {1} ha mapeados', en: '{0} polygons · {1} ha mapped', es: '{0} polígonos · {1} ha mapeados' },
     'ranking.widgetPosition': { pt: 'Ranking: {0}º de {1}', en: 'Ranking: {0}th of {1}', es: 'Ranking: {0}º de {1}' },
     'ranking.widgetZero': { pt: 'Comece a mapear! Veja como', en: 'Start mapping! See how', es: '¡Empieza a mapear! Mira cómo' },
     'ranking.widgetPublic': { pt: 'Ranking colaboradores', en: 'Collaborator ranking', es: 'Ranking colaboradores' },
     'ranking.zeroMasksMsg': { pt: 'Você ainda não mapeou nenhuma área. Comece agora!', en: "You haven't mapped any area yet. Start now!", es: '¡Aún no has mapeado ningún área. Empieza ahora!' },
     'ranking.howToMap': { pt: 'Como mapear', en: 'How to map', es: 'Cómo mapear' },
     'ranking.chooseCell': { pt: 'Escolher célula', en: 'Choose cell', es: 'Elegir celda' },
-    'ranking.maskCount': { pt: '{0} máscaras', en: '{0} masks', es: '{0} máscaras' },
+    'ranking.maskCount': { pt: '{0} polígonos', en: '{0} polygons', es: '{0} polígonos' },
     'ranking.area': { pt: '{0} ha', en: '{0} ha', es: '{0} ha' },
     'ranking.medalTooltip': { pt: '{0}º lugar no mapeamento de polígonos de leucaena', en: '{0}th place in leucaena polygon mapping', es: '{0}º lugar en el mapeo de polígonos de leucaena' },
-    'ranking.firstMaskTitle': { pt: 'Primeira máscara!', en: 'First mask!', es: '¡Primera máscara!' },
-    'ranking.firstMaskMsg': { pt: 'Parabéns! Você acabou de criar sua primeira máscara de leucaena. Continue mapeando para subir no ranking!', en: 'Congratulations! You just created your first leucaena mask. Keep mapping to climb the ranking!', es: '¡Felicidades! Acabas de crear tu primera máscara de leucaena. ¡Sigue mapeando para subir en el ranking!' },
+    'ranking.firstMaskTitle': { pt: 'Primeiro polígono!', en: 'First polygon!', es: '¡Primer polígono!' },
+    'ranking.firstMaskMsg': { pt: 'Parabéns! Você acabou de criar seu primeiro polígono de leucena. Continue mapeando para subir no ranking!', en: 'Congratulations! You just created your first leucaena polygon. Keep mapping to climb the ranking!', es: '¡Felicidades! Acabas de crear tu primer polígono de leucena. ¡Sigue mapeando para subir en el ranking!' },
     'ranking.rankUpTitle': { pt: 'Subiu no ranking!', en: 'Rank up!', es: '¡Subiste en el ranking!' },
     'ranking.rankUpMsg': { pt: 'Você subiu para o {0}º lugar no ranking de colaboradores!', en: 'You moved up to {0}th place in the collaborators ranking!', es: '¡Subiste al {0}º lugar en el ranking de colaboradores!' }
   };
@@ -529,6 +549,14 @@ window.LeucenaI18n = (function () {
     document.querySelectorAll('[data-i18n-title]').forEach(el => {
       el.title = t(el.getAttribute('data-i18n-title'));
     });
+
+    if (typeof LeucenaMap !== 'undefined' && LeucenaMap.refreshLabelToggleTitleForLang) {
+      LeucenaMap.refreshLabelToggleTitleForLang();
+    }
+
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.refreshLegendToggleTitleForLang) {
+      LeucenaApp.refreshLegendToggleTitleForLang();
+    }
 
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
       el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
@@ -638,7 +666,7 @@ window.LeucenaI18n = (function () {
 
   function getHowtoContentPT() {
     return '<h2>Como fazer o mapeamento</h2>' +
-    '<div class="guide-objective"><strong>Objetivo:</strong> Criar polígonos (máscaras) ao redor de <strong>aglomerados de leucena</strong> visíveis na imagem de satélite. Cada ponto verde no mapa representa uma ocorrência registrada — sua tarefa é desenhar polígonos que cubram esses pontos e a área de leucena ao redor deles.</div>' +
+    '<div class="guide-objective"><strong>Objetivo:</strong> Criar polígonos ao redor de <strong>aglomerados de leucena</strong> (áreas onde há duas ou mais leucenas juntas) visíveis na imagem de satélite. Cada ponto verde no mapa representa uma ocorrência registrada — sua tarefa é desenhar polígonos que cubram esses pontos e a área de leucena ao redor deles.</div>' +
 
     '<div class="guide-video"><h3>📺 Vídeo tutorial</h3><p>Assista ao vídeo abaixo para ver o passo a passo completo do mapeamento:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="Como mapear no leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
 
@@ -648,7 +676,7 @@ window.LeucenaI18n = (function () {
       '<ul>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Roxo</strong> — Ainda não finalizado (priorize estas!)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Amarelo (vazado)</strong> — Em uso por outro colaborador</li>' +
-      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Amarelo</strong> — Mapeando (possui máscaras, mas não finalizado)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Amarelo</strong> — Mapeando (possui polígonos, mas não finalizado)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#d4d4d8;vertical-align:middle;margin-right:6px"></span><strong>Cinza</strong> — Sem pontos de ocorrência</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:6px"></span><strong>Verde</strong> — Finalizado</li>' +
       '</ul>' +
@@ -657,7 +685,7 @@ window.LeucenaI18n = (function () {
     step(3, 'Bloqueie a célula', '<p>Clique no botão ' + btn(ICO.lock, 'Bloquear e Editar') + ' na barra lateral. A célula ficará reservada para você e as ferramentas de edição aparecerão.</p>' +
       '<div class="guide-warning"><strong>Importante:</strong> Enquanto a célula estiver bloqueada, nenhum outro usuário pode editá-la. Lembre-se de desbloquear quando terminar!</div>') +
 
-    step(4, 'Desenhe as máscaras', '<p>Localize os <strong>aglomerados de leucena</strong> na imagem de satélite (copas de árvores em agrupamento) e use o botão:</p>' +
+    step(4, 'Desenhe os polígonos', '<p>Localize os <strong>aglomerados de leucena</strong> na imagem de satélite (áreas onde há duas ou mais leucenas juntas) e use o botão:</p>' +
       '<p>' + btn(ICO.draw, 'Desenhar') + ' — Clique no mapa para criar os vértices do polígono. Cada clique adiciona um ponto. Para <strong>fechar o polígono</strong>, clique no primeiro ponto (ele ficará destacado) ou dê um <strong>duplo-clique</strong>.</p>' +
       '<ul>' +
       '<li>Mínimo de <strong>3 vértices</strong> para formar um polígono.</li>' +
@@ -665,13 +693,13 @@ window.LeucenaI18n = (function () {
       '<li>Priorize <strong>aglomerados</strong> — áreas com várias árvores juntas.</li>' +
       '</ul>') +
 
-    step(5, 'Edite as máscaras', '<p>Precisa ajustar um polígono que já desenhou? Use:</p>' +
+    step(5, 'Edite os polígonos', '<p>Precisa ajustar um polígono que já desenhou? Use:</p>' +
       '<p>' + btn(ICO.edit, 'Editar') + ' — Clique no polígono e arraste os vértices (pontos brancos) para reposicioná-los. Você também pode arrastar o ponto médio entre dois vértices para criar um novo vértice.</p>') +
 
-    step(6, 'Crie buracos nas máscaras', '<p>Se dentro de um polígono grande houver uma área <strong>sem leucena</strong> (por exemplo, um prédio ou estrada), use:</p>' +
+    step(6, 'Crie buracos nos polígonos', '<p>Se dentro de um polígono grande houver uma área <strong>sem leucena</strong> (por exemplo, um prédio ou estrada), use:</p>' +
       '<p>' + btn(ICO.hole, 'Criar buraco', true) + ' — Primeiro clique no polígono-alvo (ele ficará destacado com borda laranja). Em seguida, desenhe o contorno da área interna que <strong>não</strong> é leucena. Esse recorte será excluído do polígono.</p>') +
 
-    step(7, 'Exclua máscaras', '<p>Desenhou um polígono errado? Use:</p>' +
+    step(7, 'Exclua polígonos', '<p>Desenhou um polígono errado? Use:</p>' +
       '<p>' + btn(ICO.del, 'Excluir') + ' — Clique no polígono que deseja remover. Uma confirmação será exibida antes da exclusão.</p>' +
       '<div class="guide-warning"><strong>Nota:</strong> Você só pode excluir polígonos que <strong>você mesmo</strong> desenhou.</div>') +
 
@@ -681,7 +709,7 @@ window.LeucenaI18n = (function () {
     step(9, 'Desbloqueie a célula', '<p>Quando terminar o trabalho na célula, clique no botão:</p>' +
       '<p>' + btn(ICO.unlock, 'Desbloquear') + ' na barra inferior. Um modal aparecerá com duas opções:</p>' +
       '<ul>' +
-      '<li>' + btn(ICO.check, 'Finalizado') + ' — Marque se <strong>todos</strong> os pontos de ocorrência válidos estiverem cobertos por máscaras. O sistema verificará automaticamente.</li>' +
+      '<li>' + btn(ICO.check, 'Finalizado') + ' — Marque se <strong>todos</strong> os pontos de ocorrência válidos estiverem cobertos por polígonos. O sistema verificará automaticamente.</li>' +
       '<li>' + btn('', 'Ainda não finalizado') + ' — Use se você ainda precisa voltar depois, ou se não conseguiu cobrir todos os pontos.</li>' +
       '</ul>') +
 
@@ -696,7 +724,7 @@ window.LeucenaI18n = (function () {
 
   function getHowtoContentEN() {
     return '<h2>How to Map</h2>' +
-    '<div class="guide-objective"><strong>Objective:</strong> Create polygons (masks) around <strong>clusters of leucaena</strong> visible in the satellite imagery. Each green dot on the map represents a recorded occurrence — your task is to draw polygons covering these points and the leucaena area around them.</div>' +
+    '<div class="guide-objective"><strong>Objective:</strong> Create polygons around <strong>leucaena clusters</strong> (areas where two or more leucaena trees grow together) visible in the satellite imagery. Each green dot on the map represents a recorded occurrence — your task is to draw polygons covering these points and the leucaena area around them.</div>' +
 
     '<div class="guide-video"><h3>📺 Video tutorial</h3><p>Watch the video below for a complete step-by-step mapping walkthrough:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="How to map on leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
 
@@ -706,7 +734,7 @@ window.LeucenaI18n = (function () {
       '<ul>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Purple</strong> — Not yet finished (prioritize these!)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Yellow (hollow)</strong> — In use by another collaborator</li>' +
-      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Yellow</strong> — Mapping (has masks but not finished)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Yellow</strong> — Mapping (has polygons but not finished)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#d4d4d8;vertical-align:middle;margin-right:6px"></span><strong>Gray</strong> — No occurrence points</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:6px"></span><strong>Green</strong> — Finished</li>' +
       '</ul>' +
@@ -715,7 +743,7 @@ window.LeucenaI18n = (function () {
     step(3, 'Lock the cell', '<p>Click the ' + btn(ICO.lock, 'Lock & Edit') + ' button in the sidebar. The cell will be reserved for you and the editing tools will appear.</p>' +
       '<div class="guide-warning"><strong>Important:</strong> While the cell is locked, no other user can edit it. Remember to unlock when you\'re done!</div>') +
 
-    step(4, 'Draw the masks', '<p>Locate <strong>leucaena clusters</strong> in the satellite imagery (grouped tree canopies) and use the button:</p>' +
+    step(4, 'Draw the polygons', '<p>Locate <strong>leucaena clusters</strong> in the satellite imagery (areas where two or more leucaena trees grow together) and use the button:</p>' +
       '<p>' + btn(ICO.draw, 'Draw') + ' — Click on the map to create polygon vertices. Each click adds a point. To <strong>close the polygon</strong>, click on the first point (it will be highlighted) or <strong>double-click</strong>.</p>' +
       '<ul>' +
       '<li>Minimum of <strong>3 vertices</strong> to form a polygon.</li>' +
@@ -723,13 +751,13 @@ window.LeucenaI18n = (function () {
       '<li>Prioritize <strong>clusters</strong> — areas with multiple trees grouped together.</li>' +
       '</ul>') +
 
-    step(5, 'Edit the masks', '<p>Need to adjust a polygon you already drew? Use:</p>' +
+    step(5, 'Edit the polygons', '<p>Need to adjust a polygon you already drew? Use:</p>' +
       '<p>' + btn(ICO.edit, 'Edit') + ' — Click the polygon and drag the vertices (white dots) to reposition them. You can also drag the midpoint between two vertices to create a new one.</p>') +
 
-    step(6, 'Create holes in masks', '<p>If inside a large polygon there is an area <strong>without leucaena</strong> (for example, a building or road), use:</p>' +
+    step(6, 'Create holes in polygons', '<p>If inside a large polygon there is an area <strong>without leucaena</strong> (for example, a building or road), use:</p>' +
       '<p>' + btn(ICO.hole, 'Create hole', true) + ' — First click the target polygon (it will be highlighted with an orange border). Then draw the outline of the internal area that is <strong>not</strong> leucaena. This cutout will be excluded from the polygon.</p>') +
 
-    step(7, 'Delete masks', '<p>Drew a polygon by mistake? Use:</p>' +
+    step(7, 'Delete polygons', '<p>Drew a polygon by mistake? Use:</p>' +
       '<p>' + btn(ICO.del, 'Delete') + ' — Click the polygon you want to remove. A confirmation will be shown before deletion.</p>' +
       '<div class="guide-warning"><strong>Note:</strong> You can only delete polygons that <strong>you</strong> drew.</div>') +
 
@@ -739,7 +767,7 @@ window.LeucenaI18n = (function () {
     step(9, 'Unlock the cell', '<p>When you\'re done working on the cell, click:</p>' +
       '<p>' + btn(ICO.unlock, 'Unlock') + ' in the bottom toolbar. A modal will appear with two options:</p>' +
       '<ul>' +
-      '<li>' + btn(ICO.check, 'Finished') + ' — Select if <strong>all</strong> valid occurrence points are covered by masks. The system will verify automatically.</li>' +
+      '<li>' + btn(ICO.check, 'Finished') + ' — Select if <strong>all</strong> valid occurrence points are covered by polygons. The system will verify automatically.</li>' +
       '<li>' + btn('', 'Not yet finished') + ' — Use if you still need to come back later, or couldn\'t cover all points.</li>' +
       '</ul>') +
 
@@ -754,7 +782,7 @@ window.LeucenaI18n = (function () {
 
   function getHowtoContentES() {
     return '<h2>Cómo mapear</h2>' +
-    '<div class="guide-objective"><strong>Objetivo:</strong> Crear polígonos (máscaras) alrededor de <strong>aglomerados de leucaena</strong> visibles en la imagen satelital. Cada punto verde en el mapa representa una ocurrencia registrada — su tarea es dibujar polígonos que cubran estos puntos y el área de leucaena a su alrededor.</div>' +
+    '<div class="guide-objective"><strong>Objetivo:</strong> Crear polígonos alrededor de <strong>aglomerados de leucaena</strong> (áreas donde hay dos o más leucaenas juntas) visibles en la imagen satelital. Cada punto verde en el mapa representa una ocurrencia registrada — su tarea es dibujar polígonos que cubran estos puntos y el área de leucaena a su alrededor.</div>' +
 
     '<div class="guide-video"><h3>📺 Video tutorial</h3><p>Mire el video a continuación para ver el paso a paso completo del mapeo:</p><div class="guide-video-wrapper"><iframe src="https://www.youtube.com/embed/S7NCnasL1oQ" title="Cómo mapear en leucaena.earth" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>' +
 
@@ -764,7 +792,7 @@ window.LeucenaI18n = (function () {
       '<ul>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Púrpura</strong> — Aún no finalizado (¡priorice estas!)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Amarillo (hueco)</strong> — En uso por otro colaborador</li>' +
-      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Amarillo</strong> — Mapeando (tiene máscaras pero no finalizado)</li>' +
+      '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FFFF59;vertical-align:middle;margin-right:6px"></span><strong>Amarillo</strong> — Mapeando (tiene polígonos pero no finalizado)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#d4d4d8;vertical-align:middle;margin-right:6px"></span><strong>Gris</strong> — Sin puntos de ocurrencia</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#22c55e;vertical-align:middle;margin-right:6px"></span><strong>Verde</strong> — Finalizado</li>' +
       '</ul>' +
@@ -773,7 +801,7 @@ window.LeucenaI18n = (function () {
     step(3, 'Bloquee la celda', '<p>Haga clic en el botón ' + btn(ICO.lock, 'Bloquear y Editar') + ' en la barra lateral. La celda quedará reservada para usted y las herramientas de edición aparecerán.</p>' +
       '<div class="guide-warning"><strong>Importante:</strong> Mientras la celda esté bloqueada, ningún otro usuario puede editarla. ¡Recuerde desbloquear cuando termine!</div>') +
 
-    step(4, 'Dibuje las máscaras', '<p>Localice los <strong>aglomerados de leucaena</strong> en la imagen satelital (copas de árboles agrupadas) y use el botón:</p>' +
+    step(4, 'Dibuje los polígonos', '<p>Localice los <strong>aglomerados de leucaena</strong> en la imagen satelital (áreas donde hay dos o más leucaenas juntas) y use el botón:</p>' +
       '<p>' + btn(ICO.draw, 'Dibujar') + ' — Haga clic en el mapa para crear los vértices del polígono. Cada clic agrega un punto. Para <strong>cerrar el polígono</strong>, haga clic en el primer punto (estará resaltado) o haga <strong>doble clic</strong>.</p>' +
       '<ul>' +
       '<li>Mínimo de <strong>3 vértices</strong> para formar un polígono.</li>' +
@@ -781,13 +809,13 @@ window.LeucenaI18n = (function () {
       '<li>Priorice <strong>aglomerados</strong> — áreas con varios árboles juntos.</li>' +
       '</ul>') +
 
-    step(5, 'Edite las máscaras', '<p>¿Necesita ajustar un polígono ya dibujado? Use:</p>' +
+    step(5, 'Edite los polígonos', '<p>¿Necesita ajustar un polígono ya dibujado? Use:</p>' +
       '<p>' + btn(ICO.edit, 'Editar') + ' — Haga clic en el polígono y arrastre los vértices (puntos blancos) para reposicionarlos. También puede arrastrar el punto medio entre dos vértices para crear uno nuevo.</p>') +
 
-    step(6, 'Cree agujeros en las máscaras', '<p>Si dentro de un polígono grande hay un área <strong>sin leucaena</strong> (por ejemplo, un edificio o carretera), use:</p>' +
+    step(6, 'Cree agujeros en los polígonos', '<p>Si dentro de un polígono grande hay un área <strong>sin leucaena</strong> (por ejemplo, un edificio o carretera), use:</p>' +
       '<p>' + btn(ICO.hole, 'Crear agujero', true) + ' — Primero haga clic en el polígono objetivo (se resaltará con borde naranja). Luego dibuje el contorno del área interna que <strong>no</strong> es leucaena. Este recorte será excluido del polígono.</p>') +
 
-    step(7, 'Elimine máscaras', '<p>¿Dibujó un polígono por error? Use:</p>' +
+    step(7, 'Elimine polígonos', '<p>¿Dibujó un polígono por error? Use:</p>' +
       '<p>' + btn(ICO.del, 'Eliminar') + ' — Haga clic en el polígono que desea eliminar. Se mostrará una confirmación antes de la eliminación.</p>' +
       '<div class="guide-warning"><strong>Nota:</strong> Solo puede eliminar polígonos que <strong>usted mismo</strong> dibujó.</div>') +
 
@@ -797,7 +825,7 @@ window.LeucenaI18n = (function () {
     step(9, 'Desbloquee la celda', '<p>Cuando termine el trabajo en la celda, haga clic en:</p>' +
       '<p>' + btn(ICO.unlock, 'Desbloquear') + ' en la barra inferior. Aparecerá un modal con dos opciones:</p>' +
       '<ul>' +
-      '<li>' + btn(ICO.check, 'Finalizado') + ' — Seleccione si <strong>todos</strong> los puntos de ocurrencia válidos están cubiertos por máscaras. El sistema verificará automáticamente.</li>' +
+      '<li>' + btn(ICO.check, 'Finalizado') + ' — Seleccione si <strong>todos</strong> los puntos de ocurrencia válidos están cubiertos por polígonos. El sistema verificará automáticamente.</li>' +
       '<li>' + btn('', 'Aún no finalizado') + ' — Use si necesita volver después, o no pudo cubrir todos los puntos.</li>' +
       '</ul>') +
 
@@ -937,7 +965,7 @@ window.LeucenaI18n = (function () {
 <p>Atualmente, nossos esforços estão concentrados no estado de <strong>São Paulo</strong>, onde estamos estruturando a base de dados e os métodos. Ao mesmo tempo, a plataforma está sendo desenvolvida de forma <strong>aberta</strong> e <strong>escalável</strong>, permitindo sua aplicação em outras regiões e contextos no futuro.</p>
 <p>Se você se interessa por espécies invasoras, geotecnologias ou carbono, vale muito a pena dar uma olhada em <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
 
-<h3>Título do Projeto</h3><p><em>Revelando a distribuição espacial e a biomassa aérea de <strong>Leucaena leucocephala</strong> no Estado de São Paulo usando sensoriamento remoto e inteligência artificial</em></p><h3>Pesquisador</h3><p>Matheus Siqueira Barros</p><h3>Orientador</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Descrição do Projeto</h3><p>Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, Brasil. O projeto combina imagens ópticas de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com técnicas de inteligência artificial para detectar áreas dominadas por essa espécie e estimar sua biomassa.</p><p>O projeto desenvolve métodos de aprendizado profundo, especialmente redes neurais convolucionais (CNNs), para realizar a fusão de dados LiDAR e ópticos e mapear áreas dominadas por <em>Leucaena</em> em escala estadual.</p><h3>Objetivo da Plataforma</h3><p>Esta plataforma foi desenvolvida para apoiar a pesquisa permitindo:</p><ul><li>Mapeamento colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalização de máscaras da copa por colaboradores</li><li>Validação entre pontos e polígonos mapeados</li><li>Rastreamento das contribuições de cada participante</li><li>Exportação dos dados mapeados para análises posteriores</li></ul><h3>Equipe do projeto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contato</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Local</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
+<h3>Título do Projeto</h3><p><em>Revelando a distribuição espacial e a biomassa aérea de <strong>Leucaena leucocephala</strong> no Estado de São Paulo usando sensoriamento remoto e inteligência artificial</em></p><h3>Pesquisador</h3><p>Matheus Siqueira Barros</p><h3>Orientador</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Descrição do Projeto</h3><p>Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, Brasil. O projeto combina imagens ópticas de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com técnicas de inteligência artificial para detectar áreas dominadas por essa espécie e estimar sua biomassa.</p><p>O projeto desenvolve métodos de aprendizado profundo, especialmente redes neurais convolucionais (CNNs), para realizar a fusão de dados LiDAR e ópticos e mapear áreas dominadas por <em>Leucaena</em> em escala estadual.</p><h3>Objetivo da Plataforma</h3><p>Esta plataforma foi desenvolvida para apoiar a pesquisa permitindo:</p><ul><li>Mapeamento colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalização de polígonos da copa por colaboradores</li><li>Validação entre pontos e polígonos mapeados</li><li>Rastreamento das contribuições de cada participante</li><li>Exportação dos dados mapeados para análises posteriores</li></ul><h3>Equipe do projeto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contato</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Local</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
 
 <div class="docs-logos">
   <div class="docs-logos-section">
@@ -972,7 +1000,7 @@ window.LeucenaI18n = (function () {
 <p>Our current efforts focus on the state of <strong>São Paulo</strong>, where we are structuring the database and methods. At the same time, the platform is being developed in an <strong>open</strong> and <strong>scalable</strong> way, allowing future application in other regions and contexts.</p>
 <p>If you are interested in invasive species, geotechnologies, or carbon, take a look at <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
 
-<h3>Project Title</h3><p><em>Revealing the spatial distribution and aboveground biomass of <strong>Leucaena leucocephala</strong> in the State of São Paulo using remote sensing and artificial intelligence</em></p><h3>Researcher</h3><p>Matheus Siqueira Barros</p><h3>Advisor</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Project Description</h3><p>This research investigates the spatial distribution and aboveground biomass of the invasive species <em>Leucaena leucocephala</em> across the state of São Paulo, Brazil. The project combines very high spatial resolution optical imagery (25 cm GSD) and LiDAR data with artificial intelligence techniques to detect areas dominated by this species and estimate its biomass.</p><p>The project develops deep learning methods, especially convolutional neural networks (CNNs), to fuse LiDAR and optical data and map <em>Leucaena</em>-dominated areas at the state scale.</p><h3>Platform Objective</h3><p>This platform was developed to support the research by enabling:</p><ul><li>Collaborative mapping of <em>Leucaena leucocephala</em> patches</li><li>Canopy mask digitization by contributors</li><li>Validation between mapped points and polygons</li><li>Tracking of each participant's contributions</li><li>Export of mapped data for further analysis</li></ul><h3>Project team</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contact</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Location</h3><p>Piracicaba – São Paulo – Brazil<br>${month} ${year}</p>
+<h3>Project Title</h3><p><em>Revealing the spatial distribution and aboveground biomass of <strong>Leucaena leucocephala</strong> in the State of São Paulo using remote sensing and artificial intelligence</em></p><h3>Researcher</h3><p>Matheus Siqueira Barros</p><h3>Advisor</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Project Description</h3><p>This research investigates the spatial distribution and aboveground biomass of the invasive species <em>Leucaena leucocephala</em> across the state of São Paulo, Brazil. The project combines very high spatial resolution optical imagery (25 cm GSD) and LiDAR data with artificial intelligence techniques to detect areas dominated by this species and estimate its biomass.</p><p>The project develops deep learning methods, especially convolutional neural networks (CNNs), to fuse LiDAR and optical data and map <em>Leucaena</em>-dominated areas at the state scale.</p><h3>Platform Objective</h3><p>This platform was developed to support the research by enabling:</p><ul><li>Collaborative mapping of <em>Leucaena leucocephala</em> patches</li><li>Canopy polygon digitization by contributors</li><li>Validation between mapped points and polygons</li><li>Tracking of each participant's contributions</li><li>Export of mapped data for further analysis</li></ul><h3>Project team</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contact</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Location</h3><p>Piracicaba – São Paulo – Brazil<br>${month} ${year}</p>
 
 <div class="docs-logos">
   <div class="docs-logos-section">
@@ -1007,7 +1035,7 @@ window.LeucenaI18n = (function () {
 <p>Actualmente, nuestros esfuerzos se concentran en el estado de <strong>São Paulo</strong>, donde estamos estructurando la base de datos y los métodos. Al mismo tiempo, la plataforma se desarrolla de forma <strong>abierta</strong> y <strong>escalable</strong>, permitiendo su aplicación en otras regiones y contextos en el futuro.</p>
 <p>Si te interesan las especies invasoras, las geotecnologías o el carbono, vale la pena visitar <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
 
-<h3>Título del Proyecto</h3><p><em>Revelando la distribución espacial y la biomasa aérea de <strong>Leucaena leucocephala</strong> en el Estado de São Paulo usando teledetección e inteligencia artificial</em></p><h3>Investigador</h3><p>Matheus Siqueira Barros</p><h3>Director</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Descripción del Proyecto</h3><p>Esta investigación estudia la distribución espacial y la biomasa aérea de la especie invasora <em>Leucaena leucocephala</em> en todo el estado de São Paulo, Brasil. El proyecto combina imágenes ópticas de muy alta resolución espacial (25 cm de GSD) y datos LiDAR con técnicas de inteligencia artificial para detectar áreas dominadas por esta especie y estimar su biomasa.</p><p>El proyecto desarrolla métodos de aprendizaje profundo, especialmente redes neuronales convolucionales (CNNs), para fusionar datos LiDAR y ópticos y mapear áreas dominadas por <em>Leucaena</em> a escala estatal.</p><h3>Objetivo de la Plataforma</h3><p>Esta plataforma fue desarrollada para apoyar la investigación permitiendo:</p><ul><li>Mapeo colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalización de máscaras de copa por colaboradores</li><li>Validación entre puntos y polígonos mapeados</li><li>Seguimiento de las contribuciones de cada participante</li><li>Exportación de los datos mapeados para análisis posteriores</li></ul><h3>Equipo del proyecto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contacto</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Ubicación</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
+<h3>Título del Proyecto</h3><p><em>Revelando la distribución espacial y la biomasa aérea de <strong>Leucaena leucocephala</strong> en el Estado de São Paulo usando teledetección e inteligencia artificial</em></p><h3>Investigador</h3><p>Matheus Siqueira Barros</p><h3>Director</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Descripción del Proyecto</h3><p>Esta investigación estudia la distribución espacial y la biomasa aérea de la especie invasora <em>Leucaena leucocephala</em> en todo el estado de São Paulo, Brasil. El proyecto combina imágenes ópticas de muy alta resolución espacial (25 cm de GSD) y datos LiDAR con técnicas de inteligencia artificial para detectar áreas dominadas por esta especie y estimar su biomasa.</p><p>El proyecto desarrolla métodos de aprendizaje profundo, especialmente redes neuronales convolucionales (CNNs), para fusionar datos LiDAR y ópticos y mapear áreas dominadas por <em>Leucaena</em> a escala estatal.</p><h3>Objetivo de la Plataforma</h3><p>Esta plataforma fue desarrollada para apoyar la investigación permitiendo:</p><ul><li>Mapeo colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalización de polígonos de copa por colaboradores</li><li>Validación entre puntos y polígonos mapeados</li><li>Seguimiento de las contribuciones de cada participante</li><li>Exportación de los datos mapeados para análisis posteriores</li></ul><h3>Equipo del proyecto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contacto</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Ubicación</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
 
 <div class="docs-logos">
   <div class="docs-logos-section">
@@ -1043,7 +1071,7 @@ window.LeucenaI18n = (function () {
 <h3>1. Crie sua conta</h3>
 <p>Clique em <strong>"Entrar"</strong> no canto superior direito. Você pode se cadastrar com sua <strong>conta Google</strong> (mais rápido) ou com <strong>nome de usuário e senha</strong>. Se optar por e-mail/senha, um e-mail de verificação será enviado.</p>
 <h3>2. Comece a mapear!</h3>
-<p>Selecione uma célula do grid, clique em <strong>"Bloquear e Editar"</strong> e comece a desenhar máscaras de leucena usando as ferramentas de edição.</p>
+<p>Selecione uma célula do grid, clique em <strong>"Bloquear e Editar"</strong> e comece a desenhar polígonos de leucena usando as ferramentas de edição.</p>
 <h3>Requisitos</h3>
 <ul>
 <li>Navegador atualizado (Chrome, Firefox, Edge)</li>
@@ -1058,7 +1086,7 @@ window.LeucenaI18n = (function () {
 <h3>1. Create your account</h3>
 <p>Click <strong>"Sign In"</strong> in the upper right corner. You can register with your <strong>Google account</strong> (fastest) or with a <strong>username and password</strong>. If you choose email/password, a verification email will be sent.</p>
 <h3>2. Start mapping!</h3>
-<p>Select a grid cell, click <strong>"Lock & Edit"</strong> and start drawing Leucaena masks using the editing tools.</p>
+<p>Select a grid cell, click <strong>"Lock & Edit"</strong> and start drawing leucaena polygons using the editing tools.</p>
 <h3>Requirements</h3>
 <ul>
 <li>Updated browser (Chrome, Firefox, Edge)</li>
@@ -1073,7 +1101,7 @@ window.LeucenaI18n = (function () {
 <h3>1. Cree su cuenta</h3>
 <p>Haga clic en <strong>"Iniciar Sesión"</strong> en la esquina superior derecha. Puede registrarse con su <strong>cuenta de Google</strong> (más rápido) o con <strong>nombre de usuario y contraseña</strong>. Si elige correo/contraseña, se enviará un correo de verificación.</p>
 <h3>2. ¡Empiece a mapear!</h3>
-<p>Seleccione una celda del grid, haga clic en <strong>"Bloquear y Editar"</strong> y comience a dibujar máscaras de leucaena usando las herramientas de edición.</p>
+<p>Seleccione una celda del grid, haga clic en <strong>"Bloquear y Editar"</strong> y comience a dibujar polígonos de leucena usando las herramientas de edición.</p>
 <h3>Requisitos</h3>
 <ul>
 <li>Navegador actualizado (Chrome, Firefox, Edge)</li>

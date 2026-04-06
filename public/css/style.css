@@ -1370,6 +1370,37 @@ a.docs-logo-card:hover {
   to   { opacity: 1; }
 }
 
+.draw-overlay-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 5px;
+}
+.draw-overlay-actions .btn-overlay-action {
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+.btn-overlay-delete {
+  background: #ef4444;
+  color: white;
+}
+.btn-overlay-delete:hover {
+  background: #dc2626;
+}
+.btn-overlay-cancel {
+  background: rgba(255,255,255,0.15);
+  color: #e2e8f0;
+}
+.btn-overlay-cancel:hover {
+  background: rgba(255,255,255,0.25);
+}
+
 /* ── Map ── */
 #map-container {
   flex: 1;
@@ -1446,6 +1477,23 @@ a.docs-logo-card:hover {
   background: #d97706;
   color: white;
   border-color: #d97706;
+}
+
+.edit-tool-btn-accent {
+  background: rgba(34, 197, 94, 0.35);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  color: #4ade80;
+}
+.edit-tool-btn-accent:hover {
+  background: rgba(34, 197, 94, 0.55);
+  color: #bbf7d0;
+}
+
+.edit-tools-separator {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255,255,255,0.15);
+  margin: 4px 0;
 }
 
 /* ── Map Controls Right (zoom + home group) ── */
@@ -1638,6 +1686,25 @@ a.docs-logo-card:hover {
   cursor: pointer;
 }
 
+#label-toggle.label-toggle-pulse {
+  animation: label-toggle-flash 1.08s cubic-bezier(0.25, 0.9, 0.35, 1) 1 forwards;
+}
+
+@keyframes label-toggle-flash {
+  0% {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5), 0 0 20px rgba(34, 197, 94, 0.4);
+    filter: brightness(1.12) drop-shadow(0 0 10px rgba(34, 197, 94, 0.55));
+  }
+  45% {
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.22), 0 0 10px rgba(34, 197, 94, 0.2);
+    filter: brightness(1.04) drop-shadow(0 0 4px rgba(34, 197, 94, 0.25));
+  }
+  100% {
+    box-shadow: none;
+    filter: none;
+  }
+}
+
 /* ── Coords display ── */
 .coords-container {
   display: flex;
@@ -1800,6 +1867,26 @@ a.docs-logo-card:hover {
 
 .legend-toggle:hover {
   color: var(--text-primary);
+}
+
+.legend-toggle.legend-toggle-pulse {
+  animation: legend-toggle-flash 1.08s cubic-bezier(0.25, 0.9, 0.35, 1) 1 forwards;
+}
+
+@keyframes legend-toggle-flash {
+  0% {
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.45), 0 0 16px rgba(34, 197, 94, 0.35);
+    color: var(--text-primary);
+    filter: brightness(1.12) drop-shadow(0 0 8px rgba(34, 197, 94, 0.45));
+  }
+  45% {
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.15), 0 0 8px rgba(34, 197, 94, 0.18);
+    filter: brightness(1.04) drop-shadow(0 0 3px rgba(34, 197, 94, 0.22));
+  }
+  100% {
+    box-shadow: none;
+    filter: none;
+  }
 }
 
 .legend-arrow {
@@ -2521,6 +2608,18 @@ a.docs-logo-card:hover {
   border-left: 3px solid #f59e0b;
   background: rgba(245,158,11,0.04);
 }
+
+.admin-user-card-inactive {
+  border-left: 3px solid #6b7280;
+  background: rgba(107,114,128,0.06);
+  opacity: 0.7;
+}
+
+.admin-badge-inactive {
+  background: rgba(107,114,128,0.25) !important;
+  color: #9ca3af !important;
+  border: 1px solid rgba(107,114,128,0.4);
+}
 .admin-section-body {
   padding: 6px 0 2px;
   transition: max-height .3s ease, opacity .2s;
@@ -2935,6 +3034,26 @@ a.docs-logo-card:hover {
 
 .admin-user-actions button.btn-danger-sm:hover {
   background: var(--danger);
+  color: white;
+}
+
+.admin-user-actions button.btn-warning-sm {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.admin-user-actions button.btn-warning-sm:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+.admin-user-actions button.btn-success-sm {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.admin-user-actions button.btn-success-sm:hover {
+  background: #22c55e;
   color: white;
 }
 

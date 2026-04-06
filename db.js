@@ -121,6 +121,7 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN verification_expires TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN reset_token TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN reset_token_expires TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1'); } catch (e) { /* already exists */ }
 
   // One-time: mark pre-existing local users as email_verified so they aren't locked out
   try {
@@ -132,11 +133,13 @@ async function initDB() {
     db.run('UPDATE occurrence_points SET status = not_valid WHERE status IS NULL OR (status = 0 AND not_valid = 1)');
   } catch (e) { /* ignore */ }
 
-  // Ensure the placeholder "deleted" user exists (masks are transferred here on user deletion)
+  // Ensure the placeholder "deleted" user exists (masks are transferred here on permanent user deletion)
   const delExists = db.exec("SELECT id FROM users WHERE username = 'deleted'");
   if (delExists.length === 0 || delExists[0].values.length === 0) {
     const now = new Date().toISOString();
-    db.run("INSERT INTO users (username, password_hash, created_at) VALUES ('deleted', 'nologin', ?)", [now]);
+    db.run("INSERT INTO users (username, password_hash, created_at, is_active) VALUES ('deleted', 'nologin', ?, 0)", [now]);
+  } else {
+    db.run("UPDATE users SET is_active = 0 WHERE username = 'deleted'");
   }
 
   persist();

@@ -503,8 +503,8 @@
             <div id="export-login-warn" class="export-login-warn hidden" data-i18n="topbar.loginToDownload">Faça login para baixar</div>
             <a href="#" id="export-points" data-i18n="topbar.pointsGeoJSON">Pontos de Ocorrência (GeoJSON)</a>
             <a href="#" id="export-grid" data-i18n="topbar.gridGeoJSON">Grade SP (GeoJSON)</a>
-            <a href="#" id="export-geojson" data-i18n="topbar.polygonsGeoJSON">Máscaras de Leucena (GeoJSON)</a>
-            <div id="export-contributor-disclaimer" class="export-disclaimer hidden" data-i18n="export.masksDisclaimer">Os pontos de ocorrência e as máscaras ainda estão em fase de validação e não estão disponíveis para download no momento.</div>
+            <a href="#" id="export-geojson" data-i18n="topbar.polygonsGeoJSON">Polígonos de Leucena (GeoJSON)</a>
+            <div id="export-contributor-disclaimer" class="export-disclaimer hidden" data-i18n="export.masksDisclaimer">Os pontos de ocorrência e os polígonos de leucena ainda estão em fase de validação e não estão disponíveis para download no momento.</div>
           </div>
         </div>
         <!-- Deslogado -->
@@ -564,7 +564,7 @@
       <span class="edit-pulse"></span>
       <span id="edit-mode-text">Editando Célula #--</span>
       <span id="tool-hint-text" class="tool-hint-text hidden"></span>
-      <span id="draw-instructions-overlay" class="draw-overlay-inline hidden"></span>
+      <div id="draw-instructions-overlay" class="draw-overlay-inline hidden"></div>
     </div>
 
     <div id="main-content">
@@ -677,11 +677,11 @@
             </div>
           </div>
 
-          <!-- Máscaras de Leucenas -->
+          <!-- Polígonos de Leucena -->
           <div class="filter-group">
             <label class="filter-item filter-item-parent">
               <input type="checkbox" id="toggle-polygons" checked>
-              <span data-i18n="sidebar.leucenaMasks">Máscaras de Leucenas</span>
+              <span data-i18n="sidebar.leucenaMasks">Polígonos de Leucena</span>
               <span class="filter-count" id="count-polygons-total"></span>
             </label>
             <div id="mask-subcategories" class="filter-subgroup hidden">
@@ -715,7 +715,7 @@
             <span id="cell-numpoints" class="cell-detail-value">--</span>
           </div>
           <div class="cell-detail" id="cell-masks-row">
-            <span class="cell-detail-label" data-i18n="sidebar.masks">Máscaras:</span>
+            <span class="cell-detail-label" data-i18n="sidebar.masks">Polígonos:</span>
             <span id="cell-masks" class="cell-detail-value">--</span>
           </div>
           <div class="cell-detail" id="cell-worked-by-row">
@@ -759,6 +759,13 @@
           <button class="edit-tool-btn edit-tool-btn-special" id="tool-hole" data-i18n-title="tool.hole" title="Criar Buraco (Shift+H)">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="2 2 22 2 22 22 2 22"/><polygon points="7 7 17 7 17 17 7 17" stroke-dasharray="3 2"/></svg>
           </button>
+          <div class="edit-tools-separator"></div>
+          <button class="edit-tool-btn hidden" id="tool-undo" data-i18n-title="tool.undo" title="Desfazer (Ctrl+Z)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-11.36L1 10"/></svg>
+          </button>
+          <button class="edit-tool-btn edit-tool-btn-accent hidden" id="tool-finish-draw" data-i18n-title="tool.finishDraw" title="Finalizar desenho (Enter)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
         </div>
         <!-- Controles de mapa flutuantes (direita central) -->
         <div id="map-controls-right" class="map-controls-right">
@@ -778,7 +785,7 @@
         </button>
         <!-- Legenda do Mapa (accordion) -->
         <div id="map-legend" class="map-legend">
-          <button id="legend-toggle" class="legend-toggle">
+          <button type="button" id="legend-toggle" class="legend-toggle" data-i18n-title="legend.toggleTooltip">
             <span class="legend-toggle-label" data-i18n="legend.title">Legenda</span>
             <svg id="legend-arrow" class="legend-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
@@ -799,7 +806,7 @@
             <div class="legend-item"><span class="legend-color legend-dot" style="background:#84cc16;"></span> <span data-i18n="legend.validPoint">Válido</span></div>
             <div class="legend-item"><span class="legend-color legend-dot" style="background:#ef4444; border: 2px solid #991b1b;"></span> <span data-i18n="legend.invalidPoint">Inválido</span></div>
             <div class="legend-item"><span class="legend-color legend-dot" style="background:#ef4444; border: 2px solid #ffffff;"></span> <span data-i18n="legend.doubtPoint">Incerto</span></div>
-            <div class="legend-category" data-i18n="legend.leucenaMask">Máscara de Leucena</div>
+            <div class="legend-category" data-i18n="legend.leucenaMask">Polígono de Leucena</div>
             <div class="legend-item" id="legend-mask-default"><span class="legend-color legend-hollow legend-mask" style="border-color:#84cc16;"></span> <span data-i18n="legend.mappedPolygon">Polígono mapeado</span></div>
             <div class="legend-item hidden" id="legend-mask-member"><span class="legend-color legend-hollow legend-mask" style="border-color:#84cc16;"></span> <span data-i18n="sidebar.masksMember">Membros</span></div>
             <div class="legend-item hidden" id="legend-mask-contributor"><span class="legend-color legend-hollow legend-mask" style="border-color:#f97316;"></span> <span data-i18n="sidebar.masksContributor">Colaboradores</span></div>
@@ -838,7 +845,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
             <span id="maptype-label" data-i18n="tool.map">Mapa</span>
           </button>
-          <label class="toolbar-checkbox" id="label-toggle" title="Mostrar rótulos">
+          <label class="toolbar-checkbox" id="label-toggle" data-i18n-title="tool.labelsTooltip">
             <input type="checkbox" id="tool-labels">
             <span data-i18n="tool.labels">Rótulos</span>
           </label>

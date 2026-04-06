@@ -13,6 +13,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let showPolygons = true;
   let originalRestriction = null;
   let gridBounds = null;
+  let restrictionBounds = null;
   let selectedCellId = null;
   const selectedPointIds = new Set();
   let lastCoords = null;
@@ -155,6 +156,86 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let isSatellite = true;
   let showLabels = true;
   let labelsUserControlled = false;
+  let labelsAutoOffTimer = null;
+  let labelsPostAutoOffFlashTimer = null;
+  const LABELS_AUTO_OFF_MS = 3000;
+  const LABELS_FLASH_AFTER_AUTO_OFF_MS = 320;
+
+  function clearLabelsAutoOffTimer() {
+    if (labelsAutoOffTimer) {
+      clearTimeout(labelsAutoOffTimer);
+      labelsAutoOffTimer = null;
+    }
+  }
+
+  function clearLabelsPostAutoOffFlashTimer() {
+    if (labelsPostAutoOffFlashTimer) {
+      clearTimeout(labelsPostAutoOffFlashTimer);
+      labelsPostAutoOffFlashTimer = null;
+    }
+  }
+
+  function clearLabelsReenableHint() {
+    clearLabelsPostAutoOffFlashTimer();
+    const lt = document.getElementById('label-toggle');
+    if (lt) {
+      lt.classList.remove('label-toggle-pulse');
+      delete lt.dataset.labelsReenableHint;
+      lt.title = LeucenaI18n.t('tool.labelsTooltip');
+    }
+  }
+
+  function refreshLabelToggleTitleForLang() {
+    const el = document.getElementById('label-toggle');
+    if (!el) return;
+    if (el.dataset.labelsReenableHint === 'true') {
+      el.title = LeucenaI18n.t('tool.labelsReenableHint');
+    } else {
+      el.title = LeucenaI18n.t('tool.labelsTooltip');
+    }
+  }
+
+  function playLabelToggleFlash() {
+    const lt = document.getElementById('label-toggle');
+    if (!lt || !isSatellite) return;
+    const onEnd = (e) => {
+      if (e.animationName !== 'label-toggle-flash') return;
+      lt.classList.remove('label-toggle-pulse');
+      lt.removeEventListener('animationend', onEnd);
+    };
+    lt.removeEventListener('animationend', onEnd);
+    lt.classList.remove('label-toggle-pulse');
+    void lt.offsetWidth;
+    lt.classList.add('label-toggle-pulse');
+    lt.addEventListener('animationend', onEnd);
+  }
+
+  function performAutoLabelsOff() {
+    if (labelsUserControlled) return;
+    labelsUserControlled = true;
+    showLabels = false;
+    const cb = document.getElementById('tool-labels');
+    const lt = document.getElementById('label-toggle');
+    if (cb) cb.checked = false;
+    applyMapType();
+    if (lt && isSatellite) {
+      lt.dataset.labelsReenableHint = 'true';
+      lt.title = LeucenaI18n.t('tool.labelsReenableHint');
+    }
+    clearLabelsPostAutoOffFlashTimer();
+    labelsPostAutoOffFlashTimer = setTimeout(() => {
+      labelsPostAutoOffFlashTimer = null;
+      playLabelToggleFlash();
+    }, LABELS_FLASH_AFTER_AUTO_OFF_MS);
+  }
+
+  function scheduleAutoLabelsOff() {
+    clearLabelsAutoOffTimer();
+    labelsAutoOffTimer = setTimeout(() => {
+      labelsAutoOffTimer = null;
+      performAutoLabelsOff();
+    }, LABELS_AUTO_OFF_MS);
+  }
 
   function setupBasemapToggle() {
     const mapBtn = document.getElementById('tool-maptype');
@@ -175,22 +256,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         mapBtn.classList.add('active');
       }
       labelToggle.style.display = isSatellite ? 'flex' : 'none';
+      if (!isSatellite) clearLabelsPostAutoOffFlashTimer();
     });
 
     labelsCheckbox.addEventListener('change', () => {
+      clearLabelsAutoOffTimer();
       labelsUserControlled = true;
       showLabels = labelsCheckbox.checked;
+      if (labelsCheckbox.checked) clearLabelsReenableHint();
       applyMapType();
     });
-  }
-
-  function collapseLabelsOnFirstZoom() {
-    if (labelsUserControlled) return;
-    labelsUserControlled = true;
-    showLabels = false;
-    const cb = document.getElementById('tool-labels');
-    if (cb) cb.checked = false;
-    applyMapType();
   }
 
   function applyMapType() {
@@ -266,6 +341,19 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return [geometry.coordinates[0]];
   }
 
+  function bufferBounds(bounds, factor) {
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const latSpan = ne.lat() - sw.lat();
+    const lngSpan = ne.lng() - sw.lng();
+    const latBuf = latSpan * factor;
+    const lngBuf = lngSpan * factor;
+    return new google.maps.LatLngBounds(
+      { lat: sw.lat() - latBuf, lng: sw.lng() - lngBuf },
+      { lat: ne.lat() + latBuf, lng: ne.lng() + lngBuf }
+    );
+  }
+
   async function loadGrid() {
     try {
       const res = await fetch('/api/grid');
@@ -282,6 +370,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
           }
         }
       }
+      restrictionBounds = bufferBounds(gridBounds, 0.15);
       map.fitBounds(gridBounds);
       map.addListener('idle', () => { // after pan/zoom: viewport cull grids, points, and drawing polygons
         refreshGridVisibility();
@@ -293,17 +382,14 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         initialCenter = map.getCenter();
         map.setOptions({
           restriction: {
-            latLngBounds: gridBounds,
+            latLngBounds: restrictionBounds,
             strictBounds: false
           }
         });
-        const zoomListener = map.addListener('zoom_changed', () => {
-          google.maps.event.removeListener(zoomListener);
-          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.collapseLegendOnFirstZoom) {
-            LeucenaApp.collapseLegendOnFirstZoom();
-          }
-          collapseLabelsOnFirstZoom();
-        });
+        scheduleAutoLabelsOff();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
+          LeucenaApp.scheduleAutoCollapseLegend();
+        }
       });
       updateFilterCounts();
     } catch (e) {
@@ -978,7 +1064,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       panWarningListener = null;
     }
     map.setOptions({
-      restriction: gridBounds ? { latLngBounds: gridBounds, strictBounds: false } : null
+      restriction: restrictionBounds ? { latLngBounds: restrictionBounds, strictBounds: false } : null
     });
   }
 
@@ -1349,7 +1435,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     }
     google.maps.event.addListenerOnce(map, 'idle', () => {
       map.setOptions({
-        restriction: { latLngBounds: gridBounds, strictBounds: false }
+        restriction: { latLngBounds: restrictionBounds || gridBounds, strictBounds: false }
       });
     });
   }
@@ -1381,6 +1467,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     findNearestPoint,
     getPointData,
     zoomToInitialView,
+    refreshLabelToggleTitleForLang,
     updateFilterCounts,
     selectPoint,
     selectPointsPreview,

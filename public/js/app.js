@@ -1091,7 +1091,8 @@ window.LeucenaApp = (function () {
         no_code: 'Erro na autenticação Google (sem código)',
         token_failed: 'Falha ao obter token do Google',
         profile_failed: 'Falha ao obter perfil do Google',
-        server_error: 'Erro interno na autenticação Google'
+        server_error: 'Erro interno na autenticação Google',
+        account_deactivated: LeucenaI18n.t('auth.accountDeactivated')
       };
       showToast(errorMap[authError] || 'Erro na autenticação', 'error');
     }
@@ -1693,17 +1694,87 @@ window.LeucenaApp = (function () {
   // ── Legend accordion ──
 
   let legendUserControlled = false;
+  let legendAutoCollapseTimer = null;
+  let legendPostCollapseFlashTimer = null;
+  let legendExpandHintActive = false;
+  const LEGEND_AUTO_COLLAPSE_MS = 3000;
+  const LEGEND_FLASH_AFTER_COLLAPSE_MS = 320;
 
-  function toggleLegend() {
-    legendUserControlled = true;
-    const collapsed = document.getElementById('map-legend').classList.toggle('collapsed');
-    logEvent(collapsed ? 'legend_collapse' : 'legend_expand');
+  function clearLegendAutoCollapseTimer() {
+    if (legendAutoCollapseTimer) {
+      clearTimeout(legendAutoCollapseTimer);
+      legendAutoCollapseTimer = null;
+    }
   }
 
-  function collapseLegendOnFirstZoom() {
+  function clearLegendPostCollapseFlashTimer() {
+    if (legendPostCollapseFlashTimer) {
+      clearTimeout(legendPostCollapseFlashTimer);
+      legendPostCollapseFlashTimer = null;
+    }
+  }
+
+  function syncLegendToggleTitle() {
+    const btn = document.getElementById('legend-toggle');
+    if (!btn) return;
+    btn.title = legendExpandHintActive
+      ? LeucenaI18n.t('legend.expandHint')
+      : LeucenaI18n.t('legend.toggleTooltip');
+  }
+
+  function refreshLegendToggleTitleForLang() {
+    syncLegendToggleTitle();
+  }
+
+  function playLegendToggleFlash() {
+    const btn = document.getElementById('legend-toggle');
+    if (!btn) return;
+    const onEnd = (e) => {
+      if (e.animationName !== 'legend-toggle-flash') return;
+      btn.classList.remove('legend-toggle-pulse');
+      btn.removeEventListener('animationend', onEnd);
+    };
+    btn.removeEventListener('animationend', onEnd);
+    btn.classList.remove('legend-toggle-pulse');
+    void btn.offsetWidth;
+    btn.classList.add('legend-toggle-pulse');
+    btn.addEventListener('animationend', onEnd);
+  }
+
+  function performAutoCollapseLegend() {
     if (legendUserControlled) return;
     legendUserControlled = true;
-    document.getElementById('map-legend').classList.add('collapsed');
+    legendExpandHintActive = true;
+    const leg = document.getElementById('map-legend');
+    if (leg) leg.classList.add('collapsed');
+    syncLegendToggleTitle();
+    clearLegendPostCollapseFlashTimer();
+    legendPostCollapseFlashTimer = setTimeout(() => {
+      legendPostCollapseFlashTimer = null;
+      playLegendToggleFlash();
+    }, LEGEND_FLASH_AFTER_COLLAPSE_MS);
+  }
+
+  function scheduleAutoCollapseLegend() {
+    clearLegendAutoCollapseTimer();
+    legendAutoCollapseTimer = setTimeout(() => {
+      legendAutoCollapseTimer = null;
+      performAutoCollapseLegend();
+    }, LEGEND_AUTO_COLLAPSE_MS);
+  }
+
+  function toggleLegend() {
+    clearLegendAutoCollapseTimer();
+    clearLegendPostCollapseFlashTimer();
+    legendUserControlled = true;
+    legendExpandHintActive = false;
+    const btn = document.getElementById('legend-toggle');
+    if (btn) btn.classList.remove('legend-toggle-pulse');
+    const legendEl = document.getElementById('map-legend');
+    if (!legendEl) return;
+    const collapsed = legendEl.classList.toggle('collapsed');
+    syncLegendToggleTitle();
+    logEvent(collapsed ? 'legend_collapse' : 'legend_expand');
   }
 
   function updateLegendVisibility(sidebarOpen) {
@@ -1796,12 +1867,14 @@ window.LeucenaApp = (function () {
 
     const workedByRow = document.getElementById('cell-worked-by-row');
     const finishedByRow = document.getElementById('cell-finished-by-row');
-    const hasWorked = cellData.worked_by && cellData.worked_by !== '--';
-    const hasFinished = !!cellData.finished_by;
+    const cleanedWorked = cleanUserList(cellData.worked_by);
+    const cleanedFinished = cleanUserList(cellData.finished_by);
+    const hasWorked = !!cleanedWorked;
+    const hasFinished = !!cleanedFinished;
     if (workedByRow) workedByRow.classList.toggle('hidden', !hasWorked);
     if (finishedByRow) finishedByRow.classList.toggle('hidden', !hasFinished);
-    if (hasWorked) document.getElementById('cell-worked-by').textContent = cellData.worked_by.split(',').join(', ');
-    if (hasFinished) document.getElementById('cell-finished-by').textContent = cellData.finished_by;
+    if (hasWorked) document.getElementById('cell-worked-by').textContent = cleanedWorked;
+    if (hasFinished) document.getElementById('cell-finished-by').textContent = cleanedFinished;
 
     const lockBtn = document.getElementById('lock-cell-btn');
     const unlockToolBtn = document.getElementById('tool-unlock');
@@ -1905,8 +1978,9 @@ window.LeucenaApp = (function () {
     const notice = document.getElementById('unlock-crowdmapping-notice');
     const isContributor = getEffectiveRole() === 'contributor';
     const hasCrowd = isContributor && LeucenaMap.cellHasCrowdmapping(selectedCellId);
+    const hasMasks = (typeof LeucenaDrawing !== 'undefined') && LeucenaDrawing.getPolygonCount() > 0;
 
-    finBtn.classList.toggle('hidden', hasCrowd);
+    finBtn.classList.toggle('hidden', hasCrowd || !hasMasks);
     notice.classList.toggle('hidden', !hasCrowd);
 
     document.getElementById('unlock-modal').classList.remove('hidden');
@@ -1948,7 +2022,8 @@ window.LeucenaApp = (function () {
       if (selectedCellData) {
         selectedCellData.locked_by = null;
         selectedCellData.grid_status = finalStatus;
-        if (finalStatus === 'finished') selectedCellData.finished_by = username;
+        selectedCellData.finished_by = data.finished_by || null;
+        selectedCellData.worked_by = data.worked_by || null;
       }
 
       LeucenaMap.updateCellAppearance(cellId, selectedCellData || {});
@@ -1972,14 +2047,13 @@ window.LeucenaApp = (function () {
         document.getElementById('cell-status-display').textContent = formatStatus(finalStatus);
         const workedByRow = document.getElementById('cell-worked-by-row');
         const finishedByRow = document.getElementById('cell-finished-by-row');
-        if (finalStatus === 'finished') {
-          selectedCellData.finished_by = username;
-          if (finishedByRow) finishedByRow.classList.remove('hidden');
-          document.getElementById('cell-finished-by').textContent = username;
-        } else {
-          if (finishedByRow) finishedByRow.classList.toggle('hidden', !selectedCellData.finished_by);
+        const cleanedFinished = cleanUserList(selectedCellData.finished_by);
+        const cleanedWorked = cleanUserList(selectedCellData.worked_by);
+        if (finishedByRow) {
+          finishedByRow.classList.toggle('hidden', !cleanedFinished);
+          if (cleanedFinished) document.getElementById('cell-finished-by').textContent = cleanedFinished;
         }
-        if (workedByRow) workedByRow.classList.toggle('hidden', !selectedCellData.worked_by);
+        if (workedByRow) workedByRow.classList.toggle('hidden', !cleanedWorked);
       }
 
       const displayId = selectedCellData ? (selectedCellData.grid_id || cellId) : cellId;
@@ -2124,6 +2198,11 @@ window.LeucenaApp = (function () {
     const key = 'status.' + s;
     const result = LeucenaI18n.t(key);
     return result !== key ? result : s;
+  }
+
+  function cleanUserList(str) {
+    if (!str) return '';
+    return str.split(',').map(s => s.trim()).filter(s => s && s !== 'deleted').join(', ');
   }
 
   // ── Toast notifications ──
@@ -2916,7 +2995,8 @@ window.LeucenaApp = (function () {
         const isVerified = !!(user.email_verified || user.auth_provider === 'google');
         const row = document.createElement('div');
         const unverifiedCollab = !isEquipe(user) && !isVerified;
-        row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '') + (unverifiedCollab ? ' admin-user-card-unverified' : '');
+        const isInactive = user.is_active === 0;
+        row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '') + (unverifiedCollab ? ' admin-user-card-unverified' : '') + (isInactive ? ' admin-user-card-inactive' : '');
 
         let roleSelectHtml = '';
         let founderCheckboxHtml = '';
@@ -2957,6 +3037,7 @@ window.LeucenaApp = (function () {
                 <span class="admin-user-name">${user.username}</span>
                 ${isOnline ? '<span class="admin-online-dot"></span>' : ''}
                 <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
+                ${isInactive ? `<span class="admin-user-badge admin-badge-inactive">${t('admin.inactive')}</span>` : ''}
                 ${verifyBadgeHtml}
                 ${roleSelectHtml}
               </div>
@@ -2995,7 +3076,9 @@ window.LeucenaApp = (function () {
               <button class="admin-pw-btn">${t('admin.changePassword')}</button>
               ${!isVerified ? `<button class="admin-verify-btn">${t('admin.verifyUser')}</button>` : ''}
               ${effectiveSuperAdmin ? `<button class="admin-rename-btn">${t('admin.renameUser')}</button>` : ''}
-              ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
+              ${canDelete && !isInactive ? `<button class="admin-deactivate-btn btn-warning-sm">${t('admin.deactivateUser')}</button>` : ''}
+              ${canDelete && isInactive ? `<button class="admin-reactivate-btn btn-success-sm">${t('admin.reactivateUser')}</button>` : ''}
+              ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.permanentDelete')}</button>` : ''}
             </div>
           </div>
         `;
@@ -3138,10 +3221,41 @@ window.LeucenaApp = (function () {
           });
         }
 
+        const deactivateBtn = row.querySelector('.admin-deactivate-btn');
+        if (deactivateBtn) {
+          deactivateBtn.addEventListener('click', async () => {
+            if (!confirm(t('admin.confirmDeactivate', user.username))) return;
+            try {
+              const r = await fetch(`/api/admin/users/${user.id}/deactivate`, {
+                method: 'PUT', headers: authHeaders()
+              });
+              if (r.ok) {
+                showToast(t('admin.userDeactivated'), 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          });
+        }
+
+        const reactivateBtn = row.querySelector('.admin-reactivate-btn');
+        if (reactivateBtn) {
+          reactivateBtn.addEventListener('click', async () => {
+            try {
+              const r = await fetch(`/api/admin/users/${user.id}/reactivate`, {
+                method: 'PUT', headers: authHeaders()
+              });
+              if (r.ok) {
+                showToast(t('admin.userReactivated'), 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          });
+        }
+
         const delBtn = row.querySelector('.admin-del-btn');
         if (delBtn) {
           delBtn.addEventListener('click', async () => {
-            if (!confirm(t('admin.confirmDelete', user.username))) return;
+            if (!confirm(t('admin.confirmPermanentDelete', user.username))) return;
             const r = await fetch(`/api/admin/users/${user.id}`, {
               method: 'DELETE', headers: authHeaders()
             });
@@ -3273,12 +3387,12 @@ window.LeucenaApp = (function () {
     if (selectedCellData) updateCellMasksDisplay(selectedCellData);
     const workedByRow = document.getElementById('cell-worked-by-row');
     const finishedByRow = document.getElementById('cell-finished-by-row');
-    const hasWorked = selectedCellData && selectedCellData.worked_by;
-    const hasFinished = selectedCellData && selectedCellData.finished_by;
-    if (workedByRow) workedByRow.classList.toggle('hidden', !hasWorked);
-    if (finishedByRow) finishedByRow.classList.toggle('hidden', !hasFinished);
-    if (hasWorked) document.getElementById('cell-worked-by').textContent = selectedCellData.worked_by.split(',').join(', ');
-    if (hasFinished) document.getElementById('cell-finished-by').textContent = selectedCellData.finished_by;
+    const cleanedWorked = selectedCellData ? cleanUserList(selectedCellData.worked_by) : '';
+    const cleanedFinished = selectedCellData ? cleanUserList(selectedCellData.finished_by) : '';
+    if (workedByRow) workedByRow.classList.toggle('hidden', !cleanedWorked);
+    if (finishedByRow) finishedByRow.classList.toggle('hidden', !cleanedFinished);
+    if (cleanedWorked) document.getElementById('cell-worked-by').textContent = cleanedWorked;
+    if (cleanedFinished) document.getElementById('cell-finished-by').textContent = cleanedFinished;
   }
 
   setupPointModes();
@@ -3314,7 +3428,8 @@ window.LeucenaApp = (function () {
     isDeletionMode,
     isPointModeActive,
     handleDeletionClick,
-    collapseLegendOnFirstZoom,
+    scheduleAutoCollapseLegend,
+    refreshLegendToggleTitleForLang,
     isEditing,
     isAdminUser,
     isSuperAdmin,

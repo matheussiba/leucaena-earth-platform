@@ -279,6 +279,7 @@ window.LeucenaDrawing = (function () {
           if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
             LeucenaApp.logEvent('hotkey_vertex', LeucenaApp.getSelectedCellId(), null, { lat: _lastMouseLatLng.lat(), lng: _lastMouseLatLng.lng(), count: manualDrawState.vertices.length });
           }
+          _syncToolbarExtras();
           return;
         }
         if (activeMode === 'hole') {
@@ -288,6 +289,7 @@ window.LeucenaDrawing = (function () {
             if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
               LeucenaApp.logEvent('hotkey_hole_vertex', LeucenaApp.getSelectedCellId(), manualHoleState.targetId, { lat: _lastMouseLatLng.lat(), lng: _lastMouseLatLng.lng(), count: manualHoleState.vertices.length });
             }
+            _syncToolbarExtras();
           } else {
             LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
             if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
@@ -365,6 +367,7 @@ window.LeucenaDrawing = (function () {
         e.preventDefault();
         e.stopPropagation();
         manualHoleState.removeLastVertex();
+        _syncToolbarExtras();
       } else if (activeMode === 'delete' && deleteUndoStack.length > 0) {
         e.preventDefault();
         e.stopPropagation();
@@ -601,6 +604,33 @@ window.LeucenaDrawing = (function () {
       _pendingToolSwitch = null;
       document.getElementById('tool-switch-modal').classList.add('hidden');
     });
+
+    document.getElementById('tool-undo').addEventListener('click', () => {
+      if (activeMode === 'draw' && manualDrawState) {
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('touch_undo_vertex', LeucenaApp.getSelectedCellId(), null, { remaining: manualDrawState.vertices.length - 1 });
+        }
+        undoDrawVertex();
+      } else if (activeMode === 'hole' && manualHoleState) {
+        manualHoleState.removeLastVertex();
+      } else if (activeMode === 'delete' && deleteUndoStack.length > 0) {
+        undoDeletePolygon();
+      } else if (activeMode === 'edit' && editUndoStack.length > 0) {
+        undoEditPolygon();
+      }
+      _syncToolbarExtras();
+    });
+
+    document.getElementById('tool-finish-draw').addEventListener('click', () => {
+      if (activeMode === 'draw' && manualDrawState) {
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('touch_finish_draw', LeucenaApp.getSelectedCellId(), null, { vertices: manualDrawState.vertices.length });
+        }
+        completeManualDraw();
+      } else if (activeMode === 'hole' && manualHoleState) {
+        completeManualHole();
+      }
+    });
   }
 
   function showDeleteWarningModal() {
@@ -796,6 +826,7 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('hole_vertex_click', LeucenaApp.getSelectedCellId(), targetId, { lat: e.latLng.lat(), lng: e.latLng.lng(), count: vertices.length });
       }
+      _syncToolbarExtras();
     });
 
     let _holeMouseMoveCount = 0;
@@ -1006,6 +1037,7 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('draw_vertex_click', LeucenaApp.getSelectedCellId(), null, { lat: e.latLng.lat(), lng: e.latLng.lng(), count: vertices.length });
       }
+      _syncToolbarExtras();
     });
 
     const moveListener = map.addListener('mousemove', (e) => {
@@ -1131,10 +1163,12 @@ window.LeucenaDrawing = (function () {
       cleanupManualDraw();
       LeucenaApp.showToast(LeucenaI18n.t('toast.drawCancelled'), 'info');
       if (activeMode === 'draw') startDrawing();
+      _syncToolbarExtras();
       return;
     }
 
     removeLastVertex();
+    _syncToolbarExtras();
   }
 
   async function undoDeletePolygon() {
@@ -1170,6 +1204,7 @@ window.LeucenaDrawing = (function () {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyRestoreFail'), 'error');
       deleteUndoStack.push(backup);
     }
+    _syncToolbarExtras();
   }
 
   // ── Edit undo ──
@@ -1212,26 +1247,73 @@ window.LeucenaDrawing = (function () {
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
     }
+    _syncToolbarExtras();
   }
 
   // ── Tool badges ──
+
+  function _isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
 
   function updateToolBadge(mode) {
     const overlay = document.getElementById('draw-instructions-overlay');
     if (!overlay) return;
     const t = LeucenaI18n.t;
+    const touch = _isTouchDevice();
 
     if (mode === 'draw' || mode === 'delete' || mode === 'edit') {
       if (mode === 'delete' && _pendingDeleteId) {
-        overlay.textContent = t('badge.deleteConfirm');
+        const text = touch ? t('badge.deleteConfirmTouch') : t('badge.deleteConfirm');
+        overlay.innerHTML = text
+          + '<div class="draw-overlay-actions">'
+          + '<button class="btn-overlay-action btn-overlay-delete" id="overlay-delete-confirm">' + t('badge.deleteBtn') + '</button>'
+          + '<button class="btn-overlay-action btn-overlay-cancel" id="overlay-delete-cancel">' + t('badge.cancelBtn') + '</button>'
+          + '</div>';
+        document.getElementById('overlay-delete-confirm').addEventListener('click', () => {
+          if (!_pendingDeleteId) return;
+          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+            LeucenaApp.logEvent('touch_confirm_delete', LeucenaApp.getSelectedCellId(), _pendingDeleteId, null);
+          }
+          const id = _pendingDeleteId;
+          clearPendingDelete();
+          deletePolygon(id);
+        });
+        document.getElementById('overlay-delete-cancel').addEventListener('click', () => {
+          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+            LeucenaApp.logEvent('touch_cancel_delete', LeucenaApp.getSelectedCellId(), _pendingDeleteId, null);
+          }
+          clearPendingDelete();
+        });
       } else {
-        overlay.textContent = mode === 'draw' ? t('badge.draw')
-                            : mode === 'delete' ? t('badge.delete')
-                            : t('badge.edit');
+        const key = mode === 'draw' ? (touch ? 'badge.drawTouch' : 'badge.draw')
+                  : mode === 'delete' ? 'badge.delete'
+                  : (touch ? 'badge.editTouch' : 'badge.edit');
+        overlay.textContent = t(key);
       }
       overlay.classList.remove('hidden');
     } else {
+      overlay.innerHTML = '';
       overlay.classList.add('hidden');
+    }
+
+    _syncToolbarExtras();
+  }
+
+  function _syncToolbarExtras() {
+    const undoBtn = document.getElementById('tool-undo');
+    const finishBtn = document.getElementById('tool-finish-draw');
+    if (undoBtn) {
+      const hasUndo = (activeMode === 'delete' && deleteUndoStack.length > 0)
+        || (activeMode === 'edit' && editUndoStack.length > 0)
+        || (activeMode === 'draw' && manualDrawState && manualDrawState.vertices.length > 0)
+        || (activeMode === 'hole' && manualHoleState && manualHoleState.vertices.length > 0);
+      undoBtn.classList.toggle('hidden', !hasUndo);
+    }
+    if (finishBtn) {
+      const canFinish = (activeMode === 'draw' && manualDrawState && manualDrawState.vertices.length >= 3)
+        || (activeMode === 'hole' && manualHoleState && manualHoleState.vertices.length >= 3);
+      finishBtn.classList.toggle('hidden', !canFinish);
     }
   }
 
@@ -1392,6 +1474,7 @@ window.LeucenaDrawing = (function () {
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleteFail'), 'error');
     }
+    _syncToolbarExtras();
   }
 
   function makeAllNonEditable() {
