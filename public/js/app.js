@@ -1585,6 +1585,8 @@ window.LeucenaApp = (function () {
       });
     } catch (e) { /* ignore */ }
 
+    if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.leave) LeucenaCollab.leave();
+
     authToken = null;
     username = null;
     localStorage.removeItem('leucena_token');

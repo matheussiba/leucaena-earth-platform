@@ -139,5 +139,11 @@ window.LeucenaCollab = (function () {
 
   initAnonymous();
 
-  return { init, initAnonymous, notifyEditingCell };
+  function leave() {
+    if (socket) { socket.disconnect(); socket = null; }
+    username = null;
+    initAnonymous();
+  }
+
+  return { init, initAnonymous, notifyEditingCell, leave };
 })();
