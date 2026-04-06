@@ -51,6 +51,18 @@ window.LeucenaApp = (function () {
     fetch('/api/log', { method: 'POST', headers: authHeaders(), body: JSON.stringify(batch) }).catch(() => {});
   }
 
+  /** Close only when press+release both target the overlay (not when text selection starts inside the card and ends on the dimmed area). */
+  function bindBackdropClose(overlay, closeFn) {
+    let pointerDownOnBackdrop = false;
+    overlay.addEventListener('pointerdown', (e) => {
+      pointerDownOnBackdrop = (e.target === overlay);
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay && pointerDownOnBackdrop) closeFn();
+      pointerDownOnBackdrop = false;
+    });
+  }
+
   function init() {
     document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
@@ -59,9 +71,7 @@ window.LeucenaApp = (function () {
     document.getElementById('login-btn').addEventListener('click', () => openAuthModal('login'));
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('auth-modal-close').addEventListener('click', closeAuthModal);
-    document.getElementById('auth-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeAuthModal();
-    });
+    bindBackdropClose(document.getElementById('auth-modal'), closeAuthModal);
 
     document.getElementById('top-bar').addEventListener('click', () => {
       if (typeof LeucenaMap !== 'undefined') LeucenaMap.deselectPoint();
@@ -432,6 +442,9 @@ window.LeucenaApp = (function () {
 
   let authMode = 'login';
 
+  let _emailCheckTimer = null;
+  let _emailCheckBlocked = false;
+
   function setupAuthForm() {
     document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
     const usernameInput = document.getElementById('auth-username');
@@ -442,6 +455,27 @@ window.LeucenaApp = (function () {
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9.]/g, '');
     });
+
+    const emailInput = document.getElementById('auth-email');
+    emailInput.addEventListener('input', () => {
+      if (authMode !== 'register') return;
+      _emailCheckBlocked = false;
+      clearTimeout(_emailCheckTimer);
+      const feedback = document.getElementById('auth-email-feedback');
+      feedback.classList.add('hidden');
+      const submitBtn = document.getElementById('auth-submit-btn');
+      submitBtn.disabled = false;
+      const val = emailInput.value.trim();
+      if (val && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+        _emailCheckTimer = setTimeout(() => checkEmailAvailability(), 600);
+      }
+    });
+    emailInput.addEventListener('blur', () => {
+      if (authMode !== 'register') return;
+      clearTimeout(_emailCheckTimer);
+      checkEmailAvailability();
+    });
+
     document.getElementById('auth-switch-link').addEventListener('click', (e) => {
       e.preventDefault();
       openAuthModal(authMode === 'login' ? 'register' : 'login');
@@ -452,9 +486,7 @@ window.LeucenaApp = (function () {
       openResetModal();
     });
     document.getElementById('reset-modal-close').addEventListener('click', closeResetModal);
-    document.getElementById('reset-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeResetModal();
-    });
+    bindBackdropClose(document.getElementById('reset-modal'), closeResetModal);
     document.getElementById('reset-form').addEventListener('submit', handleResetSubmit);
     document.getElementById('reset-back-login').addEventListener('click', (e) => {
       e.preventDefault();
@@ -463,9 +495,82 @@ window.LeucenaApp = (function () {
     });
   }
 
+  async function checkEmailAvailability() {
+    const emailInput = document.getElementById('auth-email');
+    const email = emailInput.value.trim();
+    const feedback = document.getElementById('auth-email-feedback');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      feedback.classList.add('hidden');
+      submitBtn.disabled = false;
+      return;
+    }
+    try {
+      const res = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (emailInput.value.trim() !== email) return;
+      if (!data.exists) {
+        feedback.classList.add('hidden');
+        submitBtn.disabled = false;
+        _emailCheckBlocked = false;
+        return;
+      }
+      _emailCheckBlocked = true;
+      submitBtn.disabled = true;
+      const t = LeucenaI18n.t;
+      if (data.verified) {
+        feedback.className = 'auth-email-feedback email-exists-verified';
+        feedback.innerHTML = t('auth.emailExistsVerified') +
+          ' <a id="auth-email-forgot-link">' + t('auth.forgotPassword') + '</a>';
+        feedback.classList.remove('hidden');
+        const forgotLink = document.getElementById('auth-email-forgot-link');
+        if (forgotLink) {
+          forgotLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeAuthModal();
+            openResetModal();
+            document.getElementById('reset-email').value = email;
+          });
+        }
+      } else {
+        feedback.className = 'auth-email-feedback email-exists-unverified';
+        feedback.innerHTML = t('auth.emailExistsUnverified') +
+          ' <a id="auth-email-resend-link">' + t('auth.resendVerification') + '</a>';
+        feedback.classList.remove('hidden');
+        const resendLink = document.getElementById('auth-email-resend-link');
+        if (resendLink) {
+          resendLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+              const r = await fetch('/api/auth/resend-verification-by-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+              });
+              if (r.ok) {
+                feedback.className = 'auth-email-feedback email-exists-unverified';
+                feedback.innerHTML = t('auth.resendSuccess');
+              } else {
+                const err = await r.json();
+                feedback.innerHTML = err.error;
+              }
+            } catch (err) {
+              feedback.innerHTML = t('auth.connectionError');
+            }
+          });
+        }
+      }
+    } catch (e) { /* ignore network errors on check */ }
+  }
+
   function openAuthModal(mode) {
     logEvent('auth_modal_open', null, null, { mode: mode });
     authMode = mode;
+    _emailCheckBlocked = false;
     const modal = document.getElementById('auth-modal');
     modal.classList.remove('hidden');
 
@@ -478,48 +583,60 @@ window.LeucenaApp = (function () {
     if (googleBtn) googleBtn.classList.remove('hidden');
     const divider = document.querySelector('.auth-divider');
     if (divider) divider.classList.remove('hidden');
-    document.getElementById('auth-username').value = '';
-    document.getElementById('auth-password').value = '';
 
-    const emailGroup = document.getElementById('email-group');
+    const usernameInput = document.getElementById('auth-username');
+    usernameInput.value = '';
+    document.getElementById('auth-password').value = '';
+    const submitBtn = document.getElementById('auth-submit-btn');
+    submitBtn.disabled = false;
+
+    const registerEmailGroup = document.getElementById('register-email-group');
     const emailInput = document.getElementById('auth-email');
     emailInput.value = '';
-    const usernameHint = document.getElementById('auth-username-hint');
+    const feedback = document.getElementById('auth-email-feedback');
+    if (feedback) feedback.classList.add('hidden');
+    const confirmGroup = document.getElementById('confirm-password-group');
+    const confirmInput = document.getElementById('auth-password-confirm');
+    if (confirmInput) confirmInput.value = '';
 
     const t = LeucenaI18n.t;
     const forgotGroup = document.getElementById('auth-forgot-group');
     const contactHint = document.getElementById('auth-contact-hint');
     const googleLabel = document.getElementById('auth-google-label');
+
     if (mode === 'login') {
       document.getElementById('auth-modal-title').textContent = t('auth.login');
       document.getElementById('auth-modal-subtitle').textContent = t('auth.loginSubtitle');
-      document.getElementById('auth-submit-btn').textContent = t('auth.login');
+      submitBtn.textContent = t('auth.login');
       document.getElementById('auth-switch-text').textContent = t('auth.noAccount');
       document.getElementById('auth-switch-link').textContent = t('auth.register');
-      emailGroup.classList.add('hidden');
+      usernameInput.classList.remove('hidden');
+      usernameInput.setAttribute('required', 'required');
+      registerEmailGroup.classList.add('hidden');
       emailInput.removeAttribute('required');
-      usernameHint.classList.add('hidden');
+      confirmGroup.classList.add('hidden');
+      if (confirmInput) confirmInput.removeAttribute('required');
       forgotGroup.classList.remove('hidden');
       if (contactHint) contactHint.classList.add('hidden');
-      const u = document.getElementById('auth-username');
-      if (u) u.removeAttribute('pattern');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignIn');
+      usernameInput.focus();
     } else {
       document.getElementById('auth-modal-title').textContent = t('auth.register');
       document.getElementById('auth-modal-subtitle').textContent = t('auth.registerSubtitle');
-      document.getElementById('auth-submit-btn').textContent = t('auth.createAccount');
+      submitBtn.textContent = t('auth.createAccount');
       document.getElementById('auth-switch-text').textContent = t('auth.hasAccount');
       document.getElementById('auth-switch-link').textContent = t('auth.login');
-      emailGroup.classList.remove('hidden');
+      usernameInput.classList.add('hidden');
+      usernameInput.removeAttribute('required');
+      registerEmailGroup.classList.remove('hidden');
       emailInput.setAttribute('required', 'required');
-      usernameHint.classList.remove('hidden');
+      confirmGroup.classList.remove('hidden');
+      if (confirmInput) confirmInput.setAttribute('required', 'required');
       forgotGroup.classList.add('hidden');
       if (contactHint) contactHint.classList.remove('hidden');
-      const u = document.getElementById('auth-username');
-      if (u) u.setAttribute('pattern', '[a-z0-9.]+');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignUp');
+      emailInput.focus();
     }
-    document.getElementById('auth-username').focus();
   }
 
   function closeAuthModal() {
@@ -577,28 +694,36 @@ window.LeucenaApp = (function () {
 
   async function handleAuthSubmit(e) {
     e.preventDefault();
-    const user = document.getElementById('auth-username').value.trim().toLowerCase();
-    const pass = document.getElementById('auth-password').value;
     const errorEl = document.getElementById('auth-error');
     errorEl.classList.add('hidden');
 
-    if (authMode === 'register' && !/^[a-z0-9.]{2,30}$/.test(user)) {
-      errorEl.textContent = LeucenaI18n.t('auth.usernameInvalid');
-      errorEl.classList.remove('hidden');
-      return;
-    }
-    if (authMode === 'register' && !/[a-z]/.test(user)) {
-      errorEl.textContent = LeucenaI18n.t('auth.usernameNeedsLetter');
-      errorEl.classList.remove('hidden');
-      return;
-    }
+    const pass = document.getElementById('auth-password').value;
+    let endpoint, payload;
 
-    const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-    const payload = authMode === 'login'
-      ? { identifier: user, username: user, password: pass }
-      : { username: user, password: pass };
-    if (authMode === 'register') {
-      payload.email = document.getElementById('auth-email').value.trim();
+    if (authMode === 'login') {
+      const user = document.getElementById('auth-username').value.trim().toLowerCase();
+      endpoint = '/api/auth/login';
+      payload = { identifier: user, username: user, password: pass };
+    } else {
+      const email = document.getElementById('auth-email').value.trim();
+      const passConfirm = document.getElementById('auth-password-confirm').value;
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errorEl.textContent = LeucenaI18n.t('auth.emailInvalid');
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      if (_emailCheckBlocked) {
+        errorEl.textContent = LeucenaI18n.t('auth.emailAlreadyInUse');
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      if (pass !== passConfirm) {
+        errorEl.textContent = LeucenaI18n.t('auth.passwordMismatch');
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      endpoint = '/api/auth/register';
+      payload = { email, password: pass };
     }
 
     try {
@@ -2102,7 +2227,10 @@ window.LeucenaApp = (function () {
   // ── View counter ──
 
   function trackPageView() {
-    fetch('/api/stats/view', { method: 'POST' }).catch(() => {});
+    const headers = {};
+    const token = localStorage.getItem('leucena_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    fetch('/api/stats/view', { method: 'POST', headers }).catch(() => {});
   }
 
   async function loadViewCount() {
@@ -2642,7 +2770,43 @@ window.LeucenaApp = (function () {
         return t('admin.daysAgo', days);
       }
 
-      for (const user of data.users) {
+      const roleOrder = { superadmin: 0, admin: 1, team: 2, tester: 3 };
+      const isEquipe = u => ['superadmin','admin','team','tester'].includes(u.role || 'contributor');
+      const equipeUsers = data.users.filter(isEquipe).sort((a, b) => {
+        const ra = roleOrder[a.role] ?? 99, rb = roleOrder[b.role] ?? 99;
+        if (ra !== rb) return ra - rb;
+        return (a.username || '').localeCompare(b.username || '');
+      });
+      const colabUsers = data.users.filter(u => !isEquipe(u)).sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+
+      function createDropdown(title, count, id, startOpen) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'admin-section-dropdown';
+        const header = document.createElement('button');
+        header.className = 'admin-section-header';
+        header.type = 'button';
+        header.innerHTML = `<svg class="admin-section-chevron${startOpen ? ' open' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg><span class="admin-section-title">${title}</span><span class="admin-section-count">${count}</span>`;
+        const body = document.createElement('div');
+        body.className = 'admin-section-body';
+        body.id = id;
+        if (!startOpen) body.classList.add('collapsed');
+        header.addEventListener('click', () => {
+          body.classList.toggle('collapsed');
+          header.querySelector('.admin-section-chevron').classList.toggle('open');
+        });
+        wrapper.appendChild(header);
+        wrapper.appendChild(body);
+        return { wrapper, body };
+      }
+
+      const equipeDropdown = createDropdown(t('admin.sectionEquipe'), equipeUsers.length, 'admin-equipe-list', true);
+      listEl.appendChild(equipeDropdown.wrapper);
+      const colabDropdown = createDropdown(t('admin.sectionColaboradores'), colabUsers.length, 'admin-colab-list', false);
+      listEl.appendChild(colabDropdown.wrapper);
+
+      const allSortedUsers = [...equipeUsers, ...colabUsers];
+
+      for (const user of allSortedUsers) {
         const role = user.role || 'contributor';
         const totalMs = user.total_time_ms || 0;
         const timeStr = formatDuration(totalMs);
@@ -2669,12 +2833,17 @@ window.LeucenaApp = (function () {
         }
 
         const canDelete = effectiveSuperAdmin && role !== 'superadmin';
+        const isVerified = !!(user.email_verified || user.auth_provider === 'google');
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '—';
         const lastActiveHtml = formatLastActive(user.last_active, user.username);
         const initial = user.username.charAt(0).toUpperCase();
         const photoHtml = user.photo
           ? `<img src="${user.photo}" class="admin-card-photo" alt="">`
           : `<div class="admin-card-avatar">${initial}</div>`;
+
+        const verifyBadgeHtml = isVerified
+          ? `<span class="admin-verify-badge verified">✓ ${t('admin.verified')}</span>`
+          : `<span class="admin-verify-badge not-verified">✗ ${t('admin.notVerified')}</span>`;
 
         row.innerHTML = `
           <div class="admin-card-header">
@@ -2685,6 +2854,7 @@ window.LeucenaApp = (function () {
                 <span class="admin-user-name">${user.username}</span>
                 ${isOnline ? '<span class="admin-online-dot"></span>' : ''}
                 <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
+                ${verifyBadgeHtml}
                 ${roleSelectHtml}
               </div>
               <div class="admin-card-meta">
@@ -2720,7 +2890,7 @@ window.LeucenaApp = (function () {
             <div class="admin-user-actions">
               <button class="admin-profile-btn">${t('admin.editProfile')}</button>
               <button class="admin-pw-btn">${t('admin.changePassword')}</button>
-              
+              ${!isVerified ? `<button class="admin-verify-btn">${t('admin.verifyUser')}</button>` : ''}
               ${effectiveSuperAdmin ? `<button class="admin-rename-btn">${t('admin.renameUser')}</button>` : ''}
               ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.deleteUser')}</button>` : ''}
             </div>
@@ -2850,6 +3020,21 @@ window.LeucenaApp = (function () {
           });
         }
 
+        const verifyBtn = row.querySelector('.admin-verify-btn');
+        if (verifyBtn) {
+          verifyBtn.addEventListener('click', async () => {
+            try {
+              const r = await fetch(`/api/admin/users/${user.id}/verify`, {
+                method: 'PUT', headers: authHeaders()
+              });
+              if (r.ok) {
+                showToast(t('admin.verifySuccess'), 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          });
+        }
+
         const delBtn = row.querySelector('.admin-del-btn');
         if (delBtn) {
           delBtn.addEventListener('click', async () => {
@@ -2864,7 +3049,11 @@ window.LeucenaApp = (function () {
           });
         }
 
-        listEl.appendChild(row);
+        if (isEquipe(user)) {
+          equipeDropdown.body.appendChild(row);
+        } else {
+          colabDropdown.body.appendChild(row);
+        }
       }
     } catch (e) {
       showToast('Failed to load users', 'error');

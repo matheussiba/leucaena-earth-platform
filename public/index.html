@@ -39,14 +39,22 @@
       </button>
       <div class="auth-divider"><span data-i18n="auth.orSeparator">ou</span></div>
       <form id="auth-form">
-        <input type="text" id="auth-username" placeholder="joao.silva" data-i18n-placeholder="auth.userOrEmailPlaceholder" required autocomplete="username" minlength="2" maxlength="200" pattern="[a-z0-9.]+">
-        <p class="auth-field-hint hidden" id="auth-username-hint" data-i18n="auth.usernameHint">Apenas letras minúsculas, números e ponto</p>
+        <!-- Login mode: username/email -->
+        <input type="text" id="auth-username" placeholder="Usuário ou e-mail" data-i18n-placeholder="auth.userOrEmailPlaceholder" required autocomplete="username" minlength="2" maxlength="200">
+        <!-- Register mode: email field (shown instead of username) -->
+        <div id="register-email-group" class="hidden">
+          <input type="email" id="auth-email" placeholder="seu@email.com" data-i18n-placeholder="auth.emailPlaceholder" autocomplete="email" maxlength="200">
+          <div id="auth-email-feedback" class="auth-email-feedback hidden"></div>
+        </div>
         <div class="password-wrapper">
           <input type="password" id="auth-password" placeholder="Senha" data-i18n-placeholder="auth.passPlaceholder" required autocomplete="current-password" minlength="3">
           <button type="button" class="pw-toggle-btn" data-target="auth-password" tabindex="-1" aria-label="Mostrar senha"><svg class="pw-eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-eye-closed hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
         </div>
-        <div id="email-group" class="hidden">
-          <input type="email" id="auth-email" placeholder="seu@email.com" data-i18n-placeholder="auth.emailPlaceholder" autocomplete="email" maxlength="200">
+        <div id="confirm-password-group" class="hidden">
+          <div class="password-wrapper">
+            <input type="password" id="auth-password-confirm" placeholder="Confirmar senha" data-i18n-placeholder="auth.confirmPassPlaceholder" autocomplete="new-password" minlength="3">
+            <button type="button" class="pw-toggle-btn" data-target="auth-password-confirm" tabindex="-1" aria-label="Mostrar senha"><svg class="pw-eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg class="pw-eye-closed hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
+          </div>
         </div>
         <button type="submit" id="auth-submit-btn" data-i18n="auth.login">Entrar</button>
       </form>

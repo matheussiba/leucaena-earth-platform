@@ -190,6 +190,9 @@ function getEffectiveRole(username) {
 }
 function isSuperAdmin(username) { return getUserRole(username) === 'superadmin'; }
 function isAdmin(username) { const r = getUserRole(username); return r === 'admin' || r === 'superadmin'; }
+function getSuperAdminUsernames() {
+  return queryAll("SELECT username FROM users WHERE role = 'superadmin'").map(u => u.username);
+}
 function isTeamOrAbove(username) {
   const eff = getEffectiveRole(username);
   return eff === 'superadmin' || eff === 'admin' || eff === 'team';
@@ -414,6 +417,8 @@ function bumpStat(key) {
 // ── View counter ──
 
 app.post('/api/stats/view', (req, res) => {
+  const username = getUsernameFromToken(req);
+  if (username && isSuperAdmin(username)) return res.json({ success: true });
   runSQL("UPDATE site_stats SET value = value + 1 WHERE key = 'view_count'");
   bumpStat(isMobileUA(req) ? 'view_count_mobile' : 'view_count_desktop');
   res.json({ success: true });
@@ -437,7 +442,11 @@ app.get('/api/stats/platform', (req, res) => {
     const r = queryOne('SELECT value FROM site_stats WHERE key = ?', [key]);
     return r ? r.value : 0;
   }
-  const totalMasks = queryOne('SELECT COUNT(*) as cnt FROM polygons');
+  const saUsers = getSuperAdminUsernames();
+  const placeholders = saUsers.map(() => '?').join(',');
+  const totalMasks = saUsers.length > 0
+    ? queryOne(`SELECT COUNT(*) as cnt FROM polygons WHERE created_by NOT IN (${placeholders})`, saUsers)
+    : queryOne('SELECT COUNT(*) as cnt FROM polygons');
   res.json({
     views:          { total: stat('view_count'), desktop: stat('view_count_desktop'), mobile: stat('view_count_mobile') },
     logins:         { desktop: stat('login_count_desktop'), mobile: stat('login_count_mobile') },
@@ -449,20 +458,72 @@ app.get('/api/stats/platform', (req, res) => {
 
 // [REMOVED] Passcode system replaced by Google OAuth + email/password registration
 
-app.post('/api/auth/register', registerLimiter, async (req, res) => {
-  const { username, password, email } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
-  if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
-  if (!/^[a-z0-9.]+$/.test(username)) return res.status(400).json({ error: 'O usuário deve conter apenas letras minúsculas, números e ponto (ex: joao.silva)' });
-  if (!/[a-z]/.test(username)) return res.status(400).json({ error: 'O usuário deve conter pelo menos uma letra (ex: joao.silva)' });
-  if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
+app.post('/api/auth/check-email', (req, res) => {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.json({ exists: false });
+  const user = queryOne("SELECT email_verified, auth_provider FROM users WHERE LOWER(email) = ? AND username != 'deleted'", [email.trim().toLowerCase()]);
+  if (!user) return res.json({ exists: false });
+  const verified = !!(user.email_verified || user.auth_provider === 'google');
+  res.json({ exists: true, verified });
+});
 
-  const existingUsername = queryOne('SELECT id FROM users WHERE username = ?', [username]);
-  if (existingUsername) return res.status(409).json({ error: 'Nome de usuário já em uso' });
+app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-mail é obrigatório' });
+  const user = queryOne("SELECT * FROM users WHERE LOWER(email) = ? AND username != 'deleted'", [email.trim().toLowerCase()]);
+  if (!user) return res.status(404).json({ error: 'Nenhuma conta encontrada com este e-mail' });
+  if (user.email_verified) return res.json({ success: true, already_verified: true });
+  if (!resend) return res.status(500).json({ error: 'Serviço de e-mail não configurado' });
+
+  const verifyToken = uuidv4();
+  const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  runSQL('UPDATE users SET verification_token = ?, verification_expires = ? WHERE id = ?', [verifyToken, verifyExpires, user.id]);
+
+  const baseUrl = getBaseUrl(req);
+  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
+  try {
+    await resend.emails.send({
+      from: RESEND_FROM,
+      to: user.email,
+      subject: 'Verifique seu e-mail — leucaena.earth',
+      html: `<p>Olá <strong>${user.username}</strong>,</p>
+             <p>Clique no link abaixo para verificar seu e-mail:</p>
+             <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
+             <p>— leucaena.earth</p>`
+    });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Resend error:', e.message);
+    res.status(500).json({ error: 'Falha ao enviar e-mail' });
+  }
+});
+
+app.post('/api/auth/register', registerLimiter, async (req, res) => {
+  let { username, password, email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
+  if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
+  if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
 
   const existingEmail = queryOne('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
   if (existingEmail) return res.status(409).json({ error: 'Este e-mail já está em uso por outra conta' });
+
+  if (!username) {
+    let baseUsername = email.split('@')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9.]/g, '').substring(0, 25);
+    if (baseUsername.length < 2 || !/[a-z]/.test(baseUsername)) baseUsername = 'user' + baseUsername;
+    let finalUsername = baseUsername;
+    let counter = 1;
+    while (queryOne('SELECT id FROM users WHERE username = ?', [finalUsername])) {
+      finalUsername = baseUsername + counter;
+      counter++;
+    }
+    username = finalUsername;
+  } else {
+    if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
+    if (!/^[a-z0-9.]+$/.test(username)) return res.status(400).json({ error: 'O usuário deve conter apenas letras minúsculas, números e ponto' });
+    if (!/[a-z]/.test(username)) return res.status(400).json({ error: 'O usuário deve conter pelo menos uma letra' });
+    const existingUsername = queryOne('SELECT id FROM users WHERE username = ?', [username]);
+    if (existingUsername) return res.status(409).json({ error: 'Nome de usuário já em uso' });
+  }
 
   const hash = hashPassword(password);
   const now = new Date().toISOString();
@@ -547,7 +608,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   }
 
   runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), realUsername]);
-  bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
+  if (!isSuperAdmin(realUsername)) bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
   logActivity(realUsername, 'login', null, null, null);
 
   const token = uuidv4();
@@ -635,10 +696,16 @@ app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
 
 app.get('/api/landing-stats', (req, res) => {
   try {
+    const saUsers = getSuperAdminUsernames();
+    const ph = saUsers.map(() => '?').join(',');
     const cells = queryOne('SELECT COUNT(*) as cnt FROM grid_cells');
-    const masks = queryOne('SELECT COUNT(*) as cnt FROM polygons');
+    const masks = saUsers.length > 0
+      ? queryOne(`SELECT COUNT(*) as cnt FROM polygons WHERE created_by NOT IN (${ph})`, saUsers)
+      : queryOne('SELECT COUNT(*) as cnt FROM polygons');
     const points = queryOne('SELECT COUNT(*) as cnt FROM occurrence_points');
-    const collabs = queryOne("SELECT COUNT(DISTINCT username) as cnt FROM users WHERE username != 'deleted'");
+    const collabs = saUsers.length > 0
+      ? queryOne(`SELECT COUNT(DISTINCT username) as cnt FROM users WHERE username != 'deleted' AND role != 'superadmin'`)
+      : queryOne("SELECT COUNT(DISTINCT username) as cnt FROM users WHERE username != 'deleted'");
     const finished = queryOne("SELECT COUNT(*) as cnt FROM grid_cells WHERE grid_status = 'finished'");
     const mapping = queryOne("SELECT COUNT(*) as cnt FROM grid_cells WHERE grid_status IN ('mapping','in_use')");
     const tomap = queryOne("SELECT COUNT(*) as cnt FROM grid_cells WHERE grid_status = 'not_yet_finished'");
@@ -827,7 +894,7 @@ app.get('/auth/google/callback', async (req, res) => {
     }
 
     runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE id = ?', [new Date().toISOString(), user.id]);
-    bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
+    if (!isSuperAdmin(user.username)) bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
     logActivity(user.username, 'login_google', null, null, null);
 
     const sessionToken = uuidv4();
@@ -1217,6 +1284,17 @@ app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
   res.json({ success: true, old_username: oldUsername, new_username });
 });
 
+app.put('/api/admin/users/:id/verify', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (user.email_verified) return res.json({ success: true, already_verified: true });
+  runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [Number(req.params.id)]);
+  logActivity(req.username, 'admin_verify_email', null, null, { target_user: user.username });
+  persist();
+  res.json({ success: true });
+});
+
 app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   const { is_founder } = req.body;
@@ -1583,7 +1661,7 @@ app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
   const polyRole = effRole === 'superadmin' ? 'admin' : effRole;
   const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: polyRole, created_at: now, updated_at: now, area_ha: areaHa };
   io.emit('polygon:created', polygon);
-  bumpStat(isMobileUA(req) ? 'mask_count_mobile' : 'mask_count_desktop');
+  if (!isSuperAdmin(username)) bumpStat(isMobileUA(req) ? 'mask_count_mobile' : 'mask_count_desktop');
   logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
   persist();
   res.json(polygon);
