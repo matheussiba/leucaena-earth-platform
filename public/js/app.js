@@ -5,12 +5,15 @@ window.LeucenaApp = (function () {
   let userRole = 'contributor';
   let testerMode = 'contributor';
   let selectedCellId = null;
+  let _maskBreakdownSeq = 0;
   let selectedCellData = null;
   let lockHeartbeatInterval = null;
   let pendingUncoveredPointIds = null;
   let mapsLoaded = false;
   let mapsInitialized = false;
   let _adminViewMode = false;
+  /** Superadmin permanent delete: { id, expectedPhrase, rowEl } */
+  let _pendingPermanentDelete = null;
 
   function getUsername() { return username; }
   function getAuthToken() { return authToken; }
@@ -61,6 +64,49 @@ window.LeucenaApp = (function () {
       if (e.target === overlay && pointerDownOnBackdrop) closeFn();
       pointerDownOnBackdrop = false;
     });
+  }
+
+  function closePermanentDeleteUserModal() {
+    const m = document.getElementById('admin-delete-user-modal');
+    if (m) m.classList.add('hidden');
+    _pendingPermanentDelete = null;
+    const input = document.getElementById('admin-delete-user-phrase-input');
+    const err = document.getElementById('admin-delete-user-phrase-error');
+    const confirmBtn = document.getElementById('admin-delete-user-confirm');
+    if (input) input.value = '';
+    if (err) {
+      err.classList.add('hidden');
+      err.textContent = '';
+    }
+    if (confirmBtn) confirmBtn.disabled = true;
+  }
+
+  function syncPermanentDeletePhraseInput() {
+    const input = document.getElementById('admin-delete-user-phrase-input');
+    const confirmBtn = document.getElementById('admin-delete-user-confirm');
+    const err = document.getElementById('admin-delete-user-phrase-error');
+    if (err) err.classList.add('hidden');
+    if (!_pendingPermanentDelete || !input || !confirmBtn) return;
+    confirmBtn.disabled = input.value.trim() !== _pendingPermanentDelete.expectedPhrase;
+  }
+
+  function openPermanentDeleteUserModal(user, rowEl) {
+    const t = LeucenaI18n.t;
+    const expectedPhrase = t('admin.permanentDeleteExpectedPhrase', user.username);
+    _pendingPermanentDelete = { id: user.id, expectedPhrase, rowEl };
+    document.getElementById('admin-delete-user-modal-title').textContent = t('admin.permanentDeleteModalTitle');
+    document.getElementById('admin-delete-user-modal-warning').textContent = t('admin.permanentDeleteModalWarning', user.username);
+    document.getElementById('admin-delete-user-type-instruction').textContent = t('admin.permanentDeleteTypeInstruction');
+    document.getElementById('admin-delete-user-phrase-display').textContent = expectedPhrase;
+    const input = document.getElementById('admin-delete-user-phrase-input');
+    input.value = '';
+    document.getElementById('admin-delete-user-phrase-error').classList.add('hidden');
+    document.getElementById('admin-delete-user-cancel').textContent = t('admin.permanentDeleteModalCancel');
+    const confirmBtn = document.getElementById('admin-delete-user-confirm');
+    confirmBtn.textContent = t('admin.permanentDeleteConfirmBtn');
+    confirmBtn.disabled = true;
+    document.getElementById('admin-delete-user-modal').classList.remove('hidden');
+    input.focus();
   }
 
   function init() {
@@ -151,12 +197,47 @@ window.LeucenaApp = (function () {
       if (e.key === 'Enter') document.getElementById('admin-rename-modal-confirm').click();
     });
 
+    document.getElementById('admin-delete-user-modal-close').addEventListener('click', closePermanentDeleteUserModal);
+    document.getElementById('admin-delete-user-cancel').addEventListener('click', closePermanentDeleteUserModal);
+    document.getElementById('admin-delete-user-phrase-input').addEventListener('input', syncPermanentDeletePhraseInput);
+    document.getElementById('admin-delete-user-phrase-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const btn = document.getElementById('admin-delete-user-confirm');
+        if (btn && !btn.disabled) btn.click();
+      }
+    });
+    document.getElementById('admin-delete-user-confirm').addEventListener('click', async () => {
+      const t = LeucenaI18n.t;
+      const input = document.getElementById('admin-delete-user-phrase-input');
+      const err = document.getElementById('admin-delete-user-phrase-error');
+      if (!_pendingPermanentDelete) return;
+      if (input.value.trim() !== _pendingPermanentDelete.expectedPhrase) {
+        err.textContent = t('admin.permanentDeletePhraseMismatch');
+        err.classList.remove('hidden');
+        return;
+      }
+      const { id, rowEl } = _pendingPermanentDelete;
+      try {
+        const r = await fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: authHeaders() });
+        if (r.ok) {
+          closePermanentDeleteUserModal();
+          showToast(t('admin.userDeleted'), 'success');
+          if (rowEl) rowEl.remove();
+        } else {
+          const j = await r.json();
+          showToast(j.error || 'Error', 'error');
+        }
+      } catch (e) {
+        showToast('Erro de conexão', 'error');
+      }
+    });
+
     const adminDebugToggle = document.getElementById('admin-debug-toggle');
     if (adminDebugToggle) {
       adminDebugToggle.addEventListener('change', (e) => {
         const vc = document.getElementById('view-counter');
         vc.classList.toggle('debug-active', e.target.checked);
-        vc.title = e.target.checked ? 'Debug — clique para info do mapa' : 'Visualizações do site';
+        vc.title = e.target.checked ? 'Debug: clique para info do mapa' : 'Visualizações do site';
       });
     }
     const viewCounterEl = document.getElementById('view-counter');
@@ -277,10 +358,11 @@ window.LeucenaApp = (function () {
     setupGoogleAuth();
     setupMigrationBanner();
     setupVerificationBanner();
-    tryRestoreSession();
+    tryRestoreSession().finally(() => { maybeOpenAuthFromHash(); });
     loadRankingWidget();
 
     LeucenaI18n.translatePage();
+    syncStreetViewButtonTitle();
 
     handleHash();
     window.addEventListener('hashchange', handleHash);
@@ -290,6 +372,7 @@ window.LeucenaApp = (function () {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const modalCloseMap = [
+        ['admin-delete-user-modal', closePermanentDeleteUserModal],
         ['admin-rename-modal', closeRenameModal],
         ['admin-pw-modal', closePwModal],
         ['auth-modal', closeAuthModal],
@@ -442,6 +525,25 @@ window.LeucenaApp = (function () {
     if (VALID_HASHES.has(hash)) { openGuideModal(hash); return; }
   }
 
+  /** After session restore: open login/register from #login etc. only if not logged in (avoids race with async tryRestoreSession). */
+  function maybeOpenAuthFromHash() {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    const authHashes = new Set(['login', 'register', 'signup', 'cadastrar']);
+    if (isLoggedIn()) {
+      if (authHashes.has(hash)) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+      return;
+    }
+    if (hash === 'register' || hash === 'signup' || hash === 'cadastrar') {
+      setTimeout(() => openAuthModal('register'), 300);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    } else if (hash === 'login') {
+      setTimeout(() => openAuthModal('login'), 300);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }
+
   // ── Auth modal ──
 
   let authMode = 'login';
@@ -496,6 +598,42 @@ window.LeucenaApp = (function () {
       e.preventDefault();
       closeResetModal();
       openAuthModal('login');
+    });
+
+    document.getElementById('auth-unverified-resend').addEventListener('click', async () => {
+      const t = LeucenaI18n.t;
+      const identifier = document.getElementById('auth-username').value.trim();
+      const fb = document.getElementById('auth-unverified-resend-feedback');
+      fb.classList.add('hidden');
+      fb.classList.remove('ok');
+      if (!identifier) {
+        fb.textContent = t('auth.unverifiedResendNeedIdentifier');
+        fb.classList.remove('hidden');
+        return;
+      }
+      try {
+        const r = await fetch('/api/auth/resend-verification-by-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) {
+          if (data.already_verified) {
+            fb.textContent = t('auth.emailExistsVerified');
+          } else {
+            fb.textContent = t('auth.resendSuccess');
+            fb.classList.add('ok');
+          }
+          fb.classList.remove('hidden');
+        } else {
+          fb.textContent = data.error || t('auth.connectionError');
+          fb.classList.remove('hidden');
+        }
+      } catch (err) {
+        fb.textContent = t('auth.connectionError');
+        fb.classList.remove('hidden');
+      }
     });
   }
 
@@ -581,6 +719,16 @@ window.LeucenaApp = (function () {
     document.getElementById('auth-error').classList.add('hidden');
     const authSuccess = document.getElementById('auth-success');
     if (authSuccess) authSuccess.classList.add('hidden');
+    const unverifiedPanel = document.getElementById('auth-unverified-panel');
+    if (unverifiedPanel) {
+      unverifiedPanel.classList.add('hidden');
+      const ufb = document.getElementById('auth-unverified-resend-feedback');
+      if (ufb) {
+        ufb.classList.add('hidden');
+        ufb.classList.remove('ok');
+        ufb.textContent = '';
+      }
+    }
     document.getElementById('auth-form').classList.remove('hidden');
     document.querySelector('.auth-switch').classList.remove('hidden');
     const googleBtn = document.getElementById('auth-google-btn');
@@ -754,9 +902,25 @@ window.LeucenaApp = (function () {
         if (data.code === 'EMAIL_NOT_VERIFIED' && authMode === 'login') {
           errorEl.classList.add('hidden');
           const successEl = document.getElementById('auth-success');
-          if (successEl) {
-            successEl.textContent = data.error;
-            successEl.classList.remove('hidden');
+          if (successEl) successEl.classList.add('hidden');
+          const panel = document.getElementById('auth-unverified-panel');
+          if (panel) {
+            const t = LeucenaI18n.t;
+            document.getElementById('auth-unverified-title').textContent = t('auth.accountNotVerifiedTitle');
+            const masked = data.masked_email || '';
+            document.getElementById('auth-unverified-body').textContent = masked
+              ? t('auth.accountNotVerifiedBody', masked)
+              : (data.error || t('auth.noEmailContactAdmin'));
+            panel.classList.remove('hidden');
+            const ufb = document.getElementById('auth-unverified-resend-feedback');
+            if (ufb) {
+              ufb.classList.add('hidden');
+              ufb.classList.remove('ok');
+              ufb.textContent = '';
+            }
+          } else {
+            errorEl.textContent = data.error;
+            errorEl.classList.remove('hidden');
           }
         } else {
           errorEl.textContent = data.error;
@@ -804,14 +968,14 @@ window.LeucenaApp = (function () {
       }
 
       closeAuthModal();
-      onLoginSuccess();
+      onLoginSuccess(true);
     } catch (err) {
       errorEl.textContent = LeucenaI18n.t('auth.connectionError');
       errorEl.classList.remove('hidden');
     }
   }
 
-  async function tryRestoreSession() {
+  async function tryRestoreSession(freshOAuthReturn = false) {
     const storedToken = localStorage.getItem('leucena_token');
     if (!storedToken) return;
 
@@ -827,7 +991,7 @@ window.LeucenaApp = (function () {
         testerMode = data.tester_mode || 'contributor';
         if (data.show_migration_banner) _showMigrationBanner = true;
         _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor' };
-        onLoginSuccess();
+        onLoginSuccess(freshOAuthReturn);
       } else {
         localStorage.removeItem('leucena_token');
         localStorage.removeItem('leucena_username');
@@ -837,7 +1001,7 @@ window.LeucenaApp = (function () {
     }
   }
 
-  function onLoginSuccess() {
+  function onLoginSuccess(freshAuth = false) {
     document.getElementById('auth-nav-group').classList.add('hidden');
     document.getElementById('user-badge').classList.remove('hidden');
     document.getElementById('logout-btn').classList.remove('hidden');
@@ -866,6 +1030,7 @@ window.LeucenaApp = (function () {
     showVerificationBannerIfNeeded();
     loadRankingWidget();
     syncUserBadgeProfileHint();
+    if (freshAuth) pulseUserBadgeIfProfileHintEligible();
 
     if (selectedCellId && selectedCellData) {
       const canLock = !selectedCellData.locked_by;
@@ -983,11 +1148,25 @@ window.LeucenaApp = (function () {
     document.getElementById('celebration-modal').classList.add('hidden');
   }
 
-  async function onPolygonSaved(areaHa) {
+  async function onPolygonSaved(areaHa, cellSummary) {
     if (selectedCellData) {
-      selectedCellData.mask_count = (selectedCellData.mask_count || 0) + 1;
-      selectedCellData.mask_area_ha = Math.round(((selectedCellData.mask_area_ha || 0) + (areaHa || 0)) * 10) / 10;
+      if (cellSummary && cellSummary.mask_count != null) {
+        selectedCellData.mask_count = cellSummary.mask_count;
+        selectedCellData.mask_area_ha = cellSummary.mask_area_ha;
+        selectedCellData.mapped_by = cellSummary.mapped_by;
+      } else {
+        selectedCellData.mask_count = (selectedCellData.mask_count || 0) + 1;
+        selectedCellData.mask_area_ha = Math.round(((selectedCellData.mask_area_ha || 0) + (areaHa || 0)) * 10) / 10;
+        const u = getUsername();
+        if (u) {
+          const parts = (selectedCellData.mapped_by || '').split(',').map(s => s.trim()).filter(Boolean);
+          if (!parts.includes(u)) parts.push(u);
+          parts.sort();
+          selectedCellData.mapped_by = parts.join(',');
+        }
+      }
       updateCellMasksDisplay(selectedCellData);
+      updateCellAttributionDisplay(selectedCellData);
     }
     if (!isLoggedIn()) return;
     const role = _userAuthInfo.role || userRole;
@@ -1019,16 +1198,23 @@ window.LeucenaApp = (function () {
     } catch (e) { /* ignore */ }
   }
 
-  function onPolygonDeleted(areaHa) {
+  function onPolygonDeleted(areaHa, cellSummary) {
     if (selectedCellData) {
-      selectedCellData.mask_count = Math.max(0, (selectedCellData.mask_count || 0) - 1);
-      selectedCellData.mask_area_ha = Math.max(0, Math.round(((selectedCellData.mask_area_ha || 0) - (areaHa || 0)) * 10) / 10);
+      if (cellSummary && cellSummary.mask_count != null) {
+        selectedCellData.mask_count = cellSummary.mask_count;
+        selectedCellData.mask_area_ha = cellSummary.mask_area_ha;
+        selectedCellData.mapped_by = cellSummary.mapped_by;
+      } else {
+        selectedCellData.mask_count = Math.max(0, (selectedCellData.mask_count || 0) - 1);
+        selectedCellData.mask_area_ha = Math.max(0, Math.round(((selectedCellData.mask_area_ha || 0) - (areaHa || 0)) * 10) / 10);
+      }
       updateCellMasksDisplay(selectedCellData);
+      updateCellAttributionDisplay(selectedCellData);
     }
     loadRankingWidget();
   }
 
-  // ── Profile badge hint (first sessions only; no auto-open modal) ──
+  // ── Profile badge hint: until user clicks #user-badge once (localStorage). Pulse only on fresh login (not refresh). ──
   const PROFILE_CLICK_HINT_KEY = 'leucena_profile_click_hint_dismissed';
 
   function dismissUserBadgeProfileHint() {
@@ -1045,14 +1231,23 @@ window.LeucenaApp = (function () {
   function syncUserBadgeProfileHint() {
     if (!isLoggedIn()) return;
     if (localStorage.getItem(PROFILE_CLICK_HINT_KEY) === '1') return;
-    const loginCount = _userAuthInfo.login_count || 0;
-    if (loginCount > 1) return;
     const badge = document.getElementById('user-badge');
     const dot = document.getElementById('user-badge-hint');
     if (!badge || badge.classList.contains('hidden')) return;
     badge.classList.add('user-badge--hint');
     if (dot) dot.classList.remove('hidden');
     badge.title = LeucenaI18n.t('profile.clickHintTooltip');
+  }
+
+  function pulseUserBadgeIfProfileHintEligible() {
+    if (!isLoggedIn()) return;
+    if (localStorage.getItem(PROFILE_CLICK_HINT_KEY) === '1') return;
+    const badge = document.getElementById('user-badge');
+    if (!badge || badge.classList.contains('hidden')) return;
+    badge.classList.remove('user-badge-pulse');
+    void badge.offsetWidth;
+    badge.classList.add('user-badge-pulse');
+    setTimeout(() => badge.classList.remove('user-badge-pulse'), 3200);
   }
 
   // ── Google OAuth + Migration Banner ──
@@ -1084,7 +1279,7 @@ window.LeucenaApp = (function () {
       authToken = googleToken;
       localStorage.setItem('leucena_token', authToken);
       window.history.replaceState({}, '', window.location.pathname);
-      tryRestoreSession();
+      tryRestoreSession(true);
     } else if (authError) {
       window.history.replaceState({}, '', window.location.pathname);
       const errorMap = {
@@ -1302,8 +1497,9 @@ window.LeucenaApp = (function () {
 
   async function loadUserProfile() {
     if (!isLoggedIn()) return;
+    const fetchOpts = { headers: authHeaders(), cache: 'no-store' };
     try {
-      const res = await fetch('/api/auth/me', { headers: authHeaders() });
+      const res = await fetch('/api/auth/me', fetchOpts);
       if (res.ok) {
         const data = await res.json();
         _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor' };
@@ -1311,7 +1507,7 @@ window.LeucenaApp = (function () {
         loadRankingWidget();
         syncUserBadgeProfileHint();
       }
-      const profRes = await fetch('/api/profile', { headers: authHeaders() });
+      const profRes = await fetch('/api/profile', fetchOpts);
       if (profRes.ok) {
         const profile = await profRes.json();
         applyProfileToUI(profile);
@@ -1371,7 +1567,7 @@ window.LeucenaApp = (function () {
       if (subtitleEl) subtitleEl.textContent = t((effRole === 'contributor') ? 'profile.subtitleContributor' : 'profile.subtitleMember');
       emailInput.disabled = true;
       try {
-        const res = await fetch('/api/profile', { headers: authHeaders() });
+        const res = await fetch('/api/profile', { headers: authHeaders(), cache: 'no-store' });
         if (!res.ok) return;
         const p = await res.json();
         document.getElementById('profile-full-name').value = p.full_name || '';
@@ -1451,12 +1647,6 @@ window.LeucenaApp = (function () {
     const wasAdminEditing = !!adminEditingUser;
     adminEditingUser = null;
     if (wasAdminEditing) openAdminUsersModal();
-
-    const badge = document.getElementById('user-badge');
-    if (badge && !wasAdminEditing) {
-      badge.classList.add('user-badge-pulse');
-      setTimeout(() => badge.classList.remove('user-badge-pulse'), 3200);
-    }
   }
 
   async function changeOwnPassword() {
@@ -1486,21 +1676,77 @@ window.LeucenaApp = (function () {
     document.getElementById('profile-char-n').textContent = n;
   }
 
-  function handleProfilePhotoSelect(e) {
+  const PHOTO_MAX_BYTES = 200000;
+  const PHOTO_MAX_DIM = 256;
+
+  function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let w = img.width, h = img.height;
+        if (w > PHOTO_MAX_DIM || h > PHOTO_MAX_DIM) {
+          const ratio = Math.min(PHOTO_MAX_DIM / w, PHOTO_MAX_DIM / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.85;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (dataUrl.length > PHOTO_MAX_BYTES * 1.37 && quality > 0.3) {
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+      img.src = url;
+    });
+  }
+
+  function compressDataUrl(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > PHOTO_MAX_DIM || h > PHOTO_MAX_DIM) {
+          const ratio = Math.min(PHOTO_MAX_DIM / w, PHOTO_MAX_DIM / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.85;
+        let result = canvas.toDataURL('image/jpeg', quality);
+        while (result.length > PHOTO_MAX_BYTES * 1.37 && quality > 0.3) {
+          quality -= 0.1;
+          result = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(result);
+      };
+      img.onerror = () => reject(new Error('image load failed'));
+      img.src = dataUrl;
+    });
+  }
+
+  async function handleProfilePhotoSelect(e) {
     const file = e.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    if (file.size > 200000) {
-      showToast(LeucenaI18n.t('profile.photoTooBig'), 'warning');
-      e.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      profilePhotoDataUrl = reader.result;
+    try {
+      const compressed = await compressImage(file);
+      profilePhotoDataUrl = compressed;
       const preview = document.getElementById('profile-photo-preview');
       preview.innerHTML = '<img src="' + profilePhotoDataUrl + '" alt="">';
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      showToast('Erro ao processar foto', 'error');
+      e.target.value = '';
+    }
   }
 
   async function saveProfile(e) {
@@ -1537,8 +1783,11 @@ window.LeucenaApp = (function () {
         return;
       }
       const wasAdmin = !!adminEditingUser;
+      if (!wasAdmin) {
+        applyProfileToUI({ full_name, photo: profilePhotoDataUrl });
+      }
       closeProfileModal();
-      if (!wasAdmin) loadUserProfile();
+      if (!wasAdmin) await loadUserProfile();
       showToast(wasAdmin ? LeucenaI18n.t('admin.profileUpdated') : LeucenaI18n.t('profile.saved'), 'success');
     } catch (err) {
       errorEl.textContent = 'Erro de conexão.';
@@ -1559,9 +1808,8 @@ window.LeucenaApp = (function () {
       }
       const data = await res.json();
 
-      function cardHtml(person, medalIndex) {
+      function cardHtml(person, medalIndex, isCollab) {
         const name = person.full_name || person.username;
-        const desc = person.description || '';
         const thumb = person.photo
           ? '<img src="' + person.photo + '" alt="">'
           : name.toString().charAt(0).toUpperCase();
@@ -1574,6 +1822,10 @@ window.LeucenaApp = (function () {
               : 'team-rank-badge team-rank-badge--bronze';
           rankBadgeHtml = '<div class="' + cls + '">Top ' + (medalIndex + 1) + '</div>';
         }
+        if (isCollab) {
+          return '<div class="about-card about-card--collab"><div class="about-card-thumb">' + thumb + '</div><div class="about-card-info">' + rankBadgeHtml + '<div class="about-card-name">' + escapeHtml(name) + '</div></div></div>';
+        }
+        const desc = person.description || '';
         const areaStr = person.area_ha ? ' · ' + person.area_ha + ' ha' : '';
         return '<div class="about-card"><div class="about-card-thumb">' + thumb + '</div><div class="about-card-info">' + rankBadgeHtml + '<div class="about-card-name">' + escapeHtml(name) + '</div><div class="about-card-desc">' + escapeHtml(desc) + areaStr + '</div></div></div>';
       }
@@ -1594,8 +1846,8 @@ window.LeucenaApp = (function () {
         html += '</div>';
       }
       if (colaboradores.length > 0) {
-        html += '<div class="about-section-title">' + t('about.colaboradores') + '</div><div class="about-cards">';
-        colaboradores.forEach((p, i) => { html += cardHtml(p, i); });
+        html += '<div class="about-section-title">' + t('about.colaboradores') + '</div><div class="about-cards about-cards--collab">';
+        colaboradores.forEach((p, i) => { html += cardHtml(p, i, true); });
         html += '</div>';
       }
       if (!equipe.length && !colaboradores.length) {
@@ -1826,6 +2078,92 @@ window.LeucenaApp = (function () {
     }
   }
 
+  function updateCellAttributionDisplay(cellData) {
+    if (!cellData) return;
+    const finishedByRow = document.getElementById('cell-finished-by-row');
+    const cleanedFinished = cleanUserList(cellData.finished_by);
+    const hasFinished = !!cleanedFinished;
+    if (finishedByRow) finishedByRow.classList.toggle('hidden', !hasFinished);
+    const finEl = document.getElementById('cell-finished-by');
+    if (finEl && hasFinished) finEl.textContent = cleanedFinished;
+
+    const mappedRow = document.getElementById('cell-mapped-by-row');
+    const mappedEl = document.getElementById('cell-mapped-by');
+    const cleanedMapped = cleanUserList(cellData.mapped_by);
+    const hasMapped = !!cleanedMapped;
+    if (mappedRow) mappedRow.classList.toggle('hidden', !hasMapped);
+    if (mappedEl && hasMapped) mappedEl.textContent = cleanedMapped;
+
+    const lockHistRow = document.getElementById('cell-lock-history-row');
+    const lockHistEl = document.getElementById('cell-lock-history');
+    const teamTools = isTeamOrAbove();
+    const cleanedLockHist = cleanUserList(cellData.worked_by);
+    const showLockHist = teamTools && !!cleanedLockHist;
+    if (lockHistRow) lockHistRow.classList.toggle('hidden', !showLockHist);
+    if (lockHistEl && showLockHist) lockHistEl.textContent = cleanedLockHist;
+
+    const breakdownWrap = document.getElementById('cell-admin-mask-breakdown-wrap');
+    if (breakdownWrap) {
+      if (teamTools && (cellData.mask_count || 0) > 0 && cellData.id != null) {
+        loadAdminMaskBreakdown(cellData.id);
+      } else {
+        _maskBreakdownSeq++;
+        breakdownWrap.classList.add('hidden');
+        const ul = document.getElementById('cell-admin-mask-breakdown');
+        if (ul) ul.innerHTML = '';
+      }
+    }
+  }
+
+  async function loadAdminMaskBreakdown(cellId) {
+    if (!isTeamOrAbove()) return;
+    const mySeq = ++_maskBreakdownSeq;
+    const wrap = document.getElementById('cell-admin-mask-breakdown-wrap');
+    const ul = document.getElementById('cell-admin-mask-breakdown');
+    if (!wrap || !ul) return;
+    try {
+      const res = await fetch(`/api/polygons?grid_cell_id=${encodeURIComponent(cellId)}`, { headers: authHeaders() });
+      if (!res.ok) {
+        wrap.classList.add('hidden');
+        return;
+      }
+      const fc = await res.json();
+      if (mySeq !== _maskBreakdownSeq || selectedCellId !== cellId) return;
+      const byUser = {};
+      for (const f of fc.features || []) {
+        const u = (f.properties && f.properties.created_by) || '?';
+        if (u === 'deleted') continue;
+        if (!byUser[u]) byUser[u] = { n: 0, ha: 0 };
+        byUser[u].n++;
+        byUser[u].ha += Number(f.properties && f.properties.area_ha) || 0;
+      }
+      ul.innerHTML = '';
+      const keys = Object.keys(byUser);
+      if (keys.length === 0) {
+        wrap.classList.add('hidden');
+        return;
+      }
+      keys.sort((a, b) => byUser[b].n - byUser[a].n);
+      const t = LeucenaI18n.t;
+      for (const u of keys) {
+        const { n, ha } = byUser[u];
+        const haR = Math.round(ha * 10) / 10;
+        const li = document.createElement('li');
+        li.textContent = t('sidebar.maskBreakdownLine', u, String(n), String(haR));
+        ul.appendChild(li);
+      }
+      wrap.classList.remove('hidden');
+    } catch (e) {
+      wrap.classList.add('hidden');
+    }
+  }
+
+  function refreshCellSidebarIfSelected(cellId) {
+    if (selectedCellId !== cellId || !selectedCellData) return;
+    updateCellMasksDisplay(selectedCellData);
+    updateCellAttributionDisplay(selectedCellData);
+  }
+
   function selectCell(cellId, cellData) {
     if (cellId === selectedCellId && !(selectedCellData && selectedCellData.locked_by === username)) {
       clearCellSelection();
@@ -1864,17 +2202,7 @@ window.LeucenaApp = (function () {
     if (numpointsEl) numpointsEl.textContent = numpoints;
 
     updateCellMasksDisplay(cellData);
-
-    const workedByRow = document.getElementById('cell-worked-by-row');
-    const finishedByRow = document.getElementById('cell-finished-by-row');
-    const cleanedWorked = cleanUserList(cellData.worked_by);
-    const cleanedFinished = cleanUserList(cellData.finished_by);
-    const hasWorked = !!cleanedWorked;
-    const hasFinished = !!cleanedFinished;
-    if (workedByRow) workedByRow.classList.toggle('hidden', !hasWorked);
-    if (finishedByRow) finishedByRow.classList.toggle('hidden', !hasFinished);
-    if (hasWorked) document.getElementById('cell-worked-by').textContent = cleanedWorked;
-    if (hasFinished) document.getElementById('cell-finished-by').textContent = cleanedFinished;
+    updateCellAttributionDisplay(cellData);
 
     const lockBtn = document.getElementById('lock-cell-btn');
     const unlockToolBtn = document.getElementById('tool-unlock');
@@ -1927,6 +2255,7 @@ window.LeucenaApp = (function () {
   }
 
   function clearCellSelection() {
+    _maskBreakdownSeq++;
     if (lockHeartbeatInterval) { clearInterval(lockHeartbeatInterval); lockHeartbeatInterval = null; }
     if (typeof LeucenaMap !== 'undefined') {
       LeucenaMap.setSelectedCell(null);
@@ -1938,6 +2267,23 @@ window.LeucenaApp = (function () {
     document.getElementById('tool-unlock').disabled = true;
     enableTools(false);
     if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.deactivate();
+  }
+
+  function syncStreetViewButtonTitle() {
+    const btn = document.getElementById('tool-streetview');
+    const wrap = document.getElementById('tool-streetview-wrap');
+    if (!btn || !wrap) return;
+    if (btn.disabled) {
+      btn.removeAttribute('title');
+      wrap.title = LeucenaI18n.t('tool.streetviewDisabledHint');
+    } else {
+      wrap.removeAttribute('title');
+      btn.title = LeucenaI18n.t('tool.streetview');
+    }
+  }
+
+  function refreshStreetViewTitleForLang() {
+    syncStreetViewButtonTitle();
   }
 
   function enableTools(enabled) {
@@ -1956,6 +2302,7 @@ window.LeucenaApp = (function () {
     selectBtn.classList.add('active');
     const pointMode = insertionMode || deletionMode;
     document.getElementById('tool-streetview').disabled = !(enabled || pointMode);
+    syncStreetViewButtonTitle();
     if (!enabled && !pointMode && typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive()) {
       LeucenaStreetView.close();
     }
@@ -2024,6 +2371,7 @@ window.LeucenaApp = (function () {
         selectedCellData.grid_status = finalStatus;
         selectedCellData.finished_by = data.finished_by || null;
         selectedCellData.worked_by = data.worked_by || null;
+        if (data.mapped_by !== undefined) selectedCellData.mapped_by = data.mapped_by;
       }
 
       LeucenaMap.updateCellAppearance(cellId, selectedCellData || {});
@@ -2045,15 +2393,6 @@ window.LeucenaApp = (function () {
 
       if (selectedCellData) {
         document.getElementById('cell-status-display').textContent = formatStatus(finalStatus);
-        const workedByRow = document.getElementById('cell-worked-by-row');
-        const finishedByRow = document.getElementById('cell-finished-by-row');
-        const cleanedFinished = cleanUserList(selectedCellData.finished_by);
-        const cleanedWorked = cleanUserList(selectedCellData.worked_by);
-        if (finishedByRow) {
-          finishedByRow.classList.toggle('hidden', !cleanedFinished);
-          if (cleanedFinished) document.getElementById('cell-finished-by').textContent = cleanedFinished;
-        }
-        if (workedByRow) workedByRow.classList.toggle('hidden', !cleanedWorked);
       }
 
       const displayId = selectedCellData ? (selectedCellData.grid_id || cellId) : cellId;
@@ -2063,6 +2402,7 @@ window.LeucenaApp = (function () {
         selectedCellData.mask_count = data.maskCount || 0;
         selectedCellData.mask_area_ha = data.areaHa || 0;
         updateCellMasksDisplay(selectedCellData);
+        updateCellAttributionDisplay(selectedCellData);
       }
 
       if (data.maskCount > 0) {
@@ -2318,6 +2658,7 @@ window.LeucenaApp = (function () {
     }
     const cellLocked = selectedCellData && selectedCellData.locked_by === username;
     document.getElementById('tool-streetview').disabled = !(anyActive || cellLocked);
+    syncStreetViewButtonTitle();
   }
 
   function isPointModeActive() {
@@ -2337,9 +2678,9 @@ window.LeucenaApp = (function () {
       document.getElementById('insertion-sep').classList.remove('hidden');
       document.getElementById('insertion-toggle').classList.remove('hidden');
       document.getElementById('deletion-toggle').classList.remove('hidden');
+      document.getElementById('admin-users-btn').classList.remove('hidden');
     }
     if (isAdminUser()) {
-      document.getElementById('admin-users-btn').classList.remove('hidden');
       loadViewCount();
       
       const maskSub = document.getElementById('mask-subcategories');
@@ -2462,7 +2803,7 @@ window.LeucenaApp = (function () {
     logEvent('debug_modal_open');
     const map = LeucenaMap.getMap();
     const viewsEl = document.getElementById('view-count');
-    const viewsVal = viewsEl ? viewsEl.textContent.trim() : '—';
+    const viewsVal = viewsEl ? viewsEl.textContent.trim() : '-';
 
     const rows = [
       { key: LeucenaI18n.t('debug.siteViews'), val: viewsVal },
@@ -2474,7 +2815,7 @@ window.LeucenaApp = (function () {
       const sw = bounds.getSouthWest();
       const center = map.getCenter();
       const mapType = map.getMapTypeId();
-      const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : '—';
+      const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : '-';
       rows.push(
         { key: 'Zoom', val: map.getZoom() },
         { key: 'Center', val: `${center.lat().toFixed(6)}, ${center.lng().toFixed(6)}` },
@@ -2484,16 +2825,16 @@ window.LeucenaApp = (function () {
         { key: 'Map Type', val: mapType },
         { key: 'Viewport (px)', val: `${map.getDiv().offsetWidth} × ${map.getDiv().offsetHeight}` },
         { key: 'Polígonos', val: polyCount },
-        { key: 'Célula', val: selectedCellId || '—' },
-        { key: 'Usuário', val: username || '—' },
-        { key: 'Role', val: userRole || '—' },
+        { key: 'Célula', val: selectedCellId || '-' },
+        { key: 'Usuário', val: username || '-' },
+        { key: 'Role', val: userRole || '-' },
       );
     } else {
       rows.push(
         { key: 'Mapa', val: LeucenaI18n.t('debug.mapNotReady') },
-        { key: 'Célula', val: selectedCellId || '—' },
-        { key: 'Usuário', val: username || '—' },
-        { key: 'Role', val: userRole || '—' },
+        { key: 'Célula', val: selectedCellId || '-' },
+        { key: 'Usuário', val: username || '-' },
+        { key: 'Role', val: userRole || '-' },
       );
     }
 
@@ -2527,12 +2868,94 @@ window.LeucenaApp = (function () {
     }
   }
 
+  function attachAdminLogExportHandlers(t, includeUserCsv) {
+    if (includeUserCsv) {
+      const csvBtn = document.getElementById('admin-export-csv');
+      if (csvBtn) {
+        csvBtn.addEventListener('click', async () => {
+          try {
+            const r = await fetch('/api/admin/users/export-csv', { headers: authHeaders() });
+            if (!r.ok) { showToast('Export failed', 'error'); return; }
+            const blob = await r.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'leucena_users_stats.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch (e) { showToast('Export failed', 'error'); }
+        });
+      }
+    }
+    document.getElementById('admin-export-logs').addEventListener('click', async () => {
+      try {
+        const r = await fetch('/api/admin/logs?format=csv', { headers: authHeaders() });
+        if (!r.ok) { showToast('Export failed', 'error'); return; }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'activity_logs_48h.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) { showToast('Export failed', 'error'); }
+    });
+    document.getElementById('admin-copy-recent-logs').addEventListener('click', async () => {
+      try {
+        const r = await fetch('/api/admin/logs?minutes=5', { headers: authHeaders() });
+        if (!r.ok) { showToast('Export failed', 'error'); return; }
+        const logs = await r.json();
+        if (logs.length === 0) { showToast(t('admin.noRecentLogs'), 'info'); return; }
+        const text = logs.map(l => {
+          let line = `[${l.timestamp}] ${l.username || '?'}: ${l.action}`;
+          if (l.cell_id) line += ` | cell:${l.cell_id}`;
+          if (l.object_id) line += ` | obj:${l.object_id}`;
+          if (l.details) { try { line += ` | ${l.details}`; } catch (_) {} }
+          return line;
+        }).join('\n');
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else { fallbackCopy(text); }
+        } catch (_) { fallbackCopy(text); }
+        showToast(t('admin.logsCopied'), 'success');
+      } catch (e) { showToast('Erro ao copiar logs', 'error'); }
+    });
+  }
+
   async function openAdminUsersModal() {
-    if (!isAdminUser()) return;
+    if (!isTeamOrAbove()) return;
     logEvent('admin_users_open');
     const t = LeucenaI18n.t;
     const modal = document.getElementById('admin-users-modal');
     modal.classList.remove('hidden');
+
+    const metricsEl = document.getElementById('admin-global-metrics');
+    const viewToggleEl = document.getElementById('admin-view-toggle');
+    const createUserSection = document.getElementById('admin-create-user');
+    if (createUserSection) createUserSection.classList.add('hidden');
+
+    if (!isAdminUser()) {
+      viewToggleEl.classList.add('hidden');
+      metricsEl.innerHTML = '';
+      metricsEl.classList.add('hidden');
+      const listEl = document.getElementById('admin-users-list');
+      listEl.innerHTML = '';
+      const toolsGrid = document.createElement('div');
+      toolsGrid.className = 'admin-tools-grid';
+      toolsGrid.innerHTML = `<div class="admin-tools-section">
+        <div class="admin-tools-label">${t('admin.sectionLogs')}</div>
+        <div class="admin-tools-buttons">
+          <button id="admin-export-logs" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ${t('admin.exportLogs')}</button>
+          <button id="admin-copy-recent-logs" class="admin-tool-btn admin-tool-ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> ${t('admin.copyRecentLogs')}</button>
+        </div>
+      </div>`;
+      listEl.appendChild(toolsGrid);
+      attachAdminLogExportHandlers(t, false);
+      return;
+    }
+
+    metricsEl.classList.remove('hidden');
 
     try {
       const res = await fetch('/api/admin/users', { headers: authHeaders() });
@@ -2633,53 +3056,7 @@ window.LeucenaApp = (function () {
 
       toolsGrid.innerHTML = gridHtml;
       listEl.appendChild(toolsGrid);
-      document.getElementById('admin-export-csv').addEventListener('click', async () => {
-        try {
-          const r = await fetch('/api/admin/users/export-csv', { headers: authHeaders() });
-          if (!r.ok) { showToast('Export failed', 'error'); return; }
-          const blob = await r.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'leucena_users_stats.csv';
-          a.click();
-          URL.revokeObjectURL(url);
-        } catch (e) { showToast('Export failed', 'error'); }
-      });
-      document.getElementById('admin-export-logs').addEventListener('click', async () => {
-        try {
-          const r = await fetch('/api/admin/logs?format=csv', { headers: authHeaders() });
-          if (!r.ok) { showToast('Export failed', 'error'); return; }
-          const blob = await r.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'activity_logs_48h.csv';
-          a.click();
-          URL.revokeObjectURL(url);
-        } catch (e) { showToast('Export failed', 'error'); }
-      });
-      document.getElementById('admin-copy-recent-logs').addEventListener('click', async () => {
-        try {
-          const r = await fetch('/api/admin/logs?minutes=5', { headers: authHeaders() });
-          if (!r.ok) { showToast('Export failed', 'error'); return; }
-          const logs = await r.json();
-          if (logs.length === 0) { showToast(t('admin.noRecentLogs'), 'info'); return; }
-          const text = logs.map(l => {
-            let line = `[${l.timestamp}] ${l.username || '?'} — ${l.action}`;
-            if (l.cell_id) line += ` | cell:${l.cell_id}`;
-            if (l.object_id) line += ` | obj:${l.object_id}`;
-            if (l.details) { try { line += ` | ${l.details}`; } catch (_) {} }
-            return line;
-          }).join('\n');
-          try {
-            if (navigator.clipboard && window.isSecureContext) {
-              await navigator.clipboard.writeText(text);
-            } else { fallbackCopy(text); }
-          } catch (_) { fallbackCopy(text); }
-          showToast(t('admin.logsCopied'), 'success');
-        } catch (e) { showToast('Erro ao copiar logs', 'error'); }
-      });
+      attachAdminLogExportHandlers(t, true);
 
       const backupBtn = document.getElementById('admin-backup-db');
       if (backupBtn) {
@@ -3017,7 +3394,7 @@ window.LeucenaApp = (function () {
         }
 
         const canDelete = effectiveSuperAdmin && role !== 'superadmin';
-        const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '—';
+        const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
         const lastActiveHtml = formatLastActive(user.last_active, user.username);
         const initial = user.username.charAt(0).toUpperCase();
         const photoHtml = user.photo
@@ -3027,6 +3404,9 @@ window.LeucenaApp = (function () {
         const verifyBadgeHtml = isVerified
           ? `<span class="admin-verify-badge verified">✓ ${t('admin.verified')}</span>`
           : `<span class="admin-verify-badge not-verified">✗ ${t('admin.notVerified')}</span>`;
+        const authMethodBadgeHtml = user.google_id
+          ? `<span class="admin-auth-badge google" title="${t('admin.authMethodGoogleTitle')}">${t('admin.authMethodGoogle')}</span>`
+          : `<span class="admin-auth-badge email" title="${t('admin.authMethodEmailTitle')}">${t('admin.authMethodEmail')}</span>`;
 
         row.innerHTML = `
           <div class="admin-card-header">
@@ -3038,6 +3418,7 @@ window.LeucenaApp = (function () {
                 ${isOnline ? '<span class="admin-online-dot"></span>' : ''}
                 <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
                 ${isInactive ? `<span class="admin-user-badge admin-badge-inactive">${t('admin.inactive')}</span>` : ''}
+                ${authMethodBadgeHtml}
                 ${verifyBadgeHtml}
                 ${roleSelectHtml}
               </div>
@@ -3254,16 +3635,7 @@ window.LeucenaApp = (function () {
 
         const delBtn = row.querySelector('.admin-del-btn');
         if (delBtn) {
-          delBtn.addEventListener('click', async () => {
-            if (!confirm(t('admin.confirmPermanentDelete', user.username))) return;
-            const r = await fetch(`/api/admin/users/${user.id}`, {
-              method: 'DELETE', headers: authHeaders()
-            });
-            if (r.ok) {
-              showToast(t('admin.userDeleted'), 'success');
-              row.remove();
-            } else { const err = await r.json(); showToast(err.error, 'error'); }
-          });
+          delBtn.addEventListener('click', () => openPermanentDeleteUserModal(user, row));
         }
 
         if (isEquipe(user)) {
@@ -3382,33 +3754,18 @@ window.LeucenaApp = (function () {
       if (data.worked_by !== undefined) selectedCellData.worked_by = data.worked_by;
       if (data.mask_count !== undefined) selectedCellData.mask_count = data.mask_count;
       if (data.mask_area_ha !== undefined) selectedCellData.mask_area_ha = data.mask_area_ha;
+      if (data.mapped_by !== undefined) selectedCellData.mapped_by = data.mapped_by;
     }
     document.getElementById('cell-status-display').textContent = formatStatus(data.status);
-    if (selectedCellData) updateCellMasksDisplay(selectedCellData);
-    const workedByRow = document.getElementById('cell-worked-by-row');
-    const finishedByRow = document.getElementById('cell-finished-by-row');
-    const cleanedWorked = selectedCellData ? cleanUserList(selectedCellData.worked_by) : '';
-    const cleanedFinished = selectedCellData ? cleanUserList(selectedCellData.finished_by) : '';
-    if (workedByRow) workedByRow.classList.toggle('hidden', !cleanedWorked);
-    if (finishedByRow) finishedByRow.classList.toggle('hidden', !cleanedFinished);
-    if (cleanedWorked) document.getElementById('cell-worked-by').textContent = cleanedWorked;
-    if (cleanedFinished) document.getElementById('cell-finished-by').textContent = cleanedFinished;
+    if (selectedCellData) {
+      updateCellMasksDisplay(selectedCellData);
+      updateCellAttributionDisplay(selectedCellData);
+    }
   }
 
   setupPointModes();
 
   init();
-
-  (function handleHashAuth() {
-    const hash = window.location.hash.replace('#', '').toLowerCase();
-    if ((hash === 'register' || hash === 'signup' || hash === 'cadastrar') && !isLoggedIn()) {
-      setTimeout(() => openAuthModal('register'), 300);
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    } else if (hash === 'login' && !isLoggedIn()) {
-      setTimeout(() => openAuthModal('login'), 300);
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-  })();
 
   return {
     getUsername,
@@ -3430,6 +3787,7 @@ window.LeucenaApp = (function () {
     handleDeletionClick,
     scheduleAutoCollapseLegend,
     refreshLegendToggleTitleForLang,
+    refreshStreetViewTitleForLang,
     isEditing,
     isAdminUser,
     isSuperAdmin,
@@ -3439,6 +3797,7 @@ window.LeucenaApp = (function () {
     flushLogs: _flushLogs,
     onPolygonSaved,
     onPolygonDeleted,
-    onCellStatusChanged
+    onCellStatusChanged,
+    refreshCellSidebarIfSelected
   };
 })();

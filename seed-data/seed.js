@@ -143,6 +143,10 @@ async function seed() {
       'INSERT INTO grid_cells (id, fid, grid_id, geometry, grid_status, numpoints, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [fid, fid, GRID_ID, geometry, mappedStatus, NUMPOINTS || 0, now]
     );
+    runSQL(
+      'INSERT OR IGNORE INTO grid_cell_states (grid_cell_id, state) VALUES (?, ?)',
+      [fid, 'SP']
+    );
   }
   console.log(`Inserted ${gridData.features.length} grid cells.`);
 

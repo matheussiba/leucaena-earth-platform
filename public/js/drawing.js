@@ -1120,7 +1120,7 @@ window.LeucenaDrawing = (function () {
       renderPolygon(result.id, geometry, result, false);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaved'), 'success');
-      if (typeof LeucenaApp.onPolygonSaved === 'function') LeucenaApp.onPolygonSaved(result.area_ha || 0);
+      if (typeof LeucenaApp.onPolygonSaved === 'function') LeucenaApp.onPolygonSaved(result.area_ha || 0, result.cell_summary);
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaveFail'), 'error');
     }
@@ -1199,6 +1199,7 @@ window.LeucenaDrawing = (function () {
       const result = await res.json();
       renderPolygon(result.id, backup.geometry, result, false);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
+      if (typeof LeucenaApp.onPolygonSaved === 'function') LeucenaApp.onPolygonSaved(result.area_ha || 0, result.cell_summary);
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyRestored'), 'success');
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyRestoreFail'), 'error');
@@ -1463,13 +1464,14 @@ window.LeucenaDrawing = (function () {
         LeucenaApp.showToast(err.error, 'error');
         return;
       }
+      const delBody = await res.json();
       entry.gmapsPoly.setMap(null);
       if (entry.areaLabel) entry.areaLabel.setMap(null);
       delete drawnPolygons[id];
       delete polyBounds[id];
       deleteUndoStack.push(backup);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
-      if (typeof LeucenaApp.onPolygonDeleted === 'function') LeucenaApp.onPolygonDeleted(entry.data.area_ha || 0);
+      if (typeof LeucenaApp.onPolygonDeleted === 'function') LeucenaApp.onPolygonDeleted(entry.data.area_ha || 0, delBody.cell_summary);
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleted'), 'success');
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleteFail'), 'error');

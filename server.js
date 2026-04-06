@@ -60,7 +60,7 @@ async function sendWelcomeEmail(user) {
   <p>Fico feliz demais que você entrou em contato e quer fazer parte desse projeto científico com a gente!</p>
   ${credentialsBlock}
   <p>Antes de começar, peço, por gentileza, que dê uma olhada na seção "<a href="https://map.leucaena.earth/#howto" style="color:#22c55e;font-weight:600">Como mapear</a>", pois lá tem instruções bem importantes.</p>
-  <p>Ahh... e uma coisa bem bacana que é importante você saber é que só de mapear <strong>1 polígono de leucena</strong> (ou seja, desenhar o contorno de um aglomerado — uma área onde há duas ou mais leucenas juntas), você já passa a aparecer na <strong>seção de colaboradores do site</strong>!</p>
+  <p>Ahh... e uma coisa bem bacana que é importante você saber é que só de mapear <strong>1 polígono de leucena</strong> (ou seja, desenhar o contorno de um aglomerado, uma área onde há duas ou mais leucenas juntas), você já passa a aparecer na <strong>seção de colaboradores do site</strong>!</p>
   <p>E esse trabalho vai além do mapeamento em si. A ideia é usar esses polígonos para gerar produtos como <strong>mapas da distribuição da leucena, estimativas de biomassa e estoque de carbono</strong>, e depois disponibilizar tudo isso de <strong>forma aberta no próprio site para apoiar pesquisa, gestão e tomada de decisão</strong>.</p>
   <p>E qualquer dúvida, sugestão de melhoria ou ideia de funcionalidade para o site, pode me mandar mensagem sem problema, vou ficar muito feliz em poder incorporar essas ideias na plataforma!</p>
   <p>Um forte abraço!</p>
@@ -101,7 +101,7 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
 <html lang="pt">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>leucaena.earth — Manutenção</title>
+<title>leucaena.earth / Manutenção</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
@@ -202,8 +202,8 @@ const resetLimiter = rateLimit('reset', 5, 15 * 60 * 1000);
 
 const resetTokens = new Map();
 const RESET_TOKEN_TTL = 30 * 60 * 1000;
-const verifyEmailSentAt = new Map();
-const VERIFY_RATE_LIMIT_MS = 2 * 60 * 1000;
+/** Unverified local accounts older than this are removed (contributors only). */
+const UNVERIFIED_ACCOUNT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const connectedUsers = new Map();
 
@@ -293,6 +293,62 @@ function maskEmail(email) {
   return local.charAt(0) + '***@' + domain;
 }
 
+/**
+ * Full account removal (polygons → deleted user, sessions cleared). Used by superadmin delete and purge job.
+ * @param {object} user - row from users
+ * @param {string|null} logActorUsername - superadmin who triggered delete, or null for system purge
+ */
+function permanentlyDeleteUserAccount(user, logActorUsername) {
+  if (!user || user.username === 'deleted') return;
+
+  const deletedExists = queryOne("SELECT id FROM users WHERE username = 'deleted'");
+  if (!deletedExists) {
+    const hash = hashPassword('__system_deleted__');
+    const now = new Date().toISOString();
+    runSQL("INSERT INTO users (username, password_hash, created_at, is_active) VALUES ('deleted', ?, ?, 0)", [hash, now]);
+  }
+
+  runSQL("UPDATE polygons SET created_by = 'deleted' WHERE created_by = ?", [user.username]);
+  runSQL("UPDATE grid_cells SET worked_by = REPLACE(worked_by, ?, 'deleted') WHERE worked_by LIKE ?",
+    [user.username, `%${user.username}%`]);
+  runSQL("UPDATE grid_cells SET finished_by = 'deleted' WHERE finished_by = ?", [user.username]);
+  runSQL("UPDATE grid_cells SET locked_by = NULL, locked_at = NULL WHERE locked_by = ?", [user.username]);
+
+  for (const [token, uname] of sessions.entries()) {
+    if (uname === user.username) sessions.delete(token);
+  }
+
+  runSQL('UPDATE users SET email = NULL, google_id = NULL, verification_token = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
+  runSQL('DELETE FROM users WHERE id = ?', [user.id]);
+
+  if (logActorUsername) {
+    logActivity(logActorUsername, 'user_delete', null, null, { deleted_user: user.username, deleted_role: user.role });
+  } else {
+    logActivity(null, 'user_purge_unverified', null, null, { username: user.username, id: user.id });
+  }
+  persist();
+}
+
+function purgeExpiredUnverifiedUsers() {
+  const cutoffIso = new Date(Date.now() - UNVERIFIED_ACCOUNT_MAX_AGE_MS).toISOString();
+  const candidates = queryAll(
+    `SELECT * FROM users WHERE username != 'deleted'
+     AND (email_verified IS NULL OR email_verified = 0)
+     AND (auth_provider IS NULL OR auth_provider = 'local')
+     AND created_at IS NOT NULL AND created_at < ?
+     AND COALESCE(role, 'contributor') NOT IN ('superadmin', 'admin', 'team', 'tester')`,
+    [cutoffIso]
+  );
+  if (candidates.length === 0) return;
+  for (const user of candidates) {
+    permanentlyDeleteUserAccount(user, null);
+  }
+  try {
+    io.emit('users:updated', getUniqueUsers());
+  } catch (e) { /* ignore */ }
+  console.log(`[purge] Removed ${candidates.length} unverified account(s) older than 7 days`);
+}
+
 function requireAuth(req, res, next) {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Login necessário' });
@@ -372,6 +428,31 @@ function polygonAreaHa(geometry) {
     area -= ringAreaM2(coords[i]);
   }
   return Math.max(0, area) / 10000;
+}
+
+/** Per-cell polygon stats: count, summed area (ha), comma-separated distinct authors (excludes deleted). */
+function getCellMaskSummary(gridCellId) {
+  const polys = queryAll(
+    'SELECT geometry, area_ha, created_by FROM polygons WHERE grid_cell_id = ?',
+    [Number(gridCellId)]
+  );
+  const authors = new Set();
+  let cellAreaHa = 0;
+  for (const p of polys) {
+    let ha = p.area_ha != null ? Number(p.area_ha) : 0;
+    if (!ha || ha <= 0) {
+      try {
+        ha = polygonAreaHa(JSON.parse(p.geometry));
+      } catch (e) {
+        ha = 0;
+      }
+    }
+    cellAreaHa += ha;
+    if (p.created_by && p.created_by !== 'deleted') authors.add(p.created_by);
+  }
+  cellAreaHa = Math.round(cellAreaHa * 10) / 10;
+  const mappedBy = authors.size ? [...authors].sort().join(',') : null;
+  return { mask_count: polys.length, mask_area_ha: cellAreaHa, mapped_by: mappedBy };
 }
 
 // If multiple cells contain the point, pick the one with smallest bbox (inner over outer overlap).
@@ -524,10 +605,12 @@ app.post('/api/auth/check-email', (req, res) => {
 });
 
 app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'E-mail é obrigatório' });
-  const user = queryOne("SELECT * FROM users WHERE LOWER(email) = ? AND is_active = 1", [email.trim().toLowerCase()]);
-  if (!user) return res.status(404).json({ error: 'Nenhuma conta encontrada com este e-mail' });
+  const raw = (req.body.email || req.body.identifier || '').trim();
+  if (!raw) return res.status(400).json({ error: 'Informe o e-mail ou nome de usuário' });
+  const user = raw.includes('@')
+    ? queryOne('SELECT * FROM users WHERE LOWER(email) = ? AND is_active = 1', [raw.toLowerCase()])
+    : queryOne('SELECT * FROM users WHERE username = ? AND is_active = 1', [raw]);
+  if (!user) return res.status(404).json({ error: 'Nenhuma conta encontrada' });
   if (user.email_verified) return res.json({ success: true, already_verified: true });
   if (!resend) return res.status(500).json({ error: 'Serviço de e-mail não configurado' });
 
@@ -541,11 +624,12 @@ app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, 
     await resend.emails.send({
       from: RESEND_FROM,
       to: user.email,
-      subject: 'Verifique seu e-mail — leucaena.earth',
+      subject: 'Verifique seu e-mail (leucaena.earth)',
       html: `<p>Olá <strong>${user.username}</strong>,</p>
              <p>Clique no link abaixo para verificar seu e-mail:</p>
              <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
-             <p>— leucaena.earth</p>`
+             <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
+             <p>leucaena.earth</p>`
     });
     res.json({ success: true });
   } catch (e) {
@@ -603,12 +687,13 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
       const result = await resend.emails.send({
         from: RESEND_FROM,
         to: email,
-        subject: 'Verifique seu e-mail — leucaena.earth',
+        subject: 'Verifique seu e-mail (leucaena.earth)',
         html: `<p>Olá <strong>${displayName}</strong>,</p>
                <p>Clique no link abaixo para verificar seu e-mail e ativar sua conta:</p>
                <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
+               <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
                <p>Se você não criou essa conta, ignore este e-mail.</p>
-               <p>— leucaena.earth</p>`
+               <p>leucaena.earth</p>`
       });
       emailSent = true;
       console.log('Verification email sent:', result?.data?.id || 'ok', 'to:', email);
@@ -616,7 +701,7 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
       console.error('Resend email error:', e.message, JSON.stringify(e));
     }
   } else {
-    console.warn('Resend not configured — verification email not sent for', email);
+    console.warn('Resend not configured; verification email not sent for', email);
   }
 
   res.json({ success: true, needs_verification: true, username, email_sent: emailSent });
@@ -646,35 +731,12 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     if (!user.email) {
       return res.status(403).json({ error: 'Seu cadastro não tem e-mail. Entre em contato com o administrador.', code: 'EMAIL_NOT_VERIFIED' });
     }
-
     const masked = maskEmail(user.email);
-    const lastSent = verifyEmailSentAt.get(realUsername.toLowerCase());
-    if (lastSent && (Date.now() - lastSent) < VERIFY_RATE_LIMIT_MS) {
-      return res.status(403).json({ error: `Um link de verificação já foi enviado para ${masked}. Verifique sua caixa de entrada ou aguarde 2 minutos.`, code: 'EMAIL_NOT_VERIFIED', masked_email: masked });
-    }
-
-    const verifyToken = uuidv4();
-    const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    runSQL('UPDATE users SET verification_token = ?, verification_expires = ? WHERE id = ?', [verifyToken, verifyExpires, user.id]);
-
-    if (resend) {
-      const baseUrl = getBaseUrl(req);
-      const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
-      resend.emails.send({
-        from: RESEND_FROM,
-        to: user.email,
-        subject: 'Verifique seu e-mail — leucaena.earth',
-        html: `<p>Olá <strong>${realUsername}</strong>,</p>
-               <p>Clique no link abaixo para verificar seu e-mail e ativar sua conta:</p>
-               <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
-               <p>Se você não solicitou isso, ignore este e-mail.</p>
-               <p>— leucaena.earth</p>`
-      }).catch(e => console.error('Resend email error:', e.message));
-    }
-
-    verifyEmailSentAt.set(realUsername.toLowerCase(), Date.now());
-    persist();
-    return res.status(403).json({ error: `Enviamos um link de verificação para ${masked}. Verifique sua caixa de entrada.`, code: 'EMAIL_NOT_VERIFIED', masked_email: masked });
+    return res.status(403).json({
+      code: 'EMAIL_NOT_VERIFIED',
+      masked_email: masked,
+      error: 'Conta não verificada. Abra o link que enviamos por e-mail ou solicite um novo abaixo.'
+    });
   }
 
   runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), realUsername]);
@@ -884,6 +946,24 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true });
 });
 
+// ── Google photo helper ──
+
+async function fetchGooglePhotoAsDataUrl(pictureUrl) {
+  if (!pictureUrl) return null;
+  try {
+    const sizedUrl = pictureUrl.replace(/=s\d+(-c)?/, '=s256-c');
+    const finalUrl = sizedUrl.includes('=s') ? sizedUrl : sizedUrl + '=s256-c';
+    const res = await fetch(finalUrl, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > 500000) return null;
+    return `data:${contentType};base64,${buf.toString('base64')}`;
+  } catch (e) {
+    return null;
+  }
+}
+
 // ── Google OAuth ──
 
 app.get('/auth/google', (req, res) => {
@@ -929,6 +1009,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const googleId = profile.id;
     const googleEmail = profile.email.toLowerCase();
     const googleName = profile.name || '';
+    const googlePicture = profile.picture || null;
 
     let user = queryOne('SELECT * FROM users WHERE google_id = ?', [googleId]);
 
@@ -969,6 +1050,14 @@ app.get('/auth/google/callback', async (req, res) => {
 
     if (googleName && !user.full_name) {
       runSQL('UPDATE users SET full_name = ? WHERE id = ?', [googleName, user.id]);
+    }
+
+    if (googlePicture && !user.photo) {
+      const photoDataUrl = await fetchGooglePhotoAsDataUrl(googlePicture);
+      if (photoDataUrl) {
+        runSQL('UPDATE users SET photo = ? WHERE id = ?', [photoDataUrl, user.id]);
+        persist();
+      }
     }
 
     runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE id = ?', [new Date().toISOString(), user.id]);
@@ -1035,11 +1124,12 @@ app.post('/api/auth/resend-verification', requireAuth, async (req, res) => {
     await resend.emails.send({
       from: RESEND_FROM,
       to: user.email,
-      subject: 'Verifique seu e-mail — leucaena.earth',
+      subject: 'Verifique seu e-mail (leucaena.earth)',
       html: `<p>Olá <strong>${user.username}</strong>,</p>
              <p>Clique no link abaixo para verificar seu e-mail:</p>
              <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
-             <p>— leucaena.earth</p>`
+             <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
+             <p>leucaena.earth</p>`
     });
     res.json({ success: true });
   } catch (e) {
@@ -1084,13 +1174,13 @@ app.post('/api/auth/forgot-password', resetLimiter, async (req, res) => {
     await resend.emails.send({
       from: RESEND_FROM,
       to: user.email,
-      subject: 'Redefinir sua senha — leucaena.earth',
+      subject: 'Redefinir sua senha (leucaena.earth)',
       html: `<p>Olá <strong>${user.full_name || user.username}</strong>,</p>
              <p>Recebemos uma solicitação para redefinir sua senha. Clique no botão abaixo:</p>
              <p><a href="${resetUrl}" style="display:inline-block;padding:12px 28px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Redefinir Senha</a></p>
              <p>Este link expira em 30 minutos.</p>
              <p>Se você não solicitou a redefinição, ignore este e-mail.</p>
-             <p>— leucaena.earth</p>`
+             <p>leucaena.earth</p>`
     });
   } catch (e) { console.error('Resend reset email error:', e.message); }
 
@@ -1101,7 +1191,7 @@ app.post('/api/auth/forgot-password', resetLimiter, async (req, res) => {
 function resetPasswordPageHtml(type, content) {
   const color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6';
   const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : '🔒';
-  return `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redefinir Senha — leucaena.earth</title>
+  return `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redefinir Senha (leucaena.earth)</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
 .card{text-align:center;max-width:420px;width:90%;padding:40px 32px;border:1px solid #1e293b;border-radius:16px;background:#1e293b}
 .icon{font-size:48px;margin-bottom:16px;color:${color}}h2{font-size:20px;margin-bottom:16px;color:#f1f5f9}p{font-size:14px;line-height:1.6;color:#94a3b8;margin-top:8px}
@@ -1259,7 +1349,10 @@ app.post('/api/admin/users/create', requireAuth, (req, res) => {
 
   const hash = hashPassword(password);
   const now = new Date().toISOString();
-  runSQL('INSERT INTO users (username, password_hash, created_at, email) VALUES (?, ?, ?, ?)', [username, hash, now, email]);
+  runSQL(
+    'INSERT INTO users (username, password_hash, created_at, email, email_verified, auth_provider) VALUES (?, ?, ?, ?, 1, ?)',
+    [username, hash, now, email, 'local']
+  );
   logActivity(req.username, 'admin_create_user', null, null, { target_user: username });
   persist();
   res.json({ success: true, username });
@@ -1316,27 +1409,7 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   if (user.role === 'superadmin') return res.status(400).json({ error: 'Não é possível excluir um Super Admin' });
 
-  const deletedExists = queryOne("SELECT id FROM users WHERE username = 'deleted'");
-  if (!deletedExists) {
-    const hash = hashPassword('__system_deleted__');
-    const now = new Date().toISOString();
-    runSQL("INSERT INTO users (username, password_hash, created_at, is_active) VALUES ('deleted', ?, ?, 0)", [hash, now]);
-  }
-
-  runSQL("UPDATE polygons SET created_by = 'deleted' WHERE created_by = ?", [user.username]);
-  runSQL("UPDATE grid_cells SET worked_by = REPLACE(worked_by, ?, 'deleted') WHERE worked_by LIKE ?",
-    [user.username, `%${user.username}%`]);
-  runSQL("UPDATE grid_cells SET finished_by = 'deleted' WHERE finished_by = ?", [user.username]);
-  runSQL("UPDATE grid_cells SET locked_by = NULL, locked_at = NULL WHERE locked_by = ?", [user.username]);
-
-  for (const [token, uname] of sessions.entries()) {
-    if (uname === user.username) sessions.delete(token);
-  }
-
-  runSQL('UPDATE users SET email = NULL, google_id = NULL, verification_token = NULL, verification_expires = NULL WHERE id = ?', [Number(req.params.id)]);
-  runSQL('DELETE FROM users WHERE id = ?', [Number(req.params.id)]);
-  logActivity(req.username, 'user_delete', null, null, { deleted_user: user.username, deleted_role: user.role });
-  persist();
+  permanentlyDeleteUserAccount(user, req.username);
   io.emit('users:updated', getUniqueUsers());
   res.json({ success: true });
 });
@@ -1424,12 +1497,12 @@ app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-// [REMOVED] admin reset-token route — password reset is now self-service via email
+// [REMOVED] admin reset-token route; password reset is now self-service via email
 
-// [REMOVED] /api/admin/passcode — passcode system removed
+// [REMOVED] /api/admin/passcode; passcode system removed
 
 app.get('/api/admin/logs', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Equipe ou admin apenas' });
   const format = req.query.format || 'json';
   const minutes = req.query.minutes ? Number(req.query.minutes) : null;
   let logs;
@@ -1540,12 +1613,53 @@ app.post('/api/admin/backup', requireAuth, (req, res) => {
 // ── REST API ──
 
 app.get('/api/grid', (req, res) => {
-  const cells = queryAll('SELECT id, fid, grid_id, geometry, grid_status, numpoints, locked_by, locked_at, updated_at, worked_by, finished_by FROM grid_cells');
+  const stateQ = req.query.state;
+  const baseSql = 'SELECT id, fid, grid_id, geometry, grid_status, numpoints, locked_by, locked_at, updated_at, worked_by, finished_by FROM grid_cells';
+  let cells;
+  if (stateQ != null && String(stateQ).trim() !== '') {
+    const uf = String(stateQ).trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(uf)) {
+      return res.status(400).json({ error: 'Parâmetro state inválido. Use uma UF com 2 letras (ex: SP, MS).' });
+    }
+    const cellIds = queryAll('SELECT DISTINCT grid_cell_id FROM grid_cell_states WHERE UPPER(state) = ?', [uf]);
+    if (cellIds.length === 0) {
+      return res.json({ type: 'FeatureCollection', features: [] });
+    }
+    const placeholders = cellIds.map(() => '?').join(',');
+    cells = queryAll(`${baseSql} WHERE id IN (${placeholders})`, cellIds.map(r => r.grid_cell_id));
+  } else {
+    cells = queryAll(baseSql);
+  }
+  const stateRows = queryAll('SELECT grid_cell_id, state FROM grid_cell_states');
+  const stateMap = {};
+  for (const r of stateRows) {
+    if (!stateMap[r.grid_cell_id]) stateMap[r.grid_cell_id] = [];
+    stateMap[r.grid_cell_id].push(r.state);
+  }
   const maskStats = {};
-  const rows = queryAll('SELECT grid_cell_id, COUNT(*) as cnt, COALESCE(SUM(area_ha),0) as total_ha FROM polygons GROUP BY grid_cell_id');
-  for (const r of rows) { maskStats[r.grid_cell_id] = { cnt: r.cnt, ha: Math.round(r.total_ha * 10) / 10 }; }
+  const polyRows = queryAll('SELECT grid_cell_id, COALESCE(area_ha,0) as area_ha, geometry, created_by FROM polygons');
+  for (const p of polyRows) {
+    const cid = p.grid_cell_id;
+    if (!maskStats[cid]) maskStats[cid] = { cnt: 0, ha: 0, authors: new Set() };
+    maskStats[cid].cnt++;
+    let ha = Number(p.area_ha);
+    if (!ha || ha <= 0) {
+      try {
+        ha = polygonAreaHa(JSON.parse(p.geometry));
+      } catch (e) {
+        ha = 0;
+      }
+    }
+    maskStats[cid].ha += ha;
+    if (p.created_by && p.created_by !== 'deleted') maskStats[cid].authors.add(p.created_by);
+  }
+  for (const cid of Object.keys(maskStats)) {
+    const m = maskStats[cid];
+    m.ha = Math.round(m.ha * 10) / 10;
+    m.mapped_by = m.authors.size ? [...m.authors].sort().join(',') : null;
+  }
   const features = cells.map(c => {
-    const ms = maskStats[c.id] || { cnt: 0, ha: 0 };
+    const ms = maskStats[c.id] || { cnt: 0, ha: 0, mapped_by: null };
     return {
       type: 'Feature',
       properties: {
@@ -1559,8 +1673,10 @@ app.get('/api/grid', (req, res) => {
         updated_at: c.updated_at,
         worked_by: c.worked_by || null,
         finished_by: c.finished_by || null,
+        states: stateMap[c.id] || [],
         mask_count: ms.cnt,
-        mask_area_ha: ms.ha
+        mask_area_ha: ms.ha,
+        mapped_by: ms.mapped_by || null
       },
       geometry: JSON.parse(c.geometry)
     };
@@ -1626,11 +1742,12 @@ app.post('/api/grid/:id/lock', requireAuth, requireVerified, (req, res) => {
     [username, now, workedBy.join(','), now, Number(id)]
   );
 
+  const workedByStr = workedBy.join(',');
   io.emit('cell:locked', { cellId: Number(id), username });
-  io.emit('cell:statusChanged', { cellId: Number(id), status: 'in_use', username });
+  io.emit('cell:statusChanged', { cellId: Number(id), status: 'in_use', username, worked_by: workedByStr });
   logActivity(username, 'cell_lock', Number(id), null, { prev_status: cell.grid_status });
   persist();
-  res.json({ success: true, worked_by: workedBy.join(',') });
+  res.json({ success: true, worked_by: workedByStr });
 });
 
 app.post('/api/grid/:id/heartbeat', requireAuth, requireVerified, (req, res) => {
@@ -1713,19 +1830,30 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
     [newStatus, finishedBy, workedBy, now, Number(id)]
   );
 
-  const cellPolys = queryAll('SELECT geometry FROM polygons WHERE grid_cell_id = ?', [Number(id)]);
-  let cellMaskCount = cellPolys.length;
-  let cellAreaHa = 0;
-  for (const p of cellPolys) {
-    try { cellAreaHa += polygonAreaHa(JSON.parse(p.geometry)); } catch (e) {}
-  }
-  cellAreaHa = Math.round(cellAreaHa * 10) / 10;
+  const cellSummary = getCellMaskSummary(Number(id));
 
   io.emit('cell:unlocked', { cellId: Number(id), username });
-  io.emit('cell:statusChanged', { cellId: Number(id), status: newStatus, username, finished_by: finishedBy, worked_by: workedBy, mask_count: cellMaskCount, mask_area_ha: cellAreaHa });
+  io.emit('cell:statusChanged', {
+    cellId: Number(id),
+    status: newStatus,
+    username,
+    finished_by: finishedBy,
+    worked_by: workedBy,
+    mask_count: cellSummary.mask_count,
+    mask_area_ha: cellSummary.mask_area_ha,
+    mapped_by: cellSummary.mapped_by
+  });
   logActivity(username, 'cell_unlock', Number(id), null, JSON.stringify({ newStatus }));
   persist();
-  res.json({ success: true, status: newStatus, maskCount: cellMaskCount, areaHa: cellAreaHa, finished_by: finishedBy || null, worked_by: workedBy || null });
+  res.json({
+    success: true,
+    status: newStatus,
+    maskCount: cellSummary.mask_count,
+    areaHa: cellSummary.mask_area_ha,
+    finished_by: finishedBy || null,
+    worked_by: workedBy || null,
+    mapped_by: cellSummary.mapped_by
+  });
 });
 
 // ── Polygons ──
@@ -1795,11 +1923,17 @@ app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
   const effRole = getEffectiveRole(username);
   const polyRole = effRole === 'superadmin' ? 'admin' : effRole;
   const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: polyRole, created_at: now, updated_at: now, area_ha: areaHa };
-  io.emit('polygon:created', polygon);
+  const cellSummary = getCellMaskSummary(Number(grid_cell_id));
+  io.emit('polygon:created', {
+    ...polygon,
+    cell_mask_count: cellSummary.mask_count,
+    cell_mask_area_ha: cellSummary.mask_area_ha,
+    cell_mapped_by: cellSummary.mapped_by
+  });
   if (!isSuperAdmin(username)) bumpStat(isMobileUA(req) ? 'mask_count_mobile' : 'mask_count_desktop');
   logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
   persist();
-  res.json(polygon);
+  res.json({ ...polygon, cell_summary: cellSummary });
 });
 
 app.put('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
@@ -1846,7 +1980,14 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   }
 
   runSQL('DELETE FROM polygons WHERE id = ?', [id]);
-  io.emit('polygon:deleted', { id, grid_cell_id: poly.grid_cell_id });
+  const afterSummary = getCellMaskSummary(poly.grid_cell_id);
+  io.emit('polygon:deleted', {
+    id,
+    grid_cell_id: poly.grid_cell_id,
+    cell_mask_count: afterSummary.mask_count,
+    cell_mask_area_ha: afterSummary.mask_area_ha,
+    cell_mapped_by: afterSummary.mapped_by
+  });
   logActivity(username, 'polygon_delete', poly.grid_cell_id, id, null);
 
   if (cell) {
@@ -1866,7 +2007,16 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
         const now = new Date().toISOString();
         runSQL('UPDATE grid_cells SET grid_status = ?, finished_by = NULL, worked_by = NULL, updated_at = ? WHERE id = ?',
           [newStatus, now, poly.grid_cell_id]);
-        io.emit('cell:statusChanged', { cellId: poly.grid_cell_id, status: newStatus, username, finished_by: null, worked_by: null, mask_count: 0, mask_area_ha: 0 });
+        io.emit('cell:statusChanged', {
+          cellId: poly.grid_cell_id,
+          status: newStatus,
+          username,
+          finished_by: null,
+          worked_by: null,
+          mask_count: 0,
+          mask_area_ha: 0,
+          mapped_by: null
+        });
       } else if (cell.grid_status === 'in_use' && cell.finished_by) {
         const now = new Date().toISOString();
         runSQL('UPDATE grid_cells SET finished_by = NULL, updated_at = ? WHERE id = ?', [now, poly.grid_cell_id]);
@@ -1875,7 +2025,7 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   }
 
   persist();
-  res.json({ success: true });
+  res.json({ success: true, cell_summary: afterSummary });
 });
 
 // ── Import GeoJSON points (Super Admin) ──
@@ -2175,7 +2325,7 @@ app.put('/api/points/:id/validity', requireAuth, requireVerified, (req, res) => 
   if (!point) return res.status(404).json({ error: 'Ponto não encontrado' });
 
   const currentStatus = point.status || 0;
-  // Validity: 0=valid, 1=invalid, 2=uncertain — single field advances mod 3 (mirrored to not_valid).
+  // Validity: 0=valid, 1=invalid, 2=uncertain; single field advances mod 3 (mirrored to not_valid).
   const newStatus = (currentStatus + 1) % 3;
   runSQL('UPDATE occurrence_points SET status = ?, not_valid = ? WHERE id = ?', [newStatus, newStatus, Number(id)]);
 
@@ -2214,6 +2364,12 @@ app.get('/api/export/geojson', requireAuth, (req, res) => {
 
 app.get('/api/export/grid-status', (req, res) => {
   const cells = queryAll('SELECT * FROM grid_cells');
+  const stRows = queryAll('SELECT grid_cell_id, state FROM grid_cell_states');
+  const stMap = {};
+  for (const r of stRows) {
+    if (!stMap[r.grid_cell_id]) stMap[r.grid_cell_id] = [];
+    stMap[r.grid_cell_id].push(r.state);
+  }
   const fc = {
     type: 'FeatureCollection',
     features: cells.map(c => ({
@@ -2226,6 +2382,7 @@ app.get('/api/export/grid-status', (req, res) => {
         numpoints: c.numpoints || 0,
         worked_by: c.worked_by || null,
         finished_by: c.finished_by || null,
+        states: stMap[c.id] || [],
         updated_at: c.updated_at
       },
       geometry: JSON.parse(c.geometry)
@@ -2341,6 +2498,9 @@ async function start() {
     persist();
     console.log(`  Backfilled area_ha for ${emptyArea.length} polygons`);
   }
+
+  purgeExpiredUnverifiedUsers();
+  setInterval(purgeExpiredUnverifiedUsers, 24 * 60 * 60 * 1000);
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  Leucena Mapping Platform running at:`);

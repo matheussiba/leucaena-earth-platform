@@ -59,7 +59,13 @@ window.LeucenaCollab = (function () {
 
     socket.on('cell:statusChanged', (data) => {
       if (typeof LeucenaMap !== 'undefined') {
-        LeucenaMap.onCellStatusChanged(data.cellId, data.status, { finished_by: data.finished_by, worked_by: data.worked_by });
+        LeucenaMap.onCellStatusChanged(data.cellId, data.status, {
+          finished_by: data.finished_by,
+          worked_by: data.worked_by,
+          mask_count: data.mask_count,
+          mask_area_ha: data.mask_area_ha,
+          mapped_by: data.mapped_by
+        });
       }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.onCellStatusChanged) {
         LeucenaApp.onCellStatusChanged(data);
@@ -87,8 +93,16 @@ window.LeucenaCollab = (function () {
 
     // Polygon streams: remote add/edit/delete applied through LeucenaDrawing (no page refresh).
     socket.on('polygon:created', (data) => {
+      if (data.cell_mask_count !== undefined && typeof LeucenaMap !== 'undefined') {
+        LeucenaMap.patchCellMeta(data.grid_cell_id, {
+          mask_count: data.cell_mask_count,
+          mask_area_ha: data.cell_mask_area_ha,
+          mapped_by: data.cell_mapped_by
+        });
+      }
       if (data.created_by !== username && typeof LeucenaDrawing !== 'undefined') {
-        LeucenaDrawing.addRemotePolygon(data);
+        const { cell_mask_count, cell_mask_area_ha, cell_mapped_by, ...poly } = data;
+        LeucenaDrawing.addRemotePolygon(poly);
       }
     });
 
@@ -99,6 +113,13 @@ window.LeucenaCollab = (function () {
     });
 
     socket.on('polygon:deleted', (data) => {
+      if (data.cell_mask_count !== undefined && typeof LeucenaMap !== 'undefined') {
+        LeucenaMap.patchCellMeta(data.grid_cell_id, {
+          mask_count: data.cell_mask_count,
+          mask_area_ha: data.cell_mask_area_ha,
+          mapped_by: data.cell_mapped_by
+        });
+      }
       if (typeof LeucenaDrawing !== 'undefined') {
         LeucenaDrawing.removeRemotePolygon(data.id);
       }

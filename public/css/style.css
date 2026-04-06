@@ -118,6 +118,46 @@ html, body {
   padding: 32px 28px 24px;
 }
 
+/* Profile: scrollable body, close stays visible at top of card */
+#profile-modal.modal-overlay {
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.profile-modal-card {
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, 900px);
+  overflow: hidden;
+  padding-top: 40px;
+}
+
+.profile-modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
+  margin-right: -4px;
+}
+
+.profile-modal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.profile-modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.profile-modal-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
 #admin-pw-modal {
   z-index: 10001;
 }
@@ -125,6 +165,11 @@ html, body {
 /* Above #admin-users-modal (9999) so rename dialog stacks on top of admin panel */
 #admin-rename-modal {
   z-index: 10002;
+}
+
+/* Above rename + admin panel (same base z-index as overlay; DOM order would put panel on top) */
+#admin-delete-user-modal {
+  z-index: 10003;
 }
 
 .admin-pw-modal-body {
@@ -317,6 +362,35 @@ a.docs-logo-card:hover {
   font-size: 13px;
   margin-bottom: 12px;
   text-align: left;
+}
+
+.auth-unverified-panel {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+.auth-unverified-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+.auth-unverified-body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+.auth-unverified-resend-feedback {
+  font-size: 12px;
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+}
+.auth-unverified-resend-feedback.ok {
+  color: var(--green);
 }
 
 /* ── Password toggle eye ── */
@@ -1079,12 +1153,12 @@ a.docs-logo-card:hover {
   left: 0;
 }
 
-/* ── Sidebar Overlay (disabled on desktop — map stays interactive) ── */
+/* ── Sidebar Overlay (disabled on desktop; map stays interactive) ── */
 .sidebar-overlay {
   display: none;
 }
 
-/* Mobile-only bar at top of sidebar (close + title) — hidden on desktop */
+/* Mobile-only bar at top of sidebar (close + title); hidden on desktop */
 .sidebar-mobile-header {
   display: none;
 }
@@ -1202,6 +1276,42 @@ a.docs-logo-card:hover {
   text-align: right;
   max-width: 60%;
   word-break: break-word;
+}
+
+.cell-detail-admin .cell-detail-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cell-detail-value--small {
+  font-size: 12px;
+  max-width: 58%;
+}
+
+.cell-admin-mask-breakdown {
+  margin-top: 6px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--border);
+}
+
+.cell-admin-mask-breakdown-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+  margin-bottom: 6px;
+}
+
+.cell-admin-mask-breakdown-list {
+  margin: 0;
+  padding: 0 0 0 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.cell-admin-mask-breakdown-list li {
+  margin-bottom: 2px;
 }
 
 /* ── Users List ── */
@@ -1622,6 +1732,12 @@ a.docs-logo-card:hover {
   height: 24px;
   background: rgba(255,255,255,0.15);
   margin: 0 8px;
+}
+
+.tool-streetview-wrap {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
 }
 
 .tool-btn {
@@ -2454,7 +2570,7 @@ a.docs-logo-card:hover {
   }
 }
 
-/* ── View counter (admin) — clique abre debug; estilo âmbar ── */
+/* ── View counter (admin): clique abre debug; estilo âmbar ── */
 .view-counter {
   display: inline-flex;
   align-items: center;
@@ -2940,6 +3056,38 @@ a.docs-logo-card:hover {
 .admin-verify-badge.verified { background: rgba(34,197,94,.15); color: #22c55e; }
 .admin-verify-badge.not-verified { background: rgba(239,68,68,.15); color: #ef4444; }
 
+.admin-auth-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.admin-auth-badge.google {
+  background: rgba(66, 133, 244, 0.18);
+  color: #1a73e8;
+}
+.admin-auth-badge.email {
+  background: rgba(107, 114, 128, 0.2);
+  color: var(--text-secondary, #6b7280);
+}
+
+.admin-delete-user-phrase-display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-tertiary, rgba(0, 0, 0, 0.06));
+  border: 1px solid var(--border);
+  word-break: break-word;
+  user-select: text;
+}
+
 .admin-verify-btn {
   font-size: 11px;
   padding: 3px 10px;
@@ -3124,6 +3272,32 @@ a.docs-logo-card:hover {
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
+}
+
+.about-cards--collab {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.about-card--collab {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14px 10px;
+  gap: 8px;
+}
+.about-card--collab .about-card-thumb {
+  width: 48px;
+  height: 48px;
+  font-size: 18px;
+}
+.about-card--collab .about-card-name {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.about-card--collab .about-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* ── Ranking badge (Top 1/2/3) ── */
@@ -3482,6 +3656,9 @@ a.docs-logo-card:hover {
   .about-cards {
     grid-template-columns: 1fr;
   }
+  .about-cards--collab {
+    grid-template-columns: repeat(2, 1fr);
+  }
 
   .about-card {
     flex-direction: column;
@@ -3521,7 +3698,7 @@ a.docs-logo-card:hover {
     --sidebar-width: 100vw;
   }
 
-  /* Sidebar full-width: default toggle position (left: 100vw) hides it — keep it visible on the right */
+  /* Sidebar full-width: default toggle position (left: 100vw) hides it; keep it visible on the right */
   #main-content.sidebar-open .sidebar-toggle {
     left: auto;
     right: 8px;
@@ -3853,7 +4030,7 @@ a.docs-logo-card:hover {
   color: var(--text-secondary);
 }
 
-/* .view-counter.debug-active — reservado se o checkbox Debug voltar ao HTML */
+/* .view-counter.debug-active: reservado se o checkbox Debug voltar ao HTML */
 
 #debug-modal .modal-card {
   max-height: 85vh;

@@ -99,6 +99,24 @@ async function initDB() {
   try { db.run('ALTER TABLE grid_cells ADD COLUMN finished_by TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE grid_cells ADD COLUMN grid_id TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE grid_cells ADD COLUMN numpoints INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE grid_cells ADD COLUMN state TEXT'); } catch (e) { /* already exists */ }
+  try {
+    db.run("UPDATE grid_cells SET state = 'SP' WHERE state IS NULL OR TRIM(COALESCE(state, '')) = ''");
+  } catch (e) { /* ignore */ }
+
+  db.run(`CREATE TABLE IF NOT EXISTS grid_cell_states (
+    grid_cell_id INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    PRIMARY KEY (grid_cell_id, state),
+    FOREIGN KEY (grid_cell_id) REFERENCES grid_cells(id)
+  )`);
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_gcs_state ON grid_cell_states(state)'); } catch (e) { /* ignore */ }
+  // Migrate legacy state column into junction table (one-time backfill)
+  try {
+    db.run(`INSERT OR IGNORE INTO grid_cell_states (grid_cell_id, state)
+            SELECT id, state FROM grid_cells
+            WHERE state IS NOT NULL AND TRIM(state) != ''`);
+  } catch (e) { /* ignore */ }
   try { db.run('ALTER TABLE occurrence_points ADD COLUMN layer TEXT DEFAULT \'crowdmapping\''); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE occurrence_points ADD COLUMN status INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN full_name TEXT'); } catch (e) { /* already exists */ }

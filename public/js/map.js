@@ -65,7 +65,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       map.setZoom(map.getZoom() - 1);
     });
 
-    let _prevPointScale = getPointScale(); // icon scale flips at zoom 14↔15 only—skip refresh on every zoom tick
+    let _prevPointScale = getPointScale(); // icon scale flips at zoom 14↔15 only; skip refresh on every zoom tick
     map.addListener('zoom_changed', () => {
       if (_editZoomEnforced && map.getZoom() <= _editMinZoom && _zoomWarnCount < 1) {
         _zoomWarnCount++;
@@ -556,8 +556,27 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (extra && extra.worked_by !== undefined) {
         gridData[cellId].worked_by = extra.worked_by;
       }
+      if (extra && extra.mask_count !== undefined) {
+        gridData[cellId].mask_count = extra.mask_count;
+      }
+      if (extra && extra.mask_area_ha !== undefined) {
+        gridData[cellId].mask_area_ha = extra.mask_area_ha;
+      }
+      if (extra && extra.mapped_by !== undefined) {
+        gridData[cellId].mapped_by = extra.mapped_by;
+      }
       updateCellAppearance(cellId, gridData[cellId]);
       updateFilterCounts();
+    }
+  }
+
+  function patchCellMeta(cellId, patch) {
+    if (!gridData[cellId]) return;
+    Object.assign(gridData[cellId], patch);
+    updateCellAppearance(cellId, gridData[cellId]);
+    updateFilterCounts();
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.refreshCellSidebarIfSelected) {
+      LeucenaApp.refreshCellSidebarIfSelected(cellId);
     }
   }
 
@@ -732,7 +751,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return { ...base, strokeColor: SELECTED_STROKE, strokeWeight: 2.4, scale: base.scale + 1 };
   }
 
-  function refreshPointIcons() { // full pass on icons—only invoked on scale-threshold zoom crossings
+  function refreshPointIcons() { // full pass on icons; only invoked on scale-threshold zoom crossings
     for (const entry of Object.values(pointMarkersById)) {
       if (selectedPointIds.has(entry.data.id)) {
         entry.marker.setIcon(getSelectedPointIcon(entry.data.status || entry.data.not_valid || 0, entry.data.layer));
@@ -1035,7 +1054,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     _zoomWarnCount = 0;
     map.setOptions({ minZoom: _editMinZoom });
 
-    // No API restriction — we handle pan enforcement manually via snap-back
+    // No API restriction; we handle pan enforcement manually via snap-back
     map.setOptions({ restriction: null });
 
     _editSafeCenter = map.getCenter();
@@ -1447,6 +1466,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     onCellLocked,
     onCellUnlocked,
     onCellStatusChanged,
+    patchCellMeta,
     getCellBounds,
     getShowPolygons,
     showStreetViewCoverage,

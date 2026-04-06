@@ -8,17 +8,17 @@
   __GA_SCRIPT__
 
   <!-- Primary SEO -->
-  <title>Leucena Invasora — Mapeamento e Erradicação de Leucaena leucocephala | ESALQ/USP</title>
+  <title>Leucena Invasora: Mapeamento e Erradicação de Leucaena leucocephala | ESALQ/USP</title>
   <meta name="description" content="Leucena invasora: plataforma de mapeamento e apoio à erradicação de Leucaena leucocephala no Estado de São Paulo. Pesquisa ESALQ/USP com sensoriamento remoto, LiDAR, deep learning e ciência cidadã para estimativa de biomassa e estoque de carbono dessa espécie exótica invasora. Uma das 100 piores invasoras do mundo segundo a IUCN.">
   <meta name="keywords" content="leucena, leucaena, Leucaena leucocephala, espécie invasora, erradicação leucena, mapeamento leucena, planta invasora, espécie exótica invasora, carbon stock, carbon sequestration, estoque de carbono, biomass estimation, estimativa de biomassa, aboveground biomass, AGB, remote sensing, sensoriamento remoto, inteligência artificial, deep learning, CNN, LiDAR, multispectral imagery, imagens multiespectrais, ESALQ, USP, Universidade de São Paulo, Piracicaba, copa arbórea, crowdmapping, invasive species, white leadtree, biodiversidade, meio ambiente, prefeitura leucena, plano erradicação leucena, Instituto Hórus, IUCN 100 piores invasoras, Fabaceae, árvore exótica, ciência cidadã, citizen science, tree canopy, canopy segmentation, tree crown delineation, tropical invasive, biological invasion">
-  <meta name="author" content="Matheus Siqueira Barros — ESALQ/USP">
+  <meta name="author" content="Matheus Siqueira Barros, ESALQ/USP">
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
   <link rel="canonical" href="https://leucaena.earth">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://leucaena.earth">
-  <meta property="og:title" content="Leucena Invasora — Mapeamento e Erradicação de Leucaena leucocephala | ESALQ/USP">
+  <meta property="og:title" content="Leucena Invasora: Mapeamento e Erradicação de Leucaena leucocephala | ESALQ/USP">
   <meta property="og:description" content="Leucena invasora: plataforma de mapeamento e apoio à erradicação de Leucaena leucocephala. Pesquisa ESALQ/USP com sensoriamento remoto, LiDAR e deep learning para estimar biomassa e estoque de carbono no Estado de São Paulo.">
   <meta property="og:image" content="https://leucaena.earth/img/leucaena-earth-logo.png">
   <meta property="og:image:width" content="512">
@@ -30,7 +30,7 @@
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Leucena Invasora — Mapping & Eradication of Leucaena leucocephala | ESALQ/USP">
+  <meta name="twitter:title" content="Leucena Invasora: Mapping & Eradication of Leucaena leucocephala | ESALQ/USP">
   <meta name="twitter:description" content="Invasive Leucaena: collaborative mapping and eradication support for Leucaena leucocephala. Remote sensing, LiDAR, deep learning, biomass and carbon stock estimation. Research by ESALQ/USP.">
   <meta name="twitter:image" content="https://leucaena.earth/img/leucaena-earth-logo.png">
 
@@ -51,7 +51,7 @@
     "description": "Leucena invasora: plataforma colaborativa de mapeamento e apoio à erradicação de Leucaena leucocephala no Estado de São Paulo. Pesquisa ESALQ/USP com sensoriamento remoto, LiDAR, deep learning e ciência cidadã para estimativa de biomassa e estoque de carbono. IUCN 100 piores espécies invasoras.",
     "parentOrganization": {
       "@type": "CollegeOrUniversity",
-      "name": "ESALQ — Universidade de São Paulo",
+      "name": "ESALQ, Universidade de São Paulo",
       "url": "https://www.esalq.usp.br",
       "address": { "@type": "PostalAddress", "addressLocality": "Piracicaba", "addressRegion": "SP", "addressCountry": "BR" }
     },
@@ -69,7 +69,7 @@
   {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "Leucaena Earth — Mapa Interativo",
+    "name": "Leucaena Earth: Mapa Interativo",
     "url": "https://map.leucaena.earth",
     "applicationCategory": "EnvironmentalScience",
     "operatingSystem": "Web",
@@ -292,11 +292,10 @@
     #team { background: linear-gradient(180deg, #0d1424, var(--bg)); text-align: center; }
     .team-grid { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; margin-top: 48px; }
     .team-card { width: 220px; padding: 32px 20px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); text-align: center; transition: all 0.3s; position: relative; }
-    .team-rank-badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 999px; margin-bottom: 12px; }
-    .team-rank-badge--gold { background: linear-gradient(135deg, #fcd34d, #f59e0b); color: #422006; box-shadow: 0 2px 12px rgba(245, 158, 11, 0.35); }
-    .team-rank-badge--silver { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; box-shadow: 0 2px 12px rgba(156, 163, 175, 0.2); }
-    .team-rank-badge--bronze { background: linear-gradient(135deg, #d97757, #92400e); color: #fff; box-shadow: 0 2px 12px rgba(146, 64, 14, 0.25); }
     .team-card:hover { border-color: rgba(34,197,94,0.2); transform: translateY(-4px); box-shadow: 0 8px 40px rgba(34,197,94,0.06); }
+    .team-avatar-wrap { position: relative; width: 80px; height: 80px; margin: 0 auto 16px; flex-shrink: 0; }
+    .team-avatar-wrap .team-avatar { margin: 0; width: 100%; height: 100%; }
+    .team-rank-medal { position: absolute; right: -6px; bottom: -4px; font-size: 26px; line-height: 1; z-index: 2; cursor: help; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45)); user-select: none; }
     .team-avatar { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 16px; overflow: hidden; background: linear-gradient(135deg, var(--green-dim), var(--lime)); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: white; border: 3px solid var(--border); }
     .team-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .team-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
@@ -309,6 +308,8 @@
     .team-avatar a { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; text-decoration: none; color: inherit; font-size: inherit; font-weight: inherit; }
     .team-section-label { width: 100%; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--green); margin-bottom: -8px; }
     .team-section-grid { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; width: 100%; }
+    .team-card--collab { padding: 24px 20px; }
+    .team-card--collab .team-name { margin-bottom: 0; }
     .team-section-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 16px auto; }
 
     /* ── Collaborate ── */
@@ -489,10 +490,10 @@
       </a>
     </div>
     <div class="hero-stats" id="hero-stats">
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-cells">—</div><div class="hero-stat-label" data-i18n-land="stats.cells"></div></div>
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-masks">—</div><div class="hero-stat-label" data-i18n-land="stats.masks"></div></div>
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-points">—</div><div class="hero-stat-label" data-i18n-land="stats.points"></div></div>
-      <div class="hero-stat"><div class="hero-stat-num" id="stat-collabs">—</div><div class="hero-stat-label" data-i18n-land="stats.collabs"></div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-cells">-</div><div class="hero-stat-label" data-i18n-land="stats.cells"></div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-masks">-</div><div class="hero-stat-label" data-i18n-land="stats.masks"></div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-points">-</div><div class="hero-stat-label" data-i18n-land="stats.points"></div></div>
+      <div class="hero-stat"><div class="hero-stat-num" id="stat-collabs">-</div><div class="hero-stat-label" data-i18n-land="stats.collabs"></div></div>
     </div>
 
     <!-- Progress Card -->
@@ -608,7 +609,7 @@
         <h2 class="section-title" data-i18n-land="map.title"></h2>
         <p class="section-desc" style="margin:0 auto;" data-i18n-land="map.desc"></p>
         <div class="map-frame">
-          <img src="/img/leucaena-earth-preview.png" alt="Leucaena Earth — Mapa interativo" loading="lazy">
+          <img src="/img/leucaena-earth-preview.png" alt="Leucaena Earth: Mapa interativo" loading="lazy">
           <div class="map-frame-overlay">
             <a href="__MAP_URL__" class="btn-primary">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
@@ -773,7 +774,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; 2026 Leucaena Earth — Matheus Siqueira Barros · ESALQ/USP · Piracicaba, SP, Brasil</p>
+      <p>&copy; 2026 Leucaena Earth · Matheus Siqueira Barros · ESALQ/USP · Piracicaba, SP, Brasil</p>
     </div>
   </footer>
 
@@ -791,16 +792,16 @@
       'nav.signUp':      { pt: 'Cadastre-se', en: 'Sign Up', es: 'Regístrese' },
       'nav.interactiveMap': { pt: 'Mapa Interativo', en: 'Interactive Map', es: 'Mapa Interactivo' },
 
-      'hero.badge': { pt: 'Plataforma ativa — mapeamento em andamento', en: 'Platform active — mapping in progress', es: 'Plataforma activa — mapeo en progreso' },
+      'hero.badge': { pt: 'Plataforma ativa: mapeamento em andamento', en: 'Platform active: mapping in progress', es: 'Plataforma activa: mapeo en progreso' },
       'hero.title': {
         pt: 'Mapeando a <span class="gradient">Leucena Invasora</span> no Estado de São Paulo',
         en: 'Mapping <span class="gradient">Invasive Leucaena</span> in the State of São Paulo',
         es: 'Mapeando la <span class="gradient">Leucaena Invasora</span> en el Estado de São Paulo'
       },
       'hero.sub': {
-        pt: 'Desenvolvido na <strong>ESALQ — Universidade de São Paulo</strong>, em Piracicaba, este projeto combina <strong>sensoriamento remoto</strong> e <strong>inteligência artificial</strong> para mapear a espécie exótica invasora <em>Leucaena leucocephala</em>. A primeira fase concentra-se no Estado de São Paulo, estabelecendo a base metodológica para futuras expansões.',
-        en: 'Developed at <strong>ESALQ — University of São Paulo</strong>, in Piracicaba, Brazil, this project combines <strong>remote sensing</strong> and <strong>artificial intelligence</strong> to map the invasive alien species <em>Leucaena leucocephala</em>. The first phase focuses on the State of São Paulo, establishing the methodological foundation for future expansions.',
-        es: 'Desarrollado en la <strong>ESALQ — Universidad de São Paulo</strong>, en Piracicaba, Brasil, este proyecto combina <strong>teledetección</strong> e <strong>inteligencia artificial</strong> para mapear la especie exótica invasora <em>Leucaena leucocephala</em>. La primera fase se concentra en el Estado de São Paulo, estableciendo la base metodológica para futuras expansiones.'
+        pt: 'Desenvolvido na <strong>ESALQ, Universidade de São Paulo</strong>, em Piracicaba, este projeto combina <strong>sensoriamento remoto</strong> e <strong>inteligência artificial</strong> para mapear a espécie exótica invasora <em>Leucaena leucocephala</em>. A primeira fase concentra-se no Estado de São Paulo, estabelecendo a base metodológica para futuras expansões.',
+        en: 'Developed at <strong>ESALQ, University of São Paulo</strong>, in Piracicaba, Brazil, this project combines <strong>remote sensing</strong> and <strong>artificial intelligence</strong> to map the invasive alien species <em>Leucaena leucocephala</em>. The first phase focuses on the State of São Paulo, establishing the methodological foundation for future expansions.',
+        es: 'Desarrollado en la <strong>ESALQ, Universidad de São Paulo</strong>, en Piracicaba, Brasil, este proyecto combina <strong>teledetección</strong> e <strong>inteligencia artificial</strong> para mapear la especie exótica invasora <em>Leucaena leucocephala</em>. La primera fase se concentra en el Estado de São Paulo, estableciendo la base metodológica para futuras expansiones.'
       },
       'hero.signUp':    { pt: 'Cadastre-se e comece a mapear', en: 'Sign up and start mapping', es: 'Regístrese y empiece a mapear' },
       'hero.cta':       { pt: 'Acessar o Mapa Interativo', en: 'Access the Interactive Map', es: 'Acceder al Mapa Interactivo' },
@@ -874,11 +875,11 @@
 
       'species.label': { pt: 'A Espécie Invasora', en: 'The Invasive Species', es: 'La Especie Invasora' },
       'species.title': {
-        pt: '<em>Leucaena leucocephala</em> — Uma das 100 piores espécies invasoras do mundo',
-        en: '<em>Leucaena leucocephala</em> — One of the 100 worst invasive species in the world',
-        es: '<em>Leucaena leucocephala</em> — Una de las 100 peores especies invasoras del mundo'
+        pt: '<em>Leucaena leucocephala</em>: Uma das 100 piores espécies invasoras do mundo',
+        en: '<em>Leucaena leucocephala</em>: One of the 100 worst invasive species in the world',
+        es: '<em>Leucaena leucocephala</em>: Una de las 100 peores especies invasoras del mundo'
       },
-      'species.photo1': { pt: 'Leucena em área urbana — porte típico da espécie invasora', en: 'Leucaena in an urban area — typical invasive species form', es: 'Leucaena en área urbana — porte típico de la especie invasora' },
+      'species.photo1': { pt: 'Leucena em área urbana: porte típico da espécie invasora', en: 'Leucaena in an urban area: typical invasive species form', es: 'Leucaena en área urbana: porte típico de la especie invasora' },
       'species.photo2': { pt: 'Flores esféricas brancas, folhas bipinadas e vagens', en: 'White spherical flowers, bipinnate leaves and seed pods', es: 'Flores esféricas blancas, hojas bipinnadas y vainas' },
 
       'map.label': { pt: 'A Plataforma', en: 'The Platform', es: 'La Plataforma' },
@@ -887,15 +888,15 @@
       'map.cta': { pt: 'Abrir Mapa Interativo', en: 'Open Interactive Map', es: 'Abrir Mapa Interactivo' },
 
       'news.label': { pt: 'Na Mídia', en: 'In the Media', es: 'En los Medios' },
-      'news.title': { pt: 'Erradicação de Leucena no Brasil — Notícias', en: 'Leucaena Eradication in Brazil — News', es: 'Erradicación de Leucaena en Brasil — Noticias' },
+      'news.title': { pt: 'Erradicação de Leucena no Brasil: Notícias', en: 'Leucaena Eradication in Brazil: News', es: 'Erradicación de Leucaena en Brasil: Noticias' },
       'news.desc': { pt: 'A leucena é tema de projetos de lei, planos de erradicação municipais e reportagens em todo o Brasil.', en: 'Leucaena is the subject of bills, municipal eradication plans and media reports across Brazil.', es: 'La leucaena es tema de proyectos de ley, planes de erradicación municipales y reportajes en todo Brasil.' },
 
       'team.label': { pt: 'Nosso Time', en: 'Our Team', es: 'Nuestro Equipo' },
       'team.title': { pt: 'Quem está por trás do projeto', en: 'Who is behind the project', es: 'Quién está detrás del proyecto' },
       'team.desc': {
-        pt: 'Pesquisadores da <strong>ESALQ — Universidade de São Paulo</strong> e colaboradores voluntários que tornam este mapeamento possível.',
-        en: 'Researchers from <strong>ESALQ — University of São Paulo</strong> and volunteer contributors who make this mapping possible.',
-        es: 'Investigadores de la <strong>ESALQ — Universidad de São Paulo</strong> y colaboradores voluntarios que hacen posible este mapeo.'
+        pt: 'Pesquisadores da <strong>ESALQ, Universidade de São Paulo</strong> e colaboradores voluntários que tornam este mapeamento possível.',
+        en: 'Researchers from <strong>ESALQ, University of São Paulo</strong> and volunteer contributors who make this mapping possible.',
+        es: 'Investigadores de la <strong>ESALQ, Universidad de São Paulo</strong> y colaboradores voluntarios que hacen posible este mapeo.'
       },
 
       'collab.label': { pt: 'Colabore com a Pesquisa', en: 'Contribute to the Research', es: 'Colabore con la Investigación' },
@@ -933,9 +934,9 @@
       'footer.navTitle': { pt: 'Navegação', en: 'Navigation', es: 'Navegación' },
       'footer.refsTitle': { pt: 'Referências', en: 'References', es: 'Referencias' },
       'footer.desc': {
-        pt: 'Plataforma de mapeamento colaborativo de <em>Leucaena leucocephala</em> no Estado de São Paulo. Projeto de pesquisa de doutorado na ESALQ — Universidade de São Paulo.',
-        en: 'Collaborative mapping platform for <em>Leucaena leucocephala</em> in the State of São Paulo. PhD research project at ESALQ — University of São Paulo.',
-        es: 'Plataforma de mapeo colaborativo de <em>Leucaena leucocephala</em> en el Estado de São Paulo. Proyecto de investigación doctoral en ESALQ — Universidad de São Paulo.'
+        pt: 'Plataforma de mapeamento colaborativo de <em>Leucaena leucocephala</em> no Estado de São Paulo. Projeto de pesquisa de doutorado na ESALQ, Universidade de São Paulo.',
+        en: 'Collaborative mapping platform for <em>Leucaena leucocephala</em> in the State of São Paulo. PhD research project at ESALQ, University of São Paulo.',
+        es: 'Plataforma de mapeo colaborativo de <em>Leucaena leucocephala</em> en el Estado de São Paulo. Proyecto de investigación doctoral en ESALQ, Universidad de São Paulo.'
       }
     };
 
@@ -947,9 +948,18 @@
 
     const teamRoles = { pt: { i: 'Idealizador', m: 'Membro', c: 'Colaborador' }, en: { i: 'Founder', m: 'Member', c: 'Contributor' }, es: { i: 'Idealizador', m: 'Miembro', c: 'Colaborador' } };
     const sectionLabels = {
-      pt: { idealizadores: 'Idealizadores', team: 'Equipe', contributors: 'Colaboradores', top1: 'Top 1', top2: 'Top 2', top3: 'Top 3' },
-      en: { idealizadores: 'Founders', team: 'Team', contributors: 'Contributors', top1: 'Top 1', top2: 'Top 2', top3: 'Top 3' },
-      es: { idealizadores: 'Creadores', team: 'Equipo', contributors: 'Colaboradores', top1: 'Top 1', top2: 'Top 2', top3: 'Top 3' }
+      pt: {
+        idealizadores: 'Idealizadores', team: 'Equipe', contributors: 'Colaboradores',
+        top1MedalTitle: 'Top 1 colaborador', top2MedalTitle: 'Top 2 colaborador', top3MedalTitle: 'Top 3 colaborador'
+      },
+      en: {
+        idealizadores: 'Founders', team: 'Team', contributors: 'Contributors',
+        top1MedalTitle: 'Top 1 contributor', top2MedalTitle: 'Top 2 contributor', top3MedalTitle: 'Top 3 contributor'
+      },
+      es: {
+        idealizadores: 'Creadores', team: 'Equipo', contributors: 'Colaboradores',
+        top1MedalTitle: 'Top 1 colaborador', top2MedalTitle: 'Top 2 colaborador', top3MedalTitle: 'Top 3 colaborador'
+      }
     };
     
     function detectLang() {
@@ -1033,28 +1043,34 @@
     const linkedinSvg = '<svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>';
     const scholarSvg = '<svg viewBox="0 0 24 24"><path d="M5.242 13.769L0 9.5 12 0l12 9.5-5.242 4.269C17.548 11.249 14.978 9.5 12 9.5c-2.977 0-5.548 1.748-6.758 4.269zM12 10a7 7 0 100 14 7 7 0 000-14z"/></svg>';
 
-    function contributorRankBadge(index, labels) {
-      if (index === 0) return '<div class="team-rank-badge team-rank-badge--gold">' + labels.top1 + '</div>';
-      if (index === 1) return '<div class="team-rank-badge team-rank-badge--silver">' + labels.top2 + '</div>';
-      if (index === 2) return '<div class="team-rank-badge team-rank-badge--bronze">' + labels.top3 + '</div>';
+    function contributorRankMedal(index, labels) {
+      const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      const titleAttr = t => ' title="' + esc(t) + '"';
+      if (index === 0) return '<span class="team-rank-medal" role="img" aria-label="' + esc(labels.top1MedalTitle) + '"' + titleAttr(labels.top1MedalTitle) + '>🥇</span>';
+      if (index === 1) return '<span class="team-rank-medal" role="img" aria-label="' + esc(labels.top2MedalTitle) + '"' + titleAttr(labels.top2MedalTitle) + '>🥈</span>';
+      if (index === 2) return '<span class="team-rank-medal" role="img" aria-label="' + esc(labels.top3MedalTitle) + '"' + titleAttr(labels.top3MedalTitle) + '>🥉</span>';
       return '';
     }
 
-    function buildCard(u, roleLabel, rankBadgeHtml) {
-      rankBadgeHtml = rankBadgeHtml || '';
+    function buildCard(u, roleLabel, rankMedalHtml, collabMinimal) {
+      rankMedalHtml = rankMedalHtml || '';
+      collabMinimal = !!collabMinimal;
       const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       const avContent = u.photo ? '<img src="' + u.photo + '" alt="' + (u.full_name || u.username) + '">' : initials;
-      const avInner = u.scholar
+      const avInner = !collabMinimal && u.scholar
         ? '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + avContent + '</a>'
         : avContent;
       let social = '';
-      if (u.linkedin || u.scholar) {
+      if (!collabMinimal && (u.linkedin || u.scholar)) {
         social = '<div class="team-social">';
         if (u.linkedin) social += '<a href="' + u.linkedin + '" target="_blank" rel="noopener" title="LinkedIn">' + linkedinSvg + '</a>';
         if (u.scholar) social += '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + scholarSvg + '</a>';
         social += '</div>';
       }
-      return '<article class="team-card">' + rankBadgeHtml + '<div class="team-avatar">' + avInner + '</div><div class="team-name">' + (u.full_name || u.username) + '</div><div class="team-role">' + roleLabel + '</div><div class="team-desc">' + (u.description || '') + '</div>' + social + '</article>';
+      const roleBlock = (!collabMinimal && roleLabel) ? '<div class="team-role">' + roleLabel + '</div>' : '';
+      const descBlock = !collabMinimal ? '<div class="team-desc">' + (u.description || '') + '</div>' : '';
+      const cardClass = collabMinimal ? 'team-card team-card--collab' : 'team-card';
+      return '<article class="' + cardClass + '"><div class="team-avatar-wrap"><div class="team-avatar">' + avInner + '</div>' + rankMedalHtml + '</div><div class="team-name">' + (u.full_name || u.username) + '</div>' + roleBlock + descBlock + social + '</article>';
     }
 
     function renderTeam() {
@@ -1075,10 +1091,10 @@
       if (contribs.length > 0) {
         if (equipe.length > 0) grid.innerHTML += '<div class="team-section-divider"></div>';
         grid.innerHTML += '<div class="team-section-label">' + labels.contributors + '</div>';
-        grid.innerHTML += '<div class="team-section-grid">' + contribs.map((u, idx) => buildCard(u, roles.c, idx < 3 ? contributorRankBadge(idx, labels) : '')).join('') + '</div>';
+        grid.innerHTML += '<div class="team-section-grid team-section-grid--collab">' + contribs.map((u, idx) => buildCard(u, '', idx < 3 ? contributorRankMedal(idx, labels) : '', true)).join('') + '</div>';
       }
       if (equipe.length === 0 && contribs.length === 0) {
-         grid.innerHTML = '<p style="color:var(--text-muted)">—</p>';
+         grid.innerHTML = '<p style="color:var(--text-muted)">-</p>';
       }
     }
 
