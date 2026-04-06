@@ -271,6 +271,15 @@ html, body {
   justify-content: center;
   min-height: 64px;
 }
+a.docs-logo-card {
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+a.docs-logo-card:hover {
+  border-color: rgba(34, 197, 94, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
 .docs-logo-card img {
   max-width: 100%;
   max-height: 46px;
@@ -1429,6 +1438,19 @@ html, body {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Map type + labels: keep on one row (span + block-ish children no longer stack) */
+#tool-maptools {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+#tool-maptools .toolbar-checkbox {
+  margin-left: 0;
 }
 
 .toolbar-right {

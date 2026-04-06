@@ -919,22 +919,29 @@ window.LeucenaI18n = (function () {
 <p>Atualmente, nossos esforços estão concentrados no estado de <strong>São Paulo</strong>, onde estamos estruturando a base de dados e os métodos. Ao mesmo tempo, a plataforma está sendo desenvolvida de forma <strong>aberta</strong> e <strong>escalável</strong>, permitindo sua aplicação em outras regiões e contextos no futuro.</p>
 <p>Se você se interessa por espécies invasoras, geotecnologias ou carbono, vale muito a pena dar uma olhada em <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
 
-<h3>Título do Projeto</h3><p><em>Revelando a distribuição espacial e a biomassa aérea de <strong>Leucaena leucocephala</strong> no Estado de São Paulo usando sensoriamento remoto e inteligência artificial</em></p><h3>Pesquisador</h3><p>Matheus Siqueira Barros<br>Doutorando</p><h3>Orientador</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidade de São Paulo</p><h3>Descrição do Projeto</h3><p>Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, Brasil. O projeto combina imagens ópticas de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com técnicas de inteligência artificial para detectar áreas dominadas por essa espécie e estimar sua biomassa.</p><p>O projeto desenvolve métodos de aprendizado profundo, especialmente redes neurais convolucionais (CNNs), para realizar a fusão de dados LiDAR e ópticos e mapear áreas dominadas por <em>Leucaena</em> em escala estadual.</p><h3>Objetivo da Plataforma</h3><p>Esta plataforma foi desenvolvida para apoiar a pesquisa permitindo:</p><ul><li>Mapeamento colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalização de máscaras da copa por colaboradores</li><li>Validação entre pontos e polígonos mapeados</li><li>Rastreamento das contribuições de cada participante</li><li>Exportação dos dados mapeados para análises posteriores</li></ul><h3>Equipe do projeto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contato</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Local</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
+<h3>Título do Projeto</h3><p><em>Revelando a distribuição espacial e a biomassa aérea de <strong>Leucaena leucocephala</strong> no Estado de São Paulo usando sensoriamento remoto e inteligência artificial</em></p><h3>Pesquisador</h3><p>Matheus Siqueira Barros</p><h3>Orientador</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Descrição do Projeto</h3><p>Esta pesquisa investiga a distribuição espacial e a biomassa aérea da espécie invasora <em>Leucaena leucocephala</em> em todo o estado de São Paulo, Brasil. O projeto combina imagens ópticas de altíssima resolução espacial (25 cm de GSD) e dados LiDAR com técnicas de inteligência artificial para detectar áreas dominadas por essa espécie e estimar sua biomassa.</p><p>O projeto desenvolve métodos de aprendizado profundo, especialmente redes neurais convolucionais (CNNs), para realizar a fusão de dados LiDAR e ópticos e mapear áreas dominadas por <em>Leucaena</em> em escala estadual.</p><h3>Objetivo da Plataforma</h3><p>Esta plataforma foi desenvolvida para apoiar a pesquisa permitindo:</p><ul><li>Mapeamento colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalização de máscaras da copa por colaboradores</li><li>Validação entre pontos e polígonos mapeados</li><li>Rastreamento das contribuições de cada participante</li><li>Exportação dos dados mapeados para análises posteriores</li></ul><h3>Equipe do projeto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contato</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Local</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
 
 <div class="docs-logos">
   <div class="docs-logos-section">
-    <div class="docs-logos-title">Parceiros</div>
+    <div class="docs-logos-title">Financiamento</div>
     <div class="docs-logos-grid">
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/IGC.jpg" alt="IGC"></div>
+      <a class="docs-logo-card docs-logo-img" href="https://fapesp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></a>
     </div>
   </div>
   <div class="docs-logos-section">
-    <div class="docs-logos-title">Financiamento</div>
+    <div class="docs-logos-title">Realização</div>
     <div class="docs-logos-grid">
-      <div class="docs-logo-card docs-logo-img"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></div>
+      <a class="docs-logo-card docs-logo-img" href="http://esalq.usp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://ccarbon.usp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></a>
+    </div>
+  </div>
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Parceiros</div>
+    <div class="docs-logos-grid">
+      <a class="docs-logo-card docs-logo-img" href="https://www.igc.sp.gov.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/IGC.jpg" alt="IGC"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/florestal_brasil/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/florestal-brasil.jpg" alt="Florestal Brasil"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.jpg" alt="Identplantas"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.cepegeo.ufscar.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/cepe-geo.jpg" alt="CePE-Geo"></a>
     </div>
   </div>
 </div>`;
@@ -947,22 +954,29 @@ window.LeucenaI18n = (function () {
 <p>Our current efforts focus on the state of <strong>São Paulo</strong>, where we are structuring the database and methods. At the same time, the platform is being developed in an <strong>open</strong> and <strong>scalable</strong> way, allowing future application in other regions and contexts.</p>
 <p>If you are interested in invasive species, geotechnologies, or carbon, take a look at <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
 
-<h3>Project Title</h3><p><em>Revealing the spatial distribution and aboveground biomass of <strong>Leucaena leucocephala</strong> in the State of São Paulo using remote sensing and artificial intelligence</em></p><h3>Researcher</h3><p>Matheus Siqueira Barros<br>PhD Candidate</p><h3>Advisor</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – University of São Paulo</p><h3>Project Description</h3><p>This research investigates the spatial distribution and aboveground biomass of the invasive species <em>Leucaena leucocephala</em> across the state of São Paulo, Brazil. The project combines very high spatial resolution optical imagery (25 cm GSD) and LiDAR data with artificial intelligence techniques to detect areas dominated by this species and estimate its biomass.</p><p>The project develops deep learning methods, especially convolutional neural networks (CNNs), to fuse LiDAR and optical data and map <em>Leucaena</em>-dominated areas at the state scale.</p><h3>Platform Objective</h3><p>This platform was developed to support the research by enabling:</p><ul><li>Collaborative mapping of <em>Leucaena leucocephala</em> patches</li><li>Canopy mask digitization by contributors</li><li>Validation between mapped points and polygons</li><li>Tracking of each participant's contributions</li><li>Export of mapped data for further analysis</li></ul><h3>Project team</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contact</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Location</h3><p>Piracicaba – São Paulo – Brazil<br>${month} ${year}</p>
+<h3>Project Title</h3><p><em>Revealing the spatial distribution and aboveground biomass of <strong>Leucaena leucocephala</strong> in the State of São Paulo using remote sensing and artificial intelligence</em></p><h3>Researcher</h3><p>Matheus Siqueira Barros</p><h3>Advisor</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Project Description</h3><p>This research investigates the spatial distribution and aboveground biomass of the invasive species <em>Leucaena leucocephala</em> across the state of São Paulo, Brazil. The project combines very high spatial resolution optical imagery (25 cm GSD) and LiDAR data with artificial intelligence techniques to detect areas dominated by this species and estimate its biomass.</p><p>The project develops deep learning methods, especially convolutional neural networks (CNNs), to fuse LiDAR and optical data and map <em>Leucaena</em>-dominated areas at the state scale.</p><h3>Platform Objective</h3><p>This platform was developed to support the research by enabling:</p><ul><li>Collaborative mapping of <em>Leucaena leucocephala</em> patches</li><li>Canopy mask digitization by contributors</li><li>Validation between mapped points and polygons</li><li>Tracking of each participant's contributions</li><li>Export of mapped data for further analysis</li></ul><h3>Project team</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contact</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Location</h3><p>Piracicaba – São Paulo – Brazil<br>${month} ${year}</p>
 
 <div class="docs-logos">
   <div class="docs-logos-section">
-    <div class="docs-logos-title">Partners</div>
+    <div class="docs-logos-title">Funding</div>
     <div class="docs-logos-grid">
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/IGC.jpg" alt="IGC"></div>
+      <a class="docs-logo-card docs-logo-img" href="https://fapesp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></a>
     </div>
   </div>
   <div class="docs-logos-section">
-    <div class="docs-logos-title">Funding</div>
+    <div class="docs-logos-title">Host institutions</div>
     <div class="docs-logos-grid">
-      <div class="docs-logo-card docs-logo-img"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></div>
+      <a class="docs-logo-card docs-logo-img" href="http://esalq.usp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://ccarbon.usp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></a>
+    </div>
+  </div>
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Partners</div>
+    <div class="docs-logos-grid">
+      <a class="docs-logo-card docs-logo-img" href="https://www.igc.sp.gov.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/IGC.jpg" alt="IGC"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/florestal_brasil/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/florestal-brasil.jpg" alt="Florestal Brasil"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.jpg" alt="Identplantas"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.cepegeo.ufscar.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/cepe-geo.jpg" alt="CePE-Geo"></a>
     </div>
   </div>
 </div>`;
@@ -975,22 +989,29 @@ window.LeucenaI18n = (function () {
 <p>Actualmente, nuestros esfuerzos se concentran en el estado de <strong>São Paulo</strong>, donde estamos estructurando la base de datos y los métodos. Al mismo tiempo, la plataforma se desarrolla de forma <strong>abierta</strong> y <strong>escalable</strong>, permitiendo su aplicación en otras regiones y contextos en el futuro.</p>
 <p>Si te interesan las especies invasoras, las geotecnologías o el carbono, vale la pena visitar <a href="https://leucaena.earth" target="_blank" rel="noopener noreferrer">leucaena.earth</a>.</p>
 
-<h3>Título del Proyecto</h3><p><em>Revelando la distribución espacial y la biomasa aérea de <strong>Leucaena leucocephala</strong> en el Estado de São Paulo usando teledetección e inteligencia artificial</em></p><h3>Investigador</h3><p>Matheus Siqueira Barros<br>Doctorando</p><h3>Director</h3><p>Prof. Dr. Matheus Pinheiro Ferreira<br>ESALQ – Universidad de São Paulo</p><h3>Descripción del Proyecto</h3><p>Esta investigación estudia la distribución espacial y la biomasa aérea de la especie invasora <em>Leucaena leucocephala</em> en todo el estado de São Paulo, Brasil. El proyecto combina imágenes ópticas de muy alta resolución espacial (25 cm de GSD) y datos LiDAR con técnicas de inteligencia artificial para detectar áreas dominadas por esta especie y estimar su biomasa.</p><p>El proyecto desarrolla métodos de aprendizaje profundo, especialmente redes neuronales convolucionales (CNNs), para fusionar datos LiDAR y ópticos y mapear áreas dominadas por <em>Leucaena</em> a escala estatal.</p><h3>Objetivo de la Plataforma</h3><p>Esta plataforma fue desarrollada para apoyar la investigación permitiendo:</p><ul><li>Mapeo colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalización de máscaras de copa por colaboradores</li><li>Validación entre puntos y polígonos mapeados</li><li>Seguimiento de las contribuciones de cada participante</li><li>Exportación de los datos mapeados para análisis posteriores</li></ul><h3>Equipo del proyecto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contacto</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Ubicación</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
+<h3>Título del Proyecto</h3><p><em>Revelando la distribución espacial y la biomasa aérea de <strong>Leucaena leucocephala</strong> en el Estado de São Paulo usando teledetección e inteligencia artificial</em></p><h3>Investigador</h3><p>Matheus Siqueira Barros</p><h3>Director</h3><p>Prof. Dr. Matheus Pinheiro Ferreira</p><h3>Descripción del Proyecto</h3><p>Esta investigación estudia la distribución espacial y la biomasa aérea de la especie invasora <em>Leucaena leucocephala</em> en todo el estado de São Paulo, Brasil. El proyecto combina imágenes ópticas de muy alta resolución espacial (25 cm de GSD) y datos LiDAR con técnicas de inteligencia artificial para detectar áreas dominadas por esta especie y estimar su biomasa.</p><p>El proyecto desarrolla métodos de aprendizaje profundo, especialmente redes neuronales convolucionales (CNNs), para fusionar datos LiDAR y ópticos y mapear áreas dominadas por <em>Leucaena</em> a escala estatal.</p><h3>Objetivo de la Plataforma</h3><p>Esta plataforma fue desarrollada para apoyar la investigación permitiendo:</p><ul><li>Mapeo colaborativo de manchas de <em>Leucaena leucocephala</em></li><li>Digitalización de máscaras de copa por colaboradores</li><li>Validación entre puntos y polígonos mapeados</li><li>Seguimiento de las contribuciones de cada participante</li><li>Exportación de los datos mapeados para análisis posteriores</li></ul><h3>Equipo del proyecto</h3><p>Judith Zuleika Bertolucci Alves<br>Rafael Perin Menassi</p><h3>Contacto</h3><p>Matheus Siqueira Barros<br><a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a></p><h3>Ubicación</h3><p>Piracicaba – São Paulo – Brasil<br>${month} de ${year}</p>
 
 <div class="docs-logos">
   <div class="docs-logos-section">
-    <div class="docs-logos-title">Socios</div>
+    <div class="docs-logos-title">Financiación</div>
     <div class="docs-logos-grid">
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO"></div>
-      <div class="docs-logo-card docs-logo-img"><img src="/img/partners/IGC.jpg" alt="IGC"></div>
+      <a class="docs-logo-card docs-logo-img" href="https://fapesp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></a>
     </div>
   </div>
   <div class="docs-logos-section">
-    <div class="docs-logos-title">Financiación</div>
+    <div class="docs-logos-title">Realización</div>
     <div class="docs-logos-grid">
-      <div class="docs-logo-card docs-logo-img"><img src="/img/sponsors/fapesp.png" alt="FAPESP"></div>
+      <a class="docs-logo-card docs-logo-img" href="http://esalq.usp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://ccarbon.usp.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP"></a>
+    </div>
+  </div>
+  <div class="docs-logos-section">
+    <div class="docs-logos-title">Socios</div>
+    <div class="docs-logos-grid">
+      <a class="docs-logo-card docs-logo-img" href="https://www.igc.sp.gov.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/IGC.jpg" alt="IGC"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/florestal_brasil/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/florestal-brasil.jpg" alt="Florestal Brasil"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.jpg" alt="Identplantas"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.cepegeo.ufscar.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/cepe-geo.jpg" alt="CePE-Geo"></a>
     </div>
   </div>
 </div>`;

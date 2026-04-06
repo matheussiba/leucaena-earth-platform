@@ -331,11 +331,18 @@
     }
 
     /* ── Partners/Sponsors ── */
-    #partners { background: linear-gradient(180deg, var(--bg), #0d1424); }
-    #sponsors { background: linear-gradient(180deg, #0d1424, var(--bg)); }
+    #sponsors { background: linear-gradient(180deg, var(--bg), #0d1424); }
+    #realization { background: #0d1424; }
+    #partners { background: linear-gradient(180deg, #0d1424, var(--bg)); }
+    section.support-stack { padding: 18px 24px; }
+    section.support-stack#sponsors { padding-top: 48px; }
+    section.support-stack#partners { padding-bottom: 64px; }
+    section.support-stack .section-label { margin-bottom: 8px; display: block; }
+    section.support-stack .logo-grid { margin-top: 0; }
     .logo-grid { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: center; margin-top: 48px; }
     .logo-grid-item { padding: 20px 28px; border-radius: var(--radius); background: var(--bg-card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
     .logo-grid-item:hover { border-color: rgba(34,197,94,0.2); transform: translateY(-3px); box-shadow: 0 8px 30px rgba(34,197,94,0.06); }
+    .logo-grid-item a { display: flex; align-items: center; justify-content: center; text-decoration: none; color: inherit; }
     .logo-grid-item img { max-height: 60px; max-width: 180px; object-fit: contain; filter: brightness(0.95); }
 
     /* ── CTA ── */
@@ -372,6 +379,9 @@
       .footer-inner { grid-template-columns: 1fr; gap: 24px; }
       .map-frame-overlay .btn-primary { font-size: 16px; padding: 14px 28px; }
       section { padding: 64px 20px; }
+      section.support-stack { padding: 14px 20px; }
+      section.support-stack#sponsors { padding-top: 36px; }
+      section.support-stack#partners { padding-bottom: 48px; }
       .nav-cta { padding: 8px 16px; font-size: 13px; }
       .nav-cta span.cta-text { display: none; }
       .logo-grid-item img { max-height: 48px; max-width: 140px; }
@@ -639,27 +649,64 @@
         </div>
       </div>
     </section>
-    <!-- Partners -->
-    <section id="partners">
+    <!-- Financiamento -->
+    <section id="sponsors" class="support-stack">
       <div class="section-inner" style="text-align:center;">
-        <span class="section-label" data-i18n-land="partners.label"></span>
-        <h2 class="section-title" data-i18n-land="partners.title"></h2>
+        <span class="section-label" data-i18n-land="funding.label"></span>
         <div class="logo-grid">
-          <div class="logo-grid-item"><img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP" loading="lazy"></div>
-          <div class="logo-grid-item"><img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP" loading="lazy"></div>
-          <div class="logo-grid-item"><img src="/img/partners/IGC.jpg" alt="IGC" loading="lazy"></div>
-          <div class="logo-grid-item"><img src="/img/partners/cepe-geo.jpg" alt="CEPE-GEO" loading="lazy"></div>
+          <div class="logo-grid-item">
+            <a href="https://fapesp.br/" target="_blank" rel="noopener noreferrer" title="FAPESP">
+              <img src="/img/sponsors/fapesp.png" alt="FAPESP" loading="lazy">
+            </a>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Sponsors -->
-    <section id="sponsors">
+    <!-- Realização -->
+    <section id="realization" class="support-stack">
       <div class="section-inner" style="text-align:center;">
-        <span class="section-label" data-i18n-land="sponsors.label"></span>
-        <h2 class="section-title" data-i18n-land="sponsors.title"></h2>
+        <span class="section-label" data-i18n-land="realization.label"></span>
         <div class="logo-grid">
-          <div class="logo-grid-item"><img src="/img/sponsors/fapesp.png" alt="FAPESP" loading="lazy"></div>
+          <div class="logo-grid-item">
+            <a href="http://esalq.usp.br/" target="_blank" rel="noopener noreferrer" title="ESALQ-USP">
+              <img src="/img/partners/esalq-usp.jpg" alt="ESALQ/USP" loading="lazy">
+            </a>
+          </div>
+          <div class="logo-grid-item">
+            <a href="https://ccarbon.usp.br/" target="_blank" rel="noopener noreferrer" title="CCARBON/USP">
+              <img src="/img/partners/ccarbon.jpg" alt="CCARBON/USP" loading="lazy">
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Parceiros -->
+    <section id="partners" class="support-stack">
+      <div class="section-inner" style="text-align:center;">
+        <span class="section-label" data-i18n-land="partners.label"></span>
+        <div class="logo-grid">
+          <div class="logo-grid-item">
+            <a href="https://www.igc.sp.gov.br/" target="_blank" rel="noopener noreferrer" title="IGC">
+              <img src="/img/partners/IGC.jpg" alt="IGC" loading="lazy">
+            </a>
+          </div>
+          <div class="logo-grid-item">
+            <a href="https://www.instagram.com/florestal_brasil/" target="_blank" rel="noopener noreferrer" title="Florestal Brasil">
+              <img src="/img/partners/florestal-brasil.jpg" alt="Florestal Brasil" loading="lazy">
+            </a>
+          </div>
+          <div class="logo-grid-item">
+            <a href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer" title="Identplantas">
+              <img src="/img/partners/identplantas.jpg" alt="Identplantas" loading="lazy">
+            </a>
+          </div>
+          <div class="logo-grid-item">
+            <a href="https://www.cepegeo.ufscar.br/" target="_blank" rel="noopener noreferrer" title="CePE-Geo">
+              <img src="/img/partners/cepe-geo.jpg" alt="CePE-Geo" loading="lazy">
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -800,10 +847,9 @@
       'method.s4.title': { pt: 'Biomassa e Carbono', en: 'Biomass & Carbon', es: 'Biomasa y Carbono' },
       'method.s4.desc': { pt: 'Estimativa de biomassa aérea (AGB) e estoque de carbono via modelos alométricos e dados LiDAR, gerando subsídios para planos de erradicação.', en: 'Aboveground biomass (AGB) and carbon stock estimation via allometric models and LiDAR data, supporting eradication management plans.', es: 'Estimación de biomasa aérea (AGB) y stock de carbono mediante modelos alométricos y datos LiDAR, generando insumos para planes de erradicación.' },
 
+      'funding.label': { pt: 'Financiamento', en: 'Funding', es: 'Financiación' },
+      'realization.label': { pt: 'Realização', en: 'Host institutions', es: 'Realización' },
       'partners.label': { pt: 'Parceiros', en: 'Partners', es: 'Socios' },
-      'partners.title': { pt: 'Parceiros do Projeto', en: 'Project Partners', es: 'Socios del Proyecto' },
-      'sponsors.label': { pt: 'Patrocínio / Apoio', en: 'Sponsors / Support', es: 'Patrocinio / Apoyo' },
-      'sponsors.title': { pt: 'Apoio e Financiamento', en: 'Funding & Support', es: 'Apoyo y Financiamiento' },
 
       'species.label': { pt: 'A Espécie Invasora', en: 'The Invasive Species', es: 'La Especie Invasora' },
       'species.title': {
