@@ -2426,6 +2426,16 @@ window.LeucenaApp = (function () {
       const effectiveSuperAdmin = callerIsSuperAdmin && !_adminViewMode;
 
       const listEl = document.getElementById('admin-users-list');
+      const equipeBodyPrev = document.getElementById('admin-equipe-list');
+      const colabBodyPrev = document.getElementById('admin-colab-list');
+      let adminPanelRestore = null;
+      if (equipeBodyPrev && colabBodyPrev) {
+        adminPanelRestore = {
+          scrollTop: listEl.scrollTop,
+          equipeOpen: !equipeBodyPrev.classList.contains('collapsed'),
+          colabOpen: !colabBodyPrev.classList.contains('collapsed')
+        };
+      }
       listEl.innerHTML = '';
 
       const toolsGrid = document.createElement('div');
@@ -2777,15 +2787,22 @@ window.LeucenaApp = (function () {
         if (ra !== rb) return ra - rb;
         return (a.username || '').localeCompare(b.username || '');
       });
-      const colabUsers = data.users.filter(u => !isEquipe(u)).sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+      const collabIsVerified = u => !!(u.email_verified || u.auth_provider === 'google');
+      const colabUsers = data.users.filter(u => !isEquipe(u)).sort((a, b) => {
+        const va = collabIsVerified(a), vb = collabIsVerified(b);
+        if (va !== vb) return va ? 1 : -1;
+        return (a.username || '').localeCompare(b.username || '');
+      });
+      const colabUnverifiedCount = colabUsers.filter(u => !collabIsVerified(u)).length;
 
-      function createDropdown(title, count, id, startOpen) {
+      function createDropdown(title, count, id, startOpen, extraTitleHtml) {
         const wrapper = document.createElement('div');
         wrapper.className = 'admin-section-dropdown';
         const header = document.createElement('button');
         header.className = 'admin-section-header';
         header.type = 'button';
-        header.innerHTML = `<svg class="admin-section-chevron${startOpen ? ' open' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg><span class="admin-section-title">${title}</span><span class="admin-section-count">${count}</span>`;
+        const extra = extraTitleHtml || '';
+        header.innerHTML = `<svg class="admin-section-chevron${startOpen ? ' open' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg><span class="admin-section-title">${title}</span>${extra}<span class="admin-section-count">${count}</span>`;
         const body = document.createElement('div');
         body.className = 'admin-section-body';
         body.id = id;
@@ -2799,9 +2816,15 @@ window.LeucenaApp = (function () {
         return { wrapper, body };
       }
 
-      const equipeDropdown = createDropdown(t('admin.sectionEquipe'), equipeUsers.length, 'admin-equipe-list', true);
+      const equipeStartOpen = adminPanelRestore ? adminPanelRestore.equipeOpen : true;
+      const colabStartOpen = adminPanelRestore ? adminPanelRestore.colabOpen : (colabUnverifiedCount > 0);
+      const colabWarning = colabUnverifiedCount > 0
+        ? `<span class="admin-section-unverified-tag">${t('admin.colabUnverifiedCount', colabUnverifiedCount)}</span>`
+        : '';
+
+      const equipeDropdown = createDropdown(t('admin.sectionEquipe'), equipeUsers.length, 'admin-equipe-list', equipeStartOpen);
       listEl.appendChild(equipeDropdown.wrapper);
-      const colabDropdown = createDropdown(t('admin.sectionColaboradores'), colabUsers.length, 'admin-colab-list', false);
+      const colabDropdown = createDropdown(t('admin.sectionColaboradores'), colabUsers.length, 'admin-colab-list', colabStartOpen, colabWarning);
       listEl.appendChild(colabDropdown.wrapper);
 
       const allSortedUsers = [...equipeUsers, ...colabUsers];
@@ -2811,8 +2834,10 @@ window.LeucenaApp = (function () {
         const totalMs = user.total_time_ms || 0;
         const timeStr = formatDuration(totalMs);
         const isOnline = onlineSet.has(user.username);
+        const isVerified = !!(user.email_verified || user.auth_provider === 'google');
         const row = document.createElement('div');
-        row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '');
+        const unverifiedCollab = !isEquipe(user) && !isVerified;
+        row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '') + (unverifiedCollab ? ' admin-user-card-unverified' : '');
 
         let roleSelectHtml = '';
         let founderCheckboxHtml = '';
@@ -2833,7 +2858,6 @@ window.LeucenaApp = (function () {
         }
 
         const canDelete = effectiveSuperAdmin && role !== 'superadmin';
-        const isVerified = !!(user.email_verified || user.auth_provider === 'google');
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '—';
         const lastActiveHtml = formatLastActive(user.last_active, user.username);
         const initial = user.username.charAt(0).toUpperCase();
@@ -3054,6 +3078,12 @@ window.LeucenaApp = (function () {
         } else {
           colabDropdown.body.appendChild(row);
         }
+      }
+
+      if (adminPanelRestore) {
+        requestAnimationFrame(() => {
+          listEl.scrollTop = adminPanelRestore.scrollTop;
+        });
       }
     } catch (e) {
       showToast('Failed to load users', 'error');

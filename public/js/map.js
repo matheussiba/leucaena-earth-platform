@@ -599,6 +599,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         pointClusterer.addMarkers(visibleMarkers, true);
       }
 
+      refreshPointVisibility();
       updateFilterCounts();
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.pointsLoadFail'), 'error');

@@ -252,6 +252,7 @@ window.LeucenaI18n = (function () {
     'admin.never': { pt: 'Nunca', en: 'Never', es: 'Nunca' },
     'admin.sectionEquipe': { pt: 'Equipe', en: 'Team', es: 'Equipo' },
     'admin.sectionColaboradores': { pt: 'Colaboradores', en: 'Contributors', es: 'Colaboradores' },
+    'admin.colabUnverifiedCount': { pt: '{0} não verificados', en: '{0} unverified', es: '{0} sin verificar' },
     'admin.sectionLogs': { pt: 'Exportar & Logs', en: 'Export & Logs', es: 'Exportar & Logs' },
     'admin.sectionData': { pt: 'Usuários & Dados', en: 'Users & Data', es: 'Usuarios & Datos' },
     'admin.sectionMaintenance': { pt: 'Manutenção', en: 'Maintenance', es: 'Mantenimiento' },
