@@ -1424,7 +1424,7 @@ a.docs-logo-card:hover {
   font-size: 13px;
   font-weight: 600;
   text-shadow: 0 1px 3px rgba(0,0,0,0.7);
-  pointer-events: none;
+  pointer-events: auto;
   flex-wrap: wrap;
   justify-content: center;
   max-width: 420px;

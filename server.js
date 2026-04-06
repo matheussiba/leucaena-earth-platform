@@ -312,7 +312,11 @@ function permanentlyDeleteUserAccount(user, logActorUsername) {
   runSQL("UPDATE grid_cells SET worked_by = REPLACE(worked_by, ?, 'deleted') WHERE worked_by LIKE ?",
     [user.username, `%${user.username}%`]);
   runSQL("UPDATE grid_cells SET finished_by = 'deleted' WHERE finished_by = ?", [user.username]);
-  runSQL("UPDATE grid_cells SET locked_by = NULL, locked_at = NULL WHERE locked_by = ?", [user.username]);
+  const lockedByDeleted = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
+  for (const cell of lockedByDeleted) {
+    const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
+    runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ? WHERE id = ?', [newStatus, cell.id]);
+  }
 
   for (const [token, uname] of sessions.entries()) {
     if (uname === user.username) sessions.delete(token);
@@ -365,13 +369,35 @@ function requireVerified(req, res, next) {
   next();
 }
 
+function determineCellStatusOnUnlock(cellId, cellGeometry) {
+  const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [cellId]);
+  if (masks.length > 0) return 'mapping';
+  try {
+    const cellGeom = typeof cellGeometry === 'string' ? JSON.parse(cellGeometry) : cellGeometry;
+    const cellRings = cellGeom.type === 'MultiPolygon'
+      ? cellGeom.coordinates.map(p => p[0])
+      : [cellGeom.coordinates[0]];
+    const allPts = queryAll('SELECT geometry FROM occurrence_points');
+    const hasPoints = allPts.some(p => {
+      const g = JSON.parse(p.geometry);
+      return cellRings.some(ring => pointInPolygon([g.coordinates[0], g.coordinates[1]], ring));
+    });
+    return hasPoints ? 'not_yet_finished' : 'no_points';
+  } catch (e) {
+    return 'not_yet_finished';
+  }
+}
+
 function releaseExpiredLocks() {
   const cutoff = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
-  const expired = queryAll('SELECT id, locked_by FROM grid_cells WHERE locked_at IS NOT NULL AND locked_at < ?', [cutoff]);
+  const now = new Date().toISOString();
+  const expired = queryAll('SELECT id, locked_by, geometry FROM grid_cells WHERE locked_at IS NOT NULL AND locked_at < ?', [cutoff]);
   for (const cell of expired) {
-    runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, updated_at = ? WHERE id = ?',
-      [new Date().toISOString(), cell.id]);
+    const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
+    runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
+      [newStatus, now, cell.id]);
     io.emit('cell:unlocked', { cellId: cell.id, previousUser: cell.locked_by });
+    io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: cell.locked_by });
   }
 }
 
@@ -760,12 +786,12 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, role, tester_mode, email, auth_provider, email_verified, google_id, login_count FROM users WHERE username = ?', [username]);
+  const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, role, tester_mode, email, auth_provider, email_verified, google_id, login_count FROM users WHERE username = ?', [username]);
   const showMigrationBanner = user && !user.google_id && (user.auth_provider || 'local') !== 'google';
   const maskRow = queryOne('SELECT COUNT(*) as cnt FROM polygons WHERE created_by = ?', [username]);
   res.json({
     username, role: user?.role || 'contributor', tester_mode: user?.tester_mode || 'contributor',
-    full_name: user?.full_name || null, description: user?.description || null, photo: user?.photo || null,
+    full_name: user?.full_name || null, occupation: user?.occupation || null, description: user?.description || null, photo: user?.photo || null,
     linkedin: user?.linkedin || null, scholar: user?.scholar || null, email: user?.email || null,
     auth_provider: user?.auth_provider || 'local', email_verified: !!(user?.email_verified),
     has_google: !!(user?.google_id), show_migration_banner: showMigrationBanner,
@@ -776,17 +802,21 @@ app.get('/api/auth/me', (req, res) => {
 // ── Profile (for Quem Somos) ──
 
 app.get('/api/profile', requireAuth, (req, res) => {
-  const user = queryOne('SELECT username, full_name, description, photo, linkedin, scholar, email, auth_provider, email_verified, google_id FROM users WHERE username = ?', [req.username]);
+  const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, email, auth_provider, email_verified, google_id FROM users WHERE username = ?', [req.username]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   res.json({
-    username: user.username, full_name: user.full_name || null, description: user.description || null,
+    username: user.username, full_name: user.full_name || null, occupation: user.occupation || null, description: user.description || null,
     photo: user.photo || null, linkedin: user.linkedin || null, scholar: user.scholar || null, email: user.email || null,
     auth_provider: user.auth_provider || 'local', email_verified: !!(user.email_verified), has_google: !!(user.google_id)
   });
 });
 
 app.put('/api/profile', requireAuth, (req, res) => {
-  const { full_name, description, photo, linkedin, scholar } = req.body || {};
+  const { full_name, occupation, description, photo, linkedin, scholar } = req.body || {};
+  const occStr = typeof occupation === 'string' ? occupation.trim().substring(0, 120) : '';
+  if (typeof occupation === 'string' && occupation.trim().length > 120) {
+    return res.status(400).json({ error: 'Ocupação deve ter no máximo 120 caracteres' });
+  }
   if (description != null && typeof description === 'string' && description.length > 400) {
     return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
   }
@@ -794,8 +824,8 @@ app.put('/api/profile', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Foto muito grande' });
   }
   runSQL(
-    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE username = ?',
-    [full_name || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, req.username]
+    'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE username = ?',
+    [full_name || null, occStr || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, req.username]
   );
   persist();
   res.json({ success: true });
@@ -812,15 +842,21 @@ app.put('/api/profile/password', requireAuth, (req, res) => {
 
 app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const { full_name, description, photo, linkedin, scholar, email } = req.body || {};
+  const { full_name, occupation, description, photo, linkedin, scholar, email } = req.body || {};
+  if (occupation !== undefined && occupation !== null && typeof occupation === 'string' && occupation.length > 120) {
+    return res.status(400).json({ error: 'Ocupação deve ter no máximo 120 caracteres' });
+  }
   if (description != null && typeof description === 'string' && description.length > 400) {
     return res.status(400).json({ error: 'Descrição deve ter no máximo 400 caracteres' });
   }
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  const occVal = occupation !== undefined
+    ? (typeof occupation === 'string' ? (occupation.trim().substring(0, 120) || null) : null)
+    : user.occupation;
   runSQL(
-    'UPDATE users SET full_name = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ? WHERE id = ?',
-    [full_name !== undefined ? (full_name || null) : user.full_name, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, email !== undefined ? (email || null) : user.email, Number(req.params.id)]
+    'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ? WHERE id = ?',
+    [full_name !== undefined ? (full_name || null) : user.full_name, occVal, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, email !== undefined ? (email || null) : user.email, Number(req.params.id)]
   );
   persist();
   res.json({ success: true });
@@ -861,12 +897,12 @@ app.get('/api/quem-somos', (req, res) => {
   const areaByUser = {};
   polygonStats.forEach(r => { countByUser[r.username] = r.cnt; areaByUser[r.username] = r.total_area; });
 
-  const allUsers = queryAll('SELECT username, full_name, description, photo, linkedin, scholar, role, is_founder FROM users WHERE is_active = 1');
+  const allUsers = queryAll('SELECT username, full_name, occupation, description, photo, linkedin, scholar, role, is_founder FROM users WHERE is_active = 1');
   const teamOrder = ['mpf', 'msb'];
 
   const equipe = allUsers
     .filter(u => (u.role === 'superadmin' || u.role === 'admin' || u.role === 'team'))
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, is_founder: u.is_founder || 0, mask_count: countByUser[u.username] || 0 }))
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, occupation: u.occupation || null, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, is_founder: u.is_founder || 0, mask_count: countByUser[u.username] || 0 }))
     .sort((a, b) => {
       if (a.is_founder !== b.is_founder) return b.is_founder - a.is_founder;
       const order = { superadmin: 0, admin: 1, team: 2 };
@@ -877,7 +913,7 @@ app.get('/api/quem-somos', (req, res) => {
 
   const colaboradores = allUsers
     .filter(u => u.role === 'contributor' && (countByUser[u.username] || 0) >= 1)
-    .map(u => ({ username: u.username, full_name: u.full_name || u.username, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0, area_ha: Math.round((areaByUser[u.username] || 0) * 100) / 100 }))
+    .map(u => ({ username: u.username, full_name: u.full_name || u.username, occupation: u.occupation || null, description: u.description || '', photo: u.photo || null, linkedin: u.linkedin || null, scholar: u.scholar || null, role: u.role, mask_count: countByUser[u.username] || 0, area_ha: Math.round((areaByUser[u.username] || 0) * 100) / 100 }))
     .sort((a, b) => b.mask_count - a.mask_count);
 
   res.json({ equipe, colaboradores });
@@ -1288,7 +1324,7 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -1379,7 +1415,11 @@ app.put('/api/admin/users/:id/deactivate', requireAuth, (req, res) => {
   if (!user.is_active) return res.status(400).json({ error: 'Usuário já está desativado' });
 
   runSQL('UPDATE users SET is_active = 0 WHERE id = ?', [Number(req.params.id)]);
-  runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL WHERE locked_by = ?', [user.username]);
+  const lockedByDeactivated = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
+  for (const cell of lockedByDeactivated) {
+    const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
+    runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ? WHERE id = ?', [newStatus, cell.id]);
+  }
 
   for (const [token, uname] of sessions.entries()) {
     if (uname === user.username) sessions.delete(token);
@@ -2454,10 +2494,9 @@ io.on('connection', (socket) => {
 
       if (isLastSocket) {
         const now = new Date().toISOString();
-        const locked = queryAll('SELECT id FROM grid_cells WHERE locked_by = ?', [user.username]);
+        const locked = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
         for (const cell of locked) {
-          const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [cell.id]);
-          const newStatus = masks.length > 0 ? 'mapping' : 'not_yet_finished';
+          const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
           runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
             [newStatus, now, cell.id]);
           io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username });

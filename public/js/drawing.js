@@ -685,11 +685,11 @@ window.LeucenaDrawing = (function () {
       if (mode === 'edit') {
         makeAllEditableInCell();
       } else if (mode === 'hole') {
-        // Grid cells off so clicks reach mask polygons for target selection
         LeucenaMap.setGridClickable(false);
         LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
       }
     }
+    _syncToolbarExtras();
   }
 
   function makeAllEditableInCell() {
@@ -1073,6 +1073,7 @@ window.LeucenaDrawing = (function () {
       clickListener, moveListener, dblClickListener, rightClickListener,
       removeLastVertex, addVertex, prevDblClickZoom
     };
+    _syncToolbarExtras();
   }
 
   async function completeManualDraw() { // POST then render; restarts draw in draw mode unless _suppressDrawRestart
@@ -1265,8 +1266,7 @@ window.LeucenaDrawing = (function () {
 
     if (mode === 'draw' || mode === 'delete' || mode === 'edit') {
       if (mode === 'delete' && _pendingDeleteId) {
-        const text = touch ? t('badge.deleteConfirmTouch') : t('badge.deleteConfirm');
-        overlay.innerHTML = text
+        overlay.innerHTML = t('badge.deleteConfirm')
           + '<div class="draw-overlay-actions">'
           + '<button class="btn-overlay-action btn-overlay-delete" id="overlay-delete-confirm">' + t('badge.deleteBtn') + '</button>'
           + '<button class="btn-overlay-action btn-overlay-cancel" id="overlay-delete-cancel">' + t('badge.cancelBtn') + '</button>'

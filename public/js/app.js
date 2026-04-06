@@ -1539,6 +1539,7 @@ window.LeucenaApp = (function () {
       if (socialSection) socialSection.style.display = '';
       if (subtitleEl) subtitleEl.textContent = t('profile.subtitleMember');
       document.getElementById('profile-full-name').value = targetUser.full_name || '';
+      document.getElementById('profile-occupation').value = targetUser.occupation || '';
       document.getElementById('profile-description').value = targetUser.description || '';
       emailInput.value = targetUser.email || '';
       emailInput.disabled = false;
@@ -1571,6 +1572,7 @@ window.LeucenaApp = (function () {
         if (!res.ok) return;
         const p = await res.json();
         document.getElementById('profile-full-name').value = p.full_name || '';
+        document.getElementById('profile-occupation').value = p.occupation || '';
         document.getElementById('profile-description').value = p.description || '';
         emailInput.value = p.email || '';
         document.getElementById('profile-linkedin').value = p.linkedin || '';
@@ -1753,6 +1755,7 @@ window.LeucenaApp = (function () {
     e.preventDefault();
     logEvent('profile_save');
     const full_name = document.getElementById('profile-full-name').value.trim() || null;
+    const occupation = document.getElementById('profile-occupation').value.trim() || null;
     const description = document.getElementById('profile-description').value.trim() || null;
     const emailInput = document.getElementById('profile-email');
     const email = adminEditingUser ? (emailInput.value.trim() || null) : undefined;
@@ -1760,6 +1763,11 @@ window.LeucenaApp = (function () {
     const scholar = document.getElementById('profile-scholar').value.trim() || null;
     const errorEl = document.getElementById('profile-error');
     errorEl.classList.add('hidden');
+    if (occupation && occupation.length > 120) {
+      errorEl.textContent = LeucenaI18n.t('profile.occupationTooLong');
+      errorEl.classList.remove('hidden');
+      return;
+    }
     if (description && description.length > 400) {
       errorEl.textContent = 'Descrição deve ter no máximo 400 caracteres.';
       errorEl.classList.remove('hidden');
@@ -1769,7 +1777,7 @@ window.LeucenaApp = (function () {
       const url = adminEditingUser
         ? `/api/admin/users/${adminEditingUser.id}/profile`
         : '/api/profile';
-      const payload = { full_name, description, photo: profilePhotoDataUrl, linkedin, scholar };
+      const payload = { full_name, occupation, description, photo: profilePhotoDataUrl, linkedin, scholar };
       if (adminEditingUser) payload.email = email;
       const res = await fetch(url, {
         method: 'PUT',
@@ -3513,6 +3521,7 @@ window.LeucenaApp = (function () {
             id: user.id,
             username: user.username,
             full_name: user.full_name || '',
+            occupation: user.occupation || '',
             description: user.description || '',
             photo: user.photo || null,
             email: user.email || '',
