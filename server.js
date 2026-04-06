@@ -44,6 +44,39 @@ function getBaseUrl(req) {
   if (process.env.NODE_ENV === 'production') return 'https://map.leucaena.earth';
   return req.protocol + '://' + req.get('host');
 }
+
+async function sendWelcomeEmail(user) {
+  if (!resend || !user.email) return;
+  const firstName = (user.full_name || user.username || '').split(/\s+/)[0];
+  const isGoogle = user.auth_provider === 'google';
+  const credentialsBlock = isGoogle
+    ? `<p>Você pode entrar usando sua conta <strong>Google</strong> a qualquer momento.</p>`
+    : `<p>Para o seu primeiro acesso, seguem suas credenciais:</p>
+       <p><strong>Usuário:</strong> ${user.username}<br><strong>E-mail:</strong> ${user.email}<br><strong>Senha:</strong> a senha que você definiu no cadastro<br>
+       <em>(Você pode alterar a senha no menu da engrenagem depois que entrar.)</em></p>`;
+  const html = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;color:#1e293b;line-height:1.7">
+  <p>Olá <strong>${firstName}</strong>!! Bem-vindo ao <a href="https://leucaena.earth/" style="color:#22c55e;font-weight:600">leucaena.earth</a>! 🌱</p>
+  <p>Fico feliz demais que você entrou em contato e quer fazer parte desse projeto científico com a gente!</p>
+  ${credentialsBlock}
+  <p>Antes de começar, peço, por gentileza, que dê uma olhada na seção "<a href="https://map.leucaena.earth/#howto" style="color:#22c55e;font-weight:600">Como mapear</a>", pois lá tem instruções bem importantes.</p>
+  <p>Ahh... e uma coisa bem bacana que é importante você saber é que só de mapear <strong>5 aglomerados de leucena</strong>, você já passa a aparecer na <strong>seção de colaboradores do site</strong>!</p>
+  <p>E esse trabalho vai além do mapeamento em si. A ideia é usar essas máscaras para gerar produtos como <strong>mapas da distribuição da leucena, estimativas de biomassa e estoque de carbono</strong>, e depois disponibilizar tudo isso de <strong>forma aberta no próprio site para apoiar pesquisa, gestão e tomada de decisão</strong>.</p>
+  <p>E qualquer dúvida, sugestão de melhoria ou ideia de funcionalidade para o site, pode me mandar mensagem sem problema, vou ficar muito feliz em poder incorporar essas ideias na plataforma!</p>
+  <p>Um forte abraço!</p>
+</div>`;
+  try {
+    await resend.emails.send({
+      from: RESEND_FROM,
+      to: user.email,
+      subject: 'Bem-vindo ao leucaena.earth! 🌱',
+      html
+    });
+    console.log(`Welcome email sent to ${user.email}`);
+  } catch (e) {
+    console.error('Welcome email error:', e.message, e);
+  }
+}
 const GA_SCRIPT = GA_ID
   ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_ID}"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}');</script>`
@@ -499,7 +532,7 @@ app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, 
 });
 
 app.post('/api/auth/register', registerLimiter, async (req, res) => {
-  let { username, password, email } = req.body;
+  let { username, password, email, full_name } = req.body;
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
   if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
@@ -529,31 +562,41 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const now = new Date().toISOString();
   const verifyToken = uuidv4();
   const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const cleanFullName = (full_name && typeof full_name === 'string') ? full_name.trim().substring(0, 100) : null;
   runSQL(
-    `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires)
-     VALUES (?, ?, ?, ?, 'local', 0, ?, ?)`,
-    [username, hash, now, email, verifyToken, verifyExpires]
+    `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires, full_name)
+     VALUES (?, ?, ?, ?, 'local', 0, ?, ?, ?)`,
+    [username, hash, now, email, verifyToken, verifyExpires, cleanFullName]
   );
   logActivity(username, 'register', null, null, null);
+  persist();
 
+  let emailSent = false;
   if (resend) {
+    const displayName = cleanFullName ? cleanFullName.split(/\s+/)[0] : username;
     const baseUrl = getBaseUrl(req);
     const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${verifyToken}`;
     try {
-      await resend.emails.send({
+      const result = await resend.emails.send({
         from: RESEND_FROM,
         to: email,
         subject: 'Verifique seu e-mail — leucaena.earth',
-        html: `<p>Olá <strong>${username}</strong>,</p>
+        html: `<p>Olá <strong>${displayName}</strong>,</p>
                <p>Clique no link abaixo para verificar seu e-mail e ativar sua conta:</p>
                <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
                <p>Se você não criou essa conta, ignore este e-mail.</p>
                <p>— leucaena.earth</p>`
       });
-    } catch (e) { console.error('Resend email error:', e.message); }
+      emailSent = true;
+      console.log('Verification email sent:', result?.data?.id || 'ok', 'to:', email);
+    } catch (e) {
+      console.error('Resend email error:', e.message, JSON.stringify(e));
+    }
+  } else {
+    console.warn('Resend not configured — verification email not sent for', email);
   }
 
-  res.json({ success: true, needs_verification: true, username });
+  res.json({ success: true, needs_verification: true, username, email_sent: emailSent });
 });
 
 app.post('/api/auth/login', loginLimiter, (req, res) => {
@@ -891,6 +934,12 @@ app.get('/auth/google/callback', async (req, res) => {
       );
       user = queryOne('SELECT * FROM users WHERE username = ?', [finalUsername]);
       logActivity(user.username, 'register_google', null, null, { google_email: googleEmail });
+      persist();
+      sendWelcomeEmail(user).catch(e => console.error('Welcome email error:', e));
+    }
+
+    if (googleName && !user.full_name) {
+      runSQL('UPDATE users SET full_name = ? WHERE id = ?', [googleName, user.id]);
     }
 
     runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE id = ?', [new Date().toISOString(), user.id]);
@@ -922,6 +971,10 @@ app.get('/api/auth/verify-email', (req, res) => {
   runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
   logActivity(user.username, 'email_verified', null, null, null);
   persist();
+
+  const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [user.id]);
+  if (freshUser) sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+
   res.send(verifyResultHtml('success', 'E-mail verificado com sucesso! Você já pode usar a plataforma normalmente.'));
 });
 
@@ -1284,7 +1337,7 @@ app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
   res.json({ success: true, old_username: oldUsername, new_username });
 });
 
-app.put('/api/admin/users/:id/verify', requireAuth, (req, res) => {
+app.put('/api/admin/users/:id/verify', requireAuth, async (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -1292,6 +1345,10 @@ app.put('/api/admin/users/:id/verify', requireAuth, (req, res) => {
   runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [Number(req.params.id)]);
   logActivity(req.username, 'admin_verify_email', null, null, { target_user: user.username });
   persist();
+
+  const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  if (freshUser) sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+
   res.json({ success: true });
 });
 

@@ -23,6 +23,8 @@ window.LeucenaI18n = (function () {
     'auth.userPlaceholder': { pt: 'joao.silva', en: 'joao.silva', es: 'joao.silva' },
     'auth.userOrEmailPlaceholder': { pt: 'Usuário ou e-mail', en: 'Username or email', es: 'Usuario o correo' },
     'auth.passPlaceholder': { pt: 'Senha', en: 'Password', es: 'Contraseña' },
+    'auth.fullNamePlaceholder': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
+    'auth.fullNameRequired': { pt: 'Informe seu nome completo', en: 'Please enter your full name', es: 'Ingrese su nombre completo' },
     'auth.emailPlaceholder': { pt: 'seu@email.com', en: 'your@email.com', es: 'su@email.com' },
     'auth.usernameHint': { pt: 'Apenas letras minúsculas, números e ponto', en: 'Only lowercase letters, numbers, and dot', es: 'Solo letras minúsculas, números y punto' },
     'auth.usernameInvalid': { pt: 'Usuário inválido. Use apenas letras minúsculas, números e ponto (ex: joao.silva)', en: 'Invalid username. Use only lowercase letters, numbers, and dot (e.g. joao.silva)', es: 'Usuario inválido. Use solo letras minúsculas, números y punto (ej: joao.silva)' },

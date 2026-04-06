@@ -590,6 +590,9 @@ window.LeucenaApp = (function () {
     const submitBtn = document.getElementById('auth-submit-btn');
     submitBtn.disabled = false;
 
+    const registerFullnameGroup = document.getElementById('register-fullname-group');
+    const fullnameInput = document.getElementById('auth-fullname');
+    if (fullnameInput) fullnameInput.value = '';
     const registerEmailGroup = document.getElementById('register-email-group');
     const emailInput = document.getElementById('auth-email');
     emailInput.value = '';
@@ -612,6 +615,8 @@ window.LeucenaApp = (function () {
       document.getElementById('auth-switch-link').textContent = t('auth.register');
       usernameInput.classList.remove('hidden');
       usernameInput.setAttribute('required', 'required');
+      if (registerFullnameGroup) registerFullnameGroup.classList.add('hidden');
+      if (fullnameInput) fullnameInput.removeAttribute('required');
       registerEmailGroup.classList.add('hidden');
       emailInput.removeAttribute('required');
       confirmGroup.classList.add('hidden');
@@ -628,6 +633,8 @@ window.LeucenaApp = (function () {
       document.getElementById('auth-switch-link').textContent = t('auth.login');
       usernameInput.classList.add('hidden');
       usernameInput.removeAttribute('required');
+      if (registerFullnameGroup) registerFullnameGroup.classList.remove('hidden');
+      if (fullnameInput) fullnameInput.setAttribute('required', 'required');
       registerEmailGroup.classList.remove('hidden');
       emailInput.setAttribute('required', 'required');
       confirmGroup.classList.remove('hidden');
@@ -635,7 +642,7 @@ window.LeucenaApp = (function () {
       forgotGroup.classList.add('hidden');
       if (contactHint) contactHint.classList.remove('hidden');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignUp');
-      emailInput.focus();
+      fullnameInput ? fullnameInput.focus() : emailInput.focus();
     }
   }
 
@@ -705,8 +712,14 @@ window.LeucenaApp = (function () {
       endpoint = '/api/auth/login';
       payload = { identifier: user, username: user, password: pass };
     } else {
+      const fullName = (document.getElementById('auth-fullname') || {}).value || '';
       const email = document.getElementById('auth-email').value.trim();
       const passConfirm = document.getElementById('auth-password-confirm').value;
+      if (!fullName.trim()) {
+        errorEl.textContent = LeucenaI18n.t('auth.fullNameRequired');
+        errorEl.classList.remove('hidden');
+        return;
+      }
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         errorEl.textContent = LeucenaI18n.t('auth.emailInvalid');
         errorEl.classList.remove('hidden');
@@ -723,7 +736,7 @@ window.LeucenaApp = (function () {
         return;
       }
       endpoint = '/api/auth/register';
-      payload = { email, password: pass };
+      payload = { email, password: pass, full_name: fullName.trim() };
     }
 
     try {

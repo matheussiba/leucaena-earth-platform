@@ -41,7 +41,10 @@
       <form id="auth-form">
         <!-- Login mode: username/email -->
         <input type="text" id="auth-username" placeholder="Usuário ou e-mail" data-i18n-placeholder="auth.userOrEmailPlaceholder" required autocomplete="username" minlength="2" maxlength="200">
-        <!-- Register mode: email field (shown instead of username) -->
+        <!-- Register mode: full name + email (shown instead of username) -->
+        <div id="register-fullname-group" class="hidden">
+          <input type="text" id="auth-fullname" placeholder="Nome completo" data-i18n-placeholder="auth.fullNamePlaceholder" autocomplete="name" maxlength="100">
+        </div>
         <div id="register-email-group" class="hidden">
           <input type="email" id="auth-email" placeholder="seu@email.com" data-i18n-placeholder="auth.emailPlaceholder" autocomplete="email" maxlength="200">
           <div id="auth-email-feedback" class="auth-email-feedback hidden"></div>
