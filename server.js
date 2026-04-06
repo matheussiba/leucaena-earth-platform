@@ -1480,22 +1480,30 @@ app.post('/api/admin/backup', requireAuth, (req, res) => {
 
 app.get('/api/grid', (req, res) => {
   const cells = queryAll('SELECT id, fid, grid_id, geometry, grid_status, numpoints, locked_by, locked_at, updated_at, worked_by, finished_by FROM grid_cells');
-  const features = cells.map(c => ({
-    type: 'Feature',
-    properties: {
-      id: c.id,
-      fid: c.fid,
-      grid_id: c.grid_id || String(c.fid),
-      grid_status: c.grid_status,
-      numpoints: c.numpoints || 0,
-      locked_by: c.locked_by,
-      locked_at: c.locked_at,
-      updated_at: c.updated_at,
-      worked_by: c.worked_by || null,
-      finished_by: c.finished_by || null
-    },
-    geometry: JSON.parse(c.geometry)
-  }));
+  const maskStats = {};
+  const rows = queryAll('SELECT grid_cell_id, COUNT(*) as cnt, COALESCE(SUM(area_ha),0) as total_ha FROM polygons GROUP BY grid_cell_id');
+  for (const r of rows) { maskStats[r.grid_cell_id] = { cnt: r.cnt, ha: Math.round(r.total_ha * 10) / 10 }; }
+  const features = cells.map(c => {
+    const ms = maskStats[c.id] || { cnt: 0, ha: 0 };
+    return {
+      type: 'Feature',
+      properties: {
+        id: c.id,
+        fid: c.fid,
+        grid_id: c.grid_id || String(c.fid),
+        grid_status: c.grid_status,
+        numpoints: c.numpoints || 0,
+        locked_by: c.locked_by,
+        locked_at: c.locked_at,
+        updated_at: c.updated_at,
+        worked_by: c.worked_by || null,
+        finished_by: c.finished_by || null,
+        mask_count: ms.cnt,
+        mask_area_ha: ms.ha
+      },
+      geometry: JSON.parse(c.geometry)
+    };
+  });
   res.json({ type: 'FeatureCollection', features });
 });
 
@@ -1644,7 +1652,7 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
   cellAreaHa = Math.round(cellAreaHa * 10) / 10;
 
   io.emit('cell:unlocked', { cellId: Number(id), username });
-  io.emit('cell:statusChanged', { cellId: Number(id), status: newStatus, username, finished_by: finishedBy });
+  io.emit('cell:statusChanged', { cellId: Number(id), status: newStatus, username, finished_by: finishedBy, mask_count: cellMaskCount, mask_area_ha: cellAreaHa });
   logActivity(username, 'cell_unlock', Number(id), null, JSON.stringify({ newStatus }));
   persist();
   res.json({ success: true, status: newStatus, maskCount: cellMaskCount, areaHa: cellAreaHa });
@@ -1772,7 +1780,7 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   logActivity(username, 'polygon_delete', poly.grid_cell_id, id, null);
 
   if (cell) {
-    const remaining = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [poly.grid_cell_id]);
+    const remaining = queryAll('SELECT id, geometry FROM polygons WHERE grid_cell_id = ?', [poly.grid_cell_id]);
     if (remaining.length === 0 && (cell.grid_status === 'finished' || cell.grid_status === 'mapping')) {
       const cellGeom = JSON.parse(cell.geometry);
       const cellRings = cellGeom.type === 'MultiPolygon'
@@ -1787,7 +1795,7 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
       const now = new Date().toISOString();
       runSQL('UPDATE grid_cells SET grid_status = ?, finished_by = NULL, worked_by = NULL, updated_at = ? WHERE id = ?',
         [newStatus, now, poly.grid_cell_id]);
-      io.emit('cell:statusChanged', { cellId: poly.grid_cell_id, status: newStatus, username, finished_by: null, worked_by: null });
+      io.emit('cell:statusChanged', { cellId: poly.grid_cell_id, status: newStatus, username, finished_by: null, worked_by: null, mask_count: 0, mask_area_ha: 0 });
     }
   }
 

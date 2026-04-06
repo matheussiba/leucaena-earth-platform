@@ -69,6 +69,7 @@ window.LeucenaApp = (function () {
     const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
     if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
     document.getElementById('login-btn').addEventListener('click', () => openAuthModal('login'));
+    document.getElementById('signup-btn').addEventListener('click', () => openAuthModal('register'));
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('auth-modal-close').addEventListener('click', closeAuthModal);
     bindBackdropClose(document.getElementById('auth-modal'), closeAuthModal);
@@ -183,7 +184,10 @@ window.LeucenaApp = (function () {
       } catch (_) { fallbackCopy(text); showToast('Copiado!', 'success', 2000); }
     });
 
-    document.getElementById('user-badge').addEventListener('click', () => openProfileModal());
+    document.getElementById('user-badge').addEventListener('click', () => {
+      dismissUserBadgeProfileHint();
+      openProfileModal();
+    });
     document.getElementById('profile-modal-close').addEventListener('click', closeProfileModal);
     document.getElementById('profile-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeProfileModal();
@@ -834,7 +838,7 @@ window.LeucenaApp = (function () {
   }
 
   function onLoginSuccess() {
-    document.getElementById('login-btn').classList.add('hidden');
+    document.getElementById('auth-nav-group').classList.add('hidden');
     document.getElementById('user-badge').classList.remove('hidden');
     document.getElementById('logout-btn').classList.remove('hidden');
     document.getElementById('user-display-name').textContent = username;
@@ -861,7 +865,7 @@ window.LeucenaApp = (function () {
 
     showVerificationBannerIfNeeded();
     loadRankingWidget();
-    checkProfileNudge();
+    syncUserBadgeProfileHint();
 
     if (selectedCellId && selectedCellData) {
       const canLock = !selectedCellData.locked_by;
@@ -979,7 +983,12 @@ window.LeucenaApp = (function () {
     document.getElementById('celebration-modal').classList.add('hidden');
   }
 
-  async function onPolygonSaved() {
+  async function onPolygonSaved(areaHa) {
+    if (selectedCellData) {
+      selectedCellData.mask_count = (selectedCellData.mask_count || 0) + 1;
+      selectedCellData.mask_area_ha = Math.round(((selectedCellData.mask_area_ha || 0) + (areaHa || 0)) * 10) / 10;
+      updateCellMasksDisplay(selectedCellData);
+    }
     if (!isLoggedIn()) return;
     const role = _userAuthInfo.role || userRole;
     if (role !== 'contributor') { loadRankingWidget(); return; }
@@ -1010,20 +1019,40 @@ window.LeucenaApp = (function () {
     } catch (e) { /* ignore */ }
   }
 
-  // ── Profile Nudge ──
-
-  function checkProfileNudge() {
-    const role = _userAuthInfo.role || userRole;
-    if (role !== 'contributor') return;
-    if (localStorage.getItem('leucena_profile_nudge') === 'v1') return;
-    const loginCount = _userAuthInfo.login_count || 0;
-    const maskCount = _userAuthInfo.mask_count || 0;
-    if (loginCount >= 2 || maskCount >= 1) {
-      setTimeout(() => {
-        openProfileModal();
-        localStorage.setItem('leucena_profile_nudge', 'v1');
-      }, 1500);
+  function onPolygonDeleted(areaHa) {
+    if (selectedCellData) {
+      selectedCellData.mask_count = Math.max(0, (selectedCellData.mask_count || 0) - 1);
+      selectedCellData.mask_area_ha = Math.max(0, Math.round(((selectedCellData.mask_area_ha || 0) - (areaHa || 0)) * 10) / 10);
+      updateCellMasksDisplay(selectedCellData);
     }
+    loadRankingWidget();
+  }
+
+  // ── Profile badge hint (first sessions only; no auto-open modal) ──
+  const PROFILE_CLICK_HINT_KEY = 'leucena_profile_click_hint_dismissed';
+
+  function dismissUserBadgeProfileHint() {
+    localStorage.setItem(PROFILE_CLICK_HINT_KEY, '1');
+    const badge = document.getElementById('user-badge');
+    const dot = document.getElementById('user-badge-hint');
+    if (badge) {
+      badge.classList.remove('user-badge--hint');
+      badge.title = LeucenaI18n.t('profile.title');
+    }
+    if (dot) dot.classList.add('hidden');
+  }
+
+  function syncUserBadgeProfileHint() {
+    if (!isLoggedIn()) return;
+    if (localStorage.getItem(PROFILE_CLICK_HINT_KEY) === '1') return;
+    const loginCount = _userAuthInfo.login_count || 0;
+    if (loginCount > 1) return;
+    const badge = document.getElementById('user-badge');
+    const dot = document.getElementById('user-badge-hint');
+    if (!badge || badge.classList.contains('hidden')) return;
+    badge.classList.add('user-badge--hint');
+    if (dot) dot.classList.remove('hidden');
+    badge.title = LeucenaI18n.t('profile.clickHintTooltip');
   }
 
   // ── Google OAuth + Migration Banner ──
@@ -1279,6 +1308,7 @@ window.LeucenaApp = (function () {
         _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor' };
         showVerificationBannerIfNeeded();
         loadRankingWidget();
+        syncUserBadgeProfileHint();
       }
       const profRes = await fetch('/api/profile', { headers: authHeaders() });
       if (profRes.ok) {
@@ -1605,7 +1635,7 @@ window.LeucenaApp = (function () {
     localStorage.removeItem('leucena_token');
     localStorage.removeItem('leucena_username');
 
-    document.getElementById('login-btn').classList.remove('hidden');
+    document.getElementById('auth-nav-group').classList.remove('hidden');
     document.getElementById('user-badge').classList.add('hidden');
     document.getElementById('logout-btn').classList.add('hidden');
     document.getElementById('edit-mode-badge').classList.add('hidden');
@@ -1702,6 +1732,29 @@ window.LeucenaApp = (function () {
 
   // ── Cell selection ──
 
+  function formatAreaStr(areaHa) {
+    if (areaHa == null || areaHa === 0) return '0';
+    if (areaHa < 0.1) {
+      const m2 = Math.round(areaHa * 10000);
+      return m2.toLocaleString() + ' m\u00B2';
+    }
+    return areaHa.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' ha';
+  }
+
+  function updateCellMasksDisplay(cellData) {
+    const masksRow = document.getElementById('cell-masks-row');
+    const masksEl = document.getElementById('cell-masks');
+    if (!masksRow || !masksEl) return;
+    const count = cellData.mask_count || 0;
+    if (count === 0) {
+      masksRow.classList.add('hidden');
+    } else {
+      masksRow.classList.remove('hidden');
+      const area = cellData.mask_area_ha || 0;
+      masksEl.textContent = `${count} (${formatAreaStr(area)})`;
+    }
+  }
+
   function selectCell(cellId, cellData) {
     if (cellId === selectedCellId && !(selectedCellData && selectedCellData.locked_by === username)) {
       clearCellSelection();
@@ -1738,6 +1791,8 @@ window.LeucenaApp = (function () {
     const numpoints = cellData.numpoints != null ? cellData.numpoints : '--';
     const numpointsEl = document.getElementById('cell-numpoints');
     if (numpointsEl) numpointsEl.textContent = numpoints;
+
+    updateCellMasksDisplay(cellData);
 
     const workedByRow = document.getElementById('cell-worked-by-row');
     const finishedByRow = document.getElementById('cell-finished-by-row');
@@ -1930,16 +1985,14 @@ window.LeucenaApp = (function () {
       const displayId = selectedCellData ? (selectedCellData.grid_id || cellId) : cellId;
       let msg = LeucenaI18n.t('toast.cellUnlocked', displayId, formatStatus(finalStatus));
 
+      if (selectedCellData) {
+        selectedCellData.mask_count = data.maskCount || 0;
+        selectedCellData.mask_area_ha = data.areaHa || 0;
+        updateCellMasksDisplay(selectedCellData);
+      }
+
       if (data.maskCount > 0) {
-        const areaHa = data.areaHa || 0;
-        let areaStr;
-        if (areaHa < 0.1) {
-          const m2 = Math.round(areaHa * 10000);
-          areaStr = m2.toLocaleString() + ' m²';
-        } else {
-          areaStr = areaHa.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' ha';
-        }
-        msg += ` — ${data.maskCount} ${data.maskCount === 1 ? 'máscara' : 'máscaras'}, ${areaStr}`;
+        msg += ` \u2014 ${data.maskCount} ${data.maskCount === 1 ? 'máscara' : 'máscaras'}, ${formatAreaStr(data.areaHa || 0)}`;
       }
 
       showToast(msg, 'success', 6000);
@@ -3213,8 +3266,11 @@ window.LeucenaApp = (function () {
       selectedCellData.grid_status = data.status;
       if (data.finished_by !== undefined) selectedCellData.finished_by = data.finished_by;
       if (data.worked_by !== undefined) selectedCellData.worked_by = data.worked_by;
+      if (data.mask_count !== undefined) selectedCellData.mask_count = data.mask_count;
+      if (data.mask_area_ha !== undefined) selectedCellData.mask_area_ha = data.mask_area_ha;
     }
     document.getElementById('cell-status-display').textContent = formatStatus(data.status);
+    if (selectedCellData) updateCellMasksDisplay(selectedCellData);
     const workedByRow = document.getElementById('cell-worked-by-row');
     const finishedByRow = document.getElementById('cell-finished-by-row');
     const hasWorked = selectedCellData && selectedCellData.worked_by;
@@ -3228,6 +3284,17 @@ window.LeucenaApp = (function () {
   setupPointModes();
 
   init();
+
+  (function handleHashAuth() {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if ((hash === 'register' || hash === 'signup' || hash === 'cadastrar') && !isLoggedIn()) {
+      setTimeout(() => openAuthModal('register'), 300);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    } else if (hash === 'login' && !isLoggedIn()) {
+      setTimeout(() => openAuthModal('login'), 300);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  })();
 
   return {
     getUsername,
@@ -3256,6 +3323,7 @@ window.LeucenaApp = (function () {
     logEvent,
     flushLogs: _flushLogs,
     onPolygonSaved,
+    onPolygonDeleted,
     onCellStatusChanged
   };
 })();

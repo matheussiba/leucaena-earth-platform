@@ -1088,7 +1088,7 @@ window.LeucenaDrawing = (function () {
       renderPolygon(result.id, geometry, result, false);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaved'), 'success');
-      if (typeof LeucenaApp.onPolygonSaved === 'function') LeucenaApp.onPolygonSaved();
+      if (typeof LeucenaApp.onPolygonSaved === 'function') LeucenaApp.onPolygonSaved(result.area_ha || 0);
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaveFail'), 'error');
     }
@@ -1387,6 +1387,7 @@ window.LeucenaDrawing = (function () {
       delete polyBounds[id];
       deleteUndoStack.push(backup);
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
+      if (typeof LeucenaApp.onPolygonDeleted === 'function') LeucenaApp.onPolygonDeleted(entry.data.area_ha || 0);
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleted'), 'success');
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleteFail'), 'error');

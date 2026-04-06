@@ -154,6 +154,8 @@
     .nav-cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border-radius: 50px; font-weight: 600; font-size: 14px; text-decoration: none; transition: all 0.3s; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(34,197,94,0.3); white-space: nowrap; }
     .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(34,197,94,0.4); }
     .nav-cta svg { flex-shrink: 0; }
+    .nav-cta-secondary { background: transparent; border: 1px solid rgba(255,255,255,0.2); box-shadow: none; color: var(--text-dim); font-weight: 500; }
+    .nav-cta-secondary:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.35); color: var(--text); box-shadow: none; }
 
     /* ── Lang selector ── */
     .lang-selector { position: relative; }
@@ -196,6 +198,8 @@
     .btn-secondary:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.25); }
     .hero-stats { display: flex; gap: 48px; margin-top: 64px; padding-top: 48px; border-top: 1px solid var(--border); }
     .hero-stat { text-align: center; }
+    .btn-signup-hero { animation: signup-pulse 3s ease-in-out infinite; }
+    @keyframes signup-pulse { 0%, 100% { box-shadow: 0 4px 24px rgba(34,197,94,0.35); } 50% { box-shadow: 0 4px 32px rgba(34,197,94,0.55), 0 0 0 6px rgba(34,197,94,0.1); } }
     .hero-stat-num { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #22c55e, #84cc16); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .hero-stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
@@ -349,6 +353,7 @@
     .cta-section { text-align: center; padding: 120px 24px; background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(34,197,94,0.08), transparent); }
     .cta-section h2 { font-size: clamp(30px,5vw,52px); font-weight: 900; margin-bottom: 20px; letter-spacing: -1.5px; }
     .cta-section p { font-size: 18px; color: var(--text-dim); max-width: 500px; margin: 0 auto 40px; }
+    .cta-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 
     /* ── Footer ── */
     footer { padding: 48px 24px 32px; border-top: 1px solid var(--border); }
@@ -384,6 +389,7 @@
       section.support-stack#partners { padding-bottom: 48px; }
       .nav-cta { padding: 8px 16px; font-size: 13px; }
       .nav-cta span.cta-text { display: none; }
+      .nav-cta-secondary { display: none; }
       .logo-grid-item img { max-height: 48px; max-width: 140px; }
     }
     @media (max-width: 480px) {
@@ -430,9 +436,12 @@
           <a href="#" class="land-lang-opt" data-lang="es"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#c60b1e"/><rect y="3.5" width="20" height="7" fill="#ffc400"/></svg> Español</a>
         </div>
       </div>
-      <a href="__MAP_URL__" class="nav-cta" aria-label="Open interactive map">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-        <span class="cta-text" data-i18n-land="nav.openMap"></span>
+      <a href="__MAP_URL__#login" class="nav-cta nav-cta-secondary" aria-label="Sign in">
+        <span data-i18n-land="nav.signIn"></span>
+      </a>
+      <a href="__MAP_URL__#register" class="nav-cta" aria-label="Create account">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        <span class="cta-text" data-i18n-land="nav.signUp"></span>
       </a>
       <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -451,7 +460,8 @@
     <a href="#news" class="mobile-nav-link" data-i18n-land="nav.news"></a>
     <a href="#team" class="mobile-nav-link" data-i18n-land="nav.team"></a>
     <a href="#collaborate" class="mobile-nav-link" data-i18n-land="nav.collaborate"></a>
-    <a href="__MAP_URL__" class="mobile-nav-link" style="color:var(--green);" data-i18n-land="nav.openMap"></a>
+      <a href="__MAP_URL__#register" class="mobile-nav-link" style="color:var(--green);" data-i18n-land="nav.signUp"></a>
+      <a href="__MAP_URL__" class="mobile-nav-link" data-i18n-land="nav.openMap"></a>
     <div class="mobile-lang-row">
       <a href="#" class="mobile-lang-opt" data-lang="pt">PT</a>
       <a href="#" class="mobile-lang-opt" data-lang="en">EN</a>
@@ -469,11 +479,14 @@
     <h1 data-i18n-land-html="hero.title"></h1>
     <p class="hero-sub" data-i18n-land-html="hero.sub"></p>
     <div class="hero-actions">
-      <a href="__MAP_URL__" class="btn-primary">
+      <a href="__MAP_URL__#register" class="btn-primary btn-signup-hero">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        <span data-i18n-land="hero.signUp"></span>
+      </a>
+      <a href="__MAP_URL__" class="btn-secondary">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
         <span data-i18n-land="hero.cta"></span>
       </a>
-      <a href="#about" class="btn-secondary" data-i18n-land="hero.learnMore"></a>
     </div>
     <div class="hero-stats" id="hero-stats">
       <div class="hero-stat"><div class="hero-stat-num" id="stat-cells">—</div><div class="hero-stat-label" data-i18n-land="stats.cells"></div></div>
@@ -723,10 +736,16 @@
   <section class="cta-section">
     <h2 data-i18n-land-html="cta.title"></h2>
     <p data-i18n-land="cta.desc"></p>
-    <a href="__MAP_URL__" class="btn-primary" style="font-size:18px;padding:18px 44px;">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
-      <span data-i18n-land="cta.btn"></span>
-    </a>
+    <div class="cta-buttons">
+      <a href="__MAP_URL__#register" class="btn-primary" style="font-size:18px;padding:18px 44px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        <span data-i18n-land="cta.signUp"></span>
+      </a>
+      <a href="__MAP_URL__" class="btn-secondary" style="font-size:16px;padding:16px 36px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+        <span data-i18n-land="cta.btn"></span>
+      </a>
+    </div>
   </section>
 
   <!-- Footer -->
@@ -768,6 +787,8 @@
       'nav.team':        { pt: 'Nosso Time', en: 'Our Team', es: 'Nuestro Equipo' },
       'nav.collaborate': { pt: 'Colabore', en: 'Collaborate', es: 'Colabore' },
       'nav.openMap':     { pt: 'Abrir Mapa', en: 'Open Map', es: 'Abrir Mapa' },
+      'nav.signIn':      { pt: 'Entrar', en: 'Sign In', es: 'Entrar' },
+      'nav.signUp':      { pt: 'Cadastre-se', en: 'Sign Up', es: 'Regístrese' },
       'nav.interactiveMap': { pt: 'Mapa Interativo', en: 'Interactive Map', es: 'Mapa Interactivo' },
 
       'hero.badge': { pt: 'Plataforma ativa — mapeamento em andamento', en: 'Platform active — mapping in progress', es: 'Plataforma activa — mapeo en progreso' },
@@ -781,8 +802,8 @@
         en: 'Developed at <strong>ESALQ — University of São Paulo</strong>, in Piracicaba, Brazil, this project combines <strong>remote sensing</strong> and <strong>artificial intelligence</strong> to map the invasive alien species <em>Leucaena leucocephala</em>. The first phase focuses on the State of São Paulo, establishing the methodological foundation for future expansions.',
         es: 'Desarrollado en la <strong>ESALQ — Universidad de São Paulo</strong>, en Piracicaba, Brasil, este proyecto combina <strong>teledetección</strong> e <strong>inteligencia artificial</strong> para mapear la especie exótica invasora <em>Leucaena leucocephala</em>. La primera fase se concentra en el Estado de São Paulo, estableciendo la base metodológica para futuras expansiones.'
       },
+      'hero.signUp':    { pt: 'Cadastre-se e comece a mapear', en: 'Sign up and start mapping', es: 'Regístrese y empiece a mapear' },
       'hero.cta':       { pt: 'Acessar o Mapa Interativo', en: 'Access the Interactive Map', es: 'Acceder al Mapa Interactivo' },
-      'hero.learnMore': { pt: 'Saiba mais sobre o projeto', en: 'Learn more about the project', es: 'Más sobre el proyecto' },
 
       'stats.cells':  { pt: 'Células no grid', en: 'Grid cells', es: 'Celdas del grid' },
       'stats.masks':  { pt: 'Máscaras mapeadas', en: 'Mapped masks', es: 'Máscaras mapeadas' },
@@ -884,12 +905,12 @@
         en: 'Contribute to the mapping of <em>Leucaena leucocephala</em> in the State of São Paulo. It is simple, free and makes a difference for biodiversity.',
         es: 'Contribuya al mapeo de <em>Leucaena leucocephala</em> en el Estado de São Paulo. Es simple, gratuito y marca la diferencia para la biodiversidad.'
       },
-      'collab.step1.title': { pt: 'Solicite o acesso', en: 'Request access', es: 'Solicite acceso' },
-      'collab.step1.desc': { pt: 'Envie um e-mail para <a href="mailto:ms.barros@usp.br" style="color:var(--green)">ms.barros@usp.br</a> solicitando seu código de acesso.', en: 'Send an email to <a href="mailto:ms.barros@usp.br" style="color:var(--green)">ms.barros@usp.br</a> requesting your access code.', es: 'Envíe un correo a <a href="mailto:ms.barros@usp.br" style="color:var(--green)">ms.barros@usp.br</a> solicitando su código de acceso.' },
-      'collab.step2.title': { pt: 'Crie sua conta', en: 'Create your account', es: 'Cree su cuenta' },
-      'collab.step2.desc': { pt: 'Acesse o mapa, clique em "Entrar" e depois em "Cadastrar". Informe usuário, senha e código de acesso.', en: 'Access the map, click "Sign In" then "Register". Enter a username, password and access code.', es: 'Acceda al mapa, haga clic en "Entrar" y luego en "Registrar". Ingrese usuario, contraseña y código de acceso.' },
+      'collab.step1.title': { pt: 'Crie sua conta', en: 'Create your account', es: 'Cree su cuenta' },
+      'collab.step1.desc': { pt: 'Clique em <a href="__MAP_URL__#register" style="color:var(--green)">"Cadastre-se"</a>, informe seu e-mail e senha ou entre com Google. É grátis e leva menos de um minuto.', en: 'Click <a href="__MAP_URL__#register" style="color:var(--green)">"Sign Up"</a>, enter your email and password or sign in with Google. It\'s free and takes less than a minute.', es: 'Haga clic en <a href="__MAP_URL__#register" style="color:var(--green)">"Regístrese"</a>, ingrese su correo y contraseña o entre con Google. Es gratis y toma menos de un minuto.' },
+      'collab.step2.title': { pt: 'Aprenda a mapear', en: 'Learn how to map', es: 'Aprenda a mapear' },
+      'collab.step2.desc': { pt: 'Confira a seção <a href="__MAP_URL__#howto" style="color:var(--green)">"Como mapear"</a> para ver instruções detalhadas. É simples e intuitivo.', en: 'Check the <a href="__MAP_URL__#howto" style="color:var(--green)">"How to map"</a> section for detailed instructions. It\'s simple and intuitive.', es: 'Consulte la sección <a href="__MAP_URL__#howto" style="color:var(--green)">"Cómo mapear"</a> para instrucciones detalladas. Es simple e intuitivo.' },
       'collab.step3.title': { pt: 'Comece a mapear', en: 'Start mapping', es: 'Empiece a mapear' },
-      'collab.step3.desc': { pt: 'Selecione uma célula, bloqueie para edição e desenhe máscaras de copa de leucena. Seus dados ajudam prefeituras e a ciência.', en: 'Select a cell, lock for editing and draw leucaena canopy masks. Your data helps municipalities and science.', es: 'Seleccione una celda, bloquee para edición y dibuje máscaras de copa de leucaena. Sus datos ayudan a municipios y a la ciencia.' },
+      'collab.step3.desc': { pt: 'Selecione uma célula, bloqueie para edição e desenhe máscaras de copa de leucena. Com apenas 5 máscaras você já aparece na seção de colaboradores!', en: 'Select a cell, lock for editing and draw leucaena canopy masks. With just 5 masks you already appear in the contributors section!', es: 'Seleccione una celda, bloquee para edición y dibuje máscaras de copa de leucaena. ¡Con solo 5 máscaras ya aparece en la sección de colaboradores!' },
 
       'faq.label': { pt: 'Perguntas Frequentes', en: 'FAQ', es: 'Preguntas Frecuentes' },
       'faq.title': { pt: 'Dúvidas sobre a leucena invasora', en: 'Questions about invasive leucaena', es: 'Dudas sobre la leucaena invasora' },
@@ -900,6 +921,7 @@
         es: '¿Listo para contribuir con la<br><span class="gradient">ciencia</span>?'
       },
       'cta.desc': { pt: 'Cada máscara desenhada ajuda a entender a distribuição dessa espécie invasora e apoia ações de erradicação.', en: 'Each drawn mask helps understand the distribution of this invasive species and supports eradication efforts.', es: 'Cada máscara dibujada ayuda a entender la distribución de esta especie invasora y apoya acciones de erradicación.' },
+      'cta.signUp': { pt: 'Cadastre-se gratuitamente', en: 'Sign up for free', es: 'Regístrese gratis' },
       'cta.btn': { pt: 'Acessar o Mapa', en: 'Access the Map', es: 'Acceder al Mapa' },
 
       'progress.title': { pt: 'Progresso do Mapeamento', en: 'Mapping Progress', es: 'Progreso del Mapeo' },

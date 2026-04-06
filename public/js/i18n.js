@@ -116,6 +116,7 @@ window.LeucenaI18n = (function () {
     'sidebar.cell': { pt: 'Célula', en: 'Cell', es: 'Celda' },
     'sidebar.status': { pt: 'Status:', en: 'Status:', es: 'Estado:' },
     'sidebar.numpoints': { pt: 'Nº de pontos:', en: 'Nº of points:', es: 'Nº de puntos:' },
+    'sidebar.masks': { pt: 'Máscaras:', en: 'Masks:', es: 'Máscaras:' },
     'sidebar.workedBy': { pt: 'Trabalhado por:', en: 'Worked by:', es: 'Trabajado por:' },
     'sidebar.finishedBy': { pt: 'Finalizado por:', en: 'Finished by:', es: 'Finalizado por:' },
     'sidebar.lockEdit': { pt: 'Bloquear e Editar', en: 'Lock & Edit', es: 'Bloquear y Editar' },
@@ -341,6 +342,7 @@ window.LeucenaI18n = (function () {
 
     // ── Profile (Quem Somos) ──
     'profile.title': { pt: 'Meu perfil', en: 'My profile', es: 'Mi perfil' },
+    'profile.clickHintTooltip': { pt: 'Clique aqui para abrir seu perfil', en: 'Click here to open your profile', es: 'Haga clic aquí para abrir su perfil' },
     'profile.subtitleMember': { pt: 'Estas informações aparecem na seção "Quem Somos" do site.', en: 'This information appears in the "About Us" section of the site.', es: 'Esta información aparece en la sección "Quiénes Somos" del sitio.' },
     'profile.subtitleContributor': { pt: 'Crie 5+ máscaras para aparecer no nosso site como colaborador(a) da leucaena.earth!', en: 'Create 5+ masks to be featured on our site as a leucaena.earth collaborator!', es: '¡Cree 5+ máscaras para aparecer en nuestro sitio como colaborador(a) de leucaena.earth!' },
     'profile.fullName': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
