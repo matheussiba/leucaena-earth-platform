@@ -179,6 +179,18 @@ window.LeucenaApp = (function () {
       if (e.target === e.currentTarget) closeAdminUsersModal();
     });
 
+    document.getElementById('inbox-bell-btn').addEventListener('click', openInboxModal);
+    document.getElementById('inbox-modal-close').addEventListener('click', closeInboxModal);
+    document.getElementById('inbox-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeInboxModal();
+    });
+    document.getElementById('inbox-compose-close').addEventListener('click', closeComposeModal);
+    document.getElementById('inbox-compose-cancel').addEventListener('click', closeComposeModal);
+    document.getElementById('inbox-compose-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeComposeModal();
+    });
+    document.getElementById('inbox-compose-form').addEventListener('submit', handleComposeSend);
+
     const closePwModal = () => document.getElementById('admin-pw-modal').classList.add('hidden');
     document.getElementById('admin-pw-modal-close').addEventListener('click', closePwModal);
     document.getElementById('admin-pw-modal').addEventListener('click', (e) => {
@@ -372,6 +384,8 @@ window.LeucenaApp = (function () {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const modalCloseMap = [
+        ['inbox-compose-modal', closeComposeModal],
+        ['inbox-modal', closeInboxModal],
         ['admin-delete-user-modal', closePermanentDeleteUserModal],
         ['admin-rename-modal', closeRenameModal],
         ['admin-pw-modal', closePwModal],
@@ -1013,6 +1027,9 @@ window.LeucenaApp = (function () {
     LeucenaCollab.init(username);
     showAdminTools();
     loadUserProfile();
+    document.getElementById('inbox-bell-btn').classList.remove('hidden');
+    refreshInboxBadge();
+    startInboxPolling();
     if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyStyles) {
       LeucenaDrawing.refreshPolyStyles();
     }
@@ -1900,6 +1917,8 @@ window.LeucenaApp = (function () {
     document.getElementById('user-badge').classList.add('hidden');
     document.getElementById('logout-btn').classList.add('hidden');
     document.getElementById('edit-mode-badge').classList.add('hidden');
+    document.getElementById('inbox-bell-btn').classList.add('hidden');
+    stopInboxPolling();
 
     hideAdminTools();
     deselectCell();
@@ -3772,6 +3791,187 @@ window.LeucenaApp = (function () {
     }
   }
 
+  // ── Inbox ──
+
+  let _inboxMessages = [];
+  let _inboxBadgeInterval = null;
+
+  async function refreshInboxBadge() {
+    if (!isLoggedIn()) return;
+    try {
+      const r = await fetch('/api/messages/unread-count', { headers: authHeaders() });
+      if (!r.ok) return;
+      const { count } = await r.json();
+      const badge = document.getElementById('inbox-badge');
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function startInboxPolling() {
+    stopInboxPolling();
+    _inboxBadgeInterval = setInterval(refreshInboxBadge, 60000);
+  }
+
+  function stopInboxPolling() {
+    if (_inboxBadgeInterval) { clearInterval(_inboxBadgeInterval); _inboxBadgeInterval = null; }
+  }
+
+  async function openInboxModal() {
+    const t = LeucenaI18n.t;
+    const modal = document.getElementById('inbox-modal');
+    const list = document.getElementById('inbox-list');
+    modal.classList.remove('hidden');
+    list.innerHTML = '<p class="inbox-empty">' + t('inbox.noMessages') + '</p>';
+    try {
+      const r = await fetch('/api/messages', { headers: authHeaders() });
+      if (!r.ok) return;
+      _inboxMessages = await r.json();
+      renderInboxList();
+    } catch (e) { /* ignore */ }
+  }
+
+  function renderInboxList() {
+    const t = LeucenaI18n.t;
+    const list = document.getElementById('inbox-list');
+    list.innerHTML = '';
+    if (isAdminUser()) {
+      const composeBtn = document.createElement('button');
+      composeBtn.className = 'btn btn-primary btn-full';
+      composeBtn.style.marginBottom = '12px';
+      composeBtn.textContent = t('inbox.compose');
+      composeBtn.addEventListener('click', () => { closeInboxModal(); openComposeModal(); });
+      list.appendChild(composeBtn);
+    }
+    if (_inboxMessages.length === 0) {
+      const emptyEl = document.createElement('p');
+      emptyEl.className = 'inbox-empty';
+      emptyEl.textContent = t('inbox.noMessages');
+      list.appendChild(emptyEl);
+      return;
+    }
+    for (const msg of _inboxMessages) {
+      const isUnread = !msg.read_at;
+      const el = document.createElement('div');
+      el.className = 'inbox-item' + (isUnread ? ' inbox-unread' : '');
+      const dateStr = new Date(msg.created_at).toLocaleDateString(LeucenaI18n.getLang(), { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      el.innerHTML =
+        '<div class="inbox-item-header">' +
+          (isUnread ? '<span class="inbox-item-unread-dot"></span>' : '') +
+          '<span class="inbox-item-subject">' + escapeHtml(msg.subject) + '</span>' +
+          '<span class="inbox-item-date">' + dateStr + '</span>' +
+        '</div>' +
+        '<div class="inbox-item-meta">' + t('inbox.from', msg.sender) +
+          (msg.target === 'all' ? ' · ' + t('inbox.toAll') : ' · ' + t('inbox.toUser', msg.target)) +
+        '</div>' +
+        '<div class="inbox-item-body">' + escapeHtml(msg.body) + '</div>';
+      el.addEventListener('click', () => {
+        el.classList.toggle('inbox-expanded');
+        if (isUnread && el.classList.contains('inbox-expanded')) {
+          markMessageRead(msg.id, el);
+        }
+      });
+      list.appendChild(el);
+    }
+  }
+
+  async function markMessageRead(msgId, el) {
+    try {
+      await fetch(`/api/messages/${msgId}/read`, { method: 'PUT', headers: authHeaders() });
+      el.classList.remove('inbox-unread');
+      const dot = el.querySelector('.inbox-item-unread-dot');
+      if (dot) dot.remove();
+      const msg = _inboxMessages.find(m => m.id === msgId);
+      if (msg) msg.read_at = new Date().toISOString();
+      refreshInboxBadge();
+    } catch (e) { /* ignore */ }
+  }
+
+  function closeInboxModal() {
+    document.getElementById('inbox-modal').classList.add('hidden');
+  }
+
+  async function openComposeModal() {
+    const t = LeucenaI18n.t;
+    const modal = document.getElementById('inbox-compose-modal');
+    const select = document.getElementById('inbox-compose-target');
+    const errEl = document.getElementById('inbox-compose-error');
+    errEl.classList.add('hidden');
+    document.getElementById('inbox-compose-subject').value = '';
+    document.getElementById('inbox-compose-body').value = '';
+
+    select.innerHTML = '<option value="all">' + t('inbox.recipientAll') + '</option>';
+    try {
+      const r = await fetch('/api/admin/users', { headers: authHeaders() });
+      if (r.ok) {
+        const users = await r.json();
+        for (const u of users) {
+          if (u.username === 'deleted') continue;
+          const opt = document.createElement('option');
+          opt.value = u.username;
+          opt.textContent = u.full_name ? u.full_name + ' (' + u.username + ')' : u.username;
+          select.appendChild(opt);
+        }
+      }
+    } catch (e) { /* ignore */ }
+    modal.classList.remove('hidden');
+  }
+
+  function closeComposeModal() {
+    document.getElementById('inbox-compose-modal').classList.add('hidden');
+  }
+
+  async function handleComposeSend(e) {
+    e.preventDefault();
+    const t = LeucenaI18n.t;
+    const subject = document.getElementById('inbox-compose-subject').value.trim();
+    const body = document.getElementById('inbox-compose-body').value.trim();
+    const target = document.getElementById('inbox-compose-target').value;
+    const errEl = document.getElementById('inbox-compose-error');
+    if (!subject || !body) return;
+
+    const btn = document.getElementById('inbox-compose-submit');
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/admin/messages', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body, target })
+      });
+      if (r.ok) {
+        closeComposeModal();
+        showToast(t('inbox.sentSuccess'), 'success');
+      } else {
+        const j = await r.json();
+        errEl.textContent = j.error || t('inbox.sentFail');
+        errEl.classList.remove('hidden');
+      }
+    } catch (err) {
+      errEl.textContent = t('inbox.sentFail');
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function onInboxNew(data) {
+    if (!isLoggedIn()) return;
+    if (data.target !== 'all' && data.target !== username) return;
+    const t = LeucenaI18n.t;
+    showToast(t('inbox.newMessage', data.subject), 'info', 6000);
+    refreshInboxBadge();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   setupPointModes();
 
   init();
@@ -3807,6 +4007,8 @@ window.LeucenaApp = (function () {
     onPolygonSaved,
     onPolygonDeleted,
     onCellStatusChanged,
-    refreshCellSidebarIfSelected
+    refreshCellSidebarIfSelected,
+    onInboxNew,
+    refreshInboxBadge
   };
 })();

@@ -1541,6 +1541,88 @@ app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
 
 // [REMOVED] /api/admin/passcode; passcode system removed
 
+// ── Inbox: messages ──
+
+app.post('/api/admin/messages', requireAuth, async (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const { subject, body, target } = req.body;
+  if (!subject || !body) return res.status(400).json({ error: 'subject and body are required' });
+  const cleanTarget = (target || 'all').trim();
+  if (cleanTarget !== 'all') {
+    const targetUser = queryOne('SELECT id FROM users WHERE username = ?', [cleanTarget]);
+    if (!targetUser) return res.status(404).json({ error: 'Target user not found' });
+  }
+  const now = new Date().toISOString();
+  runSQL('INSERT INTO messages (sender, subject, body, target, created_at) VALUES (?, ?, ?, ?, ?)',
+    [req.username, subject.trim(), body.trim(), cleanTarget, now]);
+  const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
+  logActivity(req.username, 'inbox_message_sent', null, msg ? String(msg.id) : null, JSON.stringify({ target: cleanTarget, subject: subject.trim() }));
+
+  let emailResults = [];
+  if (resend) {
+    let recipients;
+    if (cleanTarget === 'all') {
+      recipients = queryAll("SELECT username, email, full_name FROM users WHERE is_active = 1 AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'");
+    } else {
+      recipients = queryAll("SELECT username, email, full_name FROM users WHERE username = ? AND is_active = 1 AND email IS NOT NULL AND TRIM(email) != ''", [cleanTarget]);
+    }
+    for (const u of recipients) {
+      try {
+        await resend.emails.send({
+          from: RESEND_FROM,
+          to: u.email,
+          subject: `[leucaena.earth] ${subject.trim()}`,
+          html: `<p>Olá <strong>${u.full_name || u.username}</strong>,</p>
+                 <p>${body.trim().replace(/\n/g, '<br>')}</p>
+                 <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${req.username}</strong> via leucaena.earth</p>
+                 <p style="font-size:12px;color:#888;"><a href="https://map.leucaena.earth">Abrir plataforma</a></p>`
+        });
+        emailResults.push({ username: u.username, sent: true });
+      } catch (e) {
+        console.error('Inbox email error:', u.username, e.message);
+        emailResults.push({ username: u.username, sent: false, error: e.message });
+      }
+    }
+  }
+
+  io.emit('inbox:new', { id: msg ? msg.id : null, subject: subject.trim(), sender: req.username, target: cleanTarget, created_at: now });
+  res.json({ success: true, messageId: msg ? msg.id : null, emailResults });
+});
+
+app.get('/api/messages', requireAuth, (req, res) => {
+  const messages = queryAll(
+    `SELECT m.*, mr.read_at
+     FROM messages m
+     LEFT JOIN message_reads mr ON mr.message_id = m.id AND mr.username = ?
+     WHERE m.target = 'all' OR m.target = ?
+     ORDER BY m.created_at DESC
+     LIMIT 100`,
+    [req.username, req.username]
+  );
+  res.json(messages);
+});
+
+app.put('/api/messages/:id/read', requireAuth, (req, res) => {
+  const msgId = Number(req.params.id);
+  const msg = queryOne('SELECT id FROM messages WHERE id = ?', [msgId]);
+  if (!msg) return res.status(404).json({ error: 'Message not found' });
+  const already = queryOne('SELECT message_id FROM message_reads WHERE message_id = ? AND username = ?', [msgId, req.username]);
+  if (!already) {
+    runSQL('INSERT INTO message_reads (message_id, username, read_at) VALUES (?, ?, ?)', [msgId, req.username, new Date().toISOString()]);
+  }
+  res.json({ success: true });
+});
+
+app.get('/api/messages/unread-count', requireAuth, (req, res) => {
+  const row = queryOne(
+    `SELECT COUNT(*) as cnt FROM messages m
+     WHERE (m.target = 'all' OR m.target = ?)
+     AND NOT EXISTS (SELECT 1 FROM message_reads mr WHERE mr.message_id = m.id AND mr.username = ?)`,
+    [req.username, req.username]
+  );
+  res.json({ count: row ? row.cnt : 0 });
+});
+
 app.get('/api/admin/logs', requireAuth, (req, res) => {
   if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Equipe ou admin apenas' });
   const format = req.query.format || 'json';

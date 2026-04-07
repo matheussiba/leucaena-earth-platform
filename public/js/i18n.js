@@ -526,7 +526,31 @@ window.LeucenaI18n = (function () {
     'ranking.firstMaskTitle': { pt: 'Primeiro polígono!', en: 'First polygon!', es: '¡Primer polígono!' },
     'ranking.firstMaskMsg': { pt: 'Parabéns! Você acabou de criar seu primeiro polígono de leucena. Continue mapeando para subir no ranking!', en: 'Congratulations! You just created your first leucaena polygon. Keep mapping to climb the ranking!', es: '¡Felicidades! Acabas de crear tu primer polígono de leucena. ¡Sigue mapeando para subir en el ranking!' },
     'ranking.rankUpTitle': { pt: 'Subiu no ranking!', en: 'Rank up!', es: '¡Subiste en el ranking!' },
-    'ranking.rankUpMsg': { pt: 'Você subiu para o {0}º lugar no ranking de colaboradores!', en: 'You moved up to {0}th place in the collaborators ranking!', es: '¡Subiste al {0}º lugar en el ranking de colaboradores!' }
+    'ranking.rankUpMsg': { pt: 'Você subiu para o {0}º lugar no ranking de colaboradores!', en: 'You moved up to {0}th place in the collaborators ranking!', es: '¡Subiste al {0}º lugar en el ranking de colaboradores!' },
+
+    // ── Inbox ──
+    'inbox.title': { pt: 'Mensagens', en: 'Messages', es: 'Mensajes' },
+    'inbox.noMessages': { pt: 'Nenhuma mensagem', en: 'No messages', es: 'Sin mensajes' },
+    'inbox.markRead': { pt: 'Marcar como lida', en: 'Mark as read', es: 'Marcar como leída' },
+    'inbox.from': { pt: 'De: {0}', en: 'From: {0}', es: 'De: {0}' },
+    'inbox.toAll': { pt: 'Para: Todos', en: 'To: Everyone', es: 'Para: Todos' },
+    'inbox.toUser': { pt: 'Para: {0}', en: 'To: {0}', es: 'Para: {0}' },
+    'inbox.bellTitle': { pt: 'Mensagens', en: 'Messages', es: 'Mensajes' },
+    'inbox.unreadCount': { pt: '{0} não lida(s)', en: '{0} unread', es: '{0} sin leer' },
+    'inbox.sentSuccess': { pt: 'Mensagem enviada com sucesso', en: 'Message sent successfully', es: 'Mensaje enviado con éxito' },
+    'inbox.sentFail': { pt: 'Falha ao enviar mensagem', en: 'Failed to send message', es: 'Error al enviar mensaje' },
+    'inbox.newMessage': { pt: 'Nova mensagem: {0}', en: 'New message: {0}', es: 'Nuevo mensaje: {0}' },
+    'inbox.compose': { pt: 'Nova Mensagem', en: 'New Message', es: 'Nuevo Mensaje' },
+    'inbox.subject': { pt: 'Assunto', en: 'Subject', es: 'Asunto' },
+    'inbox.body': { pt: 'Mensagem', en: 'Message', es: 'Mensaje' },
+    'inbox.recipient': { pt: 'Destinatário', en: 'Recipient', es: 'Destinatario' },
+    'inbox.recipientAll': { pt: 'Todos os usuários', en: 'All users', es: 'Todos los usuarios' },
+    'inbox.send': { pt: 'Enviar', en: 'Send', es: 'Enviar' },
+    'inbox.cancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
+    'inbox.subjectPlaceholder': { pt: 'Assunto da mensagem...', en: 'Message subject...', es: 'Asunto del mensaje...' },
+    'inbox.bodyPlaceholder': { pt: 'Escreva sua mensagem...', en: 'Write your message...', es: 'Escribe tu mensaje...' },
+    'inbox.emailSent': { pt: '(e-mail enviado)', en: '(email sent)', es: '(correo enviado)' },
+    'inbox.emailNotSent': { pt: '(sem e-mail)', en: '(no email)', es: '(sin correo)' }
   };
 
   function t(key, ...args) {

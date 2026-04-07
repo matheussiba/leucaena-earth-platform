@@ -142,6 +142,27 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN occupation TEXT'); } catch (e) { /* already exists */ }
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sender TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      target TEXT NOT NULL DEFAULT 'all',
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS message_reads (
+      message_id INTEGER NOT NULL,
+      username TEXT NOT NULL,
+      read_at TEXT NOT NULL,
+      PRIMARY KEY (message_id, username),
+      FOREIGN KEY (message_id) REFERENCES messages(id)
+    )
+  `);
+
   // One-time: mark pre-existing local users as email_verified so they aren't locked out
   try {
     db.run("UPDATE users SET email_verified = 1 WHERE email_verified = 0 AND verification_token IS NULL AND (auth_provider IS NULL OR auth_provider = 'local')");

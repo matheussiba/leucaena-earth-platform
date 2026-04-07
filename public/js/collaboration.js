@@ -124,6 +124,12 @@ window.LeucenaCollab = (function () {
         LeucenaDrawing.removeRemotePolygon(data.id);
       }
     });
+
+    socket.on('inbox:new', (data) => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.onInboxNew) {
+        LeucenaApp.onInboxNew(data);
+      }
+    });
   }
 
   function notifyEditingCell(cellId) {
