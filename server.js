@@ -769,6 +769,8 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
   if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
+  const cleanFullName = (full_name && typeof full_name === 'string') ? full_name.trim().substring(0, 100) : '';
+  if (!cleanFullName) return res.status(400).json({ error: 'Nome completo é obrigatório' });
 
   const existingEmail = queryOne('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
   if (existingEmail) return res.status(409).json({ error: 'Este e-mail já está em uso por outra conta' });
@@ -795,7 +797,6 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const now = new Date().toISOString();
   const verifyToken = uuidv4();
   const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  const cleanFullName = (full_name && typeof full_name === 'string') ? full_name.trim().substring(0, 100) : null;
   runSQL(
     `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires, full_name)
      VALUES (?, ?, ?, ?, 'local', 0, ?, ?, ?)`,
@@ -1144,7 +1145,16 @@ app.get('/auth/google/callback', async (req, res) => {
 
     const googleId = profile.id;
     const googleEmail = profile.email.toLowerCase();
-    const googleName = profile.name || '';
+    let googleName = (profile.name && String(profile.name).trim()) || '';
+    if (!googleName && (profile.given_name || profile.family_name)) {
+      googleName = [profile.given_name, profile.family_name]
+        .filter(Boolean)
+        .map(s => String(s).trim())
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+    }
+    if (googleName.length > 100) googleName = googleName.substring(0, 100);
     const googlePicture = profile.picture || null;
 
     let user = queryOne('SELECT * FROM users WHERE google_id = ?', [googleId]);
@@ -1185,8 +1195,10 @@ app.get('/auth/google/callback', async (req, res) => {
       return res.redirect('/?auth_error=account_deactivated');
     }
 
-    if (googleName && !user.full_name) {
+    const hasLocalFullName = user.full_name && String(user.full_name).trim();
+    if (googleName && !hasLocalFullName) {
       runSQL('UPDATE users SET full_name = ? WHERE id = ?', [googleName, user.id]);
+      persist();
     }
 
     if (googlePicture && !user.photo) {
@@ -1483,13 +1495,14 @@ app.post('/api/admin/users/create', requireAuth, (req, res) => {
   if (!/[a-z]/.test(username)) return res.status(400).json({ error: 'O usuário deve conter pelo menos uma letra' });
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
+  const cleanFullName = (full_name && typeof full_name === 'string') ? full_name.trim().substring(0, 100) : '';
+  if (!cleanFullName) return res.status(400).json({ error: 'Nome completo é obrigatório' });
 
   const existing = queryOne('SELECT id FROM users WHERE username = ?', [username]);
   if (existing) return res.status(409).json({ error: 'Nome de usuário já em uso' });
 
   const hash = hashPassword(password);
   const now = new Date().toISOString();
-  const cleanFullName = (full_name || '').trim() || null;
   runSQL(
     'INSERT INTO users (username, password_hash, created_at, email, email_verified, auth_provider, full_name) VALUES (?, ?, ?, ?, 1, ?, ?)',
     [username, hash, now, email, 'local', cleanFullName]

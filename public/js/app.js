@@ -3503,7 +3503,7 @@ window.LeucenaApp = (function () {
         const errEl = document.getElementById('admin-create-error');
         errEl.classList.add('hidden');
 
-        if (!u || !e || !p) {
+        if (!fn || !u || !e || !p) {
           errEl.textContent = t('admin.createUserAllFields');
           errEl.classList.remove('hidden');
           return;
