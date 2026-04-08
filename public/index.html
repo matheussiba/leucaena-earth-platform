@@ -236,6 +236,7 @@
       <div id="admin-create-user" class="admin-create-user-section hidden">
         <h3 data-i18n="admin.createUserTitle">Criar Usuário</h3>
         <div id="admin-create-error" class="auth-error hidden"></div>
+        <input type="text" id="admin-create-fullname" placeholder="Nome completo" data-i18n-placeholder="admin.createFullNamePlaceholder" maxlength="100">
         <input type="text" id="admin-create-username" placeholder="joao.silva" data-i18n-placeholder="auth.userPlaceholder" maxlength="30">
         <input type="email" id="admin-create-email" placeholder="seu@email.com" data-i18n-placeholder="auth.emailPlaceholder" maxlength="200">
         <div class="password-wrapper">
@@ -281,6 +282,12 @@
       <h2 data-i18n="welcome.title">Novidades!</h2>
       <p class="welcome-text" data-i18n="welcome.videoAdded"></p>
       <p class="welcome-text welcome-text-secondary" data-i18n="welcome.objective"></p>
+      <div class="welcome-video-thumbnail" id="welcome-video-thumb">
+        <img src="https://img.youtube.com/vi/S7NCnasL1oQ/hqdefault.jpg" alt="Video tutorial" class="welcome-thumb-img">
+        <div class="welcome-thumb-play">
+          <svg viewBox="0 0 68 48" width="68" height="48"><path d="M66.52 7.74c-.78-2.93-2.49-5.41-5.42-6.19C55.79.13 34 0 34 0S12.21.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74.06 13.05 0 24 0 24s.06 10.95 1.48 16.26c.78 2.93 2.49 5.41 5.42 6.19C12.21 47.87 34 48 34 48s21.79-.13 27.1-1.55c2.93-.78 4.64-3.26 5.42-6.19C67.94 34.95 68 24 68 24s-.06-10.95-1.48-16.26z" fill="red"/><path d="M45 24L27 14v20" fill="#fff"/></svg>
+        </div>
+      </div>
       <a href="#howto" class="btn btn-accent welcome-video-link" id="welcome-go-video" data-i18n="welcome.goToVideo">Ver vídeo</a>
       <div class="welcome-actions">
         <button class="btn btn-link" id="welcome-dismiss-forever" data-i18n="welcome.dontShowAgain">Não mostrar novamente</button>
@@ -505,25 +512,121 @@
 
   <!-- Modal: Compor Mensagem (admin) -->
   <div id="inbox-compose-modal" class="modal-overlay hidden">
-    <div class="modal-card modal-card-small">
+    <div class="modal-card modal-card-compose">
       <button id="inbox-compose-close" class="modal-close">&times;</button>
-      <h2 data-i18n="inbox.compose">Nova Mensagem</h2>
+      <h2 class="compose-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span data-i18n="inbox.compose">Nova Mensagem</span>
+      </h2>
       <div id="inbox-compose-error" class="auth-error hidden"></div>
-      <form id="inbox-compose-form">
-        <label class="profile-label" data-i18n="inbox.recipient">Destinatário</label>
-        <select id="inbox-compose-target" class="inbox-compose-select">
-          <option value="all" data-i18n="inbox.recipientAll">Todos os usuários</option>
-        </select>
-        <label class="profile-label" data-i18n="inbox.subject">Assunto</label>
-        <input type="text" id="inbox-compose-subject" maxlength="200" data-i18n-placeholder="inbox.subjectPlaceholder" placeholder="Assunto da mensagem..." required>
-        <label class="profile-label" data-i18n="inbox.body">Mensagem</label>
-        <textarea id="inbox-compose-body" rows="6" maxlength="2000" data-i18n-placeholder="inbox.bodyPlaceholder" placeholder="Escreva sua mensagem..." required></textarea>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <button type="button" class="btn btn-secondary" id="inbox-compose-cancel" style="flex:1;" data-i18n="inbox.cancel">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="inbox-compose-submit" style="flex:1;" data-i18n="inbox.send">Enviar</button>
+      <form id="inbox-compose-form" class="compose-form">
+        <div class="compose-field">
+          <label class="compose-label" data-i18n="inbox.recipient">Destinatário</label>
+          <select id="inbox-compose-target" class="compose-select">
+            <option value="all" data-i18n="inbox.recipientAll">Todos os usuários</option>
+          </select>
+        </div>
+        <div class="compose-field">
+          <label class="compose-label" data-i18n="inbox.subject">Assunto</label>
+          <input type="text" id="inbox-compose-subject" class="compose-input" maxlength="200" data-i18n-placeholder="inbox.subjectPlaceholder" placeholder="Assunto da mensagem..." required>
+        </div>
+        <div class="compose-field compose-field-grow">
+          <label class="compose-label" data-i18n="inbox.body">Mensagem</label>
+          <div class="compose-format-bar">
+            <button type="button" class="fmt-btn" data-fmt="bold" title="Bold (**text**)"><b>B</b></button>
+            <button type="button" class="fmt-btn" data-fmt="italic" title="Italic (*text*)"><i>I</i></button>
+            <button type="button" class="fmt-btn" data-fmt="strike" title="Strikethrough (~~text~~)"><s>S</s></button>
+            <button type="button" class="fmt-btn" data-fmt="highlight" title="Highlight (==text==)"><span style="background:#fde68a;padding:0 3px;border-radius:2px;">H</span></button>
+            <span class="fmt-sep"></span>
+            <button type="button" class="fmt-btn" data-fmt="link" title="Link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" data-fmt="quote" title="Citação">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 5v3z"/></svg>
+            </button>
+            <span class="fmt-sep"></span>
+            <button type="button" class="fmt-btn" data-fmt="alignLeft" title="Alinhar à esquerda">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="17" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" data-fmt="alignCenter" title="Centralizar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="18" y1="14" x2="6" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" data-fmt="alignRight" title="Alinhar à direita">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="7" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" data-fmt="alignJustify" title="Justificar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="3" y2="18"/></svg>
+            </button>
+            <span class="fmt-sep"></span>
+            <button type="button" class="fmt-btn" data-fmt="bulletList" title="Lista com marcadores">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+            </button>
+            <button type="button" class="fmt-btn" data-fmt="numberedList" title="Lista numerada">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="2" y="8" font-size="8" fill="currentColor" stroke="none">1</text><text x="2" y="14" font-size="8" fill="currentColor" stroke="none">2</text><text x="2" y="20" font-size="8" fill="currentColor" stroke="none">3</text></svg>
+            </button>
+            <span class="fmt-sep"></span>
+            <button type="button" class="fmt-btn" id="fmt-img-btn" title="Anexar imagem (máx. 2)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </button>
+          </div>
+          <div id="inbox-compose-body" class="compose-editor" contenteditable="true" data-placeholder="Escreva sua mensagem..."></div>
+          <div class="compose-body-footer">
+            <span id="compose-char-counter" class="compose-char-counter">0 / 2000</span>
+          </div>
+          <input type="file" id="compose-img-input" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" multiple>
+          <div id="compose-image-previews" class="compose-image-previews hidden"></div>
+        </div>
+        <label class="compose-toggle hidden" id="inbox-compose-allow-reply-wrap">
+          <input type="checkbox" id="inbox-compose-allow-reply" checked>
+          <span data-i18n="inbox.allowReply">Permitir respostas</span>
+        </label>
+        <div class="compose-actions">
+          <button type="button" class="btn btn-secondary" id="inbox-compose-cancel" data-i18n="inbox.cancel">Cancelar</button>
+          <button type="submit" class="btn btn-primary compose-send-btn" id="inbox-compose-submit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <span data-i18n="inbox.send">Enviar</span>
+          </button>
         </div>
       </form>
     </div>
+  </div>
+
+  <!-- Modal de confirmação de envio de mensagem -->
+  <div id="inbox-confirm-modal" class="modal-overlay inbox-confirm-overlay hidden">
+    <div class="modal-card inbox-confirm-card">
+      <div class="inbox-confirm-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <h3 class="inbox-confirm-title" data-i18n="inbox.confirmSend">Confirmar envio</h3>
+      <div class="inbox-confirm-details">
+        <div class="inbox-confirm-row">
+          <span class="inbox-confirm-label" data-i18n="inbox.recipient">Destinatário</span>
+          <span class="inbox-confirm-value" id="inbox-confirm-recipient"></span>
+        </div>
+        <div class="inbox-confirm-row">
+          <span class="inbox-confirm-label" data-i18n="inbox.subject">Assunto</span>
+          <span class="inbox-confirm-value" id="inbox-confirm-subject"></span>
+        </div>
+        <div class="inbox-confirm-row inbox-confirm-row-body">
+          <span class="inbox-confirm-label" data-i18n="inbox.body">Mensagem</span>
+          <div class="inbox-confirm-body" id="inbox-confirm-body"></div>
+        </div>
+        <div id="inbox-confirm-images" class="inbox-confirm-images hidden"></div>
+      </div>
+      <div class="inbox-confirm-actions">
+        <button type="button" class="btn btn-secondary" id="inbox-confirm-cancel" data-i18n="inbox.cancel">Cancelar</button>
+        <button type="button" class="btn btn-primary compose-send-btn" id="inbox-confirm-send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <span data-i18n="inbox.send">Enviar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image lightbox -->
+  <div id="inbox-lightbox" class="inbox-img-lightbox hidden" tabindex="-1">
+    <button class="inbox-lightbox-close">&times;</button>
+    <img id="inbox-lightbox-img" src="" alt="">
   </div>
 
   <!-- App Principal -->
@@ -671,13 +774,14 @@
           <h3 data-i18n="sidebar.filters">Filtros</h3>
 
           <!-- Células da Grade -->
-          <div class="filter-group">
-            <label class="filter-item filter-item-parent">
+          <div class="filter-group" data-collapsible>
+            <div class="filter-item filter-item-parent">
               <input type="checkbox" id="toggle-grid" checked>
               <span data-i18n="sidebar.gridCellsSection">Células da Grade</span>
               <span class="filter-count" id="count-grid-total"></span>
-            </label>
-            <div class="filter-subgroup">
+              <span class="filter-chevron" title="Expandir / Recolher">&#9662;</span>
+            </div>
+            <div class="filter-subgroup collapsed">
               <label class="filter-item">
                 <input type="checkbox" data-status="not_yet_finished" checked>
                 <span data-i18n="status.not_yet_finished">Ainda não finalizado</span>
@@ -707,13 +811,14 @@
           </div>
 
           <!-- Pontos de Ocorrência -->
-          <div class="filter-group">
-            <label class="filter-item filter-item-parent">
+          <div class="filter-group" data-collapsible>
+            <div class="filter-item filter-item-parent">
               <input type="checkbox" id="toggle-points" checked>
               <span data-i18n="sidebar.occurrencePoints">Pontos de Ocorrência</span>
               <span class="filter-count" id="count-points-total"></span>
-            </label>
-            <div class="filter-subgroup">
+              <span class="filter-chevron" title="Expandir / Recolher">&#9662;</span>
+            </div>
+            <div class="filter-subgroup collapsed">
               <label class="filter-item">
                 <input type="checkbox" id="layer-crowdmapping" data-layer="crowdmapping" checked>
                 <span data-i18n="sidebar.layerCrowdmapping">Crowdmapping</span>
@@ -743,12 +848,13 @@
           </div>
 
           <!-- Polígonos de Leucena -->
-          <div class="filter-group">
-            <label class="filter-item filter-item-parent">
+          <div class="filter-group" data-collapsible>
+            <div class="filter-item filter-item-parent">
               <input type="checkbox" id="toggle-polygons" checked>
               <span data-i18n="sidebar.leucenaMasks">Polígonos de Leucena</span>
               <span class="filter-count" id="count-polygons-total"></span>
-            </label>
+              <span class="filter-chevron hidden" id="mask-hierarchy-chevron" title="Expandir / Recolher">&#9662;</span>
+            </div>
             <div id="mask-subcategories" class="filter-subgroup hidden">
               <label class="filter-item">
                 <input type="checkbox" id="toggle-masks-member" checked>
@@ -937,8 +1043,8 @@
       </div>
       <div class="toolbar-group toolbar-right">
         <div class="coords-container">
+          <span class="coords-label">lat, long:</span>
           <span id="coords-display" class="coords">--</span>
-          <span class="coords-hint" data-i18n-html="coords.hint">Segure o botão direito do<br>mouse por 2s para copiar coordenadas</span>
         </div>
       </div>
     </footer>

@@ -664,6 +664,7 @@
       </div>
     </section>
     <!-- Financiamento -->
+    <span id="funding"></span>
     <section id="sponsors" class="support-stack">
       <div class="section-inner" style="text-align:center;">
         <span class="section-label" data-i18n-land="funding.label"></span>
@@ -1090,6 +1091,7 @@
       }
       if (contribs.length > 0) {
         if (equipe.length > 0) grid.innerHTML += '<div class="team-section-divider"></div>';
+        grid.innerHTML += '<span id="contributors"></span>';
         grid.innerHTML += '<div class="team-section-label">' + labels.contributors + '</div>';
         grid.innerHTML += '<div class="team-section-grid team-section-grid--collab">' + contribs.map((u, idx) => buildCard(u, '', idx < 3 ? contributorRankMedal(idx, labels) : '', true)).join('') + '</div>';
       }

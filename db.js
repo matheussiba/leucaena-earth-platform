@@ -163,6 +163,10 @@ async function initDB() {
     )
   `);
 
+  try { db.run('ALTER TABLE messages ADD COLUMN reply_to INTEGER'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE messages ADD COLUMN allow_reply INTEGER DEFAULT 1'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE messages ADD COLUMN images TEXT'); } catch (e) { /* already exists */ }
+
   // One-time: mark pre-existing local users as email_verified so they aren't locked out
   try {
     db.run("UPDATE users SET email_verified = 1 WHERE email_verified = 0 AND verification_token IS NULL AND (auth_provider IS NULL OR auth_provider = 'local')");

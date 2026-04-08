@@ -86,14 +86,37 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     svCoverageLayer = new google.maps.StreetViewCoverageLayer();
 
-    map.addListener('mousemove', (e) => {
-      const lat = e.latLng.lat().toFixed(6);
-      const lng = e.latLng.lng().toFixed(6);
+    function updateCoordsDisplay(latLng) {
+      if (!latLng) return;
+      const lat = latLng.lat().toFixed(6);
+      const lng = latLng.lng().toFixed(6);
       lastCoords = `${lat}, ${lng}`;
-      document.getElementById('coords-display').textContent = lastCoords;
+      const el = document.getElementById('coords-display');
+      if (el) el.textContent = lastCoords;
       if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.updateMouseLatLng) {
-        LeucenaDrawing.updateMouseLatLng(e.latLng);
+        LeucenaDrawing.updateMouseLatLng(latLng);
       }
+    }
+
+    map.addListener('mousemove', (e) => {
+      updateCoordsDisplay(e.latLng);
+    });
+
+    // DOM fallback: map mousemove does not fire when the cursor is over the Data layer (grid)
+    // or other overlays that capture events — same pattern as drawing.js.
+    const coordsProjOverlay = new google.maps.OverlayView();
+    coordsProjOverlay.onAdd = coordsProjOverlay.draw = coordsProjOverlay.onRemove = function () {};
+    coordsProjOverlay.setMap(map);
+    map.getDiv().addEventListener('mousemove', (e) => {
+      try {
+        const proj = coordsProjOverlay.getProjection();
+        if (!proj) return;
+        const rect = map.getDiv().getBoundingClientRect();
+        const latLng = proj.fromContainerPixelToLatLng(
+          new google.maps.Point(e.clientX - rect.left, e.clientY - rect.top)
+        );
+        if (latLng) updateCoordsDisplay(latLng);
+      } catch (_) { /* projection not ready */ }
     });
 
     map.addListener('click', (e) => {
@@ -1235,11 +1258,22 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : 0;
     setText('count-polygons-total', polyCount);
 
-  const subEl = document.getElementById('mask-subcategories');
+    const subEl = document.getElementById('mask-subcategories');
     if (subEl && typeof LeucenaApp !== 'undefined') {
       const role = LeucenaApp.getUserRole ? LeucenaApp.getUserRole() : null;
       const showSubs = role === 'superadmin' || role === 'admin' || role === 'team';
-      subEl.classList.toggle('hidden', !showSubs);
+
+      const chevron = document.getElementById('mask-hierarchy-chevron');
+      if (chevron) {
+        chevron.classList.toggle('hidden', !showSubs);
+      }
+
+      if (showSubs) {
+        subEl.classList.remove('hidden');
+      } else {
+        subEl.classList.add('hidden');
+      }
+
       const defLeg = document.getElementById('legend-mask-default');
       const memLeg = document.getElementById('legend-mask-member');
       const conLeg = document.getElementById('legend-mask-contributor');

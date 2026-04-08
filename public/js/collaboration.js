@@ -22,7 +22,6 @@ window.LeucenaCollab = (function () {
 
     socket.on('connect', () => {
       socket.emit('user:join', { username });
-      LeucenaApp.showToast(LeucenaI18n.t('toast.connected'), 'success');
     });
 
     socket.on('disconnect', () => {

@@ -172,7 +172,6 @@ window.LeucenaI18n = (function () {
     'map.geoNotSupported': { pt: 'Geolocalização não suportada neste navegador', en: 'Geolocation not supported in this browser', es: 'Geolocalización no soportada en este navegador' },
     'map.geoDenied': { pt: 'Permissão de localização negada. Ative nas configurações do navegador.', en: 'Location permission denied. Enable it in browser settings.', es: 'Permiso de ubicación denegado. Actívelo en la configuración del navegador.' },
     'map.geoError': { pt: 'Não foi possível obter sua localização. Verifique as permissões do navegador.', en: 'Could not get your location. Check browser permissions.', es: 'No se pudo obtener su ubicación. Verifique los permisos del navegador.' },
-    'coords.hint': { pt: 'Segure o botão direito do<br>mouse por 2s para copiar coordenadas', en: 'Hold right mouse button on the map<br>for 2s to copy coordinates', es: 'Mantenga presionado el botón derecho del ratón<br>en el mapa por 2s para copiar coordenadas' },
 
     // ── Legend ──
     'legend.title': { pt: 'Legenda', en: 'Legend', es: 'Leyenda' },
@@ -220,8 +219,33 @@ window.LeucenaI18n = (function () {
     'admin.permanentDeleteModalCancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
     'admin.permanentDeleteConfirmBtn': { pt: 'Excluir permanentemente', en: 'Delete permanently', es: 'Eliminar permanentemente' },
     'admin.permanentDeletePhraseMismatch': { pt: 'O texto não confere. Copie e digite exatamente como mostrado.', en: 'The text does not match. Copy and type it exactly as shown.', es: 'El texto no coincide. Cópielo y escríbalo exactamente como se muestra.' },
+    'admin.founderMake': { pt: 'Clique para tornar Idealizador', en: 'Click to make Founder', es: 'Clic para hacer Idealizador' },
+    'admin.founderRemove': { pt: 'Clique para remover Idealizador', en: 'Click to remove Founder', es: 'Clic para quitar Idealizador' },
+    'admin.founderConfirmMake': { pt: 'Deseja tornar "{0}" um Idealizador do projeto?', en: 'Make "{0}" a project Founder?', es: '¿Convertir a "{0}" en Idealizador del proyecto?' },
+    'admin.founderConfirmRemove': { pt: 'Deseja remover "{0}" como Idealizador?', en: 'Remove "{0}" as Founder?', es: '¿Quitar a "{0}" como Idealizador?' },
+    'admin.founderUpdated': { pt: 'Idealizador atualizado', en: 'Founder updated', es: 'Idealizador actualizado' },
     'admin.userDeactivated': { pt: 'Usuário desativado', en: 'User deactivated', es: 'Usuario desactivado' },
     'admin.userReactivated': { pt: 'Usuário reativado', en: 'User reactivated', es: 'Usuario reactivado' },
+    'admin.batchSelectAll': { pt: 'Selecionar todos', en: 'Select all', es: 'Seleccionar todos' },
+    'admin.batchDeselectAll': { pt: 'Limpar seleção', en: 'Clear selection', es: 'Limpiar selección' },
+    'admin.batchSelected': { pt: '{0} selecionado(s)', en: '{0} selected', es: '{0} seleccionado(s)' },
+    'admin.batchVerify': { pt: 'Verificar', en: 'Verify', es: 'Verificar' },
+    'admin.batchDeactivate': { pt: 'Desativar', en: 'Deactivate', es: 'Desactivar' },
+    'admin.batchReactivate': { pt: 'Reativar', en: 'Reactivate', es: 'Reactivar' },
+    'admin.batchDelete': { pt: 'Excluir permanentemente', en: 'Permanently delete', es: 'Eliminar permanentemente' },
+    'admin.batchConfirmVerify': { pt: 'Verificar {0} usuário(s)? ({1} já verificado(s) serão ignorados)', en: 'Verify {0} user(s)? ({1} already verified will be skipped)', es: '¿Verificar {0} usuario(s)? ({1} ya verificado(s) serán ignorados)' },
+    'admin.batchConfirmDeactivate': { pt: 'Desativar {0} usuário(s)?', en: 'Deactivate {0} user(s)?', es: '¿Desactivar {0} usuario(s)?' },
+    'admin.batchConfirmReactivate': { pt: 'Reativar {0} usuário(s)?', en: 'Reactivate {0} user(s)?', es: '¿Reactivar {0} usuario(s)?' },
+    'admin.batchConfirmDeletePhrase': { pt: 'excluir selecionados', en: 'delete selected', es: 'eliminar seleccionados' },
+    'admin.batchConfirmDeleteWarning': { pt: 'Excluir permanentemente {0} usuário(s)? Esta ação NÃO pode ser desfeita. Seus polígonos serão mantidos.', en: 'Permanently delete {0} user(s)? This action CANNOT be undone. Their polygons will be preserved.', es: 'Eliminar permanentemente {0} usuario(s)? Esta acción NO se puede deshacer. Sus polígonos se conservarán.' },
+    'admin.batchVerifyDone': { pt: '{0} usuário(s) verificado(s) ({1} ignorado(s))', en: '{0} user(s) verified ({1} skipped)', es: '{0} usuario(s) verificado(s) ({1} ignorado(s))' },
+    'admin.batchDeactivateDone': { pt: '{0} usuário(s) desativado(s)', en: '{0} user(s) deactivated', es: '{0} usuario(s) desactivado(s)' },
+    'admin.batchReactivateDone': { pt: '{0} usuário(s) reativado(s)', en: '{0} user(s) reactivated', es: '{0} usuario(s) reactivado(s)' },
+    'admin.batchDeleteDone': { pt: '{0} usuário(s) excluído(s) permanentemente', en: '{0} user(s) permanently deleted', es: '{0} usuario(s) eliminado(s) permanentemente' },
+    'admin.batchDeleteMax': { pt: 'Máximo de {0} usuários por vez para exclusão permanente. Você selecionou {1}.', en: 'Maximum {0} users at a time for permanent deletion. You selected {1}.', es: 'Máximo de {0} usuarios por vez para eliminación permanente. Seleccionó {1}.' },
+    'admin.batchDeactivateMax': { pt: 'Máximo de {0} usuários por vez para desativação. Você selecionou {1}.', en: 'Maximum {0} users at a time for deactivation. You selected {1}.', es: 'Máximo de {0} usuarios por vez para desactivación. Seleccionó {1}.' },
+    'admin.batchSendMessage': { pt: 'Enviar mensagem', en: 'Send message', es: 'Enviar mensaje' },
+    'admin.batchConfirmSendMessage': { pt: 'Enviar mensagem para {0} usuário(s) selecionado(s)?', en: 'Send message to {0} selected user(s)?', es: '¿Enviar mensaje a {0} usuario(s) seleccionado(s)?' },
     'admin.inactive': { pt: 'Inativo', en: 'Inactive', es: 'Inactivo' },
     'admin.deleteUser': { pt: 'Excluir', en: 'Delete', es: 'Eliminar' },
     'admin.confirmDelete': { pt: 'Tem certeza que deseja excluir o usuário "{0}"? Os polígonos serão transferidos para o usuário "deleted".', en: 'Are you sure you want to delete user "{0}"? Polygons will be transferred to the "deleted" user.', es: '¿Está seguro de que desea eliminar al usuario "{0}"? Los polígonos serán transferidos al usuario "deleted".' },
@@ -268,6 +292,7 @@ window.LeucenaI18n = (function () {
     'admin.createUserTitle': { pt: 'Criar Usuário', en: 'Create User', es: 'Crear Usuario' },
     'admin.createUserSubmit': { pt: 'Criar', en: 'Create', es: 'Crear' },
     'admin.createUserCancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
+    'admin.createFullNamePlaceholder': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
     'admin.createUserAllFields': { pt: 'Preencha todos os campos', en: 'Fill in all fields', es: 'Complete todos los campos' },
     'admin.createUserSuccess': { pt: 'Usuário "{0}" criado com sucesso', en: 'User "{0}" created successfully', es: 'Usuario "{0}" creado exitosamente' },
     
@@ -544,13 +569,25 @@ window.LeucenaI18n = (function () {
     'inbox.subject': { pt: 'Assunto', en: 'Subject', es: 'Asunto' },
     'inbox.body': { pt: 'Mensagem', en: 'Message', es: 'Mensaje' },
     'inbox.recipient': { pt: 'Destinatário', en: 'Recipient', es: 'Destinatario' },
-    'inbox.recipientAll': { pt: 'Todos os usuários', en: 'All users', es: 'Todos los usuarios' },
+    'inbox.recipientAll': { pt: 'Todos os colaboradores', en: 'All contributors', es: 'Todos los colaboradores' },
     'inbox.send': { pt: 'Enviar', en: 'Send', es: 'Enviar' },
     'inbox.cancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
     'inbox.subjectPlaceholder': { pt: 'Assunto da mensagem...', en: 'Message subject...', es: 'Asunto del mensaje...' },
     'inbox.bodyPlaceholder': { pt: 'Escreva sua mensagem...', en: 'Write your message...', es: 'Escribe tu mensaje...' },
     'inbox.emailSent': { pt: '(e-mail enviado)', en: '(email sent)', es: '(correo enviado)' },
-    'inbox.emailNotSent': { pt: '(sem e-mail)', en: '(no email)', es: '(sin correo)' }
+    'inbox.emailNotSent': { pt: '(sem e-mail)', en: '(no email)', es: '(sin correo)' },
+    'inbox.confirmSendAll': { pt: 'Enviar esta mensagem para todos os colaboradores?', en: 'Send this message to all contributors?', es: '¿Enviar este mensaje a todos los colaboradores?' },
+    'inbox.confirmSendUser': { pt: 'Enviar esta mensagem para {0}?', en: 'Send this message to {0}?', es: '¿Enviar este mensaje a {0}?' },
+    'inbox.confirmSend': { pt: 'Confirmar envio', en: 'Confirm send', es: 'Confirmar envío' },
+    'inbox.reply': { pt: 'Responder', en: 'Reply', es: 'Responder' },
+    'inbox.sendToAdmin': { pt: 'Enviar mensagem aos administradores', en: 'Send message to administrators', es: 'Enviar mensaje a los administradores' },
+    'inbox.allowReply': { pt: 'Permitir respostas', en: 'Allow replies', es: 'Permitir respuestas' },
+    'inbox.noReplyNotice': { pt: 'Este é um aviso — não é possível responder', en: 'This is a notice — replies are not allowed', es: 'Este es un aviso — no se puede responder' },
+    'inbox.confirmSendAdmin': { pt: 'Enviar esta mensagem para os administradores?', en: 'Send this message to the administrators?', es: '¿Enviar este mensaje a los administradores?' },
+    'inbox.toAdmins': { pt: 'Para: Administradores', en: 'To: Administrators', es: 'Para: Administradores' },
+    'inbox.replyTo': { pt: 'Resposta', en: 'Reply', es: 'Respuesta' },
+    'inbox.confirmRecipientBatch': { pt: '{0} colaboradores selecionados', en: '{0} selected contributors', es: '{0} colaboradores seleccionados' },
+    'inbox.confirmRecipientSuperadmins': { pt: 'Administradores da Leucaena.Earth', en: 'Leucaena.Earth Administrators', es: 'Administradores de Leucaena.Earth' }
   };
 
   function t(key, ...args) {
@@ -725,7 +762,15 @@ window.LeucenaI18n = (function () {
 
     step(1, 'Crie sua conta', '<p>No canto superior direito, clique em <strong>"Entrar"</strong>. Você pode usar sua <strong>conta Google</strong> ou criar uma conta com <strong>nome de usuário e senha</strong>.</p>') +
 
-    step(2, 'Entenda o mapa', '<p>O mapa está dividido em <strong>células (quadrados)</strong>. Cada célula tem um status indicado pela cor:</p>' +
+    step(2, 'Complete seu perfil', '<p>Após o primeiro login, clique no seu <strong>nome/avatar</strong> no canto superior direito para abrir o perfil. Preencha:</p>' +
+      '<ul>' +
+      '<li><strong>Nome completo</strong> e <strong>nome de usuário</strong></li>' +
+      '<li><strong>Foto de perfil</strong> (clique no avatar para escolher uma imagem)</li>' +
+      '<li><strong>Ocupação</strong> (ex: estudante, pesquisador, biólogo)</li>' +
+      '</ul>' +
+      '<p>Seu perfil é exibido na página de colaboradores do projeto.</p>') +
+
+    step(3, 'Entenda o mapa', '<p>O mapa está dividido em <strong>células (quadrados)</strong>. Cada célula tem um status indicado pela cor:</p>' +
       '<ul>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Roxo</strong>: Ainda não finalizado (priorize estas!)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Amarelo (vazado)</strong>: Em uso por outro colaborador</li>' +
@@ -735,35 +780,55 @@ window.LeucenaI18n = (function () {
       '</ul>' +
       '<p>Clique em qualquer célula para ver seu status e informações na barra lateral.</p>') +
 
-    step(3, 'Bloqueie a célula', '<p>Clique no botão ' + btn(ICO.lock, 'Bloquear e Editar') + ' na barra lateral. A célula ficará reservada para você e as ferramentas de edição aparecerão.</p>' +
+    step(4, 'Explore a barra lateral', '<p>A barra lateral (acessível pelo botão ☰ no canto superior esquerdo) contém:</p>' +
+      '<ul>' +
+      '<li><strong>Informações da célula</strong>: status, quem está editando, polígonos existentes</li>' +
+      '<li><strong>Barra de progresso</strong>: percentual de conclusão do mapeamento geral</li>' +
+      '<li><strong>Filtros</strong>: clique no ▾ para expandir/recolher. Filtre por status das células, fontes dos pontos de ocorrência (Crowdmapping, iNaturalist, GBIF, Instituto Horus, SpeciesLink) e polígonos de leucena</li>' +
+      '<li><strong>Ranking</strong>: sua posição entre os colaboradores baseada na quantidade de polígonos criados</li>' +
+      '</ul>') +
+
+    step(5, 'Bloqueie a célula', '<p>Clique no botão ' + btn(ICO.lock, 'Bloquear e Editar') + ' na barra lateral. A célula ficará reservada para você e as ferramentas de edição aparecerão.</p>' +
       '<div class="guide-warning"><strong>Importante:</strong> Enquanto a célula estiver bloqueada, nenhum outro usuário pode editá-la. Lembre-se de desbloquear quando terminar!</div>') +
 
-    step(4, 'Desenhe os polígonos', '<p>Localize os <strong>aglomerados de leucena</strong> na imagem de satélite (áreas onde há duas ou mais leucenas juntas) e use o botão:</p>' +
+    step(6, 'Desenhe os polígonos', '<p>Localize os <strong>aglomerados de leucena</strong> na imagem de satélite (áreas onde há duas ou mais leucenas juntas) e use o botão:</p>' +
       '<p>' + btn(ICO.draw, 'Desenhar') + ': Clique no mapa para criar os vértices do polígono. Cada clique adiciona um ponto. Para <strong>fechar o polígono</strong>, clique no primeiro ponto (ele ficará destacado) ou dê um <strong>duplo-clique</strong>.</p>' +
       '<ul>' +
       '<li>Mínimo de <strong>3 vértices</strong> para formar um polígono.</li>' +
       '<li>O polígono deve <strong>cobrir toda a área de leucena</strong> visível, incluindo os pontos de ocorrência próximos.</li>' +
       '<li>Priorize <strong>aglomerados</strong>: áreas com várias árvores juntas.</li>' +
+      '</ul>' +
+      '<p>Durante o desenho, dois botões auxiliares aparecem:</p>' +
+      '<ul>' +
+      '<li><strong>Desfazer</strong>: remove o último vértice adicionado (também acionável por <strong>Ctrl+Z</strong>)</li>' +
+      '<li><strong>Concluir desenho</strong>: fecha o polígono (também acionável por <strong>Enter</strong>). Aparece após 3 vértices.</li>' +
       '</ul>') +
 
-    step(5, 'Edite os polígonos', '<p>Precisa ajustar um polígono que já desenhou? Use:</p>' +
+    step(7, 'Edite os polígonos', '<p>Precisa ajustar um polígono que já desenhou? Use:</p>' +
       '<p>' + btn(ICO.edit, 'Editar') + ': Clique no polígono e arraste os vértices (pontos brancos) para reposicioná-los. Você também pode arrastar o ponto médio entre dois vértices para criar um novo vértice.</p>') +
 
-    step(6, 'Crie buracos nos polígonos', '<p>Se dentro de um polígono grande houver uma área <strong>sem leucena</strong> (por exemplo, um prédio ou estrada), use:</p>' +
+    step(8, 'Crie buracos nos polígonos', '<p>Se dentro de um polígono grande houver uma área <strong>sem leucena</strong> (por exemplo, um prédio ou estrada), use:</p>' +
       '<p>' + btn(ICO.hole, 'Criar buraco', true) + ': Primeiro clique no polígono-alvo (ele ficará destacado com borda laranja). Em seguida, desenhe o contorno da área interna que <strong>não</strong> é leucena. Esse recorte será excluído do polígono.</p>') +
 
-    step(7, 'Exclua polígonos', '<p>Desenhou um polígono errado? Use:</p>' +
+    step(9, 'Exclua polígonos', '<p>Desenhou um polígono errado? Use:</p>' +
       '<p>' + btn(ICO.del, 'Excluir') + ': Clique no polígono que deseja remover. Uma confirmação será exibida antes da exclusão.</p>' +
       '<div class="guide-warning"><strong>Nota:</strong> Você só pode excluir polígonos que <strong>você mesmo</strong> desenhou.</div>') +
 
-    step(8, 'Use o Street View', '<p>Na dúvida se a vegetação é leucena? Use:</p>' +
+    step(10, 'Use o Street View', '<p>Na dúvida se a vegetação é leucena? Use:</p>' +
       '<p>' + btn(ICO.sv, 'Street View') + ': Clique no botão na barra inferior e depois clique em qualquer ponto do mapa. Uma janela do Google Street View abrirá no local, permitindo que você confirme visualmente a espécie. Procure pelas características: folhas bipinadas, flores brancas esféricas e vagens.</p>') +
 
-    step(9, 'Desbloqueie a célula', '<p>Quando terminar o trabalho na célula, clique no botão:</p>' +
+    step(11, 'Desbloqueie a célula', '<p>Quando terminar o trabalho na célula, clique no botão:</p>' +
       '<p>' + btn(ICO.unlock, 'Desbloquear') + ' na barra inferior. Um modal aparecerá com duas opções:</p>' +
       '<ul>' +
       '<li>' + btn(ICO.check, 'Finalizado') + ': Marque se <strong>todos</strong> os pontos de ocorrência válidos estiverem cobertos por polígonos. O sistema verificará automaticamente.</li>' +
       '<li>' + btn('', 'Ainda não finalizado') + ': Use se você ainda precisa voltar depois, ou se não conseguiu cobrir todos os pontos.</li>' +
+      '</ul>') +
+
+    step(12, 'Mensagens (Inbox)', '<p>O ícone de <strong>sininho</strong> 🔔 na barra superior mostra suas mensagens. Um número vermelho indica mensagens não lidas.</p>' +
+      '<ul>' +
+      '<li>Você pode <strong>enviar mensagens</strong> para os administradores do projeto (dúvidas, sugestões, relatos de problemas)</li>' +
+      '<li>Quando um administrador enviar uma mensagem para os colaboradores, você receberá uma <strong>notificação em tempo real</strong></li>' +
+      '<li>Se a mensagem permitir resposta, um botão <strong>"Responder"</strong> estará disponível</li>' +
       '</ul>') +
 
     '<div class="guide-tip"><strong>Dicas úteis:</strong>' +
@@ -772,6 +837,9 @@ window.LeucenaI18n = (function () {
     '<li>Alterne entre <strong>Satélite</strong> e <strong>Mapa</strong> para melhor visualização das copas das árvores.</li>' +
     '<li>Use <strong>Ctrl+Z</strong> para desfazer a última ação (ao adicionar ou remover pontos).</li>' +
     '<li>Use o <strong>zoom</strong> para ver detalhes das copas: leucenas têm copas arredondadas com tom verde-claro.</li>' +
+    '<li>As <strong>coordenadas</strong> (lat, long) aparecem na barra inferior conforme você move o mouse sobre o mapa.</li>' +
+    '<li>O ícone de <strong>usuários online</strong> na barra superior mostra quantos colaboradores estão mapeando simultaneamente.</li>' +
+    '<li>Acompanhe seu <strong>ranking</strong> na barra lateral para ver sua posição entre os colaboradores.</li>' +
     '</ul></div>';
   }
 
@@ -783,7 +851,15 @@ window.LeucenaI18n = (function () {
 
     step(1, 'Create your account', '<p>In the upper right corner, click <strong>"Sign In"</strong>. You can use your <strong>Google account</strong> or create an account with a <strong>username and password</strong>.</p>') +
 
-    step(2, 'Understand the map', '<p>The map is divided into <strong>cells (squares)</strong>. Each cell has a status indicated by its color:</p>' +
+    step(2, 'Complete your profile', '<p>After your first login, click your <strong>name/avatar</strong> in the upper right corner to open your profile. Fill in:</p>' +
+      '<ul>' +
+      '<li><strong>Full name</strong> and <strong>username</strong></li>' +
+      '<li><strong>Profile photo</strong> (click the avatar to choose an image)</li>' +
+      '<li><strong>Occupation</strong> (e.g. student, researcher, biologist)</li>' +
+      '</ul>' +
+      '<p>Your profile is displayed on the project\'s contributors page.</p>') +
+
+    step(3, 'Understand the map', '<p>The map is divided into <strong>cells (squares)</strong>. Each cell has a status indicated by its color:</p>' +
       '<ul>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Purple</strong>: Not yet finished (prioritize these!)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Yellow (hollow)</strong>: In use by another collaborator</li>' +
@@ -793,35 +869,55 @@ window.LeucenaI18n = (function () {
       '</ul>' +
       '<p>Click any cell to view its status and information in the sidebar.</p>') +
 
-    step(3, 'Lock the cell', '<p>Click the ' + btn(ICO.lock, 'Lock & Edit') + ' button in the sidebar. The cell will be reserved for you and the editing tools will appear.</p>' +
+    step(4, 'Explore the sidebar', '<p>The sidebar (accessible via the ☰ button in the upper left corner) contains:</p>' +
+      '<ul>' +
+      '<li><strong>Cell information</strong>: status, who is editing, existing polygons</li>' +
+      '<li><strong>Progress bar</strong>: overall mapping completion percentage</li>' +
+      '<li><strong>Filters</strong>: click the ▾ to expand/collapse. Filter by cell status, occurrence point sources (Crowdmapping, iNaturalist, GBIF, Instituto Horus, SpeciesLink), and leucaena polygons</li>' +
+      '<li><strong>Ranking</strong>: your position among contributors based on the number of polygons created</li>' +
+      '</ul>') +
+
+    step(5, 'Lock the cell', '<p>Click the ' + btn(ICO.lock, 'Lock & Edit') + ' button in the sidebar. The cell will be reserved for you and the editing tools will appear.</p>' +
       '<div class="guide-warning"><strong>Important:</strong> While the cell is locked, no other user can edit it. Remember to unlock when you\'re done!</div>') +
 
-    step(4, 'Draw the polygons', '<p>Locate <strong>leucaena clusters</strong> in the satellite imagery (areas where two or more leucaena trees grow together) and use the button:</p>' +
+    step(6, 'Draw the polygons', '<p>Locate <strong>leucaena clusters</strong> in the satellite imagery (areas where two or more leucaena trees grow together) and use the button:</p>' +
       '<p>' + btn(ICO.draw, 'Draw') + ': Click on the map to create polygon vertices. Each click adds a point. To <strong>close the polygon</strong>, click on the first point (it will be highlighted) or <strong>double-click</strong>.</p>' +
       '<ul>' +
       '<li>Minimum of <strong>3 vertices</strong> to form a polygon.</li>' +
       '<li>The polygon should <strong>cover the entire leucaena area</strong> visible, including nearby occurrence points.</li>' +
       '<li>Prioritize <strong>clusters</strong>: areas with multiple trees grouped together.</li>' +
+      '</ul>' +
+      '<p>While drawing, two helper buttons appear:</p>' +
+      '<ul>' +
+      '<li><strong>Undo</strong>: removes the last added vertex (also via <strong>Ctrl+Z</strong>)</li>' +
+      '<li><strong>Finish drawing</strong>: closes the polygon (also via <strong>Enter</strong>). Appears after 3 vertices.</li>' +
       '</ul>') +
 
-    step(5, 'Edit the polygons', '<p>Need to adjust a polygon you already drew? Use:</p>' +
+    step(7, 'Edit the polygons', '<p>Need to adjust a polygon you already drew? Use:</p>' +
       '<p>' + btn(ICO.edit, 'Edit') + ': Click the polygon and drag the vertices (white dots) to reposition them. You can also drag the midpoint between two vertices to create a new one.</p>') +
 
-    step(6, 'Create holes in polygons', '<p>If inside a large polygon there is an area <strong>without leucaena</strong> (for example, a building or road), use:</p>' +
+    step(8, 'Create holes in polygons', '<p>If inside a large polygon there is an area <strong>without leucaena</strong> (for example, a building or road), use:</p>' +
       '<p>' + btn(ICO.hole, 'Create hole', true) + ': First click the target polygon (it will be highlighted with an orange border). Then draw the outline of the internal area that is <strong>not</strong> leucaena. This cutout will be excluded from the polygon.</p>') +
 
-    step(7, 'Delete polygons', '<p>Drew a polygon by mistake? Use:</p>' +
+    step(9, 'Delete polygons', '<p>Drew a polygon by mistake? Use:</p>' +
       '<p>' + btn(ICO.del, 'Delete') + ': Click the polygon you want to remove. A confirmation will be shown before deletion.</p>' +
       '<div class="guide-warning"><strong>Note:</strong> You can only delete polygons that <strong>you</strong> drew.</div>') +
 
-    step(8, 'Use Street View', '<p>Not sure if the vegetation is leucaena? Use:</p>' +
+    step(10, 'Use Street View', '<p>Not sure if the vegetation is leucaena? Use:</p>' +
       '<p>' + btn(ICO.sv, 'Street View') + ': Click the button in the bottom toolbar, then click anywhere on the map. A Google Street View window will open at that location, allowing you to visually confirm the species. Look for: bipinnate leaves, white spherical flowers, and seed pods.</p>') +
 
-    step(9, 'Unlock the cell', '<p>When you\'re done working on the cell, click:</p>' +
+    step(11, 'Unlock the cell', '<p>When you\'re done working on the cell, click:</p>' +
       '<p>' + btn(ICO.unlock, 'Unlock') + ' in the bottom toolbar. A modal will appear with two options:</p>' +
       '<ul>' +
       '<li>' + btn(ICO.check, 'Finished') + ': Select if <strong>all</strong> valid occurrence points are covered by polygons. The system will verify automatically.</li>' +
       '<li>' + btn('', 'Not yet finished') + ': Use if you still need to come back later, or couldn\'t cover all points.</li>' +
+      '</ul>') +
+
+    step(12, 'Messages (Inbox)', '<p>The <strong>bell icon</strong> 🔔 in the top bar shows your messages. A red number indicates unread messages.</p>' +
+      '<ul>' +
+      '<li>You can <strong>send messages</strong> to the project administrators (questions, suggestions, bug reports)</li>' +
+      '<li>When an administrator sends a message to contributors, you\'ll receive a <strong>real-time notification</strong></li>' +
+      '<li>If the message allows replies, a <strong>"Reply"</strong> button will be available</li>' +
       '</ul>') +
 
     '<div class="guide-tip"><strong>Useful tips:</strong>' +
@@ -830,6 +926,9 @@ window.LeucenaI18n = (function () {
     '<li>Switch between <strong>Satellite</strong> and <strong>Map</strong> views for better tree canopy visualization.</li>' +
     '<li>Use <strong>Ctrl+Z</strong> to undo the last action (when adding or removing points).</li>' +
     '<li>Use <strong>zoom</strong> to see canopy details: leucaena has rounded canopies with a light-green tone.</li>' +
+    '<li><strong>Coordinates</strong> (lat, long) are shown in the bottom bar as you move the mouse over the map.</li>' +
+    '<li>The <strong>online users</strong> icon in the top bar shows how many contributors are mapping simultaneously.</li>' +
+    '<li>Track your <strong>ranking</strong> in the sidebar to see your position among contributors.</li>' +
     '</ul></div>';
   }
 
@@ -841,7 +940,15 @@ window.LeucenaI18n = (function () {
 
     step(1, 'Cree su cuenta', '<p>En la esquina superior derecha, haga clic en <strong>"Iniciar Sesión"</strong>. Puede usar su <strong>cuenta de Google</strong> o crear una cuenta con <strong>nombre de usuario y contraseña</strong>.</p>') +
 
-    step(2, 'Entienda el mapa', '<p>El mapa está dividido en <strong>celdas (cuadrados)</strong>. Cada celda tiene un estado indicado por su color:</p>' +
+    step(2, 'Complete su perfil', '<p>Después de su primer inicio de sesión, haga clic en su <strong>nombre/avatar</strong> en la esquina superior derecha para abrir su perfil. Complete:</p>' +
+      '<ul>' +
+      '<li><strong>Nombre completo</strong> y <strong>nombre de usuario</strong></li>' +
+      '<li><strong>Foto de perfil</strong> (haga clic en el avatar para elegir una imagen)</li>' +
+      '<li><strong>Ocupación</strong> (ej: estudiante, investigador, biólogo)</li>' +
+      '</ul>' +
+      '<p>Su perfil se muestra en la página de colaboradores del proyecto.</p>') +
+
+    step(3, 'Entienda el mapa', '<p>El mapa está dividido en <strong>celdas (cuadrados)</strong>. Cada celda tiene un estado indicado por su color:</p>' +
       '<ul>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#7c3aed;vertical-align:middle;margin-right:6px"></span><strong>Púrpura</strong>: Aún no finalizado (¡priorice estas!)</li>' +
       '<li><span style="display:inline-block;width:12px;height:12px;border-radius:2px;border:2px solid #eab308;vertical-align:middle;margin-right:6px"></span><strong>Amarillo (hueco)</strong>: En uso por otro colaborador</li>' +
@@ -851,35 +958,55 @@ window.LeucenaI18n = (function () {
       '</ul>' +
       '<p>Haga clic en cualquier celda para ver su estado e información en la barra lateral.</p>') +
 
-    step(3, 'Bloquee la celda', '<p>Haga clic en el botón ' + btn(ICO.lock, 'Bloquear y Editar') + ' en la barra lateral. La celda quedará reservada para usted y las herramientas de edición aparecerán.</p>' +
+    step(4, 'Explore la barra lateral', '<p>La barra lateral (accesible mediante el botón ☰ en la esquina superior izquierda) contiene:</p>' +
+      '<ul>' +
+      '<li><strong>Información de la celda</strong>: estado, quién está editando, polígonos existentes</li>' +
+      '<li><strong>Barra de progreso</strong>: porcentaje de finalización del mapeo general</li>' +
+      '<li><strong>Filtros</strong>: haga clic en el ▾ para expandir/colapsar. Filtre por estado de las celdas, fuentes de puntos de ocurrencia (Crowdmapping, iNaturalist, GBIF, Instituto Horus, SpeciesLink) y polígonos de leucaena</li>' +
+      '<li><strong>Ranking</strong>: su posición entre los colaboradores basada en la cantidad de polígonos creados</li>' +
+      '</ul>') +
+
+    step(5, 'Bloquee la celda', '<p>Haga clic en el botón ' + btn(ICO.lock, 'Bloquear y Editar') + ' en la barra lateral. La celda quedará reservada para usted y las herramientas de edición aparecerán.</p>' +
       '<div class="guide-warning"><strong>Importante:</strong> Mientras la celda esté bloqueada, ningún otro usuario puede editarla. ¡Recuerde desbloquear cuando termine!</div>') +
 
-    step(4, 'Dibuje los polígonos', '<p>Localice los <strong>aglomerados de leucaena</strong> en la imagen satelital (áreas donde hay dos o más leucaenas juntas) y use el botón:</p>' +
+    step(6, 'Dibuje los polígonos', '<p>Localice los <strong>aglomerados de leucaena</strong> en la imagen satelital (áreas donde hay dos o más leucaenas juntas) y use el botón:</p>' +
       '<p>' + btn(ICO.draw, 'Dibujar') + ': Haga clic en el mapa para crear los vértices del polígono. Cada clic agrega un punto. Para <strong>cerrar el polígono</strong>, haga clic en el primer punto (estará resaltado) o haga <strong>doble clic</strong>.</p>' +
       '<ul>' +
       '<li>Mínimo de <strong>3 vértices</strong> para formar un polígono.</li>' +
       '<li>El polígono debe <strong>cubrir toda el área de leucaena</strong> visible, incluyendo los puntos de ocurrencia cercanos.</li>' +
       '<li>Priorice <strong>aglomerados</strong>: áreas con varios árboles juntos.</li>' +
+      '</ul>' +
+      '<p>Durante el dibujo, dos botones auxiliares aparecen:</p>' +
+      '<ul>' +
+      '<li><strong>Deshacer</strong>: elimina el último vértice agregado (también con <strong>Ctrl+Z</strong>)</li>' +
+      '<li><strong>Finalizar dibujo</strong>: cierra el polígono (también con <strong>Enter</strong>). Aparece después de 3 vértices.</li>' +
       '</ul>') +
 
-    step(5, 'Edite los polígonos', '<p>¿Necesita ajustar un polígono ya dibujado? Use:</p>' +
+    step(7, 'Edite los polígonos', '<p>¿Necesita ajustar un polígono ya dibujado? Use:</p>' +
       '<p>' + btn(ICO.edit, 'Editar') + ': Haga clic en el polígono y arrastre los vértices (puntos blancos) para reposicionarlos. También puede arrastrar el punto medio entre dos vértices para crear uno nuevo.</p>') +
 
-    step(6, 'Cree agujeros en los polígonos', '<p>Si dentro de un polígono grande hay un área <strong>sin leucaena</strong> (por ejemplo, un edificio o carretera), use:</p>' +
+    step(8, 'Cree agujeros en los polígonos', '<p>Si dentro de un polígono grande hay un área <strong>sin leucaena</strong> (por ejemplo, un edificio o carretera), use:</p>' +
       '<p>' + btn(ICO.hole, 'Crear agujero', true) + ': Primero haga clic en el polígono objetivo (se resaltará con borde naranja). Luego dibuje el contorno del área interna que <strong>no</strong> es leucaena. Este recorte será excluido del polígono.</p>') +
 
-    step(7, 'Elimine polígonos', '<p>¿Dibujó un polígono por error? Use:</p>' +
+    step(9, 'Elimine polígonos', '<p>¿Dibujó un polígono por error? Use:</p>' +
       '<p>' + btn(ICO.del, 'Eliminar') + ': Haga clic en el polígono que desea eliminar. Se mostrará una confirmación antes de la eliminación.</p>' +
       '<div class="guide-warning"><strong>Nota:</strong> Solo puede eliminar polígonos que <strong>usted mismo</strong> dibujó.</div>') +
 
-    step(8, 'Use Street View', '<p>¿No está seguro si la vegetación es leucaena? Use:</p>' +
+    step(10, 'Use Street View', '<p>¿No está seguro si la vegetación es leucaena? Use:</p>' +
       '<p>' + btn(ICO.sv, 'Street View') + ': Haga clic en el botón en la barra inferior y luego haga clic en cualquier punto del mapa. Se abrirá una ventana de Google Street View en esa ubicación, permitiéndole confirmar visualmente la especie. Busque: hojas bipinnadas, flores blancas esféricas y vainas.</p>') +
 
-    step(9, 'Desbloquee la celda', '<p>Cuando termine el trabajo en la celda, haga clic en:</p>' +
+    step(11, 'Desbloquee la celda', '<p>Cuando termine el trabajo en la celda, haga clic en:</p>' +
       '<p>' + btn(ICO.unlock, 'Desbloquear') + ' en la barra inferior. Aparecerá un modal con dos opciones:</p>' +
       '<ul>' +
       '<li>' + btn(ICO.check, 'Finalizado') + ': Seleccione si <strong>todos</strong> los puntos de ocurrencia válidos están cubiertos por polígonos. El sistema verificará automáticamente.</li>' +
       '<li>' + btn('', 'Aún no finalizado') + ': Use si necesita volver después, o no pudo cubrir todos los puntos.</li>' +
+      '</ul>') +
+
+    step(12, 'Mensajes (Inbox)', '<p>El icono de <strong>campana</strong> 🔔 en la barra superior muestra sus mensajes. Un número rojo indica mensajes no leídos.</p>' +
+      '<ul>' +
+      '<li>Puede <strong>enviar mensajes</strong> a los administradores del proyecto (dudas, sugerencias, reportes de problemas)</li>' +
+      '<li>Cuando un administrador envíe un mensaje a los colaboradores, recibirá una <strong>notificación en tiempo real</strong></li>' +
+      '<li>Si el mensaje permite respuestas, un botón <strong>"Responder"</strong> estará disponible</li>' +
       '</ul>') +
 
     '<div class="guide-tip"><strong>Consejos útiles:</strong>' +
@@ -888,6 +1015,9 @@ window.LeucenaI18n = (function () {
     '<li>Alterne entre <strong>Satélite</strong> y <strong>Mapa</strong> para mejor visualización de las copas.</li>' +
     '<li>Use <strong>Ctrl+Z</strong> para deshacer la última acción (al agregar o eliminar puntos).</li>' +
     '<li>Use el <strong>zoom</strong> para ver detalles de las copas: la leucaena tiene copas redondeadas con tono verde claro.</li>' +
+    '<li>Las <strong>coordenadas</strong> (lat, long) se muestran en la barra inferior mientras mueve el mouse sobre el mapa.</li>' +
+    '<li>El icono de <strong>usuarios en línea</strong> en la barra superior muestra cuántos colaboradores están mapeando simultáneamente.</li>' +
+    '<li>Siga su <strong>ranking</strong> en la barra lateral para ver su posición entre los colaboradores.</li>' +
     '</ul></div>';
   }
 

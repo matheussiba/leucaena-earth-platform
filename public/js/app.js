@@ -114,6 +114,9 @@ window.LeucenaApp = (function () {
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
     const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
     if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
+
+    setupCollapsibleFilters();
+
     document.getElementById('login-btn').addEventListener('click', () => openAuthModal('login'));
     document.getElementById('signup-btn').addEventListener('click', () => openAuthModal('register'));
     document.getElementById('logout-btn').addEventListener('click', logout);
@@ -190,6 +193,110 @@ window.LeucenaApp = (function () {
       if (e.target === e.currentTarget) closeComposeModal();
     });
     document.getElementById('inbox-compose-form').addEventListener('submit', handleComposeSend);
+
+    document.querySelectorAll('.fmt-btn[data-fmt]').forEach(btn => {
+      btn.addEventListener('mousedown', e => e.preventDefault());
+      btn.addEventListener('click', () => {
+        const editor = document.getElementById('inbox-compose-body');
+        editor.focus();
+        const fmt = btn.dataset.fmt;
+        if (fmt === 'bold')   return document.execCommand('bold');
+        if (fmt === 'italic') return document.execCommand('italic');
+        if (fmt === 'strike') return document.execCommand('strikeThrough');
+        if (fmt === 'highlight') {
+          const sel = window.getSelection();
+          if (sel.rangeCount && !sel.isCollapsed) {
+            const range = sel.getRangeAt(0);
+            const mark = document.createElement('mark');
+            try { range.surroundContents(mark); } catch (e) {
+              document.execCommand('insertHTML', false, '<mark>' + sel.toString() + '</mark>');
+            }
+          }
+          return;
+        }
+        if (fmt === 'quote') return document.execCommand('formatBlock', false, 'blockquote');
+        if (fmt === 'alignLeft')    return document.execCommand('justifyLeft');
+        if (fmt === 'alignCenter')  return document.execCommand('justifyCenter');
+        if (fmt === 'alignRight')   return document.execCommand('justifyRight');
+        if (fmt === 'alignJustify') return document.execCommand('justifyFull');
+        if (fmt === 'bulletList')   return document.execCommand('insertUnorderedList');
+        if (fmt === 'numberedList') return document.execCommand('insertOrderedList');
+        if (fmt === 'link') {
+          const sel = window.getSelection();
+          const selText = sel.toString();
+          const url = prompt('URL:', selText && /^https?:\/\//.test(selText) ? selText : 'https://');
+          if (!url) return;
+          document.execCommand('createLink', false, url);
+          const a = sel.anchorNode.parentElement.closest('a') || sel.anchorNode.parentElement;
+          if (a && a.tagName === 'A') {
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.classList.add('inbox-link');
+          }
+          return;
+        }
+      });
+    });
+
+    const _composeBody = document.getElementById('inbox-compose-body');
+    const _charCounter = document.getElementById('compose-char-counter');
+
+    _composeBody.addEventListener('input', () => {
+      const len = _composeBody.textContent.length;
+      _charCounter.textContent = len + ' / 2000';
+      _charCounter.classList.toggle('compose-char-warn', len > 1800);
+      _charCounter.classList.toggle('compose-char-over', len > 2000);
+    });
+
+    _composeBody.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+
+    const _imgInput = document.getElementById('compose-img-input');
+    document.getElementById('fmt-img-btn').addEventListener('click', () => {
+      if (_composeImages.length >= MSG_PHOTO_MAX_COUNT) {
+        showToast('Máximo de ' + MSG_PHOTO_MAX_COUNT + ' imagens', 'warning');
+        return;
+      }
+      _imgInput.click();
+    });
+    _imgInput.addEventListener('change', async () => {
+      const files = Array.from(_imgInput.files || []);
+      _imgInput.value = '';
+      for (const file of files) {
+        if (_composeImages.length >= MSG_PHOTO_MAX_COUNT) {
+          showToast('Máximo de ' + MSG_PHOTO_MAX_COUNT + ' imagens', 'warning');
+          break;
+        }
+        if (!file.type.startsWith('image/')) { showToast('Arquivo não é uma imagem', 'warning'); continue; }
+        if (file.size > 10 * 1024 * 1024) { showToast('Imagem muito grande (máx. 10MB)', 'warning'); continue; }
+        try {
+          const dataUrl = await compressMessageImage(file);
+          _composeImages.push(dataUrl);
+          _renderComposeImagePreviews();
+        } catch (e) { showToast('Erro ao processar imagem', 'error'); }
+      }
+    });
+
+    const _lightbox = document.getElementById('inbox-lightbox');
+    const _lightboxImg = document.getElementById('inbox-lightbox-img');
+    _lightbox.addEventListener('click', (e) => {
+      if (e.target === _lightbox || e.target.classList.contains('inbox-lightbox-close')) {
+        _lightbox.classList.add('hidden');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !_lightbox.classList.contains('hidden')) {
+        _lightbox.classList.add('hidden');
+      }
+    });
+
+    document.getElementById('inbox-confirm-cancel').addEventListener('click', closeSendConfirm);
+    document.getElementById('inbox-confirm-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeSendConfirm();
+    });
 
     const closePwModal = () => document.getElementById('admin-pw-modal').classList.add('hidden');
     document.getElementById('admin-pw-modal-close').addEventListener('click', closePwModal);
@@ -344,6 +451,10 @@ window.LeucenaApp = (function () {
       Onboarding.closeWelcome(false);
       openGuideModal('howto');
     });
+    document.getElementById('welcome-video-thumb').addEventListener('click', () => {
+      Onboarding.closeWelcome(false);
+      openGuideModal('howto');
+    });
     document.getElementById('welcome-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) Onboarding.closeWelcome(false);
     });
@@ -384,6 +495,7 @@ window.LeucenaApp = (function () {
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const modalCloseMap = [
+        ['inbox-confirm-modal', closeSendConfirm],
         ['inbox-compose-modal', closeComposeModal],
         ['inbox-modal', closeInboxModal],
         ['admin-delete-user-modal', closePermanentDeleteUserModal],
@@ -1015,7 +1127,10 @@ window.LeucenaApp = (function () {
     }
   }
 
+  let _loginSuccessRan = false;
   function onLoginSuccess(freshAuth = false) {
+    if (_loginSuccessRan) return;
+    _loginSuccessRan = true;
     document.getElementById('auth-nav-group').classList.add('hidden');
     document.getElementById('user-badge').classList.remove('hidden');
     document.getElementById('logout-btn').classList.remove('hidden');
@@ -1039,7 +1154,7 @@ window.LeucenaApp = (function () {
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
     Onboarding.onLogin();
 
-    if (_showMigrationBanner && !localStorage.getItem('leucena_migration_dismissed')) {
+    if (_showMigrationBanner && !localStorage.getItem(_userKey('leucena_migration_dismissed'))) {
       const banner = document.getElementById('migration-banner');
       if (banner) banner.classList.remove('hidden');
     }
@@ -1231,11 +1346,14 @@ window.LeucenaApp = (function () {
     loadRankingWidget();
   }
 
+  function _userKey(base) {
+    return username ? base + '_' + username : base;
+  }
+
   // ── Profile badge hint: until user clicks #user-badge once (localStorage). Pulse only on fresh login (not refresh). ──
-  const PROFILE_CLICK_HINT_KEY = 'leucena_profile_click_hint_dismissed';
 
   function dismissUserBadgeProfileHint() {
-    localStorage.setItem(PROFILE_CLICK_HINT_KEY, '1');
+    localStorage.setItem(_userKey('leucena_profile_click_hint_dismissed'), '1');
     const badge = document.getElementById('user-badge');
     const dot = document.getElementById('user-badge-hint');
     if (badge) {
@@ -1245,9 +1363,15 @@ window.LeucenaApp = (function () {
     if (dot) dot.classList.add('hidden');
   }
 
+  function _isProfileHintDismissed() {
+    if (localStorage.getItem(_userKey('leucena_profile_click_hint_dismissed')) === '1') return true;
+    if (_userAuthInfo && _userAuthInfo.login_count > 1) return true;
+    return false;
+  }
+
   function syncUserBadgeProfileHint() {
     if (!isLoggedIn()) return;
-    if (localStorage.getItem(PROFILE_CLICK_HINT_KEY) === '1') return;
+    if (_isProfileHintDismissed()) { dismissUserBadgeProfileHint(); return; }
     const badge = document.getElementById('user-badge');
     const dot = document.getElementById('user-badge-hint');
     if (!badge || badge.classList.contains('hidden')) return;
@@ -1258,7 +1382,7 @@ window.LeucenaApp = (function () {
 
   function pulseUserBadgeIfProfileHintEligible() {
     if (!isLoggedIn()) return;
-    if (localStorage.getItem(PROFILE_CLICK_HINT_KEY) === '1') return;
+    if (_isProfileHintDismissed()) return;
     const badge = document.getElementById('user-badge');
     if (!badge || badge.classList.contains('hidden')) return;
     badge.classList.remove('user-badge-pulse');
@@ -1323,7 +1447,7 @@ window.LeucenaApp = (function () {
       dismissBtn.addEventListener('click', () => {
         const banner = document.getElementById('migration-banner');
         if (banner) banner.classList.add('hidden');
-        localStorage.setItem('leucena_migration_dismissed', '1');
+        localStorage.setItem(_userKey('leucena_migration_dismissed'), '1');
       });
     }
   }
@@ -1363,10 +1487,10 @@ window.LeucenaApp = (function () {
   ];
 
   const Onboarding = {
-    isTourCompleted()  { return localStorage.getItem('leucena_tour_completed') === TOUR_VERSION; },
-    isWelcomeShown()   { return localStorage.getItem('leucena_welcome_dismissed') === WELCOME_VERSION; },
-    setTourCompleted() { localStorage.setItem('leucena_tour_completed', TOUR_VERSION); },
-    setWelcomeShown()  { localStorage.setItem('leucena_welcome_dismissed', WELCOME_VERSION); },
+    isTourCompleted()  { return localStorage.getItem(_userKey('leucena_tour_completed')) === TOUR_VERSION; },
+    isWelcomeShown()   { return localStorage.getItem(_userKey('leucena_welcome_dismissed')) === WELCOME_VERSION; },
+    setTourCompleted() { localStorage.setItem(_userKey('leucena_tour_completed'), TOUR_VERSION); },
+    setWelcomeShown()  { localStorage.setItem(_userKey('leucena_welcome_dismissed'), WELCOME_VERSION); },
 
     onLogin() {
       if (!this.isTourCompleted()) {
@@ -1727,6 +1851,57 @@ window.LeucenaApp = (function () {
     });
   }
 
+  const MSG_PHOTO_MAX_BYTES = 200000;
+  const MSG_PHOTO_MAX_DIM = 800;
+  const MSG_PHOTO_MAX_COUNT = 2;
+  let _composeImages = [];
+
+  function compressMessageImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let w = img.width, h = img.height;
+        if (w > MSG_PHOTO_MAX_DIM || h > MSG_PHOTO_MAX_DIM) {
+          const ratio = Math.min(MSG_PHOTO_MAX_DIM / w, MSG_PHOTO_MAX_DIM / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.82;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (dataUrl.length > MSG_PHOTO_MAX_BYTES * 1.37 && quality > 0.25) {
+          quality -= 0.08;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+      img.src = url;
+    });
+  }
+
+  function _renderComposeImagePreviews() {
+    const container = document.getElementById('compose-image-previews');
+    if (_composeImages.length === 0) { container.classList.add('hidden'); container.innerHTML = ''; return; }
+    container.classList.remove('hidden');
+    container.innerHTML = _composeImages.map((src, i) =>
+      '<div class="compose-thumb">' +
+        '<img src="' + src + '" alt="img">' +
+        '<button type="button" class="compose-thumb-remove" data-idx="' + i + '">&times;</button>' +
+      '</div>'
+    ).join('');
+    container.querySelectorAll('.compose-thumb-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _composeImages.splice(Number(btn.dataset.idx), 1);
+        _renderComposeImagePreviews();
+      });
+    });
+  }
+
   function compressDataUrl(dataUrl) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -1910,6 +2085,7 @@ window.LeucenaApp = (function () {
 
     authToken = null;
     username = null;
+    _loginSuccessRan = false;
     localStorage.removeItem('leucena_token');
     localStorage.removeItem('leucena_username');
 
@@ -1945,6 +2121,31 @@ window.LeucenaApp = (function () {
 
   function isEditing() {
     return selectedCellData && selectedCellData.locked_by && selectedCellData.locked_by === username;
+  }
+
+  function setupCollapsibleFilters() {
+    document.querySelectorAll('.filter-group[data-collapsible]').forEach(group => {
+      const chevron = group.querySelector('.filter-chevron');
+      const subgroup = group.querySelector('.filter-subgroup');
+      if (!chevron || !subgroup) return;
+
+      chevron.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const isExpanded = chevron.classList.toggle('expanded');
+        subgroup.classList.toggle('collapsed', !isExpanded);
+      });
+
+      const parentRow = group.querySelector('.filter-item-parent');
+      if (parentRow) {
+        parentRow.addEventListener('click', (e) => {
+          if (e.target.tagName === 'INPUT') return;
+          e.preventDefault();
+          const isExpanded = chevron.classList.toggle('expanded');
+          subgroup.classList.toggle('collapsed', !isExpanded);
+        });
+      }
+    });
   }
 
   function toggleSidebar() {
@@ -2706,21 +2907,24 @@ window.LeucenaApp = (function () {
       document.getElementById('insertion-toggle').classList.remove('hidden');
       document.getElementById('deletion-toggle').classList.remove('hidden');
       document.getElementById('admin-users-btn').classList.remove('hidden');
+
+      const maskSub = document.getElementById('mask-subcategories');
+      if (maskSub) { maskSub.classList.remove('hidden'); maskSub.classList.add('collapsed'); }
+
+      const chevron = document.getElementById('mask-hierarchy-chevron');
+      if (chevron) { chevron.classList.remove('hidden'); chevron.classList.remove('expanded'); }
+
+      const legendDefault = document.getElementById('legend-mask-default');
+      if (legendDefault) legendDefault.classList.add('hidden');
+
+      const legendMember = document.getElementById('legend-mask-member');
+      if (legendMember) legendMember.classList.remove('hidden');
+
+      const legendContrib = document.getElementById('legend-mask-contributor');
+      if (legendContrib) legendContrib.classList.remove('hidden');
     }
     if (isAdminUser()) {
       loadViewCount();
-      
-      const maskSub = document.getElementById('mask-subcategories');
-      if (maskSub) maskSub.classList.remove('hidden');
-      
-      const legendDefault = document.getElementById('legend-mask-default');
-      if (legendDefault) legendDefault.classList.add('hidden');
-      
-      const legendMember = document.getElementById('legend-mask-member');
-      if (legendMember) legendMember.classList.remove('hidden');
-      
-      const legendContrib = document.getElementById('legend-mask-contributor');
-      if (legendContrib) legendContrib.classList.remove('hidden');
     }
     applyRoleRestrictions();
   }
@@ -2731,16 +2935,19 @@ window.LeucenaApp = (function () {
     document.getElementById('deletion-toggle').classList.add('hidden');
     document.getElementById('admin-users-btn').classList.add('hidden');
     document.getElementById('view-counter').classList.add('hidden');
-    
+
     const maskSub = document.getElementById('mask-subcategories');
-    if (maskSub) maskSub.classList.add('hidden');
-    
+    if (maskSub) { maskSub.classList.add('hidden'); maskSub.classList.add('collapsed'); }
+
+    const chevron = document.getElementById('mask-hierarchy-chevron');
+    if (chevron) { chevron.classList.add('hidden'); chevron.classList.remove('expanded'); }
+
     const legendDefault = document.getElementById('legend-mask-default');
     if (legendDefault) legendDefault.classList.remove('hidden');
-    
+
     const legendMember = document.getElementById('legend-mask-member');
     if (legendMember) legendMember.classList.add('hidden');
-    
+
     const legendContrib = document.getElementById('legend-mask-contributor');
     if (legendContrib) legendContrib.classList.add('hidden');
 
@@ -3270,11 +3477,12 @@ window.LeucenaApp = (function () {
           const section = document.getElementById('admin-create-user');
           section.classList.toggle('hidden');
           if (!section.classList.contains('hidden')) {
+            document.getElementById('admin-create-fullname').value = '';
             document.getElementById('admin-create-username').value = '';
             document.getElementById('admin-create-email').value = '';
             document.getElementById('admin-create-password').value = '';
             document.getElementById('admin-create-error').classList.add('hidden');
-            document.getElementById('admin-create-username').focus();
+            document.getElementById('admin-create-fullname').focus();
           }
         });
       }
@@ -3288,6 +3496,7 @@ window.LeucenaApp = (function () {
       });
 
       document.getElementById('admin-create-submit').addEventListener('click', async () => {
+        const fn = document.getElementById('admin-create-fullname').value.trim();
         const u = document.getElementById('admin-create-username').value.trim();
         const e = document.getElementById('admin-create-email').value.trim();
         const p = document.getElementById('admin-create-password').value;
@@ -3303,7 +3512,7 @@ window.LeucenaApp = (function () {
         try {
           const r = await fetch('/api/admin/users/create', {
             method: 'POST', headers: authHeaders(),
-            body: JSON.stringify({ username: u, email: e, password: p })
+            body: JSON.stringify({ username: u, email: e, password: p, full_name: fn })
           });
           const data = await r.json();
           if (!r.ok) {
@@ -3389,6 +3598,129 @@ window.LeucenaApp = (function () {
       const colabDropdown = createDropdown(t('admin.sectionColaboradores'), colabUsers.length, 'admin-colab-list', colabStartOpen, colabWarning);
       listEl.appendChild(colabDropdown.wrapper);
 
+      const _batchSelected = new Set();
+      let batchToolbar = null;
+
+      function syncBatchToolbar() {
+        if (!batchToolbar) return;
+        const count = _batchSelected.size;
+        batchToolbar.querySelector('.batch-count').textContent = t('admin.batchSelected', count);
+        batchToolbar.querySelectorAll('.batch-action-btn').forEach(btn => { btn.disabled = count === 0; });
+      }
+
+      if (effectiveSuperAdmin) {
+        batchToolbar = document.createElement('div');
+        batchToolbar.className = 'admin-batch-toolbar';
+        batchToolbar.innerHTML =
+          '<span class="batch-count">' + t('admin.batchSelected', 0) + '</span>' +
+          '<button type="button" class="batch-select-all" data-action="select-all">' + t('admin.batchSelectAll') + '</button>' +
+          '<button type="button" class="batch-action-btn" data-action="verify" disabled>' + t('admin.batchVerify') + '</button>' +
+          '<button type="button" class="batch-action-btn" data-action="deactivate" disabled>' + t('admin.batchDeactivate') + '</button>' +
+          '<button type="button" class="batch-action-btn" data-action="reactivate" disabled>' + t('admin.batchReactivate') + '</button>' +
+          '<button type="button" class="batch-action-btn" data-action="send-message" disabled>' + t('admin.batchSendMessage') + '</button>' +
+          '<button type="button" class="batch-action-btn batch-btn-danger" data-action="delete" disabled>' + t('admin.batchDelete') + '</button>';
+
+        colabDropdown.body.insertBefore(batchToolbar, colabDropdown.body.firstChild);
+
+        batchToolbar.addEventListener('click', async (e) => {
+          const btn = e.target.closest('button');
+          if (!btn) return;
+          const action = btn.dataset.action;
+          if (action === 'select-all') {
+            const allCbs = colabDropdown.body.querySelectorAll('.admin-batch-cb');
+            const allSelected = _batchSelected.size === allCbs.length;
+            allCbs.forEach(cb => {
+              const card = cb.closest('.admin-user-card');
+              const uid = Number(cb.dataset.userId);
+              if (allSelected) {
+                cb.checked = false;
+                card.classList.remove('batch-selected');
+                _batchSelected.delete(uid);
+              } else {
+                cb.checked = true;
+                card.classList.add('batch-selected');
+                _batchSelected.add(uid);
+              }
+            });
+            btn.textContent = _batchSelected.size === allCbs.length ? t('admin.batchDeselectAll') : t('admin.batchSelectAll');
+            syncBatchToolbar();
+            return;
+          }
+
+          if (_batchSelected.size === 0) return;
+          const ids = [..._batchSelected];
+
+          if (action === 'verify') {
+            const selectedUsers = colabUsers.filter(u => ids.includes(u.id));
+            const alreadyVerified = selectedUsers.filter(u => u.email_verified || u.auth_provider === 'google').length;
+            const toVerify = selectedUsers.length - alreadyVerified;
+            if (!window.confirm(t('admin.batchConfirmVerify', selectedUsers.length, alreadyVerified))) return;
+            try {
+              const r = await fetch('/api/admin/batch/verify', {
+                method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+              });
+              if (r.ok) {
+                const j = await r.json();
+                showToast(t('admin.batchVerifyDone', j.verified, j.skipped), 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          } else if (action === 'deactivate') {
+            if (ids.length > 10) { showToast(t('admin.batchDeactivateMax', 10, ids.length), 'warning'); return; }
+            if (!window.confirm(t('admin.batchConfirmDeactivate', ids.length))) return;
+            try {
+              const r = await fetch('/api/admin/batch/deactivate', {
+                method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+              });
+              if (r.ok) {
+                const j = await r.json();
+                showToast(t('admin.batchDeactivateDone', j.processed), 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          } else if (action === 'reactivate') {
+            if (!window.confirm(t('admin.batchConfirmReactivate', ids.length))) return;
+            try {
+              const r = await fetch('/api/admin/batch/reactivate', {
+                method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+              });
+              if (r.ok) {
+                const j = await r.json();
+                showToast(t('admin.batchReactivateDone', j.processed), 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          } else if (action === 'send-message') {
+            closeAdminUsersModal();
+            openBatchComposeModal(ids, colabUsers);
+            return;
+          } else if (action === 'delete') {
+            if (ids.length > 5) { showToast(t('admin.batchDeleteMax', 5, ids.length), 'warning'); return; }
+            const phrase = t('admin.batchConfirmDeletePhrase');
+            const warning = t('admin.batchConfirmDeleteWarning', ids.length);
+            const input = window.prompt(warning + '\n\n' + t('admin.permanentDeleteTypeInstruction') + '\n' + phrase);
+            if (!input || input.trim() !== phrase) {
+              if (input !== null) showToast(t('admin.permanentDeletePhraseMismatch'), 'warning');
+              return;
+            }
+            try {
+              const r = await fetch('/api/admin/batch/delete', {
+                method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+              });
+              if (r.ok) {
+                const j = await r.json();
+                showToast(t('admin.batchDeleteDone', j.deleted), 'success');
+                openAdminUsersModal();
+              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
+          }
+        });
+      }
+
       const allSortedUsers = [...equipeUsers, ...colabUsers];
 
       for (const user of allSortedUsers) {
@@ -3403,12 +3735,12 @@ window.LeucenaApp = (function () {
         row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '') + (unverifiedCollab ? ' admin-user-card-unverified' : '') + (isInactive ? ' admin-user-card-inactive' : '');
 
         let roleSelectHtml = '';
-        let founderCheckboxHtml = '';
+        let founderStarHtml = '';
         if (effectiveSuperAdmin) {
           roleSelectHtml = `<select class="admin-role-select" data-user-id="${user.id}">${allRoles.map(r => `<option value="${r}"${role === r ? ' selected' : ''}>${roleLabelMap[r]}</option>`).join('')}</select>`;
           if (role === 'superadmin' || role === 'admin' || role === 'team') {
-            const isFounder = user.is_founder ? 'checked' : '';
-            founderCheckboxHtml = `<label class="admin-founder-label"><input type="checkbox" class="admin-founder-cb" ${isFounder}> Idealizador</label>`;
+            const starTitle = user.is_founder ? t('admin.founderRemove') : t('admin.founderMake');
+            founderStarHtml = `<button type="button" class="admin-founder-star${user.is_founder ? ' active' : ''}" title="${starTitle}" data-founder="${user.is_founder ? 1 : 0}"><svg width="16" height="16" viewBox="0 0 24 24" fill="${user.is_founder ? '#facc15' : 'none'}" stroke="${user.is_founder ? '#facc15' : 'currentColor'}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>`;
           }
         }
         let testerRadioHtml = '';
@@ -3421,6 +3753,7 @@ window.LeucenaApp = (function () {
         }
 
         const canDelete = effectiveSuperAdmin && role !== 'superadmin';
+        const isCollaborator = !isEquipe(user);
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
         const lastActiveHtml = formatLastActive(user.last_active, user.username);
         const initial = user.username.charAt(0).toUpperCase();
@@ -3435,15 +3768,24 @@ window.LeucenaApp = (function () {
           ? `<span class="admin-auth-badge google" title="${t('admin.authMethodGoogleTitle')}">${t('admin.authMethodGoogle')}</span>`
           : `<span class="admin-auth-badge email" title="${t('admin.authMethodEmailTitle')}">${t('admin.authMethodEmail')}</span>`;
 
+        const batchCbHtml = (effectiveSuperAdmin && isCollaborator)
+          ? `<input type="checkbox" class="admin-batch-cb" data-user-id="${user.id}">`
+          : '';
+
+        if (effectiveSuperAdmin && isCollaborator) row.classList.add('batch-mode');
+
         row.innerHTML = `
+          ${batchCbHtml}
           <div class="admin-card-header">
-            ${photoHtml}
+            <div class="admin-card-photo-col">
+              ${photoHtml}
+              <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
+            </div>
             <div class="admin-card-identity">
               <div class="admin-card-name-row">
-                ${founderCheckboxHtml}
+                ${founderStarHtml}
                 <span class="admin-user-name">${user.username}</span>
                 ${isOnline ? '<span class="admin-online-dot"></span>' : ''}
-                <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
                 ${isInactive ? `<span class="admin-user-badge admin-badge-inactive">${t('admin.inactive')}</span>` : ''}
                 ${authMethodBadgeHtml}
                 ${verifyBadgeHtml}
@@ -3486,7 +3828,7 @@ window.LeucenaApp = (function () {
               ${effectiveSuperAdmin ? `<button class="admin-rename-btn">${t('admin.renameUser')}</button>` : ''}
               ${canDelete && !isInactive ? `<button class="admin-deactivate-btn btn-warning-sm">${t('admin.deactivateUser')}</button>` : ''}
               ${canDelete && isInactive ? `<button class="admin-reactivate-btn btn-success-sm">${t('admin.reactivateUser')}</button>` : ''}
-              ${canDelete ? `<button class="admin-del-btn btn-danger-sm">${t('admin.permanentDelete')}</button>` : ''}
+              ${canDelete && !isCollaborator ? `<button class="admin-del-btn btn-danger-sm">${t('admin.permanentDelete')}</button>` : ''}
             </div>
           </div>
         `;
@@ -3520,16 +3862,21 @@ window.LeucenaApp = (function () {
           });
         });
 
-        const founderCb = row.querySelector('.admin-founder-cb');
-        if (founderCb) {
-          founderCb.addEventListener('change', async () => {
+        const founderStar = row.querySelector('.admin-founder-star');
+        if (founderStar) {
+          founderStar.addEventListener('click', async () => {
+            const isCurrently = founderStar.dataset.founder === '1';
+            const confirmMsg = isCurrently
+              ? t('admin.founderConfirmRemove', user.username)
+              : t('admin.founderConfirmMake', user.username);
+            if (!window.confirm(confirmMsg)) return;
             try {
               const r = await fetch(`/api/admin/users/${user.id}/founder`, {
-                method: 'PUT', headers: authHeaders(), body: JSON.stringify({ is_founder: founderCb.checked })
+                method: 'PUT', headers: authHeaders(), body: JSON.stringify({ is_founder: !isCurrently })
               });
-              if (r.ok) showToast('Idealizador atualizado', 'success');
-              else { const err = await r.json(); showToast(err.error, 'error'); founderCb.checked = !founderCb.checked; }
-            } catch (e) { showToast('Erro de conexão', 'error'); founderCb.checked = !founderCb.checked; }
+              if (r.ok) { showToast(t('admin.founderUpdated'), 'success'); openAdminUsersModal(); }
+              else { const err = await r.json(); showToast(err.error, 'error'); }
+            } catch (e) { showToast('Erro de conexão', 'error'); }
           });
         }
 
@@ -3664,6 +4011,20 @@ window.LeucenaApp = (function () {
         const delBtn = row.querySelector('.admin-del-btn');
         if (delBtn) {
           delBtn.addEventListener('click', () => openPermanentDeleteUserModal(user, row));
+        }
+
+        const batchCb = row.querySelector('.admin-batch-cb');
+        if (batchCb) {
+          batchCb.addEventListener('change', () => {
+            if (batchCb.checked) {
+              _batchSelected.add(user.id);
+              row.classList.add('batch-selected');
+            } else {
+              _batchSelected.delete(user.id);
+              row.classList.remove('batch-selected');
+            }
+            syncBatchToolbar();
+          });
         }
 
         if (isEquipe(user)) {
@@ -3801,12 +4162,15 @@ window.LeucenaApp = (function () {
     try {
       const r = await fetch('/api/messages/unread-count', { headers: authHeaders() });
       if (!r.ok) return;
-      const { count } = await r.json();
+      const data = await r.json();
+      const count = data.count || 0;
       const badge = document.getElementById('inbox-badge');
+      if (!badge) return;
       if (count > 0) {
         badge.textContent = count > 99 ? '99+' : count;
         badge.classList.remove('hidden');
       } else {
+        badge.textContent = '';
         badge.classList.add('hidden');
       }
     } catch (e) { /* ignore */ }
@@ -3835,18 +4199,237 @@ window.LeucenaApp = (function () {
     } catch (e) { /* ignore */ }
   }
 
+  function _senderDisplayName(msg) {
+    return msg.sender_full_name || msg.sender;
+  }
+
+  function _senderIsAdmin(msg) {
+    return msg.sender_role === 'admin' || msg.sender_role === 'superadmin';
+  }
+
+  function _senderHtml(msg) {
+    const name = escapeHtml(_senderDisplayName(msg));
+    const uname = msg.sender_full_name && msg.sender_full_name !== msg.sender
+      ? ' <span class="inbox-sender-username">(' + escapeHtml(msg.sender) + ')</span>' : '';
+    const badge = _senderIsAdmin(msg) ? ' <span class="inbox-admin-badge">Admin</span>' : '';
+    return name + uname + badge;
+  }
+
+  function _targetLabel(msg) {
+    const t = LeucenaI18n.t;
+    if (msg.target === 'all') return t('inbox.toAll');
+    if (msg.target === 'admins') return t('inbox.toAdmins');
+    return t('inbox.toUser', msg.target);
+  }
+
+  function _buildThreads(messages) {
+    const byId = {};
+    const roots = [];
+    const children = {};
+
+    for (const m of messages) byId[m.id] = m;
+
+    for (const m of messages) {
+      let rootId = m.id;
+      if (m.reply_to && byId[m.reply_to]) {
+        rootId = m.reply_to;
+        let parent = byId[rootId];
+        while (parent && parent.reply_to && byId[parent.reply_to]) {
+          rootId = parent.reply_to;
+          parent = byId[rootId];
+        }
+      }
+      if (rootId === m.id) {
+        roots.push(m);
+      } else {
+        if (!children[rootId]) children[rootId] = [];
+        children[rootId].push(m);
+      }
+    }
+
+    for (const id of Object.keys(children)) {
+      children[id].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    }
+
+    roots.sort((a, b) => {
+      const aReplies = children[a.id] || [];
+      const bReplies = children[b.id] || [];
+      const aLatest = aReplies.length ? aReplies[aReplies.length - 1].created_at : a.created_at;
+      const bLatest = bReplies.length ? bReplies[bReplies.length - 1].created_at : b.created_at;
+      return new Date(bLatest) - new Date(aLatest);
+    });
+
+    return { roots, children };
+  }
+
+  function _fmtDate(iso) {
+    return new Date(iso).toLocaleDateString(LeucenaI18n.getLang(), { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function _sanitizeComposeHtml(html) {
+    if (!html) return '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const ALLOWED = new Set(['B', 'I', 'STRONG', 'EM', 'DEL', 'S', 'STRIKE', 'MARK', 'BLOCKQUOTE', 'A', 'BR', 'P', 'DIV', 'SPAN', 'U', 'UL', 'OL', 'LI']);
+    (function walk(node) {
+      Array.from(node.childNodes).forEach(c => {
+        if (c.nodeType === 1) {
+          if (!ALLOWED.has(c.tagName)) {
+            while (c.firstChild) node.insertBefore(c.firstChild, c);
+            node.removeChild(c);
+          } else {
+            Array.from(c.attributes).forEach(a => {
+              if (c.tagName === 'A' && a.name === 'href') {
+                if (!/^https?:\/\//i.test(a.value)) c.removeAttribute(a.name);
+              } else if (c.tagName === 'A' && (a.name === 'target' || a.name === 'rel' || a.name === 'class')) {
+                /* keep */
+              } else {
+                c.removeAttribute(a.name);
+              }
+            });
+            if (c.tagName === 'A') {
+              c.setAttribute('target', '_blank');
+              c.setAttribute('rel', 'noopener noreferrer');
+            }
+            walk(c);
+          }
+        }
+      });
+    })(tmp);
+    return tmp.innerHTML;
+  }
+
+  function _stripHtml(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
+
+  function _isHtmlBody(body) {
+    return /<(?:b|i|strong|em|del|s|mark|blockquote|a |br|p|div|u|ul|ol|li)[>\s/]/i.test(body);
+  }
+
+  function _renderBody(body) {
+    if (!body) return '';
+    if (_isHtmlBody(body)) return _sanitizeComposeHtml(body);
+    return _formatMsgBody(body);
+  }
+
+  function _formatMsgBody(text) {
+    let html = escapeHtml(text);
+
+    // Markdown-style link: [label](url) — only allow http(s) URLs
+    html = html.replace(/\[([^\]]{1,200})\]\((https?:\/\/[^)]{1,500})\)/g,
+      '<a href="$2" target="_blank" rel="noopener" class="inbox-link">$1</a>');
+
+    // Bold **text**
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Italic *text* (but not ** which is bold)
+    html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+    // Strikethrough ~~text~~
+    html = html.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    // Highlight ==text==
+    html = html.replace(/==(.+?)==/g, '<mark class="inbox-highlight">$1</mark>');
+    // Quote > text (at line start)
+    html = html.replace(/^(&gt; .+)$/gm, '<span class="inbox-quote">$1</span>');
+
+    // Auto-linkify bare URLs not already inside an href
+    html = html.replace(/(?<!href="|">)(https?:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener" class="inbox-link">$1</a>');
+
+    // "Como Mapear" guide link
+    html = html.replace(
+      /(?:📖|&quot;Como [Mm]apear&quot;|&quot;How to [Mm]ap&quot;|&quot;Cómo [Mm]apear&quot;)/g,
+      '<a href="#howto" class="inbox-link inbox-link-guide">$&</a>'
+    );
+    return html;
+  }
+
+  function _renderMsgBubble(msg, isLast) {
+    const t = LeucenaI18n.t;
+    const isMine = msg.sender === username;
+    const isUnread = !msg.read_at && !isMine;
+
+    let replyHtml = '';
+    if (isLast && msg.allow_reply && !isMine) {
+      replyHtml = '<button class="btn btn-secondary inbox-reply-btn" data-msg-id="' + msg.id + '">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg>' +
+        t('inbox.reply') + '</button>';
+    } else if (isLast && !msg.allow_reply && !isMine) {
+      replyHtml = '<p class="inbox-no-reply-notice">' + t('inbox.noReplyNotice') + '</p>';
+    }
+    let deleteHtml = '';
+    if (isSuperAdmin()) {
+      deleteHtml = '<button class="inbox-delete-btn" data-msg-id="' + msg.id + '" title="Apagar mensagem">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>' +
+        '</button>';
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'inbox-bubble' + (isMine ? ' inbox-bubble-mine' : '') + (isUnread ? ' inbox-bubble-unread' : '');
+    bubble.dataset.msgId = msg.id;
+    let imagesHtml = '';
+    if (msg.images) {
+      try {
+        const imgs = typeof msg.images === 'string' ? JSON.parse(msg.images) : msg.images;
+        if (Array.isArray(imgs) && imgs.length > 0) {
+          imagesHtml = '<div class="inbox-bubble-images">' +
+            imgs.map(src => '<img src="' + src + '" class="inbox-bubble-img" alt="image">').join('') +
+            '</div>';
+        }
+      } catch (e) { /* ignore bad JSON */ }
+    }
+    bubble.innerHTML =
+      '<div class="inbox-bubble-header">' +
+        '<span class="inbox-bubble-sender">' + _senderHtml(msg) + '</span>' +
+        '<span class="inbox-bubble-date">' + _fmtDate(msg.created_at) + deleteHtml + '</span>' +
+      '</div>' +
+      '<div class="inbox-bubble-body">' + _renderBody(msg.body) + '</div>' +
+      imagesHtml +
+      replyHtml;
+
+    bubble.querySelectorAll('.inbox-bubble-img').forEach(img => {
+      img.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lb = document.getElementById('inbox-lightbox');
+        document.getElementById('inbox-lightbox-img').src = img.src;
+        lb.classList.remove('hidden');
+      });
+    });
+    const delBtn = bubble.querySelector('.inbox-delete-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Apagar esta mensagem permanentemente?')) return;
+        try {
+          const r = await fetch('/api/messages/' + delBtn.dataset.msgId, {
+            method: 'DELETE', headers: authHeaders()
+          });
+          if (r.ok) {
+            showToast('Mensagem apagada', 'success');
+            openInboxModal();
+          } else {
+            const j = await r.json();
+            showToast(j.error || 'Erro ao apagar', 'error');
+          }
+        } catch (err) { showToast('Erro de conexão', 'error'); }
+      });
+    }
+    return bubble;
+  }
+
   function renderInboxList() {
     const t = LeucenaI18n.t;
     const list = document.getElementById('inbox-list');
     list.innerHTML = '';
-    if (isAdminUser()) {
-      const composeBtn = document.createElement('button');
-      composeBtn.className = 'btn btn-primary btn-full';
-      composeBtn.style.marginBottom = '12px';
-      composeBtn.textContent = t('inbox.compose');
-      composeBtn.addEventListener('click', () => { closeInboxModal(); openComposeModal(); });
-      list.appendChild(composeBtn);
-    }
+
+    const composeBtn = document.createElement('button');
+    composeBtn.className = 'btn btn-primary btn-full';
+    composeBtn.style.marginBottom = '12px';
+    composeBtn.textContent = isAdminUser() ? t('inbox.compose') : t('inbox.sendToAdmin');
+    composeBtn.addEventListener('click', () => { closeInboxModal(); openComposeModal(); });
+    list.appendChild(composeBtn);
+
     if (_inboxMessages.length === 0) {
       const emptyEl = document.createElement('p');
       emptyEl.className = 'inbox-empty';
@@ -3854,37 +4437,102 @@ window.LeucenaApp = (function () {
       list.appendChild(emptyEl);
       return;
     }
-    for (const msg of _inboxMessages) {
-      const isUnread = !msg.read_at;
-      const el = document.createElement('div');
-      el.className = 'inbox-item' + (isUnread ? ' inbox-unread' : '');
-      const dateStr = new Date(msg.created_at).toLocaleDateString(LeucenaI18n.getLang(), { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      el.innerHTML =
-        '<div class="inbox-item-header">' +
-          (isUnread ? '<span class="inbox-item-unread-dot"></span>' : '') +
-          '<span class="inbox-item-subject">' + escapeHtml(msg.subject) + '</span>' +
-          '<span class="inbox-item-date">' + dateStr + '</span>' +
-        '</div>' +
-        '<div class="inbox-item-meta">' + t('inbox.from', msg.sender) +
-          (msg.target === 'all' ? ' · ' + t('inbox.toAll') : ' · ' + t('inbox.toUser', msg.target)) +
-        '</div>' +
-        '<div class="inbox-item-body">' + escapeHtml(msg.body) + '</div>';
-      el.addEventListener('click', () => {
-        el.classList.toggle('inbox-expanded');
-        if (isUnread && el.classList.contains('inbox-expanded')) {
-          markMessageRead(msg.id, el);
+
+    const { roots, children } = _buildThreads(_inboxMessages);
+
+    for (const root of roots) {
+      const replies = children[root.id] || [];
+      const allMsgs = [root, ...replies];
+      const threadUnread = allMsgs.filter(m => !m.read_at && m.sender !== username).length;
+      const lastMsg = allMsgs[allMsgs.length - 1];
+      const hasReplies = replies.length > 0;
+
+      const threadEl = document.createElement('div');
+      threadEl.className = 'inbox-thread' + (threadUnread > 0 ? ' inbox-thread-unread' : '');
+
+      const headerEl = document.createElement('div');
+      headerEl.className = 'inbox-thread-header';
+      headerEl.innerHTML =
+        (threadUnread > 0 ? '<span class="inbox-item-unread-dot"></span>' : '') +
+        '<span class="inbox-item-subject">' + escapeHtml(root.subject) + '</span>' +
+        (hasReplies ? '<span class="inbox-thread-count">' + allMsgs.length + '</span>' : '') +
+        '<span class="inbox-thread-chevron">&#9662;</span>' +
+        '<span class="inbox-item-date">' + _fmtDate(lastMsg.created_at) + '</span>';
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'inbox-item-meta';
+      metaEl.innerHTML = t('inbox.from', _senderHtml(root)) + ' · ' + _targetLabel(root);
+
+      const previewEl = document.createElement('div');
+      previewEl.className = 'inbox-thread-preview';
+      const rawBody = _isHtmlBody(lastMsg.body) ? _stripHtml(lastMsg.body) : lastMsg.body;
+      const previewText = rawBody.length > 80 ? rawBody.substring(0, 80) + '...' : rawBody;
+      if (hasReplies) {
+        previewEl.innerHTML = '<span class="inbox-preview-sender">' + escapeHtml(_senderDisplayName(lastMsg)) + ':</span> ' + escapeHtml(previewText);
+      } else {
+        previewEl.textContent = previewText;
+      }
+
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'inbox-thread-body';
+
+      for (let i = 0; i < allMsgs.length; i++) {
+        bodyEl.appendChild(_renderMsgBubble(allMsgs[i], i === allMsgs.length - 1));
+      }
+
+      const clickZone = document.createElement('div');
+      clickZone.className = 'inbox-thread-clickzone';
+      clickZone.appendChild(headerEl);
+      clickZone.appendChild(metaEl);
+      clickZone.appendChild(previewEl);
+
+      threadEl.appendChild(clickZone);
+      threadEl.appendChild(bodyEl);
+
+      clickZone.addEventListener('click', (e) => {
+        if (e.target.closest('.inbox-reply-btn')) return;
+        threadEl.classList.toggle('inbox-thread-expanded');
+
+        if (threadEl.classList.contains('inbox-thread-expanded') && threadUnread > 0) {
+          allMsgs.forEach(m => {
+            if (!m.read_at && m.sender !== username) {
+              const bubbleEl = bodyEl.querySelector('[data-msg-id="' + m.id + '"]');
+              markMessageRead(m.id, bubbleEl);
+            }
+          });
+          threadEl.classList.remove('inbox-thread-unread');
+          const dot = headerEl.querySelector('.inbox-item-unread-dot');
+          if (dot) dot.remove();
         }
       });
-      list.appendChild(el);
+
+      bodyEl.addEventListener('click', (e) => {
+        const guideLink = e.target.closest('.inbox-link-guide');
+        if (guideLink) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeInboxModal();
+          openGuideModal('howto');
+          return;
+        }
+        const replyBtn = e.target.closest('.inbox-reply-btn');
+        if (replyBtn) {
+          e.stopPropagation();
+          const msgId = Number(replyBtn.dataset.msgId);
+          const msg = _inboxMessages.find(m => m.id === msgId) || lastMsg;
+          closeInboxModal();
+          openReplyModal(msg);
+        }
+      });
+
+      list.appendChild(threadEl);
     }
   }
 
   async function markMessageRead(msgId, el) {
     try {
       await fetch(`/api/messages/${msgId}/read`, { method: 'PUT', headers: authHeaders() });
-      el.classList.remove('inbox-unread');
-      const dot = el.querySelector('.inbox-item-unread-dot');
-      if (dot) dot.remove();
+      if (el) el.classList.remove('inbox-bubble-unread');
       const msg = _inboxMessages.find(m => m.id === msgId);
       if (msg) msg.read_at = new Date().toISOString();
       refreshInboxBadge();
@@ -3895,52 +4543,249 @@ window.LeucenaApp = (function () {
     document.getElementById('inbox-modal').classList.add('hidden');
   }
 
-  async function openComposeModal() {
+  let _composeMode = 'admin';
+  let _composeReplyTo = null;
+
+  async function openComposeModal(mode, replyMsg) {
     const t = LeucenaI18n.t;
+    _composeMode = mode || (isAdminUser() ? 'admin' : 'user');
+    _composeReplyTo = replyMsg || null;
+
     const modal = document.getElementById('inbox-compose-modal');
     const select = document.getElementById('inbox-compose-target');
     const errEl = document.getElementById('inbox-compose-error');
-    errEl.classList.add('hidden');
-    document.getElementById('inbox-compose-subject').value = '';
-    document.getElementById('inbox-compose-body').value = '';
+    const subjectEl = document.getElementById('inbox-compose-subject');
+    const bodyEl = document.getElementById('inbox-compose-body');
+    const allowReplyWrap = document.getElementById('inbox-compose-allow-reply-wrap');
+    const allowReplyCb = document.getElementById('inbox-compose-allow-reply');
+    const targetField = select.closest('.compose-field');
 
-    select.innerHTML = '<option value="all">' + t('inbox.recipientAll') + '</option>';
-    try {
-      const r = await fetch('/api/admin/users', { headers: authHeaders() });
-      if (r.ok) {
-        const users = await r.json();
-        for (const u of users) {
-          if (u.username === 'deleted') continue;
-          const opt = document.createElement('option');
-          opt.value = u.username;
-          opt.textContent = u.full_name ? u.full_name + ' (' + u.username + ')' : u.username;
-          select.appendChild(opt);
+    errEl.classList.add('hidden');
+    bodyEl.value = '';
+
+    const existingReplyInfo = modal.querySelector('.compose-reply-info');
+    if (existingReplyInfo) existingReplyInfo.remove();
+
+    if (_composeMode === 'reply' && _composeReplyTo) {
+      subjectEl.value = _composeReplyTo.subject.startsWith('Re: ') ? _composeReplyTo.subject : 'Re: ' + _composeReplyTo.subject;
+      targetField.classList.add('hidden');
+      allowReplyWrap.classList.add('hidden');
+      const info = document.createElement('div');
+      info.className = 'compose-reply-info';
+      info.textContent = t('inbox.replyTo', _composeReplyTo.sender + ' — ' + _composeReplyTo.subject);
+      errEl.parentElement.insertBefore(info, errEl.nextSibling);
+    } else if (_composeMode === 'user') {
+      subjectEl.value = '';
+      targetField.classList.add('hidden');
+      allowReplyWrap.classList.add('hidden');
+    } else {
+      subjectEl.value = '';
+      targetField.classList.remove('hidden');
+      allowReplyWrap.classList.remove('hidden');
+      allowReplyCb.checked = true;
+      select.innerHTML = '<option value="all">' + t('inbox.recipientAll') + '</option>';
+      try {
+        const r = await fetch('/api/admin/users', { headers: authHeaders() });
+        if (r.ok) {
+          const users = await r.json();
+          for (const u of users) {
+            if (u.username === 'deleted') continue;
+            const opt = document.createElement('option');
+            opt.value = u.username;
+            opt.textContent = u.full_name ? u.full_name + ' (' + u.username + ')' : u.username;
+            select.appendChild(opt);
+          }
         }
-      }
-    } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore */ }
+    }
+    modal.classList.remove('hidden');
+  }
+
+  function openReplyModal(msg) {
+    openComposeModal('reply', msg);
+  }
+
+  let _batchTargetUsernames = null;
+
+  function openBatchComposeModal(ids, colabUsers) {
+    const t = LeucenaI18n.t;
+    _batchTargetUsernames = colabUsers.filter(u => ids.includes(u.id)).map(u => u.username);
+    if (_batchTargetUsernames.length === 0) return;
+    _composeMode = 'batch';
+    _composeReplyTo = null;
+
+    const modal = document.getElementById('inbox-compose-modal');
+    const select = document.getElementById('inbox-compose-target');
+    const errEl = document.getElementById('inbox-compose-error');
+    const subjectEl = document.getElementById('inbox-compose-subject');
+    const bodyEl = document.getElementById('inbox-compose-body');
+    const allowReplyWrap = document.getElementById('inbox-compose-allow-reply-wrap');
+    const allowReplyCb = document.getElementById('inbox-compose-allow-reply');
+    const targetField = select.closest('.compose-field');
+
+    errEl.classList.add('hidden');
+    subjectEl.value = '';
+    bodyEl.value = '';
+
+    const existingReplyInfo = modal.querySelector('.compose-reply-info');
+    if (existingReplyInfo) existingReplyInfo.remove();
+
+    targetField.classList.add('hidden');
+    allowReplyWrap.classList.remove('hidden');
+    allowReplyCb.checked = true;
+
+    const info = document.createElement('div');
+    info.className = 'compose-reply-info';
+    info.textContent = t('admin.batchConfirmSendMessage', _batchTargetUsernames.length);
+    errEl.parentElement.insertBefore(info, errEl.nextSibling);
+
     modal.classList.remove('hidden');
   }
 
   function closeComposeModal() {
     document.getElementById('inbox-compose-modal').classList.add('hidden');
+    _composeReplyTo = null;
+    _composeMode = 'admin';
+    _batchTargetUsernames = null;
+    _composeImages = [];
+    _renderComposeImagePreviews();
+    document.getElementById('inbox-compose-body').innerHTML = '';
+    const counter = document.getElementById('compose-char-counter');
+    if (counter) { counter.textContent = '0 / 2000'; counter.className = 'compose-char-counter'; }
+  }
+
+  let _confirmResolve = null;
+  let _confirmSendHandler = null;
+
+  function showSendConfirmation(recipientLabel, subject, body) {
+    return new Promise((resolve) => {
+      _confirmResolve = resolve;
+      document.getElementById('inbox-confirm-recipient').textContent = recipientLabel;
+      document.getElementById('inbox-confirm-subject').textContent = subject;
+      document.getElementById('inbox-confirm-body').innerHTML = _isHtmlBody(body) ? _sanitizeComposeHtml(body) : _formatMsgBody(body);
+      const confirmImgs = document.getElementById('inbox-confirm-images');
+      if (_composeImages.length > 0) {
+        confirmImgs.innerHTML = _composeImages.map(src =>
+          '<img src="' + src + '" class="inbox-confirm-thumb" alt="image">'
+        ).join('');
+        confirmImgs.classList.remove('hidden');
+      } else {
+        confirmImgs.innerHTML = '';
+        confirmImgs.classList.add('hidden');
+      }
+      document.getElementById('inbox-confirm-modal').classList.remove('hidden');
+
+      const sendBtn = document.getElementById('inbox-confirm-send');
+      if (_confirmSendHandler) sendBtn.removeEventListener('click', _confirmSendHandler);
+      _confirmSendHandler = () => {
+        document.getElementById('inbox-confirm-modal').classList.add('hidden');
+        if (_confirmResolve) { const r = _confirmResolve; _confirmResolve = null; r(true); }
+        sendBtn.removeEventListener('click', _confirmSendHandler);
+        _confirmSendHandler = null;
+      };
+      sendBtn.addEventListener('click', _confirmSendHandler);
+    });
+  }
+
+  function closeSendConfirm() {
+    document.getElementById('inbox-confirm-modal').classList.add('hidden');
+    const sendBtn = document.getElementById('inbox-confirm-send');
+    if (_confirmSendHandler) { sendBtn.removeEventListener('click', _confirmSendHandler); _confirmSendHandler = null; }
+    if (_confirmResolve) { const r = _confirmResolve; _confirmResolve = null; r(false); }
+  }
+
+  function getRecipientLabel(mode, target, replyTo, batchUsernames) {
+    const t = LeucenaI18n.t;
+    if (mode === 'batch' && batchUsernames) {
+      return t('inbox.confirmRecipientBatch', batchUsernames.length);
+    }
+    if (mode === 'reply' && replyTo) {
+      return replyTo.sender + ' (' + t('inbox.replyTo') + ')';
+    }
+    if (mode === 'user') {
+      return t('inbox.confirmRecipientSuperadmins');
+    }
+    if (target === 'all') {
+      return t('inbox.recipientAll');
+    }
+    const select = document.getElementById('inbox-compose-target');
+    return select.options[select.selectedIndex].textContent;
   }
 
   async function handleComposeSend(e) {
     e.preventDefault();
     const t = LeucenaI18n.t;
     const subject = document.getElementById('inbox-compose-subject').value.trim();
-    const body = document.getElementById('inbox-compose-body').value.trim();
-    const target = document.getElementById('inbox-compose-target').value;
+    const editorEl = document.getElementById('inbox-compose-body');
+    const bodyHtml = _sanitizeComposeHtml(editorEl.innerHTML);
+    const bodyText = editorEl.textContent.trim();
     const errEl = document.getElementById('inbox-compose-error');
-    if (!subject || !body) return;
+    if (!subject || !bodyText) return;
+    if (bodyText.length > 2000) {
+      errEl.textContent = 'Mensagem deve ter no máximo 2000 caracteres';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const body = bodyHtml;
+
+    let endpoint, payload;
+
+    if (_composeMode === 'batch' && _batchTargetUsernames && _batchTargetUsernames.length > 0) {
+      const recipientLabel = getRecipientLabel('batch', null, null, _batchTargetUsernames);
+      const confirmed = await showSendConfirmation(recipientLabel, subject, body);
+      if (!confirmed) return;
+      const allowReply = document.getElementById('inbox-compose-allow-reply').checked;
+      const btn = document.getElementById('inbox-compose-submit');
+      btn.disabled = true;
+      try {
+        let ok = 0, fail = 0;
+        for (const target of _batchTargetUsernames) {
+          const r = await fetch('/api/admin/messages', {
+            method: 'POST',
+            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, body, target, allow_reply: allowReply, images: _composeImages.length ? _composeImages : undefined })
+          });
+          if (r.ok) ok++; else fail++;
+        }
+        closeComposeModal();
+        showToast(t('inbox.sentSuccess') + ` (${ok}/${_batchTargetUsernames.length})`, 'success');
+      } catch (err) {
+        errEl.textContent = t('inbox.sentFail');
+        errEl.classList.remove('hidden');
+      } finally { btn.disabled = false; }
+      return;
+    }
+
+    const imgs = _composeImages.length ? _composeImages : undefined;
+    if (_composeMode === 'reply' && _composeReplyTo) {
+      endpoint = '/api/messages/reply';
+      payload = { parent_id: _composeReplyTo.id, body, images: imgs };
+    } else if (_composeMode === 'user') {
+      endpoint = '/api/messages/send';
+      payload = { subject, body, images: imgs };
+    } else {
+      const target = document.getElementById('inbox-compose-target').value;
+      const allowReply = document.getElementById('inbox-compose-allow-reply').checked;
+      endpoint = '/api/admin/messages';
+      payload = { subject, body, target, allow_reply: allowReply, images: imgs };
+    }
+
+    const recipientLabel = getRecipientLabel(
+      _composeMode,
+      payload.target || null,
+      _composeReplyTo,
+      null
+    );
+    const confirmed = await showSendConfirmation(recipientLabel, subject, body);
+    if (!confirmed) return;
 
     const btn = document.getElementById('inbox-compose-submit');
     btn.disabled = true;
     try {
-      const r = await fetch('/api/admin/messages', {
+      const r = await fetch(endpoint, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, body, target })
+        body: JSON.stringify(payload)
       });
       if (r.ok) {
         closeComposeModal();
@@ -3960,10 +4805,22 @@ window.LeucenaApp = (function () {
 
   function onInboxNew(data) {
     if (!isLoggedIn()) return;
-    if (data.target !== 'all' && data.target !== username) return;
+    if (data.sender === username) return;
+    const role = getEffectiveRole();
+    const isRecipient = isSuperAdmin()
+      || (data.target === 'all' && role === 'contributor')
+      || data.target === username
+      || (data.target === 'admins' && isSuperAdmin());
+    if (!isRecipient) return;
     const t = LeucenaI18n.t;
     showToast(t('inbox.newMessage', data.subject), 'info', 6000);
-    refreshInboxBadge();
+    const badge = document.getElementById('inbox-badge');
+    if (badge) {
+      const cur = parseInt(badge.textContent, 10) || 0;
+      badge.textContent = cur + 1;
+      badge.classList.remove('hidden');
+    }
+    setTimeout(refreshInboxBadge, 2000);
   }
 
   function escapeHtml(str) {

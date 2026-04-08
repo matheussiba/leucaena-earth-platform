@@ -45,6 +45,37 @@ function getBaseUrl(req) {
   return req.protocol + '://' + req.get('host');
 }
 
+function sendWelcomeInboxMessage(targetUsername) {
+  const existing = queryOne("SELECT id FROM messages WHERE target = ? AND subject LIKE '%Bem-vindo%leucaena%'", [targetUsername]);
+  if (existing) return;
+  const admin = queryOne("SELECT username FROM users WHERE role = 'superadmin' AND is_active = 1 ORDER BY id ASC LIMIT 1");
+  const sender = admin ? admin.username : 'leucaena.earth';
+  const now = new Date().toISOString();
+  const subject = 'Bem-vindo ao leucaena.earth! 🌱';
+  const body =
+    'Olá! Bem-vindo(a) ao leucaena.earth!\n\n' +
+    'Fico feliz demais que você quer fazer parte desse projeto científico com a gente!\n\n' +
+    'Antes de começar, dá uma olhada na seção "Como mapear" (ícone 📖 no menu), pois lá tem instruções e um vídeo tutorial bem importantes.\n\n' +
+    'Uma coisa bacana: só de mapear 1 polígono de leucena (desenhar o contorno de um aglomerado), você já passa a aparecer na seção de colaboradores do site!\n\n' +
+    'Qualquer dúvida, sugestão ou ideia, pode responder esta mensagem. Vou ficar muito feliz em ajudar!\n\n' +
+    'Um forte abraço!';
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, created_at) VALUES (?, ?, ?, ?, 1, ?)',
+    [sender, subject, body, targetUsername, now]);
+
+  const nowPlus1 = new Date(Date.now() + 1000).toISOString();
+  const newsSubject = 'Novidades: Vídeo tutorial de mapeamento 📺';
+  const newsBody =
+    'Foi adicionado um vídeo na seção "Como Mapear" explicando o procedimento de mapeamento.\n\n' +
+    'O objetivo é que sejam desenhados polígonos ao redor dos aglomerados de leucena (áreas onde há duas ou mais leucenas juntas) sobre as imagens de satélite.\n\n' +
+    'O vídeo explica como fazer isso passo a passo!\n\n' +
+    '🎬 Assista ao vídeo: https://www.youtube.com/watch?v=S7NCnasL1oQ\n\n' +
+    'Ou acesse a seção "Como Mapear" no menu superior (ícone 📖).';
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, created_at) VALUES (?, ?, ?, ?, 0, ?)',
+    [sender, newsSubject, newsBody, targetUsername, nowPlus1]);
+
+  console.log(`[inbox] Welcome + news messages created for ${targetUsername} from ${sender}`);
+}
+
 async function sendWelcomeEmail(user) {
   if (!resend || !user.email) return;
   const firstName = (user.full_name || user.username || '').split(/\s+/)[0];
@@ -197,6 +228,75 @@ setInterval(() => {
 const loginLimiter = rateLimit('login', 20, 15 * 60 * 1000);
 const registerLimiter = rateLimit('register', 5, 60 * 60 * 1000);
 const resetLimiter = rateLimit('reset', 5, 15 * 60 * 1000);
+const messageLimiter = rateLimit('message', 10, 15 * 60 * 1000);
+
+const MSG_SUBJECT_MAX = 200;
+const MSG_BODY_MAX = 2000;
+const MSG_COOLDOWN_MS = 10000;
+const MSG_DAILY_CONTRIBUTOR = 20;
+const MSG_DAILY_ADMIN = 100;
+
+function checkMessageLimits(username) {
+  const last = queryOne('SELECT created_at FROM messages WHERE sender = ? ORDER BY id DESC LIMIT 1', [username]);
+  if (last) {
+    const elapsed = Date.now() - new Date(last.created_at).getTime();
+    if (elapsed < MSG_COOLDOWN_MS) {
+      const wait = Math.ceil((MSG_COOLDOWN_MS - elapsed) / 1000);
+      return { error: `Aguarde ${wait}s antes de enviar outra mensagem.`, retryAfter: wait };
+    }
+  }
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const row = queryOne('SELECT COUNT(*) as cnt FROM messages WHERE sender = ? AND created_at >= ?', [username, todayStart.toISOString()]);
+  const count = row ? row.cnt : 0;
+  const dailyMax = isAdmin(username) ? MSG_DAILY_ADMIN : MSG_DAILY_CONTRIBUTOR;
+  if (count >= dailyMax) {
+    return { error: `Limite diário de ${dailyMax} mensagens atingido.` };
+  }
+  return null;
+}
+
+const MSG_IMG_REGEX = /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/;
+const MSG_IMG_MAX_CHARS = 300000;
+const MSG_IMG_MAX_COUNT = 2;
+
+function validateMessageImages(images) {
+  if (!images || (Array.isArray(images) && images.length === 0)) return [];
+  if (!Array.isArray(images)) throw new Error('images must be an array');
+  if (images.length > MSG_IMG_MAX_COUNT) throw new Error(`Máximo de ${MSG_IMG_MAX_COUNT} imagens por mensagem`);
+  const clean = [];
+  for (const img of images) {
+    if (typeof img !== 'string') throw new Error('Invalid image data');
+    if (img.length > MSG_IMG_MAX_CHARS) throw new Error('Imagem muito grande (máx. ~200KB cada)');
+    if (!MSG_IMG_REGEX.test(img)) throw new Error('Formato de imagem inválido');
+    clean.push(img);
+  }
+  return clean;
+}
+
+function stripHtmlTags(html) {
+  return html.replace(/<[^>]*>/g, '').trim();
+}
+
+function sanitizeMessageHtml(html) {
+  if (!html) return '';
+  let s = html;
+  s = s.replace(/<(script|style|iframe|object|embed|form|input|textarea|select|button)\b[^]*?<\/\1>/gi, '');
+  s = s.replace(/<(script|style|iframe|object|embed|form|input|textarea|select|button)\b[^>]*\/?>/gi, '');
+  s = s.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+  s = s.replace(/javascript\s*:/gi, '');
+  return s;
+}
+
+function validateMessageText(subject, body) {
+  if (!subject || !body) return 'subject and body are required';
+  if (typeof subject !== 'string' || typeof body !== 'string') return 'subject and body must be strings';
+  if (subject.trim().length === 0) return 'subject cannot be empty';
+  const textLen = stripHtmlTags(body).length;
+  if (textLen === 0) return 'body cannot be empty';
+  if (subject.trim().length > MSG_SUBJECT_MAX) return `Assunto deve ter no máximo ${MSG_SUBJECT_MAX} caracteres`;
+  if (textLen > MSG_BODY_MAX) return `Mensagem deve ter no máximo ${MSG_BODY_MAX} caracteres`;
+  return null;
+}
 
 // ── Password reset tokens (in-memory, expire in 30 min) ──
 
@@ -1078,6 +1178,7 @@ app.get('/auth/google/callback', async (req, res) => {
       logActivity(user.username, 'register_google', null, null, { google_email: googleEmail });
       persist();
       sendWelcomeEmail(user).catch(e => console.error('Welcome email error:', e));
+      sendWelcomeInboxMessage(user.username);
     }
 
     if (user.is_active === 0) {
@@ -1127,7 +1228,10 @@ app.get('/api/auth/verify-email', (req, res) => {
   persist();
 
   const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [user.id]);
-  if (freshUser) sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+  if (freshUser) {
+    sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+    sendWelcomeInboxMessage(freshUser.username);
+  }
 
   res.send(verifyResultHtml('success', 'E-mail verificado com sucesso! Você já pode usar a plataforma normalmente.'));
 });
@@ -1372,7 +1476,7 @@ app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
 
 app.post('/api/admin/users/create', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
-  const { username, password, email } = req.body;
+  const { username, password, email, full_name } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
   if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
   if (!/^[a-z0-9.]+$/.test(username)) return res.status(400).json({ error: 'O usuário deve conter apenas letras minúsculas, números e ponto' });
@@ -1385,12 +1489,20 @@ app.post('/api/admin/users/create', requireAuth, (req, res) => {
 
   const hash = hashPassword(password);
   const now = new Date().toISOString();
+  const cleanFullName = (full_name || '').trim() || null;
   runSQL(
-    'INSERT INTO users (username, password_hash, created_at, email, email_verified, auth_provider) VALUES (?, ?, ?, ?, 1, ?)',
-    [username, hash, now, email, 'local']
+    'INSERT INTO users (username, password_hash, created_at, email, email_verified, auth_provider, full_name) VALUES (?, ?, ?, ?, 1, ?, ?)',
+    [username, hash, now, email, 'local', cleanFullName]
   );
-  logActivity(req.username, 'admin_create_user', null, null, { target_user: username });
+  logActivity(req.username, 'admin_create_user', null, null, { target_user: username, full_name: cleanFullName });
   persist();
+
+  const freshUser = queryOne('SELECT * FROM users WHERE username = ?', [username]);
+  if (freshUser) {
+    sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+    sendWelcomeInboxMessage(freshUser.username);
+  }
+
   res.json({ success: true, username });
 });
 
@@ -1521,7 +1633,10 @@ app.put('/api/admin/users/:id/verify', requireAuth, async (req, res) => {
   persist();
 
   const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
-  if (freshUser) sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+  if (freshUser) {
+    sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+    sendWelcomeInboxMessage(freshUser.username);
+  }
 
   res.json({ success: true });
 });
@@ -1537,67 +1652,251 @@ app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ── Batch operations (superadmin only) ──
+
+app.post('/api/admin/batch/verify', requireAuth, async (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
+  let verified = 0, skipped = 0;
+  for (const id of ids) {
+    const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
+    if (!user) { skipped++; continue; }
+    if (user.email_verified) { skipped++; continue; }
+    runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [Number(id)]);
+    logActivity(req.username, 'admin_verify_email', null, null, { target_user: user.username, batch: true });
+    const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
+    if (freshUser) {
+      sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
+      sendWelcomeInboxMessage(freshUser.username);
+    }
+    verified++;
+  }
+  persist();
+  res.json({ success: true, verified, skipped });
+});
+
+app.post('/api/admin/batch/deactivate', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
+  let processed = 0;
+  for (const id of ids) {
+    const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
+    if (!user || user.role === 'superadmin' || user.is_active === 0) continue;
+    const lockedCells = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
+    for (const c of lockedCells) {
+      const newStatus = determineCellStatusOnUnlock(c.id, c.geometry);
+      runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ? WHERE id = ?', [newStatus, c.id]);
+    }
+    runSQL('UPDATE users SET is_active = 0 WHERE id = ?', [Number(id)]);
+    logActivity(req.username, 'user_deactivate', null, null, { target_user: user.username, batch: true });
+    processed++;
+  }
+  persist();
+  io.emit('grid:refresh');
+  res.json({ success: true, processed });
+});
+
+app.post('/api/admin/batch/reactivate', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
+  let processed = 0;
+  for (const id of ids) {
+    const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
+    if (!user || user.is_active === 1) continue;
+    runSQL('UPDATE users SET is_active = 1 WHERE id = ?', [Number(id)]);
+    logActivity(req.username, 'user_reactivate', null, null, { target_user: user.username, batch: true });
+    processed++;
+  }
+  persist();
+  res.json({ success: true, processed });
+});
+
+app.post('/api/admin/batch/delete', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
+  let deleted = 0;
+  for (const id of ids) {
+    const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
+    if (!user || user.role === 'superadmin') continue;
+    permanentlyDeleteUserAccount(user, req.username);
+    deleted++;
+  }
+  io.emit('users:updated', getUniqueUsers());
+  res.json({ success: true, deleted });
+});
+
 // [REMOVED] admin reset-token route; password reset is now self-service via email
 
 // [REMOVED] /api/admin/passcode; passcode system removed
 
 // ── Inbox: messages ──
 
-app.post('/api/admin/messages', requireAuth, async (req, res) => {
+async function sendInboxEmails(senderUsername, subject, body, recipients) {
+  const results = [];
+  if (!resend) return results;
+  for (const u of recipients) {
+    try {
+      await resend.emails.send({
+        from: RESEND_FROM,
+        to: u.email,
+        subject: `[leucaena.earth] ${subject}`,
+        html: `<p>Olá <strong>${u.full_name || u.username}</strong>,</p>
+               <p>${body.replace(/\n/g, '<br>')}</p>
+               <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${senderUsername}</strong> via leucaena.earth</p>
+               <p style="font-size:12px;color:#888;"><a href="https://map.leucaena.earth">Abrir plataforma</a></p>`
+      });
+      results.push({ username: u.username, sent: true });
+    } catch (e) {
+      console.error('Inbox email error:', u.username, e.message);
+      results.push({ username: u.username, sent: false, error: e.message });
+    }
+  }
+  return results;
+}
+
+function inboxVisibilityCondition() {
+  return `(
+    (m.target = 'all' AND ? IN (SELECT username FROM users WHERE role = 'contributor'))
+    OR m.target = ?
+    OR (m.target = 'admins' AND ? IN (SELECT username FROM users WHERE role = 'superadmin'))
+    OR m.sender = ?
+    OR ? IN (SELECT username FROM users WHERE role = 'superadmin')
+  )
+  AND (
+    m.sender = ?
+    OR m.target = ?
+    OR m.created_at >= COALESCE((SELECT created_at FROM users WHERE username = ?), '1970-01-01')
+  )`;
+}
+
+function inboxVisibilityParams(username) {
+  return [username, username, username, username, username, username, username, username];
+}
+
+app.post('/api/admin/messages', requireAuth, messageLimiter, async (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const { subject, body, target } = req.body;
-  if (!subject || !body) return res.status(400).json({ error: 'subject and body are required' });
+  const { subject, body, target, allow_reply, images } = req.body;
+  const textErr = validateMessageText(subject, body);
+  if (textErr) return res.status(400).json({ error: textErr });
+  const limitErr = checkMessageLimits(req.username);
+  if (limitErr) return res.status(429).json(limitErr);
+  let cleanImages = null;
+  try { cleanImages = validateMessageImages(images); } catch (e) { return res.status(400).json({ error: e.message }); }
   const cleanTarget = (target || 'all').trim();
   if (cleanTarget !== 'all') {
     const targetUser = queryOne('SELECT id FROM users WHERE username = ?', [cleanTarget]);
     if (!targetUser) return res.status(404).json({ error: 'Target user not found' });
   }
+  const allowReply = allow_reply === false || allow_reply === 0 ? 0 : 1;
+  const imagesJson = cleanImages.length > 0 ? JSON.stringify(cleanImages) : null;
   const now = new Date().toISOString();
-  runSQL('INSERT INTO messages (sender, subject, body, target, created_at) VALUES (?, ?, ?, ?, ?)',
-    [req.username, subject.trim(), body.trim(), cleanTarget, now]);
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, images, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [req.username, subject.trim(), sanitizeMessageHtml(body.trim()), cleanTarget, allowReply, imagesJson, now]);
   const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
-  logActivity(req.username, 'inbox_message_sent', null, msg ? String(msg.id) : null, JSON.stringify({ target: cleanTarget, subject: subject.trim() }));
+  logActivity(req.username, 'inbox_message_sent', null, msg ? String(msg.id) : null, JSON.stringify({ target: cleanTarget, subject: subject.trim(), allow_reply: allowReply }));
 
-  let emailResults = [];
-  if (resend) {
-    let recipients;
-    if (cleanTarget === 'all') {
-      recipients = queryAll("SELECT username, email, full_name FROM users WHERE is_active = 1 AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'");
-    } else {
-      recipients = queryAll("SELECT username, email, full_name FROM users WHERE username = ? AND is_active = 1 AND email IS NOT NULL AND TRIM(email) != ''", [cleanTarget]);
-    }
-    for (const u of recipients) {
-      try {
-        await resend.emails.send({
-          from: RESEND_FROM,
-          to: u.email,
-          subject: `[leucaena.earth] ${subject.trim()}`,
-          html: `<p>Olá <strong>${u.full_name || u.username}</strong>,</p>
-                 <p>${body.trim().replace(/\n/g, '<br>')}</p>
-                 <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${req.username}</strong> via leucaena.earth</p>
-                 <p style="font-size:12px;color:#888;"><a href="https://map.leucaena.earth">Abrir plataforma</a></p>`
-        });
-        emailResults.push({ username: u.username, sent: true });
-      } catch (e) {
-        console.error('Inbox email error:', u.username, e.message);
-        emailResults.push({ username: u.username, sent: false, error: e.message });
-      }
-    }
+  let recipients;
+  if (cleanTarget === 'all') {
+    recipients = queryAll("SELECT username, email, full_name FROM users WHERE is_active = 1 AND role = 'contributor' AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'");
+  } else {
+    recipients = queryAll("SELECT username, email, full_name FROM users WHERE username = ? AND is_active = 1 AND email IS NOT NULL AND TRIM(email) != ''", [cleanTarget]);
   }
+  const superadminsCc = queryAll("SELECT username, email, full_name FROM users WHERE role = 'superadmin' AND is_active = 1 AND username != ? AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'", [req.username]);
+  const seen = new Set(recipients.map(r => r.username));
+  for (const sa of superadminsCc) { if (!seen.has(sa.username)) recipients.push(sa); }
+  const emailResults = await sendInboxEmails(req.username, subject.trim(), body.trim(), recipients);
 
   io.emit('inbox:new', { id: msg ? msg.id : null, subject: subject.trim(), sender: req.username, target: cleanTarget, created_at: now });
   res.json({ success: true, messageId: msg ? msg.id : null, emailResults });
 });
 
+app.post('/api/messages/send', requireAuth, messageLimiter, async (req, res) => {
+  const { subject, body, images } = req.body;
+  const textErr = validateMessageText(subject, body);
+  if (textErr) return res.status(400).json({ error: textErr });
+  const limitErr = checkMessageLimits(req.username);
+  if (limitErr) return res.status(429).json(limitErr);
+  let cleanImages = null;
+  try { cleanImages = validateMessageImages(images); } catch (e) { return res.status(400).json({ error: e.message }); }
+  const imagesJson = cleanImages.length > 0 ? JSON.stringify(cleanImages) : null;
+  const now = new Date().toISOString();
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, images, created_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
+    [req.username, subject.trim(), sanitizeMessageHtml(body.trim()), 'admins', imagesJson, now]);
+  const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
+  logActivity(req.username, 'inbox_message_to_admin', null, msg ? String(msg.id) : null, JSON.stringify({ subject: subject.trim() }));
+
+  const superadmins = queryAll("SELECT username, email, full_name FROM users WHERE role = 'superadmin' AND is_active = 1 AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'");
+  const emailResults = await sendInboxEmails(req.username, subject.trim(), body.trim(), superadmins);
+
+  io.emit('inbox:new', { id: msg ? msg.id : null, subject: subject.trim(), sender: req.username, target: 'admins', created_at: now });
+  res.json({ success: true, messageId: msg ? msg.id : null, emailResults });
+});
+
+app.post('/api/messages/reply', requireAuth, messageLimiter, async (req, res) => {
+  const { parent_id, body } = req.body;
+  if (!parent_id || !body) return res.status(400).json({ error: 'parent_id and body are required' });
+  if (typeof body !== 'string' || stripHtmlTags(body).length === 0) return res.status(400).json({ error: 'body cannot be empty' });
+  if (stripHtmlTags(body).length > MSG_BODY_MAX) return res.status(400).json({ error: `Mensagem deve ter no máximo ${MSG_BODY_MAX} caracteres` });
+  const limitErr = checkMessageLimits(req.username);
+  if (limitErr) return res.status(429).json(limitErr);
+  const parent = queryOne('SELECT * FROM messages WHERE id = ?', [Number(parent_id)]);
+  if (!parent) return res.status(404).json({ error: 'Original message not found' });
+  if (!parent.allow_reply) return res.status(403).json({ error: 'Replies are not allowed on this message' });
+
+  const requesterRole = queryOne('SELECT role FROM users WHERE username = ?', [req.username]);
+  const isRecipient = isSuperAdmin(req.username)
+    || (parent.target === 'all' && requesterRole && requesterRole.role === 'contributor')
+    || parent.target === req.username
+    || (parent.target === 'admins' && isSuperAdmin(req.username))
+    || parent.sender === req.username;
+  if (!isRecipient) return res.status(403).json({ error: 'You are not a recipient of this message' });
+
+  const replyTarget = parent.sender === req.username ? parent.target : parent.sender;
+  const { images } = req.body;
+  let cleanImages = null;
+  try { cleanImages = validateMessageImages(images); } catch (e) { return res.status(400).json({ error: e.message }); }
+  const imagesJson = cleanImages.length > 0 ? JSON.stringify(cleanImages) : null;
+  const replySubject = parent.subject.startsWith('Re: ') ? parent.subject : 'Re: ' + parent.subject;
+  const now = new Date().toISOString();
+  runSQL('INSERT INTO messages (sender, subject, body, target, reply_to, allow_reply, images, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)',
+    [req.username, replySubject, sanitizeMessageHtml(body.trim()), replyTarget, parent.id, imagesJson, now]);
+  const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
+  logActivity(req.username, 'inbox_message_reply', null, msg ? String(msg.id) : null, JSON.stringify({ parent_id, subject: replySubject }));
+
+  let recipients;
+  if (replyTarget === 'all') {
+    recipients = queryAll("SELECT username, email, full_name FROM users WHERE is_active = 1 AND role = 'contributor' AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'");
+  } else if (replyTarget === 'admins') {
+    recipients = queryAll("SELECT username, email, full_name FROM users WHERE role = 'superadmin' AND is_active = 1 AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'");
+  } else {
+    recipients = queryAll("SELECT username, email, full_name FROM users WHERE username = ? AND is_active = 1 AND email IS NOT NULL AND TRIM(email) != ''", [replyTarget]);
+  }
+  const superadminsCc = queryAll("SELECT username, email, full_name FROM users WHERE role = 'superadmin' AND is_active = 1 AND username != ? AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'", [req.username]);
+  const seen = new Set(recipients.map(r => r.username));
+  for (const sa of superadminsCc) { if (!seen.has(sa.username)) recipients.push(sa); }
+  const emailResults = await sendInboxEmails(req.username, replySubject, body.trim(), recipients);
+
+  io.emit('inbox:new', { id: msg ? msg.id : null, subject: replySubject, sender: req.username, target: replyTarget, created_at: now });
+  res.json({ success: true, messageId: msg ? msg.id : null, emailResults });
+});
+
 app.get('/api/messages', requireAuth, (req, res) => {
+  const cond = inboxVisibilityCondition();
   const messages = queryAll(
-    `SELECT m.*, mr.read_at
+    `SELECT m.*, mr.read_at,
+            u.full_name AS sender_full_name,
+            u.role AS sender_role
      FROM messages m
      LEFT JOIN message_reads mr ON mr.message_id = m.id AND mr.username = ?
-     WHERE m.target = 'all' OR m.target = ?
+     LEFT JOIN users u ON u.username = m.sender
+     WHERE ${cond}
      ORDER BY m.created_at DESC
      LIMIT 100`,
-    [req.username, req.username]
+    [req.username, ...inboxVisibilityParams(req.username)]
   );
   res.json(messages);
 });
@@ -1609,18 +1908,36 @@ app.put('/api/messages/:id/read', requireAuth, (req, res) => {
   const already = queryOne('SELECT message_id FROM message_reads WHERE message_id = ? AND username = ?', [msgId, req.username]);
   if (!already) {
     runSQL('INSERT INTO message_reads (message_id, username, read_at) VALUES (?, ?, ?)', [msgId, req.username, new Date().toISOString()]);
+    logActivity(req.username, 'inbox_message_read', null, String(msgId), null);
   }
   res.json({ success: true });
 });
 
 app.get('/api/messages/unread-count', requireAuth, (req, res) => {
+  const cond = inboxVisibilityCondition();
+  const params = [...inboxVisibilityParams(req.username), req.username, req.username];
   const row = queryOne(
     `SELECT COUNT(*) as cnt FROM messages m
-     WHERE (m.target = 'all' OR m.target = ?)
+     WHERE ${cond}
+     AND m.sender != ?
      AND NOT EXISTS (SELECT 1 FROM message_reads mr WHERE mr.message_id = m.id AND mr.username = ?)`,
-    [req.username, req.username]
+    params
   );
-  res.json({ count: row ? row.cnt : 0 });
+  const count = row ? row.cnt : 0;
+  if (count > 0) console.log(`[inbox] ${req.username} has ${count} unread message(s)`);
+  res.json({ count });
+});
+
+app.delete('/api/messages/:id', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Apenas Super Admin pode apagar mensagens' });
+  const msgId = Number(req.params.id);
+  const msg = queryOne('SELECT * FROM messages WHERE id = ?', [msgId]);
+  if (!msg) return res.status(404).json({ error: 'Mensagem não encontrada' });
+  runSQL('DELETE FROM message_reads WHERE message_id = ?', [msgId]);
+  runSQL('UPDATE messages SET reply_to = NULL WHERE reply_to = ?', [msgId]);
+  runSQL('DELETE FROM messages WHERE id = ?', [msgId]);
+  logActivity(req.username, 'inbox_message_delete', null, String(msgId), JSON.stringify({ subject: msg.subject, sender: msg.sender }));
+  res.json({ success: true });
 });
 
 app.get('/api/admin/logs', requireAuth, (req, res) => {
@@ -2618,6 +2935,20 @@ async function start() {
     }
     persist();
     console.log(`  Backfilled area_ha for ${emptyArea.length} polygons`);
+  }
+
+  // Backfill welcome inbox messages for existing users who don't have one yet
+  const usersWithoutWelcome = queryAll(
+    `SELECT username FROM users
+     WHERE is_active = 1 AND username != 'deleted'
+     AND username NOT IN (SELECT target FROM messages WHERE subject LIKE '%Bem-vindo%leucaena%')`
+  );
+  if (usersWithoutWelcome.length > 0) {
+    for (const u of usersWithoutWelcome) {
+      sendWelcomeInboxMessage(u.username);
+    }
+    persist();
+    console.log(`  Backfilled welcome inbox messages for ${usersWithoutWelcome.length} users`);
   }
 
   purgeExpiredUnverifiedUsers();

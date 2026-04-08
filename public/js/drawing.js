@@ -286,6 +286,8 @@ window.LeucenaDrawing = (function () {
           e.preventDefault();
           if (manualHoleState && _lastMouseLatLng) {
             manualHoleState.addVertex(_lastMouseLatLng);
+            const _map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
+            if (_map) _forceCrosshair(_map);
             if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
               LeucenaApp.logEvent('hotkey_hole_vertex', LeucenaApp.getSelectedCellId(), manualHoleState.targetId, { lat: _lastMouseLatLng.lat(), lng: _lastMouseLatLng.lng(), count: manualHoleState.vertices.length });
             }
@@ -679,9 +681,9 @@ window.LeucenaDrawing = (function () {
     const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
     if (mode === 'draw') {
       startDrawing();
-      if (map) map.setOptions({ draggableCursor: 'crosshair' });
+      if (map) _forceCrosshair(map);
     } else {
-      if (map) map.setOptions({ draggableCursor: null });
+      if (map) _clearCrosshair(map);
       if (mode === 'edit') {
         makeAllEditableInCell();
       } else if (mode === 'hole') {
@@ -765,8 +767,26 @@ window.LeucenaDrawing = (function () {
       map.getDiv().removeEventListener('contextmenu', s.contextMenuHandler);
     }
     setClickable(true);
-    if (map) map.setOptions({ draggableCursor: null, disableDoubleClickZoom: false });
+    if (map) {
+      _clearCrosshair(map);
+      map.setOptions({ disableDoubleClickZoom: false });
+    }
     manualHoleState = null;
+  }
+
+  function _forceCrosshair(map) {
+    map.setOptions({ draggableCursor: 'crosshair' });
+    const div = map.getDiv();
+    if (div) div.classList.add('map-crosshair-mode');
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('cursor_set', LeucenaApp.getSelectedCellId(), null, { cursor: 'crosshair', mode: activeMode });
+    }
+  }
+
+  function _clearCrosshair(map) {
+    map.setOptions({ draggableCursor: null });
+    const div = map.getDiv();
+    if (div) div.classList.remove('map-crosshair-mode');
   }
 
   // Manual vertex-by-vertex hole drawing (mirrors startDrawing but saves as inner ring)
@@ -775,7 +795,8 @@ window.LeucenaDrawing = (function () {
     setClickable(false);
     LeucenaMap.setGridClickable(false);
     const map = LeucenaMap.getMap();
-    map.setOptions({ draggableCursor: 'crosshair', disableDoubleClickZoom: true });
+    map.setOptions({ disableDoubleClickZoom: true });
+    _forceCrosshair(map);
 
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
       LeucenaApp.logEvent('hole_draw_start', LeucenaApp.getSelectedCellId(), targetId, {
@@ -967,11 +988,11 @@ window.LeucenaDrawing = (function () {
     if (overlay) overlay.classList.add('hidden');
   }
 
-  function startDrawing() { // manual vertices: disable dblclick zoom, preview polygon + guide line, click/dblclick/rightclick
+  function startDrawing() {
     cleanupManualDraw();
     showDrawOverlay();
     const map = LeucenaMap.getMap();
-    map.setOptions({ draggableCursor: 'crosshair' });
+    _forceCrosshair(map);
     const vertices = [];
     const vertexMarkers = [];
     const prevDblClickZoom = map.get('disableDoubleClickZoom');
@@ -1151,7 +1172,7 @@ window.LeucenaDrawing = (function () {
     setClickable(true);
     hideDrawOverlay();
 
-    if (map) map.setOptions({ draggableCursor: null });
+    if (map) _clearCrosshair(map);
 
     manualDrawState = null;
   }
