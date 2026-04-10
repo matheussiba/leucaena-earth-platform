@@ -1339,6 +1339,27 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return false;
   }
 
+  function cellHasUnvalidatedPoints(cellId) {
+    const bounds = getCellBounds(cellId);
+    if (!bounds) return false;
+    for (const entry of Object.values(pointMarkersById)) {
+      if (entry.data.status !== 0) continue;
+      const pos = entry.marker.getPosition();
+      if (bounds.contains(pos)) return true;
+    }
+    return false;
+  }
+
+  function cellHasAnyPoints(cellId) {
+    const bounds = getCellBounds(cellId);
+    if (!bounds) return false;
+    for (const entry of Object.values(pointMarkersById)) {
+      const pos = entry.marker.getPosition();
+      if (bounds.contains(pos)) return true;
+    }
+    return false;
+  }
+
   function getShowPolygons() { return showPolygons; }
 
   function setGridsHollow(hollow) {
@@ -1522,6 +1543,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     unspiderfy,
     togglePointValidity,
     cellHasCrowdmapping,
+    cellHasUnvalidatedPoints,
+    cellHasAnyPoints,
     updateAreaLabelsForZoom
   };
 })();

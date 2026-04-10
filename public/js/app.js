@@ -2554,8 +2554,10 @@ window.LeucenaApp = (function () {
     const isContributor = getEffectiveRole() === 'contributor';
     const hasCrowd = isContributor && LeucenaMap.cellHasCrowdmapping(selectedCellId);
     const hasMasks = (typeof LeucenaDrawing !== 'undefined') && LeucenaDrawing.getPolygonCount() > 0;
+    const allPointsResolved = !LeucenaMap.cellHasUnvalidatedPoints(selectedCellId);
+    const canFinish = hasMasks || (allPointsResolved && LeucenaMap.cellHasAnyPoints(selectedCellId));
 
-    finBtn.classList.toggle('hidden', hasCrowd || !hasMasks);
+    finBtn.classList.toggle('hidden', hasCrowd || !canFinish);
     notice.classList.toggle('hidden', !hasCrowd);
 
     document.getElementById('unlock-modal').classList.remove('hidden');

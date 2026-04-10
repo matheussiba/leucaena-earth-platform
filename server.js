@@ -2246,8 +2246,22 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
   if (newStatus === 'finished') {
     const masksForFinish = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [Number(id)]);
     if (masksForFinish.length === 0) {
-      newStatus = 'not_yet_finished';
-      finishedBy = null;
+      const cellGeomFin = JSON.parse(cell.geometry);
+      const cellRingsFin = cellGeomFin.type === 'MultiPolygon'
+        ? cellGeomFin.coordinates.map(p => p[0])
+        : [cellGeomFin.coordinates[0]];
+      const unvalidatedPts = queryAll('SELECT id, geometry FROM occurrence_points WHERE status = 0')
+        .filter(p => {
+          const g = JSON.parse(p.geometry);
+          return cellRingsFin.some(ring => pointInPolygon([g.coordinates[0], g.coordinates[1]], ring));
+        });
+      if (unvalidatedPts.length > 0) {
+        return res.status(400).json({
+          error: `Não é possível finalizar: ${unvalidatedPts.length} ponto(s) ainda não validado(s). Valide todos os pontos antes de finalizar.`,
+          uncoveredPointIds: unvalidatedPts.map(p => p.id)
+        });
+      }
+      finishedBy = username;
     } else {
       const validation = validateFinished(Number(id));
       if (!validation.valid) {
