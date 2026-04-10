@@ -1058,9 +1058,10 @@
       collabMinimal = !!collabMinimal;
       const initials = (u.full_name || u.username).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       const avContent = u.photo ? '<img src="' + u.photo + '" alt="' + (u.full_name || u.username) + '">' : initials;
-      const avInner = !collabMinimal && u.scholar
-        ? '<a href="' + u.scholar + '" target="_blank" rel="noopener" title="Google Scholar">' + avContent + '</a>'
+      const avInner = u.linkedin
+        ? '<a href="' + u.linkedin + '" target="_blank" rel="noopener" title="LinkedIn" style="cursor:pointer">' + avContent + '</a>'
         : avContent;
+      const avatarStyle = u.linkedin ? '' : ' style="cursor:default"';
       let social = '';
       if (!collabMinimal && (u.linkedin || u.scholar)) {
         social = '<div class="team-social">';
@@ -1071,7 +1072,7 @@
       const roleBlock = (!collabMinimal && roleLabel) ? '<div class="team-role">' + roleLabel + '</div>' : '';
       const descBlock = !collabMinimal ? '<div class="team-desc">' + (u.description || '') + '</div>' : '';
       const cardClass = collabMinimal ? 'team-card team-card--collab' : 'team-card';
-      return '<article class="' + cardClass + '"><div class="team-avatar-wrap"><div class="team-avatar">' + avInner + '</div>' + rankMedalHtml + '</div><div class="team-name">' + (u.full_name || u.username) + '</div>' + roleBlock + descBlock + social + '</article>';
+      return '<article class="' + cardClass + '"><div class="team-avatar-wrap"><div class="team-avatar"' + avatarStyle + '>' + avInner + '</div>' + rankMedalHtml + '</div><div class="team-name">' + (u.full_name || u.username) + '</div>' + roleBlock + descBlock + social + '</article>';
     }
 
     function renderTeam() {

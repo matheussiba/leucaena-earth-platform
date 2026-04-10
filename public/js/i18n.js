@@ -411,6 +411,7 @@ window.LeucenaI18n = (function () {
     'profile.subtitleMember': { pt: 'Estas informações aparecem na seção "Quem Somos" do site.', en: 'This information appears in the "About Us" section of the site.', es: 'Esta información aparece en la sección "Quiénes Somos" del sitio.' },
     'profile.subtitleContributor': { pt: 'Crie 1+ polígono de leucena para aparecer no nosso site como colaborador(a) da leucaena.earth!', en: 'Create 1+ leucaena polygon to be featured on our site as a leucaena.earth collaborator!', es: '¡Cree 1+ polígono de leucena para aparecer en nuestro sitio como colaborador(a) de leucaena.earth!' },
     'profile.fullName': { pt: 'Nome completo', en: 'Full name', es: 'Nombre completo' },
+    'profile.username': { pt: 'Usuário', en: 'Username', es: 'Usuario' },
     'profile.description': { pt: 'Descrição', en: 'Description', es: 'Descripción' },
     'profile.photo': { pt: 'Foto', en: 'Photo', es: 'Foto' },
     'profile.save': { pt: 'Salvar perfil', en: 'Save profile', es: 'Guardar perfil' },

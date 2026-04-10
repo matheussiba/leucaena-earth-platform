@@ -345,8 +345,6 @@
           <div class="profile-photo-preview" id="profile-photo-preview"></div>
           <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp,image/gif">
         </div>
-        <label class="profile-label" data-i18n="profile.email">E-mail</label>
-        <input type="email" id="profile-email" maxlength="200" data-i18n-placeholder="profile.emailPlaceholder" placeholder="seu@email.com">
         <div id="profile-referral-section">
           <label class="profile-label" data-i18n="referral.label">Como conheceu a Leucaena.Earth? (opcional)</label>
           <select id="profile-referral-source" class="profile-select">
@@ -371,14 +369,12 @@
           <label class="profile-label">Google Scholar</label>
           <input type="url" id="profile-scholar" maxlength="200" placeholder="https://scholar.google.com/citations?user=...">
         </div>
-        <div id="profile-google-section">
+        <div id="profile-account-section">
           <div class="profile-separator"></div>
-          <label class="profile-label">Google</label>
-          <div id="profile-google-status" class="profile-google-status"></div>
-        </div>
-        <div id="profile-email-status-section" class="hidden">
-          <span id="profile-email-badge" class="profile-email-badge"></span>
-          <button type="button" class="btn btn-link btn-small" id="profile-resend-verify" data-i18n="auth.resendVerification">Reenviar e-mail de verificação</button>
+          <label class="profile-label" data-i18n="profile.username">Usuário</label>
+          <input type="text" id="profile-username" disabled>
+          <label class="profile-label" data-i18n="profile.email">E-mail</label>
+          <input type="email" id="profile-email" maxlength="200" disabled data-i18n-placeholder="profile.emailPlaceholder" placeholder="seu@email.com">
         </div>
         <div id="profile-pw-section">
           <div class="profile-separator"></div>

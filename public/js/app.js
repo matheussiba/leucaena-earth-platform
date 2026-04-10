@@ -1736,15 +1736,18 @@ window.LeucenaApp = (function () {
 
     const emailInput = document.getElementById('profile-email');
 
+    const usernameInput = document.getElementById('profile-username');
+    if (socialSection) socialSection.style.display = '';
+
     if (targetUser) {
       adminEditingUser = targetUser;
       titleEl.textContent = t('admin.editProfileTitle', targetUser.username);
       if (pwSection) pwSection.style.display = 'none';
-      if (socialSection) socialSection.style.display = '';
       if (subtitleEl) subtitleEl.textContent = t('profile.subtitleMember');
       document.getElementById('profile-full-name').value = targetUser.full_name || '';
       document.getElementById('profile-occupation').value = targetUser.occupation || '';
       document.getElementById('profile-description').value = targetUser.description || '';
+      usernameInput.value = targetUser.username || '';
       emailInput.value = targetUser.email || '';
       emailInput.disabled = false;
       document.getElementById('profile-linkedin').value = targetUser.linkedin || '';
@@ -1760,16 +1763,11 @@ window.LeucenaApp = (function () {
         preview.textContent = (targetUser.full_name || targetUser.username).toString().charAt(0).toUpperCase();
       }
       document.getElementById('profile-photo-input').value = '';
-      const googleSectionOther = document.getElementById('profile-google-section');
-      if (googleSectionOther) googleSectionOther.style.display = 'none';
-      const emailStatusOther = document.getElementById('profile-email-status-section');
-      if (emailStatusOther) emailStatusOther.classList.add('hidden');
     } else {
       adminEditingUser = null;
       titleEl.textContent = t('profile.title');
       if (pwSection) pwSection.style.display = '';
       const effRole = getEffectiveRole();
-      if (socialSection) socialSection.style.display = (effRole === 'contributor') ? 'none' : '';
       if (subtitleEl) subtitleEl.textContent = t((effRole === 'contributor') ? 'profile.subtitleContributor' : 'profile.subtitleMember');
       emailInput.disabled = true;
       try {
@@ -1779,6 +1777,7 @@ window.LeucenaApp = (function () {
         document.getElementById('profile-full-name').value = p.full_name || '';
         document.getElementById('profile-occupation').value = p.occupation || '';
         document.getElementById('profile-description').value = p.description || '';
+        usernameInput.value = p.username || username || '';
         emailInput.value = p.email || '';
         document.getElementById('profile-linkedin').value = p.linkedin || '';
         document.getElementById('profile-scholar').value = p.scholar || '';
@@ -1794,61 +1793,12 @@ window.LeucenaApp = (function () {
         }
         document.getElementById('profile-photo-input').value = '';
         document.getElementById('profile-new-password').value = '';
-
-        updateProfileAuthUI(p);
-        const googleSection = document.getElementById('profile-google-section');
-        if (googleSection) googleSection.style.display = '';
-        const emailStatusSection = document.getElementById('profile-email-status-section');
-        if (emailStatusSection) emailStatusSection.style.display = '';
       } catch (e) { /* ignore */ }
     }
     document.getElementById('profile-modal').classList.remove('hidden');
   }
 
-  function updateProfileAuthUI(profile) {
-    const t = LeucenaI18n.t;
-    const googleSection = document.getElementById('profile-google-section');
-    const googleStatus = document.getElementById('profile-google-status');
-    const emailStatusSection = document.getElementById('profile-email-status-section');
-    const emailBadge = document.getElementById('profile-email-badge');
-    const resendBtn = document.getElementById('profile-resend-verify');
-
-    if (googleSection && googleStatus) {
-      if (profile.has_google) {
-        googleStatus.innerHTML = '<span class="profile-google-linked">✓ ' + t('profile.googleLinked') + '</span>';
-      } else {
-        googleStatus.innerHTML = '<button type="button" class="btn btn-secondary btn-small" id="profile-link-google-btn">' + t('profile.linkGoogle') + '</button>';
-        const linkBtn = document.getElementById('profile-link-google-btn');
-        if (linkBtn) linkBtn.addEventListener('click', () => { window.location.href = '/auth/google'; });
-      }
-    }
-
-    if (emailStatusSection && emailBadge) {
-      if (profile.email_verified) {
-        emailBadge.className = 'profile-email-badge verified';
-        emailBadge.textContent = '✓ ' + t('profile.emailVerified');
-        emailStatusSection.classList.remove('hidden');
-        if (resendBtn) resendBtn.classList.add('hidden');
-      } else if (profile.email) {
-        emailBadge.className = 'profile-email-badge unverified';
-        emailBadge.textContent = '✗ ' + t('profile.emailNotVerified');
-        emailStatusSection.classList.remove('hidden');
-        if (resendBtn) {
-          resendBtn.classList.remove('hidden');
-          resendBtn.onclick = async () => {
-            try {
-              const res = await fetch('/api/auth/resend-verification', { method: 'POST', headers: authHeaders() });
-              const data = await res.json();
-              if (res.ok) showToast(t('auth.resendSuccess'), 'success');
-              else showToast(data.error || 'Erro', 'error');
-            } catch (e) { showToast(t('auth.connectionError'), 'error'); }
-          };
-        }
-      } else {
-        emailStatusSection.classList.add('hidden');
-      }
-    }
-  }
+  // updateProfileAuthUI removed — Google/email-status sections moved out of profile modal
 
   function closeProfileModal() {
     document.getElementById('profile-modal').classList.add('hidden');
