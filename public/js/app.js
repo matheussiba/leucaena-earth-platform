@@ -3857,7 +3857,7 @@ window.LeucenaApp = (function () {
           <div class="admin-card-header">
             <div class="admin-card-photo-col">
               ${photoHtml}
-              <span class="admin-user-badge admin-role-${role}${effectiveSuperAdmin ? ' admin-role-clickable' : ''}" data-user-id="${user.id}" data-current-role="${role}">${roleLabelMap[role]}</span>
+              <span class="admin-user-badge admin-role-${role}${(effectiveSuperAdmin && !user.is_immutable) ? ' admin-role-clickable' : ''}" data-user-id="${user.id}" data-current-role="${role}">${roleLabelMap[role]}</span>
             </div>
             <div class="admin-card-identity">
               <div class="admin-card-name-row">

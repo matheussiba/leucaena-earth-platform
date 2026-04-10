@@ -38,6 +38,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RESEND_FROM = process.env.RESEND_FROM || 'leucaena.earth <noreply@leucaena.earth>';
+const IMMUTABLE_USER = process.env.IMMUTABLE_USER || '';
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 function getBaseUrl(req) {
@@ -1465,6 +1466,7 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
   for (const u of users) {
     u.mask_count = maskMap[u.username] || 0;
     u.mask_area_ha = Math.round((areaMap[u.username] || 0) * 100) / 100;
+    u.is_immutable = !!(IMMUTABLE_USER && u.username === IMMUTABLE_USER);
   }
   const onlineUsernames = getUniqueUsers().map(u => u.username);
   res.json({ users, globalMasks, globalAreaHa: Math.round(globalAreaHa * 100) / 100, callerRole: getUserRole(req.username), onlineUsers: onlineUsernames });
@@ -1545,6 +1547,7 @@ app.put('/api/admin/users/:id/deactivate', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) return res.status(403).json({ error: 'Este usuário é protegido' });
   if (user.role === 'superadmin') return res.status(400).json({ error: 'Não é possível desativar um Super Admin' });
   if (!user.is_active) return res.status(400).json({ error: 'Usuário já está desativado' });
 
@@ -1581,6 +1584,7 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) return res.status(403).json({ error: 'Este usuário é protegido' });
   if (user.role === 'superadmin') return res.status(400).json({ error: 'Não é possível excluir um Super Admin' });
 
   permanentlyDeleteUserAccount(user, req.username);
@@ -1595,6 +1599,9 @@ app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
   if (!validRoles.includes(role)) return res.status(400).json({ error: 'Role inválido' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) {
+    return res.status(403).json({ error: 'Este usuário é protegido e não pode ter sua função alterada' });
+  }
   if (user.role === 'superadmin' && role !== 'superadmin' && user.username !== req.username) {
     return res.status(403).json({ error: 'Não é possível rebaixar outro Super Admin' });
   }
@@ -1706,6 +1713,7 @@ app.post('/api/admin/batch/deactivate', requireAuth, (req, res) => {
   for (const id of ids) {
     const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
     if (!user || user.role === 'superadmin' || user.is_active === 0) continue;
+    if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) continue;
     const lockedCells = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
     for (const c of lockedCells) {
       const newStatus = determineCellStatusOnUnlock(c.id, c.geometry);
@@ -1744,6 +1752,7 @@ app.post('/api/admin/batch/delete', requireAuth, (req, res) => {
   for (const id of ids) {
     const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
     if (!user || user.role === 'superadmin') continue;
+    if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) continue;
     permanentlyDeleteUserAccount(user, req.username);
     deleted++;
   }
