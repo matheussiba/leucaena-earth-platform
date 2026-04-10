@@ -3682,6 +3682,38 @@ window.LeucenaApp = (function () {
 
       const _batchSelected = new Set();
       let batchToolbar = null;
+      let _colabSearchInput = null;
+      let _colabFilterInfo = null;
+
+      function _normalizeSearch(str) {
+        return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.\-_]/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+
+      function _filterColabCards() {
+        const body = colabDropdown.body;
+        const cards = body.querySelectorAll('.admin-user-card');
+        const raw = (_colabSearchInput ? _colabSearchInput.value : '').trim();
+        const query = _normalizeSearch(raw);
+        let shown = 0;
+        const total = cards.length;
+        cards.forEach(card => {
+          if (!query) { card.style.display = ''; shown++; return; }
+          const haystack = card.dataset.searchText || '';
+          card.style.display = haystack.includes(query) ? '' : 'none';
+          if (card.style.display !== 'none') shown++;
+        });
+        if (_colabFilterInfo) {
+          if (query) {
+            _colabFilterInfo.textContent = t('admin.searchResult', shown, total);
+            _colabFilterInfo.classList.add('active');
+            body.classList.add('admin-colab-filtered');
+          } else {
+            _colabFilterInfo.textContent = '';
+            _colabFilterInfo.classList.remove('active');
+            body.classList.remove('admin-colab-filtered');
+          }
+        }
+      }
 
       function syncBatchToolbar() {
         if (!batchToolbar) return;
@@ -3702,7 +3734,32 @@ window.LeucenaApp = (function () {
           '<button type="button" class="batch-action-btn" data-action="send-message" disabled>' + t('admin.batchSendMessage') + '</button>' +
           '<button type="button" class="batch-action-btn batch-btn-danger" data-action="delete" disabled>' + t('admin.batchDelete') + '</button>';
 
-        colabDropdown.body.insertBefore(batchToolbar, colabDropdown.body.firstChild);
+        const searchRow = document.createElement('div');
+        searchRow.className = 'admin-colab-search-row';
+        searchRow.innerHTML =
+          '<div class="admin-colab-search-wrap">' +
+          '<svg class="admin-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+          '<input type="text" class="admin-colab-search" placeholder="' + t('admin.searchPlaceholder') + '">' +
+          '<button type="button" class="admin-search-clear hidden" title="Limpar">&times;</button>' +
+          '</div>' +
+          '<span class="admin-colab-filter-info"></span>';
+        colabDropdown.body.insertBefore(searchRow, colabDropdown.body.firstChild);
+        colabDropdown.body.insertBefore(batchToolbar, searchRow.nextSibling);
+
+        _colabSearchInput = searchRow.querySelector('.admin-colab-search');
+        _colabFilterInfo = searchRow.querySelector('.admin-colab-filter-info');
+        const clearBtn = searchRow.querySelector('.admin-search-clear');
+
+        _colabSearchInput.addEventListener('input', () => {
+          clearBtn.classList.toggle('hidden', !_colabSearchInput.value);
+          _filterColabCards();
+        });
+        clearBtn.addEventListener('click', () => {
+          _colabSearchInput.value = '';
+          clearBtn.classList.add('hidden');
+          _filterColabCards();
+          _colabSearchInput.focus();
+        });
 
         batchToolbar.addEventListener('click', async (e) => {
           const btn = e.target.closest('button');
@@ -4108,6 +4165,9 @@ window.LeucenaApp = (function () {
         if (isEquipe(user)) {
           equipeDropdown.body.appendChild(row);
         } else {
+          row.dataset.searchText = _normalizeSearch(
+            (user.full_name || '') + ' ' + (user.username || '') + ' ' + (user.email || '')
+          );
           colabDropdown.body.appendChild(row);
         }
       }

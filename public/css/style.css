@@ -3332,6 +3332,76 @@ a.docs-logo-card:hover {
   background: rgba(124,58,237,0.06);
 }
 
+.admin-colab-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.admin-colab-search-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.admin-search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.admin-colab-search {
+  width: 100%;
+  padding: 8px 32px 8px 32px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.admin-colab-search:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.15);
+}
+.admin-colab-search::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.admin-search-clear {
+  position: absolute;
+  right: 6px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+}
+.admin-search-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+.admin-colab-filter-info {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.admin-colab-filter-info.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+.admin-colab-filtered {
+  border-left: 3px solid var(--accent);
+  padding-left: 4px;
+}
+
 .admin-batch-toolbar {
   display: flex;
   align-items: center;

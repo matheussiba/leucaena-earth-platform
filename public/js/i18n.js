@@ -229,6 +229,8 @@ window.LeucenaI18n = (function () {
     'admin.batchSelectAll': { pt: 'Selecionar todos', en: 'Select all', es: 'Seleccionar todos' },
     'admin.batchDeselectAll': { pt: 'Limpar seleção', en: 'Clear selection', es: 'Limpiar selección' },
     'admin.batchSelected': { pt: '{0} selecionado(s)', en: '{0} selected', es: '{0} seleccionado(s)' },
+    'admin.searchPlaceholder': { pt: 'Buscar colaborador...', en: 'Search collaborator...', es: 'Buscar colaborador...' },
+    'admin.searchResult': { pt: '{0} de {1} colaboradores', en: '{0} of {1} collaborators', es: '{0} de {1} colaboradores' },
     'admin.batchVerify': { pt: 'Verificar', en: 'Verify', es: 'Verificar' },
     'admin.batchDeactivate': { pt: 'Desativar', en: 'Deactivate', es: 'Desactivar' },
     'admin.batchReactivate': { pt: 'Reativar', en: 'Reactivate', es: 'Reactivar' },
