@@ -367,11 +367,12 @@ function hashPassword(password) {
 
 let _logCleanupCounter = 0;
 // Amortized retention: every 50 inserts, purge activity_logs older than 48h.
-function logActivity(username, action, cellId, objectId, details) {
+function logActivity(username, action, cellId, objectId, details, role) {
   try {
     const dets = (details && typeof details === 'object') ? JSON.stringify(details) : (details || null);
-    runSQL('INSERT INTO activity_logs (timestamp, username, action, cell_id, object_id, details) VALUES (?, ?, ?, ?, ?, ?)',
-      [new Date().toISOString(), username || null, action, cellId || null, objectId || null, dets]);
+    const userRole = role || (username ? (getUserRole(username) || null) : null);
+    runSQL('INSERT INTO activity_logs (timestamp, username, action, cell_id, object_id, details, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [new Date().toISOString(), username || null, action, cellId || null, objectId || null, dets, userRole]);
     if (++_logCleanupCounter >= 50) {
       _logCleanupCounter = 0;
       const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
@@ -1602,9 +1603,6 @@ app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
   if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) {
     return res.status(403).json({ error: 'Este usuário é protegido e não pode ter sua função alterada' });
   }
-  if (user.role === 'superadmin' && role !== 'superadmin' && user.username !== req.username) {
-    return res.status(403).json({ error: 'Não é possível rebaixar outro Super Admin' });
-  }
   const oldRole = user.role || 'contributor';
   runSQL('UPDATE users SET role = ? WHERE id = ?', [role, Number(req.params.id)]);
   logActivity(req.username, 'role_change', null, null, { target_user: user.username, from: oldRole, to: role });
@@ -1983,9 +1981,9 @@ app.get('/api/admin/logs', requireAuth, (req, res) => {
     logs = queryAll('SELECT * FROM activity_logs ORDER BY timestamp DESC');
   }
   if (format === 'csv') {
-    const header = 'id,timestamp,username,action,cell_id,object_id,details\n';
+    const header = 'id,timestamp,username,role,action,cell_id,object_id,details\n';
     const rows = logs.map(l =>
-      `${l.id},${l.timestamp},${l.username || ''},${l.action},${l.cell_id || ''},${l.object_id || ''},"${(l.details || '').replace(/"/g, '""')}"`
+      `${l.id},${l.timestamp},${l.username || ''},${l.role || ''},${l.action},${l.cell_id || ''},${l.object_id || ''},"${(l.details || '').replace(/"/g, '""')}"`
     ).join('\n');
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename=activity_logs.csv');

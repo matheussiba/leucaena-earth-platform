@@ -2796,6 +2796,7 @@ window.LeucenaApp = (function () {
   let toastContainer = null;
 
   function showToast(message, type = 'info', duration = 4000) {
+    logEvent('toast', null, null, { message, type });
     if (!toastContainer) {
       toastContainer = document.createElement('div');
       toastContainer.className = 'toast-container';
@@ -3160,7 +3161,8 @@ window.LeucenaApp = (function () {
         const logs = await r.json();
         if (logs.length === 0) { showToast(t('admin.noRecentLogs'), 'info'); return; }
         const text = logs.map(l => {
-          let line = `[${l.timestamp}] ${l.username || '?'}: ${l.action}`;
+          const roleTag = l.role ? ` (${l.role})` : '';
+          let line = `[${l.timestamp}] ${l.username || '?'}${roleTag}: ${l.action}`;
           if (l.cell_id) line += ` | cell:${l.cell_id}`;
           if (l.object_id) line += ` | obj:${l.object_id}`;
           if (l.details) { try { line += ` | ${l.details}`; } catch (_) {} }

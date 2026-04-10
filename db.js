@@ -144,6 +144,8 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN referral_source TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN referral_detail TEXT'); } catch (e) { /* already exists */ }
 
+  try { db.run('ALTER TABLE activity_logs ADD COLUMN role TEXT'); } catch (e) { /* already exists */ }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
