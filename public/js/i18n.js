@@ -1209,7 +1209,7 @@ window.LeucenaI18n = (function () {
     <div class="docs-logos-grid">
       <a class="docs-logo-card docs-logo-img" href="https://www.igc.sp.gov.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/IGC.jpg" alt="IGC"></a>
       <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/florestal_brasil/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/florestal-brasil.jpg" alt="Florestal Brasil"></a>
-      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.jpg" alt="Identplantas"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.png" alt="Identplantas"></a>
       <a class="docs-logo-card docs-logo-img" href="https://www.cepegeo.ufscar.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/cepe-geo.jpg" alt="CePE-Geo"></a>
     </div>
   </div>
@@ -1244,7 +1244,7 @@ window.LeucenaI18n = (function () {
     <div class="docs-logos-grid">
       <a class="docs-logo-card docs-logo-img" href="https://www.igc.sp.gov.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/IGC.jpg" alt="IGC"></a>
       <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/florestal_brasil/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/florestal-brasil.jpg" alt="Florestal Brasil"></a>
-      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.jpg" alt="Identplantas"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.png" alt="Identplantas"></a>
       <a class="docs-logo-card docs-logo-img" href="https://www.cepegeo.ufscar.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/cepe-geo.jpg" alt="CePE-Geo"></a>
     </div>
   </div>
@@ -1279,7 +1279,7 @@ window.LeucenaI18n = (function () {
     <div class="docs-logos-grid">
       <a class="docs-logo-card docs-logo-img" href="https://www.igc.sp.gov.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/IGC.jpg" alt="IGC"></a>
       <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/florestal_brasil/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/florestal-brasil.jpg" alt="Florestal Brasil"></a>
-      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.jpg" alt="Identplantas"></a>
+      <a class="docs-logo-card docs-logo-img" href="https://www.instagram.com/identplantas/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/identplantas.png" alt="Identplantas"></a>
       <a class="docs-logo-card docs-logo-img" href="https://www.cepegeo.ufscar.br/" target="_blank" rel="noopener noreferrer"><img src="/img/partners/cepe-geo.jpg" alt="CePE-Geo"></a>
     </div>
   </div>
