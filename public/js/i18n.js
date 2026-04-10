@@ -213,7 +213,7 @@ window.LeucenaI18n = (function () {
     'guide.aboutDesc': { pt: 'Conheça os idealizadores e colaboradores do projeto', en: 'Meet the creators and collaborators of the project', es: 'Conozca a los creadores y colaboradores del proyecto' },
 
     // ── Admin ──
-    'admin.usersTitle': { pt: 'Painel do Admin', en: 'Admin Panel', es: 'Panel de Admin' },
+    'admin.usersTitle': { pt: 'Painel da Equipe', en: 'Team Panel', es: 'Panel del Equipo' },
     'admin.changePassword': { pt: 'Alterar Senha', en: 'Change Password', es: 'Cambiar Contraseña' },
     'admin.deactivateUser': { pt: 'Desativar', en: 'Deactivate', es: 'Desactivar' },
     'admin.reactivateUser': { pt: 'Reativar', en: 'Reactivate', es: 'Reactivar' },

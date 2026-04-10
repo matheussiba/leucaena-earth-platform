@@ -3019,7 +3019,7 @@ window.LeucenaApp = (function () {
       const legendContrib = document.getElementById('legend-mask-contributor');
       if (legendContrib) legendContrib.classList.remove('hidden');
     }
-    if (isAdminUser()) {
+    if (isTeamOrAbove()) {
       loadViewCount();
     }
     applyRoleRestrictions();
@@ -3218,7 +3218,8 @@ window.LeucenaApp = (function () {
         });
       }
     }
-    document.getElementById('admin-export-logs').addEventListener('click', async () => {
+    const exportLogsBtn = document.getElementById('admin-export-logs');
+    if (exportLogsBtn) exportLogsBtn.addEventListener('click', async () => {
       try {
         const r = await fetch('/api/admin/logs?format=csv', { headers: authHeaders() });
         if (!r.ok) { showToast('Export failed', 'error'); return; }
@@ -3328,23 +3329,190 @@ window.LeucenaApp = (function () {
     const createUserSection = document.getElementById('admin-create-user');
     if (createUserSection) createUserSection.classList.add('hidden');
 
-    if (!isAdminUser()) {
+    const callerIsTeam = !isAdminUser();
+
+    if (callerIsTeam) {
+      // ── Read-only team view: show metrics + user list, no action buttons ──
       viewToggleEl.classList.add('hidden');
-      metricsEl.innerHTML = '';
-      metricsEl.classList.add('hidden');
-      const listEl = document.getElementById('admin-users-list');
-      listEl.innerHTML = '';
-      const toolsGrid = document.createElement('div');
-      toolsGrid.className = 'admin-tools-grid';
-      toolsGrid.innerHTML = `<div class="admin-tools-section">
-        <div class="admin-tools-label">${t('admin.sectionLogs')}</div>
-        <div class="admin-tools-buttons">
-          <button id="admin-export-logs" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ${t('admin.exportLogs')}</button>
-          <button id="admin-copy-recent-logs" class="admin-tool-btn admin-tool-ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> ${t('admin.copyRecentLogs')}</button>
-        </div>
-      </div>`;
-      listEl.appendChild(toolsGrid);
-      attachAdminLogExportHandlers(t, false);
+      metricsEl.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/admin/users', { headers: authHeaders() });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          document.getElementById('admin-users-list').innerHTML = `<p style="padding:16px;color:var(--danger)">Erro ${res.status}: ${errBody.error || res.statusText}</p>`;
+          return;
+        }
+        const data = await res.json();
+
+        const isMember = u => ['superadmin','admin','team'].includes(u.role);
+        const isCollab = u => !isMember(u);
+        const members = data.users.filter(isMember);
+        const collabs = data.users.filter(isCollab);
+        const memberMasks = members.reduce((s, u) => s + (u.mask_count || 0), 0);
+        const collabMasks = collabs.reduce((s, u) => s + (u.mask_count || 0), 0);
+        const memberArea = members.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
+        const collabArea = collabs.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
+        const fmtArea = v => v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        metricsEl.innerHTML = `
+          <div class="admin-metric">
+            <span class="admin-metric-value">${data.users.length}</span>
+            <span class="admin-metric-label">${t('admin.totalUsers')}</span>
+            <span class="admin-metric-sub">${members.length} ${t('admin.members')}</span>
+            <span class="admin-metric-sub">${collabs.length} ${t('admin.collaborators')}</span>
+          </div>
+          <div class="admin-metric">
+            <span class="admin-metric-value">${data.globalMasks.toLocaleString()}</span>
+            <span class="admin-metric-label">${t('admin.totalMasks')}</span>
+            <span class="admin-metric-sub">${memberMasks.toLocaleString()} ${t('admin.members')}</span>
+            <span class="admin-metric-sub">${collabMasks.toLocaleString()} ${t('admin.collaborators')}</span>
+          </div>
+          <div class="admin-metric">
+            <span class="admin-metric-value">${fmtArea(data.globalAreaHa)} ha</span>
+            <span class="admin-metric-label">${t('admin.totalArea')}</span>
+            <span class="admin-metric-sub">${fmtArea(memberArea)} ha ${t('admin.members')}</span>
+            <span class="admin-metric-sub">${fmtArea(collabArea)} ha ${t('admin.collaborators')}</span>
+          </div>`;
+
+        const listEl = document.getElementById('admin-users-list');
+        listEl.innerHTML = '';
+
+        // Only copy-recent-logs for team members
+        const toolsGrid = document.createElement('div');
+        toolsGrid.className = 'admin-tools-grid';
+        toolsGrid.innerHTML = `<div class="admin-tools-section">
+          <div class="admin-tools-label">${t('admin.sectionLogs')}</div>
+          <div class="admin-tools-buttons">
+            <button id="admin-copy-recent-logs" class="admin-tool-btn admin-tool-ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> ${t('admin.copyRecentLogs')}</button>
+          </div>
+        </div>`;
+        listEl.appendChild(toolsGrid);
+        attachAdminLogExportHandlers(t, false);
+
+        const onlineSet = new Set(data.onlineUsers || []);
+        const roleLabelMap = { superadmin: 'Super Admin', admin: 'Admin', team: 'Membro', contributor: 'Colaborador', tester: 'Tester' };
+
+        function formatLastActiveTeam(isoDate, uname) {
+          if (onlineSet.has(uname)) return `<span class="admin-active-now">● ${t('admin.activeNow')}</span>`;
+          if (!isoDate) return t('admin.never');
+          const diff = Date.now() - new Date(isoDate).getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 1) return `<span class="admin-active-now">● ${t('admin.activeNow')}</span>`;
+          if (mins < 60) return t('admin.minutesAgo', mins);
+          const hrs = Math.floor(mins / 60);
+          if (hrs < 24) return t('admin.hoursAgo', hrs);
+          return t('admin.daysAgo', Math.floor(hrs / 24));
+        }
+
+        const isEquipe = u => ['superadmin','admin','team','tester'].includes(u.role || 'contributor');
+        const roleOrder = { superadmin: 0, admin: 1, team: 2, tester: 3 };
+        const equipeUsers = data.users.filter(isEquipe).sort((a, b) => {
+          const ra = roleOrder[a.role] ?? 99, rb = roleOrder[b.role] ?? 99;
+          if (ra !== rb) return ra - rb;
+          return (a.username || '').localeCompare(b.username || '');
+        });
+        const colabUsers = data.users.filter(u => !isEquipe(u)).sort((a, b) =>
+          (a.username || '').localeCompare(b.username || ''));
+
+        function createDropdownTeam(title, count, id, startOpen) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'admin-section-dropdown';
+          const header = document.createElement('button');
+          header.className = 'admin-section-header';
+          header.type = 'button';
+          header.innerHTML = `<svg class="admin-section-chevron${startOpen ? ' open' : ''}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg><span class="admin-section-title">${title}</span><span class="admin-section-count">${count}</span>`;
+          const body = document.createElement('div');
+          body.className = 'admin-section-body';
+          body.id = id;
+          if (!startOpen) body.classList.add('collapsed');
+          header.addEventListener('click', () => {
+            body.classList.toggle('collapsed');
+            header.querySelector('.admin-section-chevron').classList.toggle('open');
+          });
+          wrapper.appendChild(header);
+          wrapper.appendChild(body);
+          return { wrapper, body };
+        }
+
+        const equipeDD = createDropdownTeam(t('admin.sectionEquipe'), equipeUsers.length, 'admin-equipe-list', true);
+        listEl.appendChild(equipeDD.wrapper);
+        const colabDD = createDropdownTeam(t('admin.sectionColaboradores'), colabUsers.length, 'admin-colab-list', false);
+        listEl.appendChild(colabDD.wrapper);
+
+        for (const user of [...equipeUsers, ...colabUsers]) {
+          const role = user.role || 'contributor';
+          const isOnline = onlineSet.has(user.username);
+          const isVerified = !!(user.email_verified || user.auth_provider === 'google');
+          const isInactive = user.is_active === 0;
+          const initial = user.username.charAt(0).toUpperCase();
+          const photoHtml = user.photo
+            ? `<img src="${user.photo}" class="admin-card-photo" alt="">`
+            : `<div class="admin-card-avatar">${initial}</div>`;
+          const verifyBadgeHtml = isVerified
+            ? `<span class="admin-verify-badge verified">✓ ${t('admin.verified')}</span>`
+            : `<span class="admin-verify-badge not-verified">✗ ${t('admin.notVerified')}</span>`;
+          const authMethodBadgeHtml = user.google_id
+            ? `<span class="admin-auth-badge google">${t('admin.authMethodGoogle')}</span>`
+            : `<span class="admin-auth-badge email">${t('admin.authMethodEmail')}</span>`;
+          const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
+          const lastActiveHtml = formatLastActiveTeam(user.last_active, user.username);
+          const totalMs = user.total_time_ms || 0;
+          const timeStr = formatDuration(totalMs);
+
+          const row = document.createElement('div');
+          row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '') + (isInactive ? ' admin-user-card-inactive' : '');
+          // Read-only: no email, no action buttons, no batch checkboxes
+          row.innerHTML = `
+            <div class="admin-card-header">
+              <div class="admin-card-photo-col">
+                ${photoHtml}
+                <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
+              </div>
+              <div class="admin-card-identity">
+                <div class="admin-card-name-row">
+                  <span class="admin-user-name">${user.username}</span>
+                  ${isOnline ? '<span class="admin-online-dot"></span>' : ''}
+                  ${isInactive ? `<span class="admin-user-badge admin-badge-inactive">${t('admin.inactive')}</span>` : ''}
+                  ${authMethodBadgeHtml}
+                  ${verifyBadgeHtml}
+                </div>
+                <div class="admin-card-meta">
+                  ${user.full_name ? `<span class="admin-card-fullname">${user.full_name}</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="admin-card-stats">
+              <div class="admin-card-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>${user.mask_count || 0} ${t('admin.masks')}</span>
+              </div>
+              <div class="admin-card-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                <span>${(user.mask_area_ha || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} ha</span>
+              </div>
+              <div class="admin-card-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>${user.login_count || 0} logins</span>
+              </div>
+              <div class="admin-card-stat">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>${timeStr}</span>
+              </div>
+            </div>
+            <div class="admin-card-footer">
+              <div class="admin-card-dates">
+                <span>${t('admin.createdAt')}: ${createdDate}</span>
+                <span>${t('admin.lastAccess')}: ${lastActiveHtml}</span>
+              </div>
+            </div>`;
+
+          (isEquipe(user) ? equipeDD.body : colabDD.body).appendChild(row);
+        }
+      } catch (e) {
+        console.error('[TeamPanel] Erro ao carregar usuários:', e);
+        document.getElementById('admin-users-list').innerHTML = `<p style="padding:16px;color:var(--danger)">Erro ao carregar usuários: ${e.message}</p>`;
+      }
       return;
     }
 

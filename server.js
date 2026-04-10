@@ -708,8 +708,8 @@ app.post('/api/stats/view', (req, res) => {
 
 app.get('/api/stats/views', (req, res) => {
   const username = getUsernameFromToken(req);
-  if (!username || !isAdmin(username)) {
-    return res.status(403).json({ error: 'Admin only' });
+  if (!username || !isTeamOrAbove(username)) {
+    return res.status(403).json({ error: 'Acesso restrito à equipe' });
   }
   const row = queryOne("SELECT value FROM site_stats WHERE key = 'view_count'");
   res.json({ views: row ? row.value : 0 });
@@ -1465,8 +1465,12 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
 // ── Admin: user management ──
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active, referral_source, referral_detail FROM users WHERE username != 'deleted'");
+  if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Acesso restrito à equipe' });
+  const callerIsAdminOrAbove = isAdmin(req.username);
+  // Team members see all users but without email (privacy)
+  const users = callerIsAdminOrAbove
+    ? queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active, referral_source, referral_detail FROM users WHERE username != 'deleted'")
+    : queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, NULL as email, last_active, auth_provider, email_verified, google_id, is_active, NULL as referral_source, NULL as referral_detail FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
