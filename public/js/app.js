@@ -3998,8 +3998,7 @@ window.LeucenaApp = (function () {
           });
         }
 
-        const profileBtn = row.querySelector('.admin-profile-btn');
-        profileBtn.addEventListener('click', () => {
+        const openUserProfile = () => {
           closeAdminUsersModal();
           openProfileModal({
             id: user.id,
@@ -4010,9 +4009,18 @@ window.LeucenaApp = (function () {
             photo: user.photo || null,
             email: user.email || '',
             linkedin: user.linkedin || '',
-            scholar: user.scholar || ''
+            scholar: user.scholar || '',
+            referral_source: user.referral_source || '',
+            referral_detail: user.referral_detail || ''
           });
-        });
+        };
+        const profileBtn = row.querySelector('.admin-profile-btn');
+        profileBtn.addEventListener('click', openUserProfile);
+        const photoEl = row.querySelector('.admin-card-photo, .admin-card-avatar');
+        if (photoEl) {
+          photoEl.style.cursor = 'pointer';
+          photoEl.addEventListener('click', openUserProfile);
+        }
 
         const pwBtn = row.querySelector('.admin-pw-btn');
         pwBtn.addEventListener('click', () => {
