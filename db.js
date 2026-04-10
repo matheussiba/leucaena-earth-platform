@@ -141,6 +141,8 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN reset_token_expires TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN occupation TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN referral_source TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE users ADD COLUMN referral_detail TEXT'); } catch (e) { /* already exists */ }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS messages (

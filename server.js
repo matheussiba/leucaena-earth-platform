@@ -765,7 +765,7 @@ app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, 
 });
 
 app.post('/api/auth/register', registerLimiter, async (req, res) => {
-  let { username, password, email, full_name } = req.body;
+  let { username, password, email, full_name, referral_source, referral_detail } = req.body;
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
   if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
@@ -797,10 +797,12 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const now = new Date().toISOString();
   const verifyToken = uuidv4();
   const verifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const cleanRefSource = (referral_source && typeof referral_source === 'string') ? referral_source.trim().substring(0, 50) : null;
+  const cleanRefDetail = (referral_detail && typeof referral_detail === 'string') ? referral_detail.trim().substring(0, 200) : null;
   runSQL(
-    `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires, full_name)
-     VALUES (?, ?, ?, ?, 'local', 0, ?, ?, ?)`,
-    [username, hash, now, email, verifyToken, verifyExpires, cleanFullName]
+    `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires, full_name, referral_source, referral_detail)
+     VALUES (?, ?, ?, ?, 'local', 0, ?, ?, ?, ?, ?)`,
+    [username, hash, now, email, verifyToken, verifyExpires, cleanFullName, cleanRefSource, cleanRefDetail]
   );
   logActivity(username, 'register', null, null, null);
   persist();
@@ -903,17 +905,18 @@ app.get('/api/auth/me', (req, res) => {
 // ── Profile (for Quem Somos) ──
 
 app.get('/api/profile', requireAuth, (req, res) => {
-  const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, email, auth_provider, email_verified, google_id FROM users WHERE username = ?', [req.username]);
+  const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, email, auth_provider, email_verified, google_id, referral_source, referral_detail FROM users WHERE username = ?', [req.username]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   res.json({
     username: user.username, full_name: user.full_name || null, occupation: user.occupation || null, description: user.description || null,
     photo: user.photo || null, linkedin: user.linkedin || null, scholar: user.scholar || null, email: user.email || null,
-    auth_provider: user.auth_provider || 'local', email_verified: !!(user.email_verified), has_google: !!(user.google_id)
+    auth_provider: user.auth_provider || 'local', email_verified: !!(user.email_verified), has_google: !!(user.google_id),
+    referral_source: user.referral_source || null, referral_detail: user.referral_detail || null
   });
 });
 
 app.put('/api/profile', requireAuth, (req, res) => {
-  const { full_name, occupation, description, photo, linkedin, scholar } = req.body || {};
+  const { full_name, occupation, description, photo, linkedin, scholar, referral_source, referral_detail } = req.body || {};
   const occStr = typeof occupation === 'string' ? occupation.trim().substring(0, 120) : '';
   if (typeof occupation === 'string' && occupation.trim().length > 120) {
     return res.status(400).json({ error: 'Ocupação deve ter no máximo 120 caracteres' });
@@ -924,9 +927,11 @@ app.put('/api/profile', requireAuth, (req, res) => {
   if (photo != null && typeof photo === 'string' && photo.length > 500000) {
     return res.status(400).json({ error: 'Foto muito grande' });
   }
+  const cleanRefSrc = (referral_source && typeof referral_source === 'string') ? referral_source.trim().substring(0, 50) : null;
+  const cleanRefDet = (referral_detail && typeof referral_detail === 'string') ? referral_detail.trim().substring(0, 200) : null;
   runSQL(
-    'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ? WHERE username = ?',
-    [full_name || null, occStr || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, req.username]
+    'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, referral_source = ?, referral_detail = ? WHERE username = ?',
+    [full_name || null, occStr || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, cleanRefSrc, cleanRefDet, req.username]
   );
   persist();
   res.json({ success: true });
@@ -943,7 +948,7 @@ app.put('/api/profile/password', requireAuth, (req, res) => {
 
 app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const { full_name, occupation, description, photo, linkedin, scholar, email } = req.body || {};
+  const { full_name, occupation, description, photo, linkedin, scholar, email, referral_source, referral_detail } = req.body || {};
   if (occupation !== undefined && occupation !== null && typeof occupation === 'string' && occupation.length > 120) {
     return res.status(400).json({ error: 'Ocupação deve ter no máximo 120 caracteres' });
   }
@@ -955,9 +960,11 @@ app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
   const occVal = occupation !== undefined
     ? (typeof occupation === 'string' ? (occupation.trim().substring(0, 120) || null) : null)
     : user.occupation;
+  const refSrcVal = referral_source !== undefined ? (referral_source ? String(referral_source).trim().substring(0, 50) : null) : user.referral_source;
+  const refDetVal = referral_detail !== undefined ? (referral_detail ? String(referral_detail).trim().substring(0, 200) : null) : user.referral_detail;
   runSQL(
-    'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ? WHERE id = ?',
-    [full_name !== undefined ? (full_name || null) : user.full_name, occVal, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, email !== undefined ? (email || null) : user.email, Number(req.params.id)]
+    'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ?, referral_source = ?, referral_detail = ? WHERE id = ?',
+    [full_name !== undefined ? (full_name || null) : user.full_name, occVal, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, email !== undefined ? (email || null) : user.email, refSrcVal, refDetVal, Number(req.params.id)]
   );
   persist();
   res.json({ success: true });
@@ -1440,7 +1447,7 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
 
 app.get('/api/admin/users', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active FROM users WHERE username != 'deleted'");
+  const users = queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active, referral_source, referral_detail FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -1465,19 +1472,21 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
 
 app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
-  const users = queryAll("SELECT id, username, created_at, full_name, description, email, login_count, total_time_ms FROM users WHERE is_active = 1");
+  const users = queryAll("SELECT id, username, created_at, full_name, description, email, login_count, total_time_ms, referral_source, referral_detail FROM users WHERE is_active = 1");
   const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
   const maskMap = {};
   for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;
 
-  const header = 'username,full_name,email,description,masks_created,login_count,total_time_hours,created_at';
+  const header = 'username,full_name,email,description,masks_created,login_count,total_time_hours,created_at,referral_source,referral_detail';
   const rows = users.map(u => {
     const masks = maskMap[u.username] || 0;
     const hours = ((u.total_time_ms || 0) / 3600000).toFixed(2);
     const fullName = (u.full_name || '').replace(/"/g, '""');
     const desc = (u.description || '').replace(/"/g, '""').replace(/\n/g, ' ');
     const email = (u.email || '').replace(/"/g, '""');
-    return `${u.username},"${fullName}","${email}","${desc}",${masks},${u.login_count || 0},${hours},${u.created_at || ''}`;
+    const refSrc = (u.referral_source || '').replace(/"/g, '""');
+    const refDet = (u.referral_detail || '').replace(/"/g, '""').replace(/\n/g, ' ');
+    return `${u.username},"${fullName}","${email}","${desc}",${masks},${u.login_count || 0},${hours},${u.created_at || ''},"${refSrc}","${refDet}"`;
   });
 
   const csv = header + '\n' + rows.join('\n');

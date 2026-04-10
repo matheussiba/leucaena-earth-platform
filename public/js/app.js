@@ -677,6 +677,24 @@ window.LeucenaApp = (function () {
   let _emailCheckTimer = null;
   let _emailCheckBlocked = false;
 
+  function _referralPlaceholder(source) {
+    const t = LeucenaI18n.t;
+    const map = {
+      university: t('referral.phUniversity'),
+      instagram: t('referral.phInstagram'),
+      linkedin: t('referral.phLinkedin'),
+      news: t('referral.phNews'),
+      youtube: t('referral.phYoutube'),
+      twitter: t('referral.phTwitter'),
+      facebook: t('referral.phFacebook'),
+      friend: t('referral.phFriend'),
+      google_search: t('referral.phGoogleSearch'),
+      event: t('referral.phEvent'),
+      other: t('referral.phOther')
+    };
+    return map[source] || t('referral.detailPlaceholder');
+  }
+
   function setupAuthForm() {
     document.getElementById('auth-form').addEventListener('submit', handleAuthSubmit);
     const usernameInput = document.getElementById('auth-username');
@@ -707,6 +725,24 @@ window.LeucenaApp = (function () {
       clearTimeout(_emailCheckTimer);
       checkEmailAvailability();
     });
+
+    function setupReferralToggle(selectId, detailId) {
+      const sel = document.getElementById(selectId);
+      const det = document.getElementById(detailId);
+      if (!sel || !det) return;
+      sel.addEventListener('change', () => {
+        const v = sel.value;
+        if (v) {
+          det.classList.remove('hidden');
+          det.placeholder = _referralPlaceholder(v);
+        } else {
+          det.classList.add('hidden');
+          det.value = '';
+        }
+      });
+    }
+    setupReferralToggle('auth-referral-source', 'auth-referral-detail');
+    setupReferralToggle('profile-referral-source', 'profile-referral-detail');
 
     document.getElementById('auth-switch-link').addEventListener('click', (e) => {
       e.preventDefault();
@@ -902,6 +938,8 @@ window.LeucenaApp = (function () {
       forgotGroup.classList.remove('hidden');
       if (contactHint) contactHint.classList.add('hidden');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignIn');
+      const regRefGroup = document.getElementById('register-referral-group');
+      if (regRefGroup) regRefGroup.classList.add('hidden');
       usernameInput.focus();
     } else {
       document.getElementById('auth-modal-title').textContent = t('auth.register');
@@ -920,6 +958,12 @@ window.LeucenaApp = (function () {
       forgotGroup.classList.add('hidden');
       if (contactHint) contactHint.classList.remove('hidden');
       if (googleLabel) googleLabel.textContent = t('auth.googleSignUp');
+      const regRefGroup2 = document.getElementById('register-referral-group');
+      if (regRefGroup2) regRefGroup2.classList.remove('hidden');
+      const refSrc = document.getElementById('auth-referral-source');
+      if (refSrc) refSrc.value = '';
+      const refDet = document.getElementById('auth-referral-detail');
+      if (refDet) { refDet.value = ''; refDet.classList.add('hidden'); }
       fullnameInput ? fullnameInput.focus() : emailInput.focus();
     }
   }
@@ -1015,6 +1059,10 @@ window.LeucenaApp = (function () {
       }
       endpoint = '/api/auth/register';
       payload = { email, password: pass, full_name: fullName.trim() };
+      const refSrc = (document.getElementById('auth-referral-source') || {}).value || '';
+      const refDet = (document.getElementById('auth-referral-detail') || {}).value || '';
+      if (refSrc) payload.referral_source = refSrc;
+      if (refDet.trim()) payload.referral_detail = refDet.trim();
     }
 
     try {
@@ -1659,6 +1707,21 @@ window.LeucenaApp = (function () {
   let profilePhotoDataUrl = null;
   let adminEditingUser = null;
 
+  function _setProfileReferral(source, detail) {
+    const sel = document.getElementById('profile-referral-source');
+    const det = document.getElementById('profile-referral-detail');
+    if (!sel || !det) return;
+    sel.value = source || '';
+    if (source) {
+      det.classList.remove('hidden');
+      det.value = detail || '';
+      det.placeholder = _referralPlaceholder(source);
+    } else {
+      det.classList.add('hidden');
+      det.value = '';
+    }
+  }
+
   async function openProfileModal(targetUser) {
     if (!isLoggedIn()) return;
     logEvent('profile_open', null, null, targetUser ? { target: targetUser.username } : null);
@@ -1686,6 +1749,7 @@ window.LeucenaApp = (function () {
       emailInput.disabled = false;
       document.getElementById('profile-linkedin').value = targetUser.linkedin || '';
       document.getElementById('profile-scholar').value = targetUser.scholar || '';
+      _setProfileReferral(targetUser.referral_source, targetUser.referral_detail);
       updateProfileCharCount();
       const preview = document.getElementById('profile-photo-preview');
       if (targetUser.photo) {
@@ -1718,6 +1782,7 @@ window.LeucenaApp = (function () {
         emailInput.value = p.email || '';
         document.getElementById('profile-linkedin').value = p.linkedin || '';
         document.getElementById('profile-scholar').value = p.scholar || '';
+        _setProfileReferral(p.referral_source, p.referral_detail);
         updateProfileCharCount();
         const preview = document.getElementById('profile-photo-preview');
         if (p.photo) {
@@ -1969,7 +2034,9 @@ window.LeucenaApp = (function () {
       const url = adminEditingUser
         ? `/api/admin/users/${adminEditingUser.id}/profile`
         : '/api/profile';
-      const payload = { full_name, occupation, description, photo: profilePhotoDataUrl, linkedin, scholar };
+      const referral_source = (document.getElementById('profile-referral-source') || {}).value || null;
+      const referral_detail = (document.getElementById('profile-referral-detail') || {}).value || null;
+      const payload = { full_name, occupation, description, photo: profilePhotoDataUrl, linkedin, scholar, referral_source, referral_detail: referral_detail ? referral_detail.trim() : null };
       if (adminEditingUser) payload.email = email;
       const res = await fetch(url, {
         method: 'PUT',
