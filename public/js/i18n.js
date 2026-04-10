@@ -306,6 +306,9 @@ window.LeucenaI18n = (function () {
     'admin.verifySuccess': { pt: 'Usuário verificado com sucesso', en: 'User verified successfully', es: 'Usuario verificado exitosamente' },
 
     'admin.renameUser': { pt: 'Renomear', en: 'Rename', es: 'Renombrar' },
+    'admin.changeRoleTitle': { pt: 'Alterar função', en: 'Change role', es: 'Cambiar rol' },
+    'admin.changeRoleConfirm': { pt: 'Alterar a função de {0} para {1}?', en: 'Change role of {0} to {1}?', es: '¿Cambiar el rol de {0} a {1}?' },
+    'admin.roleUpdated': { pt: 'Função atualizada', en: 'Role updated', es: 'Rol actualizado' },
     'admin.renamePrompt': { pt: 'Novo nome de usuário para "{0}":', en: 'New username for "{0}":', es: 'Nuevo nombre de usuario para "{0}":' },
     'admin.renameSuccess': { pt: 'Usuário "{0}" renomeado para "{1}"', en: 'User "{0}" renamed to "{1}"', es: 'Usuario "{0}" renombrado a "{1}"' },
     'admin.createdAt': { pt: 'Criado em', en: 'Created', es: 'Creado' },

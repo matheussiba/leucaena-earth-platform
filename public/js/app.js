@@ -3226,6 +3226,67 @@ window.LeucenaApp = (function () {
     });
   }
 
+  function _openRoleChangeModal(user, currentRole, roleLabelMap, allRoles) {
+    let existing = document.getElementById('role-change-modal');
+    if (existing) existing.remove();
+
+    const t = LeucenaI18n.t;
+    const overlay = document.createElement('div');
+    overlay.id = 'role-change-modal';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '10100';
+
+    const roleColors = { superadmin: '#a855f7', admin: '#ef4444', team: '#3b82f6', contributor: '#6b7280', tester: '#f59e0b' };
+    const roleTextColors = { tester: '#000' };
+
+    const optionsHtml = allRoles.map(r => {
+      const selected = r === currentRole;
+      const bg = roleColors[r] || 'var(--accent)';
+      const textCol = roleTextColors[r] || '#fff';
+      return `<button type="button" class="role-option${selected ? ' role-option-active' : ''}" data-role="${r}" style="--role-bg:${bg};--role-text:${textCol}">
+        <span class="role-option-dot" style="background:${bg}"></span>
+        <span class="role-option-label">${roleLabelMap[r]}</span>
+        ${selected ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </button>`;
+    }).join('');
+
+    overlay.innerHTML = `
+      <div class="modal-card modal-card-small" style="max-width:320px">
+        <button class="modal-close" type="button">&times;</button>
+        <h3 style="margin:0 0 4px 0;font-size:15px">${t('admin.changeRoleTitle')}</h3>
+        <p style="margin:0 0 14px 0;font-size:13px;color:var(--text-muted)">${user.full_name || user.username}</p>
+        <div class="role-options-list">${optionsHtml}</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const closeModal = () => overlay.remove();
+    overlay.querySelector('.modal-close').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+    overlay.querySelectorAll('.role-option').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const newRole = btn.dataset.role;
+        if (newRole === currentRole) { closeModal(); return; }
+        const confirmMsg = t('admin.changeRoleConfirm', user.username, roleLabelMap[newRole]);
+        if (!window.confirm(confirmMsg)) return;
+        try {
+          const r = await fetch(`/api/admin/users/${user.id}/role`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role: newRole })
+          });
+          if (r.ok) {
+            showToast(t('admin.roleUpdated'), 'success');
+            closeModal();
+            openAdminUsersModal();
+          } else {
+            const err = await r.json();
+            showToast(err.error, 'error');
+          }
+        } catch (e) { showToast('Erro de conexão', 'error'); }
+      });
+    });
+  }
+
   async function openAdminUsersModal() {
     if (!isTeamOrAbove()) return;
     logEvent('admin_users_open');
@@ -3803,10 +3864,8 @@ window.LeucenaApp = (function () {
         const isInactive = user.is_active === 0;
         row.className = 'admin-user-card' + (isOnline ? ' admin-user-online' : '') + (unverifiedCollab ? ' admin-user-card-unverified' : '') + (isInactive ? ' admin-user-card-inactive' : '');
 
-        let roleSelectHtml = '';
         let founderStarHtml = '';
         if (effectiveSuperAdmin) {
-          roleSelectHtml = `<select class="admin-role-select" data-user-id="${user.id}">${allRoles.map(r => `<option value="${r}"${role === r ? ' selected' : ''}>${roleLabelMap[r]}</option>`).join('')}</select>`;
           if (role === 'superadmin' || role === 'admin' || role === 'team') {
             const starTitle = user.is_founder ? t('admin.founderRemove') : t('admin.founderMake');
             founderStarHtml = `<button type="button" class="admin-founder-star${user.is_founder ? ' active' : ''}" title="${starTitle}" data-founder="${user.is_founder ? 1 : 0}"><svg width="16" height="16" viewBox="0 0 24 24" fill="${user.is_founder ? '#facc15' : 'none'}" stroke="${user.is_founder ? '#facc15' : 'currentColor'}" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>`;
@@ -3848,7 +3907,7 @@ window.LeucenaApp = (function () {
           <div class="admin-card-header">
             <div class="admin-card-photo-col">
               ${photoHtml}
-              <span class="admin-user-badge admin-role-${role}">${roleLabelMap[role]}</span>
+              <span class="admin-user-badge admin-role-${role}${effectiveSuperAdmin ? ' admin-role-clickable' : ''}" data-user-id="${user.id}" data-current-role="${role}">${roleLabelMap[role]}</span>
             </div>
             <div class="admin-card-identity">
               <div class="admin-card-name-row">
@@ -3858,7 +3917,6 @@ window.LeucenaApp = (function () {
                 ${isInactive ? `<span class="admin-user-badge admin-badge-inactive">${t('admin.inactive')}</span>` : ''}
                 ${authMethodBadgeHtml}
                 ${verifyBadgeHtml}
-                ${roleSelectHtml}
               </div>
               <div class="admin-card-meta">
                 ${user.full_name ? `<span class="admin-card-fullname">${user.full_name}</span>` : ''}
@@ -3902,19 +3960,10 @@ window.LeucenaApp = (function () {
           </div>
         `;
 
-        const roleSelect = row.querySelector('.admin-role-select');
-        if (roleSelect) {
-          roleSelect.addEventListener('change', async () => {
-            const newRole = roleSelect.value;
-            try {
-              const r = await fetch(`/api/admin/users/${user.id}/role`, {
-                method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role: newRole })
-              });
-              if (r.ok) {
-                showToast('Role atualizado', 'success');
-                openAdminUsersModal();
-              } else { const err = await r.json(); showToast(err.error, 'error'); roleSelect.value = role; }
-            } catch (e) { showToast('Erro de conexão', 'error'); roleSelect.value = role; }
+        const roleBadge = row.querySelector('.admin-role-clickable');
+        if (roleBadge) {
+          roleBadge.addEventListener('click', () => {
+            _openRoleChangeModal(user, role, roleLabelMap, allRoles);
           });
         }
 
