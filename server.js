@@ -359,6 +359,23 @@ function canDeleteMask(username, maskCreator) {
   return maskCreator === username;
 }
 
+// Notify superadmins via email when an admin (non-superadmin) performs sensitive actions
+// Actions: password_change, username_change, user_deactivate, user_reactivate
+async function notifySuperAdminsOfAdminAction(actorUsername, actionLabel, targetUsername, extraInfo) {
+  if (!resend) return;
+  if (isSuperAdmin(actorUsername)) return;
+  const saEmails = queryAll("SELECT email FROM users WHERE role = 'superadmin' AND email IS NOT NULL AND email != ''").map(u => u.email);
+  if (saEmails.length === 0) return;
+  const subject = `[Leucaena.Earth] Admin action: ${actionLabel}`;
+  const html = `<p>O admin <strong>${actorUsername}</strong> realizou a seguinte ação:</p>
+    <p><strong>${actionLabel}</strong> no usuário <strong>${targetUsername}</strong></p>
+    ${extraInfo ? `<p>Detalhes: ${extraInfo}</p>` : ''}
+    <p style="font-size:13px;color:#64748b;">Esta notificação é automática. Apenas admins (não super admins) geram esta notificação.</p>`;
+  for (const email of saEmails) {
+    try { await resend.emails.send({ from: RESEND_FROM, to: email, subject, html }); } catch (e) { /* ignore */ }
+  }
+}
+
 const PASSWORD_SALT = process.env.PASSWORD_SALT || 'default_salt';
 
 function hashPassword(password) {
@@ -1499,7 +1516,7 @@ app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
 });
 
 app.post('/api/admin/users/create', requireAuth, (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const { username, password, email, full_name } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
   if (username.length < 2 || username.length > 30) return res.status(400).json({ error: 'O usuário deve ter entre 2 e 30 caracteres' });
@@ -1537,19 +1554,22 @@ app.put('/api/admin/users/:id/password', requireAuth, (req, res) => {
   if (!password || password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) return res.status(403).json({ error: 'Admins só podem gerenciar colaboradores e testers' });
   const hash = hashPassword(password);
   runSQL('UPDATE users SET password_hash = ? WHERE id = ?', [hash, Number(req.params.id)]);
   logActivity(req.username, 'password_change', null, null, { target_user: user.username });
   persist();
+  notifySuperAdminsOfAdminAction(req.username, 'Alteração de senha', user.username);
   res.json({ success: true });
 });
 
 app.put('/api/admin/users/:id/deactivate', requireAuth, (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) return res.status(403).json({ error: 'Este usuário é protegido' });
   if (user.role === 'superadmin') return res.status(400).json({ error: 'Não é possível desativar um Super Admin' });
+  if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) return res.status(403).json({ error: 'Admins só podem gerenciar colaboradores e testers' });
   if (!user.is_active) return res.status(400).json({ error: 'Usuário já está desativado' });
 
   runSQL('UPDATE users SET is_active = 0 WHERE id = ?', [Number(req.params.id)]);
@@ -1566,18 +1586,21 @@ app.put('/api/admin/users/:id/deactivate', requireAuth, (req, res) => {
   logActivity(req.username, 'user_deactivate', null, null, { target_user: user.username, target_role: user.role });
   persist();
   io.emit('users:updated', getUniqueUsers());
+  notifySuperAdminsOfAdminAction(req.username, 'Desativação de usuário', user.username, `Role: ${user.role}`);
   res.json({ success: true });
 });
 
 app.put('/api/admin/users/:id/reactivate', requireAuth, (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) return res.status(403).json({ error: 'Admins só podem gerenciar colaboradores e testers' });
   if (user.is_active) return res.status(400).json({ error: 'Usuário já está ativo' });
 
   runSQL('UPDATE users SET is_active = 1 WHERE id = ?', [Number(req.params.id)]);
   logActivity(req.username, 'user_reactivate', null, null, { target_user: user.username, target_role: user.role });
   persist();
+  notifySuperAdminsOfAdminAction(req.username, 'Reativação de usuário', user.username, `Role: ${user.role}`);
   res.json({ success: true });
 });
 
@@ -1623,13 +1646,14 @@ app.put('/api/admin/users/:id/tester-mode', requireAuth, (req, res) => {
 });
 
 app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Apenas Super Admin pode alterar nomes de usuário' });
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const { new_username } = req.body;
   if (!new_username || !/^[a-z0-9.]+$/.test(new_username) || !/[a-z]/.test(new_username)) {
     return res.status(400).json({ error: 'Nome de usuário inválido. Use apenas letras minúsculas, números e ponto.' });
   }
   const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) return res.status(403).json({ error: 'Admins só podem gerenciar colaboradores e testers' });
   const oldUsername = user.username;
   if (oldUsername === new_username) return res.json({ success: true });
   const existing = queryOne('SELECT id FROM users WHERE username = ?', [new_username]);
@@ -1647,6 +1671,7 @@ app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
 
   logActivity(req.username, 'username_change', null, null, { from: oldUsername, to: new_username });
   persist();
+  notifySuperAdminsOfAdminAction(req.username, 'Renomeação de usuário', oldUsername, `Novo username: ${new_username}`);
   res.json({ success: true, old_username: oldUsername, new_username });
 });
 
@@ -1682,7 +1707,7 @@ app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
 // ── Batch operations (superadmin only) ──
 
 app.post('/api/admin/batch/verify', requireAuth, async (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
   let verified = 0, skipped = 0;
@@ -1704,7 +1729,7 @@ app.post('/api/admin/batch/verify', requireAuth, async (req, res) => {
 });
 
 app.post('/api/admin/batch/deactivate', requireAuth, (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
   let processed = 0;
@@ -1712,6 +1737,7 @@ app.post('/api/admin/batch/deactivate', requireAuth, (req, res) => {
     const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
     if (!user || user.role === 'superadmin' || user.is_active === 0) continue;
     if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) continue;
+    if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) continue;
     const lockedCells = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
     for (const c of lockedCells) {
       const newStatus = determineCellStatusOnUnlock(c.id, c.geometry);
@@ -1727,13 +1753,14 @@ app.post('/api/admin/batch/deactivate', requireAuth, (req, res) => {
 });
 
 app.post('/api/admin/batch/reactivate', requireAuth, (req, res) => {
-  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
   let processed = 0;
   for (const id of ids) {
     const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
     if (!user || user.is_active === 1) continue;
+    if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) continue;
     runSQL('UPDATE users SET is_active = 1 WHERE id = ?', [Number(id)]);
     logActivity(req.username, 'user_reactivate', null, null, { target_user: user.username, batch: true });
     processed++;
@@ -2244,19 +2271,9 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
   let finishedBy = cell.finished_by;
   let workedBy = cell.worked_by;
 
+  // Colaboradores (e testers em modo colaborador) nunca finalizam; só equipe ou acima.
   if (newStatus === 'finished' && !isTeamOrAbove(username)) {
-    const cellGeom = JSON.parse(cell.geometry);
-    const cellRings = cellGeom.type === 'MultiPolygon'
-      ? cellGeom.coordinates.map(p => p[0])
-      : [cellGeom.coordinates[0]];
-    const hasCrowdmapping = queryAll("SELECT geometry FROM occurrence_points WHERE layer = 'crowdmapping'")
-      .some(p => {
-        const g = JSON.parse(p.geometry);
-        return cellRings.some(ring => pointInPolygon([g.coordinates[0], g.coordinates[1]], ring));
-      });
-    if (hasCrowdmapping) {
-      return res.status(403).json({ error: 'crowdmapping_cell' });
-    }
+    return res.status(403).json({ error: 'Colaboradores não podem finalizar células' });
   }
 
   if (newStatus === 'finished') {

@@ -1060,8 +1060,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function zoomToCellViewOnly(cellId) {
     const bounds = getCellBounds(cellId);
     if (!bounds) return;
-    map.setOptions({ restriction: null });
     releasePanRestriction();
+    map.setOptions({ restriction: null });
     const center = bounds.getCenter();
     const container = document.getElementById('map');
     const padH = Math.round(container.offsetWidth * 0.20);
@@ -1070,6 +1070,65 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     google.maps.event.addListenerOnce(map, 'idle', () => {
       map.setCenter(center);
       map.setZoom(map.getZoom() + 1);
+      if (restrictionBounds) {
+        map.setOptions({ restriction: { latLngBounds: restrictionBounds, strictBounds: false } });
+      }
+    });
+  }
+
+  /** Normalize cell search: strip #, remove junk chars, accept "sp 828", "sp:828", "sp828", "SP-828-1-3", etc. */
+  function normalizeCellSearchQuery(raw) {
+    let s = String(raw || '').trim().replace(/^#/, '').toUpperCase();
+    s = s.replace(/[^A-Z0-9\-]/g, '');
+    s = s.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+    if (!s) return '';
+    const ufHyphen = s.match(/^([A-Z]{2})-(\d[\d\-]*)$/);
+    if (ufHyphen) return ufHyphen[2];
+    const ufJoined = s.match(/^([A-Z]{2})(\d[\d\-]*)$/);
+    if (ufJoined) return ufJoined[2];
+    return s;
+  }
+
+  function findCellsByGridId(query) {
+    const q = normalizeCellSearchQuery(query);
+    if (!q) return [];
+    const results = [];
+    for (const id in gridData) {
+      const gid = (gridData[id].grid_id || String(id)).toUpperCase();
+      if (gid === q || gid.startsWith(q + '-')) {
+        results.push({ id: Number(id), grid_id: gridData[id].grid_id || String(id) });
+      }
+    }
+    return results;
+  }
+
+  function zoomToCells(cellIds) {
+    if (!cellIds || cellIds.length === 0) return;
+    if (cellIds.length === 1) {
+      zoomToCellViewOnly(cellIds[0]);
+      return;
+    }
+    const combined = new google.maps.LatLngBounds();
+    let found = 0;
+    for (const id of cellIds) {
+      const b = gridCellBounds[id];
+      if (b) {
+        combined.extend(b.getNorthEast());
+        combined.extend(b.getSouthWest());
+        found++;
+      }
+    }
+    if (found === 0) return;
+    releasePanRestriction();
+    map.setOptions({ restriction: null });
+    const container = document.getElementById('map');
+    const padH = Math.round(container.offsetWidth * 0.15);
+    const padV = Math.round(container.offsetHeight * 0.15);
+    map.fitBounds(combined, { top: padV, right: padH, bottom: padV, left: padH });
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      if (restrictionBounds) {
+        map.setOptions({ restriction: { latLngBounds: restrictionBounds, strictBounds: false } });
+      }
     });
   }
 
@@ -1518,6 +1577,9 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     showStreetViewCoverage,
     zoomToCell,
     zoomToCellViewOnly,
+    zoomToCells,
+    findCellsByGridId,
+    normalizeCellSearchQuery,
     restrictPanToCell,
     releasePanRestriction,
     updatePointAppearance,

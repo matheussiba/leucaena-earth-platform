@@ -92,14 +92,35 @@ html, body {
 .hidden { display: none !important; }
 
 /* ── Auth Modal ── */
+/* Scrollable overlay: short viewports can scroll to reach footer buttons; ::before/::after keep card vertically centered when it fits */
 .modal-overlay {
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   background: rgba(0,0,0,0.6);
   z-index: 9999;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+.modal-overlay::before,
+.modal-overlay::after {
+  content: '';
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.modal-overlay > .modal-card {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .modal-card {
@@ -118,14 +139,7 @@ html, body {
   padding: 32px 28px 24px;
 }
 
-/* Profile: scrollable body, close stays visible at top of card */
-#profile-modal.modal-overlay {
-  align-items: center;
-  justify-content: center;
-  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
-  box-sizing: border-box;
-}
-
+/* Profile: inner scroll; overlay also scrolls on very small screens */
 .profile-modal-card {
   display: flex;
   flex-direction: column;
@@ -744,6 +758,53 @@ a.docs-logo-card:hover {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.cell-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cell-search-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.06);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-family: var(--font-mono, 'Fira Code', monospace);
+  letter-spacing: 0.5px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.cell-search-input::placeholder {
+  color: rgba(255,255,255,0.3);
+  font-style: italic;
+}
+.cell-search-input:focus {
+  border-color: var(--accent);
+  background: rgba(255,255,255,0.1);
+}
+.cell-search-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+.cell-search-go:hover {
+  background: #16a34a;
+}
+.cell-search-go:active {
+  transform: scale(0.94);
 }
 
 .top-bar-left svg {
@@ -4284,7 +4345,7 @@ a.docs-logo-card:hover {
 /* ── Welcome modal ── */
 .welcome-card {
   text-align: center;
-  padding: 28px 24px 20px;
+  padding: 44px 24px 20px;
   width: 420px;
   max-width: 94vw;
 }

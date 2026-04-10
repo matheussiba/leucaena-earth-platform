@@ -32,6 +32,46 @@ window.LeucenaApp = (function () {
   function getSelectedCellId() { return selectedCellId; }
   function getSelectedCellData() { return selectedCellData; }
 
+  function displayCellId(cellData, fallbackId) {
+    const gid = (cellData && cellData.grid_id) || fallbackId;
+    const prefix = (cellData && cellData.states && cellData.states.length)
+      ? cellData.states[0] + '-' : 'SP-';
+    return prefix + gid;
+  }
+
+  function _goToCell(raw) {
+    if (!isTeamOrAbove()) return;
+    const rawTrim = (raw || '').trim();
+    if (!rawTrim) return;
+    if (typeof LeucenaMap === 'undefined') return;
+    const qNorm = LeucenaMap.normalizeCellSearchQuery(rawTrim);
+    const results = LeucenaMap.findCellsByGridId(rawTrim);
+    logEvent('cell_search', null, null, { query: rawTrim, normalized: qNorm, results: results.length });
+    if (results.length === 0) {
+      showToast(LeucenaI18n.t('cellSearch.notFound', qNorm || rawTrim), 'warning');
+      return;
+    }
+    const ids = results.map(r => r.id);
+    if (results.length > 1) {
+      if (isEditing()) {
+        showToast(LeucenaI18n.t('cellSearch.unlockFirstMulti'), 'warning');
+        return;
+      }
+      clearCellSelection();
+      LeucenaMap.zoomToCells(ids);
+      showToast(LeucenaI18n.t('cellSearch.multipleFound', results.length), 'info');
+      return;
+    }
+    const onlyId = ids[0];
+    if (isEditing() && selectedCellId !== onlyId) {
+      showToast(LeucenaI18n.t('cellSearch.unlockFirst'), 'warning');
+      return;
+    }
+    LeucenaMap.zoomToCells(ids);
+    const data = LeucenaMap.getGridData(onlyId);
+    if (data && selectedCellId !== onlyId) selectCell(onlyId, data);
+  }
+
   function authHeaders() {
     const h = { 'Content-Type': 'application/json' };
     if (authToken) h['Authorization'] = `Bearer ${authToken}`;
@@ -180,6 +220,16 @@ window.LeucenaApp = (function () {
     document.getElementById('admin-users-close').addEventListener('click', closeAdminUsersModal);
     document.getElementById('admin-users-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeAdminUsersModal();
+    });
+
+    document.getElementById('cell-search-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        _goToCell(e.target.value);
+      }
+    });
+    document.getElementById('cell-search-go').addEventListener('click', () => {
+      _goToCell(document.getElementById('cell-search-input').value);
     });
 
     document.getElementById('inbox-bell-btn').addEventListener('click', openInboxModal);
@@ -445,6 +495,7 @@ window.LeucenaApp = (function () {
     });
 
     document.getElementById('welcome-ok').addEventListener('click', () => Onboarding.closeWelcome(false));
+    document.getElementById('welcome-modal-close').addEventListener('click', () => Onboarding.closeWelcome(false));
     document.getElementById('welcome-dismiss-forever').addEventListener('click', () => Onboarding.closeWelcome(true));
     document.getElementById('welcome-go-video').addEventListener('click', (e) => {
       e.preventDefault();
@@ -2436,7 +2487,7 @@ window.LeucenaApp = (function () {
 
     const panel = document.getElementById('cell-actions');
     panel.classList.remove('hidden');
-    const displayId = cellData.grid_id || cellId;
+    const displayId = displayCellId(cellData, cellId);
     document.getElementById('cell-id-display').textContent = displayId;
 
     const t = LeucenaI18n.t;
@@ -2568,14 +2619,38 @@ window.LeucenaApp = (function () {
 
     const finBtn = document.getElementById('unlock-finished');
     const notice = document.getElementById('unlock-crowdmapping-notice');
+    const subEl = document.getElementById('unlock-modal-subtitle');
+    const nfLabel = document.getElementById('unlock-not-finished-label');
     const isContributor = getEffectiveRole() === 'contributor';
-    const hasCrowd = isContributor && LeucenaMap.cellHasCrowdmapping(selectedCellId);
-    const hasMasks = (typeof LeucenaDrawing !== 'undefined') && LeucenaDrawing.getPolygonCount() > 0;
-    const allPointsResolved = !LeucenaMap.cellHasUnvalidatedPoints(selectedCellId);
-    const canFinish = hasMasks || (allPointsResolved && LeucenaMap.cellHasAnyPoints(selectedCellId));
 
-    finBtn.classList.toggle('hidden', hasCrowd || !canFinish);
-    notice.classList.toggle('hidden', !hasCrowd);
+    if (isContributor) {
+      finBtn.classList.add('hidden');
+      notice.classList.add('hidden');
+      if (subEl) {
+        subEl.setAttribute('data-i18n', 'unlock.subtitleContributor');
+        subEl.textContent = LeucenaI18n.t('unlock.subtitleContributor');
+      }
+      if (nfLabel) {
+        nfLabel.setAttribute('data-i18n', 'unlock.finishEditing');
+        nfLabel.textContent = LeucenaI18n.t('unlock.finishEditing');
+      }
+    } else {
+      const hasCrowd = LeucenaMap.cellHasCrowdmapping(selectedCellId);
+      const hasMasks = (typeof LeucenaDrawing !== 'undefined') && LeucenaDrawing.getPolygonCount() > 0;
+      const allPointsResolved = !LeucenaMap.cellHasUnvalidatedPoints(selectedCellId);
+      const canFinish = hasMasks || (allPointsResolved && LeucenaMap.cellHasAnyPoints(selectedCellId));
+
+      finBtn.classList.toggle('hidden', hasCrowd || !canFinish);
+      notice.classList.toggle('hidden', !hasCrowd);
+      if (subEl) {
+        subEl.setAttribute('data-i18n', 'unlock.subtitle');
+        subEl.textContent = LeucenaI18n.t('unlock.subtitle');
+      }
+      if (nfLabel) {
+        nfLabel.setAttribute('data-i18n', 'unlock.notFinished');
+        nfLabel.textContent = LeucenaI18n.t('unlock.notFinished');
+      }
+    }
 
     document.getElementById('unlock-modal').classList.remove('hidden');
   }
@@ -2642,7 +2717,7 @@ window.LeucenaApp = (function () {
         document.getElementById('cell-status-display').textContent = formatStatus(finalStatus);
       }
 
-      const displayId = selectedCellData ? (selectedCellData.grid_id || cellId) : cellId;
+      const displayId = displayCellId(selectedCellData, cellId);
       let msg = LeucenaI18n.t('toast.cellUnlocked', displayId, formatStatus(finalStatus));
 
       if (selectedCellData) {
@@ -2695,7 +2770,7 @@ window.LeucenaApp = (function () {
       document.getElementById('selected-cell-info').classList.add('hidden');
 
       const badge = document.getElementById('edit-mode-badge');
-      const displayId = selectedCellData.grid_id || cellId;
+      const displayId = displayCellId(selectedCellData, cellId);
       document.getElementById('edit-mode-text').textContent = LeucenaI18n.t('edit.badge', displayId);
       badge.classList.remove('hidden');
 
@@ -2927,6 +3002,7 @@ window.LeucenaApp = (function () {
       document.getElementById('insertion-toggle').classList.remove('hidden');
       document.getElementById('deletion-toggle').classList.remove('hidden');
       document.getElementById('admin-users-btn').classList.remove('hidden');
+      document.getElementById('cell-search-section').classList.remove('hidden');
 
       const maskSub = document.getElementById('mask-subcategories');
       if (maskSub) { maskSub.classList.remove('hidden'); maskSub.classList.add('collapsed'); }
@@ -2954,6 +3030,7 @@ window.LeucenaApp = (function () {
     document.getElementById('insertion-toggle').classList.add('hidden');
     document.getElementById('deletion-toggle').classList.add('hidden');
     document.getElementById('admin-users-btn').classList.add('hidden');
+    document.getElementById('cell-search-section').classList.add('hidden');
     document.getElementById('view-counter').classList.add('hidden');
 
     const maskSub = document.getElementById('mask-subcategories');
@@ -3278,6 +3355,7 @@ window.LeucenaApp = (function () {
       if (!res.ok) return;
       const data = await res.json();
       const callerIsSuperAdmin = data.callerRole === 'superadmin';
+      const callerIsAdmin = data.callerRole === 'admin';
 
       const isMember = u => ['superadmin','admin','team'].includes(u.role);
       const isCollab = u => !isMember(u);
@@ -3321,6 +3399,7 @@ window.LeucenaApp = (function () {
         viewToggleEl.classList.add('hidden');
       }
       const effectiveSuperAdmin = callerIsSuperAdmin && !_adminViewMode;
+      const effectiveAdmin = callerIsAdmin || (callerIsSuperAdmin && _adminViewMode);
 
       const listEl = document.getElementById('admin-users-list');
       const equipeBodyPrev = document.getElementById('admin-equipe-list');
@@ -3350,24 +3429,24 @@ window.LeucenaApp = (function () {
         </div>
       </div>`;
 
-      if (effectiveSuperAdmin) {
-        // Section: Users & Data
+      if (effectiveSuperAdmin || effectiveAdmin) {
         gridHtml += `<div class="admin-tools-section">
           <div class="admin-tools-label">${t('admin.sectionData')}</div>
           <div class="admin-tools-buttons">
             <button id="admin-create-user-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg> ${t('admin.createUser')}</button>
-            <button id="admin-import-points-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> ${t('admin.importPoints')}</button>
-            <button id="admin-backup-db" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> ${t('admin.backupDb')}</button>
+            ${effectiveSuperAdmin ? `<button id="admin-import-points-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> ${t('admin.importPoints')}</button>` : ''}
+            ${effectiveSuperAdmin ? `<button id="admin-backup-db" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> ${t('admin.backupDb')}</button>` : ''}
           </div>
         </div>`;
 
-        // Section: Maintenance
-        gridHtml += `<div class="admin-tools-section">
-          <div class="admin-tools-label">${t('admin.sectionMaintenance')}</div>
-          <div class="admin-tools-buttons">
-            <button id="admin-dedup-btn" class="admin-tool-btn admin-tool-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ${t('admin.dedupBtn')}</button>
-          </div>
-        </div>`;
+        if (effectiveSuperAdmin) {
+          gridHtml += `<div class="admin-tools-section">
+            <div class="admin-tools-label">${t('admin.sectionMaintenance')}</div>
+            <div class="admin-tools-buttons">
+              <button id="admin-dedup-btn" class="admin-tool-btn admin-tool-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ${t('admin.dedupBtn')}</button>
+            </div>
+          </div>`;
+        }
       }
 
       toolsGrid.innerHTML = gridHtml;
@@ -3722,7 +3801,7 @@ window.LeucenaApp = (function () {
         batchToolbar.querySelectorAll('.batch-action-btn').forEach(btn => { btn.disabled = count === 0; });
       }
 
-      if (effectiveSuperAdmin) {
+      if (effectiveSuperAdmin || effectiveAdmin) {
         batchToolbar = document.createElement('div');
         batchToolbar.className = 'admin-batch-toolbar';
         batchToolbar.innerHTML =
@@ -3732,7 +3811,7 @@ window.LeucenaApp = (function () {
           '<button type="button" class="batch-action-btn" data-action="deactivate" disabled>' + t('admin.batchDeactivate') + '</button>' +
           '<button type="button" class="batch-action-btn" data-action="reactivate" disabled>' + t('admin.batchReactivate') + '</button>' +
           '<button type="button" class="batch-action-btn" data-action="send-message" disabled>' + t('admin.batchSendMessage') + '</button>' +
-          '<button type="button" class="batch-action-btn batch-btn-danger" data-action="delete" disabled>' + t('admin.batchDelete') + '</button>';
+          (effectiveSuperAdmin ? '<button type="button" class="batch-action-btn batch-btn-danger" data-action="delete" disabled>' + t('admin.batchDelete') + '</button>' : '');
 
         const searchRow = document.createElement('div');
         searchRow.className = 'admin-colab-search-row';
@@ -3889,8 +3968,10 @@ window.LeucenaApp = (function () {
           </div>`;
         }
 
-        const canDelete = effectiveSuperAdmin && role !== 'superadmin';
         const isCollaborator = !isEquipe(user);
+        const isTargetManageable = !['admin', 'superadmin', 'team'].includes(role);
+        const canManage = effectiveSuperAdmin ? (role !== 'superadmin') : (effectiveAdmin && isTargetManageable);
+        const canPermanentDelete = effectiveSuperAdmin && role !== 'superadmin';
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
         const lastActiveHtml = formatLastActive(user.last_active, user.username);
         const initial = user.username.charAt(0).toUpperCase();
@@ -3905,11 +3986,11 @@ window.LeucenaApp = (function () {
           ? `<span class="admin-auth-badge google" title="${t('admin.authMethodGoogleTitle')}">${t('admin.authMethodGoogle')}</span>`
           : `<span class="admin-auth-badge email" title="${t('admin.authMethodEmailTitle')}">${t('admin.authMethodEmail')}</span>`;
 
-        const batchCbHtml = (effectiveSuperAdmin && isCollaborator)
+        const batchCbHtml = ((effectiveSuperAdmin || effectiveAdmin) && isCollaborator)
           ? `<input type="checkbox" class="admin-batch-cb" data-user-id="${user.id}">`
           : '';
 
-        if (effectiveSuperAdmin && isCollaborator) row.classList.add('batch-mode');
+        if ((effectiveSuperAdmin || effectiveAdmin) && isCollaborator) row.classList.add('batch-mode');
 
         row.innerHTML = `
           ${batchCbHtml}
@@ -3959,12 +4040,12 @@ window.LeucenaApp = (function () {
             ${testerRadioHtml}
             <div class="admin-user-actions">
               <button class="admin-profile-btn">${t('admin.editProfile')}</button>
-              <button class="admin-pw-btn">${t('admin.changePassword')}</button>
-              ${!isVerified ? `<button class="admin-verify-btn">${t('admin.verifyUser')}</button>` : ''}
-              ${effectiveSuperAdmin ? `<button class="admin-rename-btn">${t('admin.renameUser')}</button>` : ''}
-              ${canDelete && !isInactive ? `<button class="admin-deactivate-btn btn-warning-sm">${t('admin.deactivateUser')}</button>` : ''}
-              ${canDelete && isInactive ? `<button class="admin-reactivate-btn btn-success-sm">${t('admin.reactivateUser')}</button>` : ''}
-              ${canDelete && !isCollaborator ? `<button class="admin-del-btn btn-danger-sm">${t('admin.permanentDelete')}</button>` : ''}
+              ${canManage ? `<button class="admin-pw-btn">${t('admin.changePassword')}</button>` : ''}
+              ${canManage && !isVerified ? `<button class="admin-verify-btn">${t('admin.verifyUser')}</button>` : ''}
+              ${canManage ? `<button class="admin-rename-btn">${t('admin.renameUser')}</button>` : ''}
+              ${canManage && !isInactive ? `<button class="admin-deactivate-btn btn-warning-sm">${t('admin.deactivateUser')}</button>` : ''}
+              ${canManage && isInactive ? `<button class="admin-reactivate-btn btn-success-sm">${t('admin.reactivateUser')}</button>` : ''}
+              ${canPermanentDelete && !isCollaborator ? `<button class="admin-del-btn btn-danger-sm">${t('admin.permanentDelete')}</button>` : ''}
             </div>
           </div>
         `;
@@ -4032,7 +4113,7 @@ window.LeucenaApp = (function () {
         }
 
         const pwBtn = row.querySelector('.admin-pw-btn');
-        pwBtn.addEventListener('click', () => {
+        if (pwBtn) pwBtn.addEventListener('click', () => {
           const modal = document.getElementById('admin-pw-modal');
           const titleEl = document.getElementById('admin-pw-modal-title');
           const input = document.getElementById('admin-pw-modal-input');

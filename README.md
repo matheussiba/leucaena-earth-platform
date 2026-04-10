@@ -84,6 +84,30 @@ The platform divides the territory into a grid of cells. Each cell can be locked
 - **Database backup** download
 - **Registration passcode** system with Roman numeral encoding
 
+### Role Permissions (Admin Panel)
+
+| Capability | Super Admin | Admin | Team/Member |
+|------------|:-----------:|:-----:|:-----------:|
+| View metrics & user list | ✓ | ✓ | — |
+| Export CSV / Logs | ✓ | ✓ | Logs only |
+| Create user | ✓ | ✓ | — |
+| Edit profile | ✓ | ✓ (collab/tester) | — |
+| Change password | ✓ | ✓ (collab/tester) | — |
+| Rename user | ✓ | ✓ (collab/tester) | — |
+| Verify user | ✓ | ✓ (collab/tester) | — |
+| Deactivate/reactivate | ✓ | ✓ (collab/tester) | — |
+| Change roles | ✓ | — | — |
+| Permanent delete | ✓ | — | — |
+| Import points / Backup DB | ✓ | — | — |
+| Dedup / Maintenance tools | ✓ | — | — |
+| Founder star toggle | ✓ | — | — |
+| "View as Admin" toggle | ✓ | — | — |
+| Batch operations | ✓ (all) | ✓ (no delete) | — |
+
+> When an **Admin** changes a password, renames, deactivates, or reactivates a user, all **Super Admins** receive an email notification via Resend. Super Admins performing the same actions do **not** trigger notifications.
+
+> The `IMMUTABLE_USER` environment variable protects a specific user from role changes, deactivation, or deletion by anyone.
+
 ### Data Export
 
 - **Leucaena Masks** — all polygons as GeoJSON (QGIS-compatible, including holes)
@@ -187,6 +211,11 @@ cp .env.example .env
 |----------|----------|-------------|
 | `GOOGLE_MAPS_KEY` | Yes | Google Maps JavaScript API key |
 | `PASSWORD_SALT` | Yes | Salt string for password hashing |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
+| `RESEND_API_KEY` | Yes | Resend API key for transactional emails |
+| `RESEND_FROM` | No | Sender address for emails (default: `leucaena.earth <noreply@leucaena.earth>`) |
+| `IMMUTABLE_USER` | No | Username protected from role changes, deactivation, and deletion |
 | `GOOGLE_ANALYTICS_ID` | No | Google Analytics tracking ID (omit to disable) |
 | `PORT` | No | Server port (default: 3000) |
 | `DATA_PATH` | No | Directory for SQLite DB and backups (default: `./data`) |
