@@ -190,6 +190,20 @@ async function initDB() {
     db.run("UPDATE users SET is_active = 0 WHERE username = 'deleted'");
   }
 
+  // Migration: remove 42 sea tiles (no_points) that fall outside land in SP
+  try {
+    const seaTiles = ['754','782','783','810','811','812','838','839','840','867','868','895','896','897','923','924','925','953','980','981','982','1010','1011','1037','1038','1039','1067','1068','1096','1124','1125','1153','1154','1181','1182','1209','1210','1211','1237','1238','1239','1267'];
+    const ph = seaTiles.map(() => '?').join(',');
+    const hits = db.exec(`SELECT id FROM grid_cells WHERE grid_id IN (${ph})`, seaTiles);
+    if (hits.length > 0 && hits[0].values.length > 0) {
+      const ids = hits[0].values.map(r => r[0]);
+      const idPh = ids.map(() => '?').join(',');
+      db.run(`DELETE FROM grid_cell_states WHERE grid_cell_id IN (${idPh})`, ids);
+      db.run(`DELETE FROM grid_cells WHERE id IN (${idPh})`, ids);
+      console.log(`Migration: removed ${ids.length} sea tiles from grid_cells`);
+    }
+  } catch (e) { console.error('Sea-tile migration error:', e.message); }
+
   persist();
   return db;
 }
