@@ -2640,8 +2640,9 @@ window.LeucenaApp = (function () {
       const allPointsResolved = !LeucenaMap.cellHasUnvalidatedPoints(selectedCellId);
       const canFinish = hasMasks || (allPointsResolved && LeucenaMap.cellHasAnyPoints(selectedCellId));
 
-      finBtn.classList.toggle('hidden', hasCrowd || !canFinish);
-      notice.classList.toggle('hidden', !hasCrowd);
+      const isAdminOrAbove = isAdminUser();
+      finBtn.classList.toggle('hidden', (hasCrowd && !isAdminOrAbove) || !canFinish);
+      notice.classList.toggle('hidden', !hasCrowd || isAdminOrAbove);
       if (subEl) {
         subEl.setAttribute('data-i18n', 'unlock.subtitle');
         subEl.textContent = LeucenaI18n.t('unlock.subtitle');
