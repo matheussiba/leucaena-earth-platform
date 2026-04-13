@@ -1185,7 +1185,8 @@ window.LeucenaApp = (function () {
         has_google: !!data.has_google,
         login_count: data.login_count || 0,
         mask_count: data.mask_count || 0,
-        role: data.role || 'contributor'
+        role: data.role || 'contributor',
+        is_local: !!data.is_local
       };
 
       if (data.show_migration_banner) {
@@ -1215,7 +1216,7 @@ window.LeucenaApp = (function () {
         userRole = data.role || 'contributor';
         testerMode = data.tester_mode || 'contributor';
         if (data.show_migration_banner) _showMigrationBanner = true;
-        _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor' };
+        _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor', is_local: !!data.is_local };
         onLoginSuccess(freshOAuthReturn);
       } else {
         localStorage.removeItem('leucena_token');
@@ -1742,7 +1743,7 @@ window.LeucenaApp = (function () {
       const res = await fetch('/api/auth/me', fetchOpts);
       if (res.ok) {
         const data = await res.json();
-        _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor' };
+        _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor', is_local: !!data.is_local };
         showVerificationBannerIfNeeded();
         loadRankingWidget();
         syncUserBadgeProfileHint();
@@ -2051,11 +2052,10 @@ window.LeucenaApp = (function () {
         return;
       }
       const wasAdmin = !!adminEditingUser;
-      if (!wasAdmin) {
-        applyProfileToUI({ full_name, photo: profilePhotoDataUrl });
-      }
       closeProfileModal();
-      if (!wasAdmin) await loadUserProfile();
+      if (!wasAdmin) {
+        await loadUserProfile();
+      }
       showToast(wasAdmin ? LeucenaI18n.t('admin.profileUpdated') : LeucenaI18n.t('profile.saved'), 'success');
     } catch (err) {
       errorEl.textContent = 'Erro de conexão.';
@@ -4085,7 +4085,7 @@ window.LeucenaApp = (function () {
             openBatchComposeModal(ids, colabUsers);
             return;
           } else if (action === 'delete') {
-            if (ids.length > 5) { showToast(t('admin.batchDeleteMax', 5, ids.length), 'warning'); return; }
+            if (!_userAuthInfo.is_local && ids.length > 5) { showToast(t('admin.batchDeleteMax', 5, ids.length), 'warning'); return; }
             const phrase = t('admin.batchConfirmDeletePhrase');
             const warning = t('admin.batchConfirmDeleteWarning', ids.length);
             const input = window.prompt(warning + '\n\n' + t('admin.permanentDeleteTypeInstruction') + '\n' + phrase);

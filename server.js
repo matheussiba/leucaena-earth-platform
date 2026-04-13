@@ -133,37 +133,95 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
 <html lang="pt">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>leucaena.earth / Manutenção</title>
+<title>leucaena.earth / Evoluindo</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-.card{text-align:center;max-width:420px;padding:40px 32px;border:1px solid #1e293b;border-radius:16px;background:#1e293b}
-h1{font-size:28px;margin-bottom:8px;color:#22c55e}
-.icon{font-size:48px;margin-bottom:16px}
-p{font-size:15px;line-height:1.6;color:#94a3b8;margin-top:12px}
-.accent{color:#22c55e;font-weight:600}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a 0%,#1a2e1a 50%,#0f172a 100%);color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden}
+.card{text-align:center;max-width:520px;padding:48px 40px;border:1px solid rgba(34,197,94,.2);border-radius:24px;background:rgba(30,41,59,.85);backdrop-filter:blur(12px);box-shadow:0 0 80px rgba(34,197,94,.08);animation:fadeUp .8s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.logo{width:120px;height:120px;margin:0 auto 24px;border-radius:50%;border:3px solid rgba(34,197,94,.3);padding:8px;background:rgba(15,23,42,.6)}
+.logo img{width:100%;height:100%;object-fit:contain;border-radius:50%}
+h1{font-size:26px;margin-bottom:6px;color:#22c55e;letter-spacing:-.5px}
+h2{font-size:16px;font-weight:400;color:#64748b;margin-bottom:28px}
+.message{font-size:17px;line-height:1.7;color:#cbd5e1;margin-bottom:32px}
+.message .accent{color:#22c55e;font-weight:600}
+.gears{font-size:56px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:2px}
+.gear{display:inline-block;animation:spin 3s linear infinite}
+.gear:nth-child(2){animation-direction:reverse;animation-duration:2.4s;font-size:36px;margin-top:14px}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.countdown{display:flex;gap:16px;justify-content:center;margin:28px 0 8px}
+.countdown .unit{display:flex;flex-direction:column;align-items:center;min-width:64px}
+.countdown .num{font-size:40px;font-weight:700;color:#22c55e;line-height:1;font-variant-numeric:tabular-nums}
+.countdown .lbl{font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:1px;margin-top:6px}
+.countdown .sep{font-size:32px;color:#334155;align-self:flex-start;margin-top:4px;font-weight:300}
+.sub{font-size:13px;color:#475569;margin-top:8px}
+.dots{display:flex;gap:6px;justify-content:center;margin-top:24px}
+.dots span{width:6px;height:6px;border-radius:50%;background:#22c55e;opacity:.4;animation:pulse 1.4s ease-in-out infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+.brasil{display:inline-block;background:linear-gradient(90deg,#009c3b,#ffdf00,#002776);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
 </style>
 </head>
 <body>
 <div class="card">
-<div class="icon">🔧</div>
-<h1>Estamos trabalhando!</h1>
-<p>A plataforma de mapeamento está em <span class="accent">manutenção</span>.</p>
-<p>Volte em alguns minutos.</p>
+  <div class="logo"><img src="/img/leucaena-earth-logo.png" alt="leucaena.earth"></div>
+  <h1>leucaena.earth</h1>
+  <h2>Plataforma de Mapeamento</h2>
+  <div class="gears"><span class="gear">⚙️</span><span class="gear">⚙️</span></div>
+  <div class="message">
+    Estamos evoluindo a plataforma para<br>
+    cobrir <span class="brasil">todo o Brasil</span>!
+  </div>
+  <div class="countdown" id="cd">
+    <div class="unit"><span class="num" id="cd-h">--</span><span class="lbl">horas</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="cd-m">--</span><span class="lbl">min</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="cd-s">--</span><span class="lbl">seg</span></div>
+  </div>
+  <div class="sub">Previsão de retorno: meia-noite (horário de Brasília)</div>
+  <div class="dots"><span></span><span></span><span></span></div>
 </div>
+<script>
+(function(){
+  function tick(){
+    var now=new Date();
+    var utcMs=now.getTime()+now.getTimezoneOffset()*60000;
+    var brMs=utcMs-3*3600000;
+    var br=new Date(brMs);
+    var midnight=new Date(br);
+    midnight.setHours(24,0,0,0);
+    var diff=midnight-br;
+    if(diff<=0){document.getElementById('cd-h').textContent='00';document.getElementById('cd-m').textContent='00';document.getElementById('cd-s').textContent='00';return;}
+    var h=Math.floor(diff/3600000);
+    var m=Math.floor((diff%3600000)/60000);
+    var s=Math.floor((diff%60000)/1000);
+    document.getElementById('cd-h').textContent=String(h).padStart(2,'0');
+    document.getElementById('cd-m').textContent=String(m).padStart(2,'0');
+    document.getElementById('cd-s').textContent=String(s).padStart(2,'0');
+  }
+  tick();setInterval(tick,1000);
+})();
+</script>
 </body>
 </html>`;
 
+function isMaintenanceModeEnabled() {
+  const v = (process.env.MAINTENANCE_MODE || '').toString().trim().toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 app.use((req, res, next) => {
-  if (process.env.MAINTENANCE_MODE === 'true') {
-    const host = (req.hostname || req.headers.host || '').split(':')[0];
-    const isMap = host === 'map.leucaena.earth' || host.endsWith('.onrender.com');
-    const isApi = req.path.startsWith('/api/');
-    if (isMap && !isApi) {
-      return res.status(503).send(MAINTENANCE_HTML);
-    }
+  if (!isMaintenanceModeEnabled()) return next();
+  if (req.path.startsWith('/api/')) return next();
+  // Let static assets through so the maintenance page can load /img/logo, fonts, etc.
+  const p = req.path || '';
+  if (p.startsWith('/img/') || p.startsWith('/css/') || p.startsWith('/js/') || p.startsWith('/fonts/')) {
+    return next();
   }
-  next();
+  // 200 + HTML: browsers often show a generic error page for 503 and hide the body.
+  return res.status(200).type('html').set('X-Robots-Tag', 'noindex').send(MAINTENANCE_HTML);
 });
 
 app.use(cors());
@@ -917,7 +975,8 @@ app.get('/api/auth/me', (req, res) => {
     linkedin: user?.linkedin || null, scholar: user?.scholar || null, email: user?.email || null,
     auth_provider: user?.auth_provider || 'local', email_verified: !!(user?.email_verified),
     has_google: !!(user?.google_id), show_migration_banner: showMigrationBanner,
-    login_count: user?.login_count || 0, mask_count: maskRow ? maskRow.cnt : 0
+    login_count: user?.login_count || 0, mask_count: maskRow ? maskRow.cnt : 0,
+    is_local: !process.env.DATA_PATH
   });
 });
 
@@ -1777,6 +1836,11 @@ app.post('/api/admin/batch/delete', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
+  const isRemote = !!process.env.DATA_PATH;
+  const REMOTE_BATCH_LIMIT = 5;
+  if (isRemote && ids.length > REMOTE_BATCH_LIMIT) {
+    return res.status(400).json({ error: `Limite de ${REMOTE_BATCH_LIMIT} exclusões por vez no ambiente remoto. Selecione menos usuários.` });
+  }
   let deleted = 0;
   for (const id of ids) {
     const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
