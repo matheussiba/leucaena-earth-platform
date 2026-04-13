@@ -33,10 +33,7 @@ window.LeucenaApp = (function () {
   function getSelectedCellData() { return selectedCellData; }
 
   function displayCellId(cellData, fallbackId) {
-    const gid = (cellData && cellData.grid_id) || fallbackId;
-    const prefix = (cellData && cellData.states && cellData.states.length)
-      ? cellData.states[0] + '-' : 'SP-';
-    return prefix + gid;
+    return (cellData && cellData.grid_id) || fallbackId;
   }
 
   function _goToCell(raw) {
