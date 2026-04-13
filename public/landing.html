@@ -141,6 +141,41 @@
     html { scroll-behavior: smooth; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
 
+    /* ── Expansion strip (leucaena.earth landing; same countdown clock as map maintenance page) ── */
+    .landing-expansion-strip {
+      display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 110; height: 48px;
+      align-items: center; justify-content: center; padding: 0 44px 0 16px;
+      background: linear-gradient(90deg, #e8f5e9 0%, #f1f8f4 50%, #e8f5e9 100%);
+      border-bottom: 1px solid rgba(34, 139, 34, 0.2);
+      font-size: 13px; animation: landExpSlide .35s ease-out;
+    }
+    .landing-expansion-strip.is-visible { display: flex; }
+    @keyframes landExpSlide { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .landing-expansion-inner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 100%; }
+    .landing-expansion-gear { display: inline-block; animation: landExpSpin 3s linear infinite; font-size: 16px; flex-shrink: 0; }
+    @keyframes landExpSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .landing-expansion-text { color: #334155; font-weight: 500; }
+    .landing-expansion-text strong { color: #0f172a; font-weight: 600; }
+    .landing-expansion-brasil {
+      background: linear-gradient(90deg, #009c3b, #c9a227, #002776);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      font-weight: 800; font-size: 1.15em; letter-spacing: 0.02em;
+    }
+    .landing-expansion-cd { font-variant-numeric: tabular-nums; color: #15803d; font-weight: 700; font-size: 14px; letter-spacing: .4px; flex-shrink: 0; }
+    .landing-expansion-cd span { min-width: 20px; display: inline-block; text-align: right; }
+    .landing-expansion-close {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: #64748b; font-size: 20px; cursor: pointer; padding: 4px 8px; line-height: 1;
+    }
+    .landing-expansion-close:hover { color: #1e293b; }
+    body.landing-expansion-on nav { top: 48px; }
+    body.landing-expansion-on .hero { padding-top: 168px; }
+    @media (max-width: 768px) {
+      .landing-expansion-strip { font-size: 11px; padding: 0 40px 0 8px; }
+      .landing-expansion-inner { gap: 6px; }
+      .landing-expansion-cd { font-size: 12px; }
+    }
+
     /* ── Nav ── */
     nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; background: rgba(10,15,26,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); transition: all 0.3s; }
     nav.scrolled { padding: 10px 40px; background: rgba(10,15,26,0.95); }
@@ -410,6 +445,22 @@
   </style>
 </head>
 <body>
+
+  <!-- Expansion strip (visible on leucaena.earth while map may be in maintenance) -->
+  <div id="landing-expansion-strip" class="landing-expansion-strip" aria-label="Anúncio">
+    <div class="landing-expansion-inner">
+      <span class="landing-expansion-gear" aria-hidden="true">⚙️</span>
+      <span class="landing-expansion-text">
+        Em breve o <strong>leucaena.earth</strong> estará disponível para <span class="landing-expansion-brasil">todo o Brasil</span>. Aguarde!!!
+      </span>
+      <span class="landing-expansion-cd">
+        <span id="landing-exp-cd-h">--</span>h
+        <span id="landing-exp-cd-m">--</span>m
+        <span id="landing-exp-cd-s">--</span>s
+      </span>
+    </div>
+    <button type="button" class="landing-expansion-close" id="landing-expansion-close" aria-label="Fechar">&times;</button>
+  </div>
 
   <!-- Nav -->
   <nav id="main-nav" aria-label="Main navigation">
@@ -1147,6 +1198,54 @@
     renderFaq();
 
     applyLang();
+  })();
+  </script>
+  <script>
+  (function () {
+    var DISMISS = 'leucena_landing_expansion_dismissed';
+    if (localStorage.getItem(DISMISS)) return;
+    var strip = document.getElementById('landing-expansion-strip');
+    if (!strip) return;
+    strip.classList.add('is-visible');
+    document.body.classList.add('landing-expansion-on');
+    function brMidnightCountdownMs() {
+      var now = new Date();
+      var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+      var brMs = utcMs - 3 * 3600000;
+      var br = new Date(brMs);
+      var midnight = new Date(br);
+      midnight.setHours(24, 0, 0, 0);
+      return midnight - br;
+    }
+    function tick() {
+      var diff = brMidnightCountdownMs();
+      var hEl = document.getElementById('landing-exp-cd-h');
+      var mEl = document.getElementById('landing-exp-cd-m');
+      var sEl = document.getElementById('landing-exp-cd-s');
+      if (!hEl || !mEl || !sEl) return;
+      if (diff <= 0) {
+        hEl.textContent = '00';
+        mEl.textContent = '00';
+        sEl.textContent = '00';
+        return;
+      }
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      hEl.textContent = String(h).padStart(2, '0');
+      mEl.textContent = String(m).padStart(2, '0');
+      sEl.textContent = String(s).padStart(2, '0');
+    }
+    tick();
+    setInterval(tick, 1000);
+    var closeBtn = document.getElementById('landing-expansion-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () {
+        strip.classList.remove('is-visible');
+        document.body.classList.remove('landing-expansion-on');
+        localStorage.setItem(DISMISS, '1');
+      });
+    }
   })();
   </script>
 </body>

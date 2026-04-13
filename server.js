@@ -180,7 +180,7 @@ h2{font-size:16px;font-weight:400;color:#64748b;margin-bottom:28px}
     <span class="sep">:</span>
     <div class="unit"><span class="num" id="cd-s">--</span><span class="lbl">seg</span></div>
   </div>
-  <div class="sub">Previsão de retorno: meia-noite (horário de Brasília)</div>
+  <div class="sub">Em breve com novidades.</div>
   <div class="dots"><span></span><span></span><span></span></div>
 </div>
 <script>

@@ -529,7 +529,6 @@ window.LeucenaApp = (function () {
     setupGoogleAuth();
     setupMigrationBanner();
     setupVerificationBanner();
-    setupExpansionBanner();
     tryRestoreSession().finally(() => { maybeOpenAuthFromHash(); });
     loadRankingWidget();
 
@@ -1548,46 +1547,6 @@ window.LeucenaApp = (function () {
         localStorage.setItem(_userKey('leucena_migration_dismissed'), '1');
       });
     }
-  }
-
-  function setupExpansionBanner() {
-    const strip = document.getElementById('expansion-strip');
-    if (!strip) return;
-    strip.classList.remove('hidden');
-
-    var _expInterval = null;
-    function expTick() {
-      var now = new Date();
-      var stored = localStorage.getItem('leucena_expansion_target');
-      var target;
-      if (stored) {
-        target = new Date(stored);
-      } else {
-        target = new Date(now.getTime() + 22 * 3600000);
-        localStorage.setItem('leucena_expansion_target', target.toISOString());
-      }
-      var diff = target - now;
-      if (diff <= 0) {
-        document.getElementById('exp-cd-h').textContent = '00';
-        document.getElementById('exp-cd-m').textContent = '00';
-        document.getElementById('exp-cd-s').textContent = '00';
-        if (_expInterval) clearInterval(_expInterval);
-        return;
-      }
-      var h = Math.floor(diff / 3600000);
-      var m = Math.floor((diff % 3600000) / 60000);
-      var s = Math.floor((diff % 60000) / 1000);
-      document.getElementById('exp-cd-h').textContent = String(h).padStart(2, '0');
-      document.getElementById('exp-cd-m').textContent = String(m).padStart(2, '0');
-      document.getElementById('exp-cd-s').textContent = String(s).padStart(2, '0');
-    }
-    expTick();
-    _expInterval = setInterval(expTick, 1000);
-
-    document.getElementById('expansion-strip-close').addEventListener('click', function () {
-      strip.classList.add('hidden');
-      if (_expInterval) clearInterval(_expInterval);
-    });
   }
 
   function setupVerificationBanner() {
