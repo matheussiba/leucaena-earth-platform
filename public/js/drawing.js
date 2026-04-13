@@ -1536,14 +1536,17 @@ window.LeucenaDrawing = (function () {
     refreshPolyVisibility();
   }
 
-  function refreshPolyVisibility() { // viewport culling via polyBounds ∩ map bounds (plus global/role visibility)
+  function refreshPolyVisibility() { // viewport culling via polyBounds ∩ map bounds (plus global/role/state visibility)
     const globalShow = LeucenaMap.getShowPolygons();
     const map = LeucenaMap.getMap();
     const viewport = map ? map.getBounds() : null;
+    const stateActive = typeof LeucenaMap.getCurrentState === 'function' && LeucenaMap.getCurrentState();
+    const loadedCells = stateActive ? LeucenaMap.getGridData() : null;
     for (const [id, entry] of Object.entries(drawnPolygons)) {
       const crole = entry.data.created_by_role || 'contributor';
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
-      const show = globalShow && shouldShowPoly(crole) && inView;
+      const inState = !stateActive || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
+      const show = globalShow && shouldShowPoly(crole) && inView && inState;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
@@ -1621,11 +1624,14 @@ window.LeucenaDrawing = (function () {
     const map = LeucenaMap.getMap();
     const globalShow = LeucenaMap.getShowPolygons();
     const viewport = map ? map.getBounds() : null;
+    const stateActive = typeof LeucenaMap.getCurrentState === 'function' && LeucenaMap.getCurrentState();
+    const loadedCells = stateActive ? LeucenaMap.getGridData() : null;
     for (const [id, entry] of Object.entries(drawnPolygons)) {
       if (!entry.areaLabel) continue;
       const crole = entry.data.created_by_role || 'contributor';
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
-      const show = visible && globalShow && shouldShowPoly(crole) && inView;
+      const inState = !stateActive || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
+      const show = visible && globalShow && shouldShowPoly(crole) && inView && inState;
       entry.areaLabel.setMap(show ? map : null);
     }
   }

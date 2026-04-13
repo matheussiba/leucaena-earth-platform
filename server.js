@@ -2209,6 +2209,13 @@ app.post('/api/admin/backup', requireAuth, (req, res) => {
 
 // ── REST API ──
 
+app.get('/api/states', (req, res) => {
+  const rows = queryAll(
+    'SELECT state, COUNT(*) as cell_count FROM grid_cell_states GROUP BY state ORDER BY state'
+  );
+  res.json(rows);
+});
+
 app.get('/api/grid', (req, res) => {
   const stateQ = req.query.state;
   const baseSql = 'SELECT id, fid, grid_id, geometry, grid_status, numpoints, locked_by, locked_at, updated_at, worked_by, finished_by FROM grid_cells';
@@ -2695,8 +2702,8 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
     existingSet.add(key);
     const geometry = { type: 'Point', coordinates: [pt.lng, pt.lat] };
     runSQL(
-      'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, 0, ?, 0)',
-      [nextFid, JSON.stringify(geometry), 'crowdmapping']
+      'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status, added_by, added_by_role) VALUES (?, ?, 0, ?, 0, ?, ?)',
+      [nextFid, JSON.stringify(geometry), 'crowdmapping', req.username, 'superadmin']
     );
     const row = queryOne('SELECT id FROM occurrence_points WHERE fid = ?', [nextFid]);
     createdPoints.push({ id: row.id, fid: nextFid, not_valid: 0, status: 0, layer: 'crowdmapping', geometry });
@@ -2816,7 +2823,7 @@ app.get('/api/points', (req, res) => {
   const points = queryAll('SELECT * FROM occurrence_points');
   const features = points.map(p => ({
     type: 'Feature',
-    properties: { id: p.id, fid: p.fid, not_valid: p.status || 0, status: p.status || 0, layer: p.layer || 'crowdmapping' },
+    properties: { id: p.id, fid: p.fid, not_valid: p.status || 0, status: p.status || 0, layer: p.layer || 'crowdmapping', added_by: p.added_by || null, added_by_role: p.added_by_role || null },
     geometry: JSON.parse(p.geometry)
   }));
   res.json({ type: 'FeatureCollection', features });
@@ -2840,10 +2847,11 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
 
   const maxFid = queryOne('SELECT MAX(fid) as maxFid FROM occurrence_points');
   const newFid = (maxFid && maxFid.maxFid != null) ? maxFid.maxFid + 1 : 1;
+  const addedByRole = getEffectiveRole(username);
 
   runSQL(
-    'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, ?, ?, ?)',
-    [newFid, JSON.stringify(geometry), pointStatus, pointLayer, pointStatus]
+    'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status, added_by, added_by_role) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [newFid, JSON.stringify(geometry), pointStatus, pointLayer, pointStatus, username, addedByRole]
   );
 
   const inserted = queryOne('SELECT * FROM occurrence_points WHERE fid = ?', [newFid]);
@@ -2865,7 +2873,9 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
     status: pointStatus,
     layer: pointLayer,
     geometry,
-    grid_cell_id: gridCell ? gridCell.id : null
+    grid_cell_id: gridCell ? gridCell.id : null,
+    added_by: username,
+    added_by_role: addedByRole
   };
 
   io.emit('point:created', pointData);

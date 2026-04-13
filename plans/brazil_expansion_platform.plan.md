@@ -1,72 +1,69 @@
 ---
 name: Brazil Expansion Platform
-overview: Plano em duas fases — (1) Fundacao: login/senhas/admin, depois DB minimo + mapa leve (grid filtrado, Data Layer), depois Inbox; tudo validado em SP; (2) Expansao Brasil: states, mapa nacional, landing, gerador de grids, colaboracao em escala. Google + email, tags flexiveis, SP como piloto do doutorado.
+overview: Plano em duas fases — (1) Fundacao: login/senhas/admin, depois DB minimo + mapa leve (grid filtrado, Data Layer), depois Inbox; tudo validado em SP; (2) Expansao Brasil: UF via grid_cell_states + UF_META (sem tabela states), mapa nacional, landing, gerador de grids, colaboracao em escala. Google + email, tags flexiveis, SP como piloto do doutorado.
 todos:
   - id: auth-google-oauth
     content: Implementar Google OAuth (login com Google) — credenciais no Google Cloud Console, callback no server.js
-    status: pending
+    status: done
   - id: auth-email-verification
     content: Cadastro com email/senha + verificacao por email via Resend (gratuito)
-    status: pending
+    status: done
   - id: auth-migration
     content: Migracao com periodo de transicao — login antigo funciona + banner + auto-link + vinculacao manual pelo admin
-    status: pending
+    status: done
   - id: auth-remove-passcode
     content: Remover sistema de passcode do backend e frontend
-    status: pending
+    status: done
   - id: inbox-system
     content: Sistema de inbox — admin envia mensagens para todos ou usuario individual, com notificacao por email via Resend
     status: done
   - id: admin-link-accounts
     content: Ferramenta no admin panel para vincular conta Google a usuario existente manualmente
-    status: pending
+    status: done
   - id: db-grid-state-minimal
     content: "[Fase 1] Coluna grid_cells.state + indice + GET /api/grid?state= (sem tabela states ainda)"
-    status: pending
+    status: done
   - id: db-schema
-    content: "[Fase 2] Tabelas states, point_tags, point_tag_assignments e migracoes em occurrence_points"
-    status: pending
+    content: "[Fase 2] Tabela states descartada (grid_cell_states + UF_META substituem). added_by implementado. point_tags adiavel."
+    status: done
   - id: api-states
-    content: "[Fase 2] GET /api/states, GET /api/states/:uf/stats (basico na Sessao 6; refinar na 8 se preciso)"
-    status: pending
+    content: "[Fase 2] GET /api/states implementado (contagens de grid_cell_states). GET /api/states/:uf/stats adiavel."
+    status: done
   - id: api-points
-    content: Abrir POST /api/points para colaboradores, gravar added_by/added_by_role
+    content: added_by/added_by_role implementado. Abrir POST /api/points para colaboradores — adiado (decisao de produto)
     status: pending
   - id: api-tags
-    content: CRUD de tags + atribuicao de tags a pontos
+    content: CRUD de tags + atribuicao de tags a pontos — adiado (sem demanda real ainda)
     status: pending
   - id: state-selector
     content: Seletor de estado no mapa com zoom e filtragem de grids
-    status: pending
+    status: done
   - id: collab-points-ui
-    content: UI para colaboradores adicionarem pontos com seletor de tags
+    content: UI para colaboradores adicionarem pontos com seletor de tags — depende de api-points e api-tags
     status: pending
   - id: landing-page
-    content: Atualizar landing page para escopo Brasil com SP como piloto
+    content: Atualizar landing page para escopo Brasil com SP como piloto — adiar ate ter multi-estado real
     status: pending
   - id: grid-generator
-    content: Script para gerar grids por estado a partir de limites IBGE
-    status: pending
-  - id: seed-states
-    content: Seed dos 27 estados + migrar grid existente com state=SP
-    status: pending
+    content: Script para gerar grids por estado — seed_brazil_grid.js ja cobre seed de GeoJSON externo; gerador geometrico via QGIS
+    status: done
   - id: perf-data-layer
     content: Migrar grid de google.maps.Polygon para google.maps.Data Layer (10x mais rapido)
-    status: pending
+    status: done
   - id: perf-state-loading
     content: Carregamento de grid por estado (GET /api/grid?state=UF), limpeza ao trocar estado
-    status: pending
+    status: done
   - id: perf-state-outlines
-    content: Camada de contornos estaduais (27 poligonos IBGE) para zoom Brasil
-    status: pending
+    content: Camada de contornos estaduais (brazil-states.geojson + google.maps.Data) com destaque do estado selecionado
+    status: done
   - id: perf-client-cache
-    content: Cache de grid no sessionStorage para evitar re-download ao voltar para um estado
-    status: pending
+    content: Cache de grid em memoria (gridCache) para evitar re-download ao voltar para um estado
+    status: done
   - id: perf-compression
     content: Verificar e garantir compressao gzip ativa no servidor
-    status: pending
+    status: done
   - id: i18n-update
-    content: Atualizar strings i18n para escopo nacional
+    content: Atualizar strings i18n para escopo nacional — adiar para alinhar com landing Brasil
     status: pending
 isProject: false
 ---
@@ -77,9 +74,10 @@ isProject: false
 
 **Como usar:** ao terminar uma sessao (ou parte dela), atualize a linha correspondente na tabela abaixo e a data em **Ultima revisao**. Valores sugeridos: `Feito` | `Parcial` | `Pendente`.
 
-**Ultima revisao:** 2026-04-08 (Sessao 5 concluida e documentada)
+**Ultima revisao:** 2026-04-13 (Revisao completa da Fase 2 — muitos itens ja implementados fora do plano)
 
-**Fase 1 — Sessoes 1 a 3:** concluidas (ver notas por sessao abaixo).
+**Fase 1 — Sessoes 1 a 5:** concluidas (ver notas por sessao abaixo).
+**Fase 2 — Sessoes 6 a 12:** revisadas. Sessoes 7 e grande parte da 6 e 11 ja foram feitas. Sessoes 8-9 (tags/pontos collab) e 10/12 (landing/i18n Brasil) adiaveis.
 
 ### Fase 1 — Fundacao
 
@@ -95,13 +93,13 @@ isProject: false
 
 | Sessao | Status | Notas |
 |--------|--------|--------|
-| **6** — DB `states`, tags, APIs | **Pendente** | |
-| **7** — Contornos UF + seletor no mapa | **Pendente** | |
-| **8** — API pontos/tags/stats (backend) | **Pendente** | |
-| **9** — UI pontos + tags | **Pendente** | |
-| **10** — Landing + SEO Brasil | **Pendente** | (Landing atual ja e rica; alinhar ao escopo desta sessao quando chegar a hora.) |
-| **11** — Script geracao de grids | **Pendente** | |
-| **12** — i18n nacional | **Pendente** | |
+| **6** — DB `states`, tags, APIs | **Feito (parcial)** | Tabela `states` descartada — `grid_cell_states` (junction) + `UF_META` no cliente substitui. `GET /api/states` implementado (contagens). `seed_brazil_grid.js` insere celulas e preenche junction. `added_by`/`added_by_role` em `occurrence_points` implementado (2026-04-13): colunas, INSERT em `POST /api/points` e import, exposto em `GET /api/points` e socket. **Pendente e adiavel:** `point_tags`/`point_tag_assignments`, `GET /api/states/:uf/stats`. |
+| **7** — Contornos UF + seletor no mapa | **Feito** | Supera o plano original: `brazil-states.geojson` presente; `_loadStateOutlines()` + `_applyStateOutlineFilter()` em `map.js`; state picker modal com busca, geolocalizacao, "Brasil inteiro", cards com contagem, chip no topbar, `localStorage`; `loadStateGrid(uf)` com cache; restricao de pan por estado; filtragem de pontos e mascaras por estado (2026-04-13). |
+| **8** — API pontos/tags/stats (backend) | **Adiado** | `POST /api/points` existe (restrito a team). Abrir para colaboradores depende de decisao de produto. Tags CRUD e `landing-stats` per-state sem demanda imediata. Implementar quando necessario. |
+| **9** — UI pontos + tags | **Adiado** | Acoplado a Sessao 8. UI de pontos ja existe para team/admin. Ajuste minimo ao abrir para colaboradores. Tags visuais adiaveis. |
+| **10** — Landing + SEO Brasil | **Adiado** | Landing ainda centrada em SP. Mudar para "Brasil" so faz sentido com grid real de 2-3+ estados. Sessao simples quando chegar a hora (copy + meta tags). |
+| **11** — Script geracao de grids | **Feito (parcial)** | `scripts/seed_brazil_grid.js` insere celulas a partir de GeoJSON nacional pre-gerado e preenche `grid_cell_states`. `delete_grid_cells_from_geojson.js` para remocao. Gerador geometrico (criar celulas do zero a partir de limites IBGE) feito via QGIS/Python no workflow GIS — nao precisa de script Node. |
+| **12** — i18n nacional | **Adiado** | Strings de funcionalidades novas (Street View, layers, dedup, etc.) ja estao no i18n.js. State picker usa strings hardcoded em PT no HTML. Alinhar com Sessao 10 quando expandir para Brasil. |
 
 ---
 
@@ -110,28 +108,29 @@ isProject: false
 ```mermaid
 flowchart TB
     subgraph landing [Landing Page]
-        Hero["Brasil inteiro\n SP como piloto"]
-        Stats["Stats nacionais\n + por estado"]
+        Hero["SP como piloto\n expandir para Brasil quando multi-estado"]
+        Stats["Stats globais\n per-state adiavel"]
     end
 
-    subgraph mapView [Mapa Principal]
-        BrazilMap["Mapa do Brasil\n com estados clicaveis"]
-        StateSelector["Seletor de Estado\n dropdown/sidebar"]
-        GridView["Grid do estado\n selecionado"]
+    subgraph mapView [Mapa Principal - FEITO]
+        BrazilOutlines["Contornos estaduais\n brazil-states.geojson"]
+        StatePicker["State Picker Modal\n busca, geolocalizacao, cards, chip"]
+        GridView["Grid filtrado por estado\n Data Layer + cache"]
     end
 
-    subgraph backend [Backend]
-        StatesTable["states\n UF, nome, status, priority"]
-        GridCells["grid_cells\n + coluna 'state'"]
-        Points["occurrence_points\n + added_by, added_by_role"]
-        PointTags["point_tags\n sistema flexivel"]
+    subgraph backend [Backend - FEITO]
+        GridCellStates["grid_cell_states\n junction: grid_cell_id, state"]
+        GridCells["grid_cells\n + grid_id hierarquico"]
+        Points["occurrence_points\n added_by/tags pendentes"]
+        UfMeta["UF_META no cliente\n 27 UFs com nome e regiao"]
     end
 
-    BrazilMap --> StateSelector
-    StateSelector --> GridView
+    BrazilOutlines --> StatePicker
+    StatePicker --> GridView
     GridView --> GridCells
+    GridCells --> GridCellStates
     GridView --> Points
-    Points --> PointTags
+    StatePicker --> UfMeta
 ```
 
 
@@ -295,20 +294,31 @@ CREATE TABLE IF NOT EXISTS message_reads (
 
 ## Parte 1: Mudancas no banco de dados ([db.js](c:\Users\mathe\OneDrive\Documents\leucaena-earth-platform\db.js))
 
-### 1.1 Nova tabela `states`
+### 1.1 Estados (UF) — decisao de projeto (nao usar tabela `states`)
+
+**Nao implementar** a tabela `states` nem seed SQL dos 27 UFs nesse formato.
+
+**Modelo adoptado:** (1) **`grid_cell_states`** em `db.js` — cada linha liga uma celula do grid a uma UF; contagens e filtro `GET /api/grid?state=` vêm daqui; células de fronteira têm várias linhas. (2) **`UF_META`** em `public/js/app.js` — nome completo e região dos 27 estados + DF para o seletor no mapa (metadado só no cliente). (3) **`GET /api/states`** em `server.js` — lista UFs que têm pelo menos uma linha em `grid_cell_states`, com `cell_count` (não devolve centro/zoom/status por UF como o plano original descrevia).
+
+Reintroduzir uma tabela `states` no servidor só faria sentido se precisasses de campos por UF na base (ex.: `coming_soon`, `priority`, centro oficial vindo só do BD).
+
+<details>
+<summary>Referencia historica — SQL originalmente previsto (nao aplicar)</summary>
 
 ```sql
 CREATE TABLE IF NOT EXISTS states (
-  uf TEXT PRIMARY KEY,        -- 'SP', 'MS', 'MG', etc.
-  name TEXT NOT NULL,         -- 'São Paulo', 'Mato Grosso do Sul'
-  status TEXT DEFAULT 'available', -- 'active', 'available', 'coming_soon'
-  priority INTEGER DEFAULT 0, -- SP = 100 (topo), outros = 0
+  uf TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  status TEXT DEFAULT 'available',
+  priority INTEGER DEFAULT 0,
   grid_generated INTEGER DEFAULT 0,
   center_lat REAL,
   center_lng REAL,
   zoom_level INTEGER DEFAULT 7
 );
 ```
+
+</details>
 
 ### 1.2 Nova tabela `point_tags` (sistema flexivel)
 
@@ -346,9 +356,9 @@ CREATE TABLE IF NOT EXISTS point_tag_assignments (
 
 Inserir na inicializacao: `aglomerado`, `arvore_isolada`, `zona_misturada` com `is_default = 1`
 
-### 1.6 Seed dos estados
+### 1.6 Seed dos estados no SQLite (obsoleto — nao fazer)
 
-Inserir os 26 estados + DF com coordenadas centrais e zoom. SP com `status = 'active'` e `priority = 100`.
+O plano original pedia **INSERT** dos 26 estados + DF na tabela `states`. Isso **nao se aplica**: não há tabela `states`. Metadado de UF para a UI está em **`UF_META`**; dados de cobertura vêm de **`grid_cell_states`** (preenchido com o grid existente, `seed.js`, `seed_brazil_grid.js`, migracoes).
 
 ---
 
@@ -356,8 +366,8 @@ Inserir os 26 estados + DF com coordenadas centrais e zoom. SP com `status = 'ac
 
 ### 2.1 Estados
 
-- `GET /api/states` — lista todos os estados (publico), retorna UF, nome, status, centro, zoom, contagem de grids/pontos
-- `GET /api/states/:uf/stats` — stats detalhados de um estado
+- **`GET /api/states` (implementado)** — resposta publica: por UF que existe em `grid_cell_states`, campos `state` + `cell_count` (agregado `GROUP BY state`). Nomes de estado/região vêm do cliente (`UF_META`), não deste endpoint.
+- **`GET /api/states/:uf/stats` (adiavel)** — stats detalhados por UF; ainda nao implementado; usar quando landing ou outra UI precisar.
 
 ### 2.2 Grid filtrado por estado
 
@@ -552,7 +562,7 @@ Teste ao final de cada sessao. Faca commit. So siga para a proxima depois de tes
 ### Ordem estrategica: Fase 1 antes da expansao Brasil
 
 - **Fase 1 — Fundacao**: login/senhas primeiro; em seguida **DB minimo + mapa leve** (grid filtrado e Data Layer); **Inbox** depois disso (usa Resend ja configurado na Sessao 1). Tudo testado **so com SP** ate validar. Nada de contornos do Brasil inteiro, landing “Brasil”, nem gerador de grid para outros estados ate abrir a Fase 2.
-- **Fase 2 — Expansao Brasil**: tabela `states`, 27 UFs, mapa Brasil, landing nacional, script de grids por estado, i18n nacional, APIs e UI de colaboracao em escala nacional.
+- **Fase 2 — Expansao Brasil**: mapa Brasil (feito), seletor de estado (feito), contornos UF (feito), seed script (feito), filtragem de mascaras/pontos por estado (feito). **Adiado:** landing nacional, i18n nacional, tags de pontos, pontos para colaboradores — implementar quando houver multi-estado real ou decisao de produto.
 
 Voce pode **pausar entre as fases** em producao: deploy da Fase 1 sem prometer “Brasil inteiro” na landing ate iniciar a Fase 2.
 
@@ -584,7 +594,7 @@ Voce pode **pausar entre as fases** em producao: deploy da Fase 1 sem prometer �
 **Modelo**: Fast
 **Partes do plano**: preparacao para Parte 3 (sem tabela `states` ainda)
 **Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente **apenas** a migration minima para filtro de grid por UF: em `db.js`, adicione coluna `state` (TEXT) em `grid_cells`, indice em `state`, e `UPDATE grid_cells SET state = 'SP'` onde aplicavel. Em `server.js`, `GET /api/grid` aceite query opcional `?state=UF`: se omitido, retorne todas as celulas (comportamento atual); se `state=SP`, filtre por `state`. **Nao** crie ainda a tabela `states`, nem seed dos 27 UFs, nem `point_tags` (isso e Fase 2, Sessao 6).
+> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente **apenas** a migration minima para filtro de grid por UF: em `db.js`, adicione coluna `state` (TEXT) em `grid_cells`, indice em `state`, e `UPDATE grid_cells SET state = 'SP'` onde aplicavel. Em `server.js`, `GET /api/grid` aceite query opcional `?state=UF`: se omitido, retorne todas as celulas (comportamento atual); se `state=SP`, filtre por `state`. **Nao** crie a tabela `states` nem seed SQL dos UFs nessa tabela (ver Parte 1.1); nem `point_tags` (isso e Fase 2, Sessao 6).
 
 **Testar**: sem `?state=` o JSON e igual ao de antes; com `?state=SP` retorna o mesmo conjunto; com `?state=MS` retorna vazio ate existir grid MS.
 
@@ -617,72 +627,138 @@ Voce pode **pausar entre as fases** em producao: deploy da Fase 1 sem prometer �
 ### Fase 2 — Expansao Brasil (apos validar Fase 1)
 
 #### Sessao 6 — DB: tabelas `states`, tags, migracoes + API basica `GET /api/states`
+**Status**: **Feito (parcial)** — revisado 2026-04-13
 **Modelo**: Fast
-**Partes do plano**: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6 + leitura publica dos estados
-**Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente a Parte 1 completa (DB). Crie as tabelas `states`, `point_tags`, `point_tag_assignments` em `db.js`. Adicione colunas `added_by`/`added_by_role` em `occurrence_points` se ainda nao existirem. Faca seed dos 27 estados brasileiros com coordenadas centrais e zoom. Faca seed das 3 tags padrao (aglomerado, arvore_isolada, zona_misturada). Garanta que `grid_cells.state` ja exista (Sessao 3); se necessario reaplique indice. `UPDATE` linhas sem `state` para `'SP'`. Em `server.js`, adicione **GET /api/states** (lista UFs para o dropdown) e **GET /api/states/:uf/stats** (contagens basicas se ja forem faceis de calcular a partir do banco atual).
+**Partes do plano**: ~~1.1 e 1.6 (tabela `states` + seed SQL)~~ obsoletos — ver Parte 1 atualizada. Restante: 1.2, 1.3, 1.4, 1.5 + `GET /api/states` (feito sem tabela `states`).
 
-**Testar**: `SELECT * FROM states` retorna 27 registros; tags padrao presentes; `GET /api/states` retorna JSON valido.
+**O que foi implementado (fora desta sessao):**
+- Tabela `states` **descartada** — `grid_cell_states` (junction table com PK `grid_cell_id, state`) substitui a relacao celula-estado com suporte a multi-estado (celulas de fronteira).
+- `UF_META` em `app.js` contem os 27 UFs com nome e regiao (lado do cliente).
+- `GET /api/states` implementado — agrega contagens de `grid_cell_states` por UF.
+- `seed_brazil_grid.js` insere novas celulas e preenche `grid_cell_states`.
+
+**Implementado (2026-04-13):**
+- Colunas `added_by TEXT` e `added_by_role TEXT` em `occurrence_points` (migracao idempotente em `db.js`).
+- `POST /api/points` grava `added_by` (username) e `added_by_role` (via `getEffectiveRole`).
+- `POST /api/admin/points/import` grava `added_by` (username) e `added_by_role` (`superadmin`).
+- `GET /api/points` expoe `added_by` e `added_by_role` nas properties de cada feature.
+- Socket event `point:created` inclui `added_by` e `added_by_role`.
+
+**O que ficou pendente (adiavel):**
+- Tabelas `point_tags` e `point_tag_assignments` — implementar quando houver demanda real de classificacao de pontos.
+- `GET /api/states/:uf/stats` — sem UI que consuma; implementar quando necessario.
 
 ---
 
 #### Sessao 7 — Contornos estaduais + seletor de estado no mapa
+**Status**: **Feito** — superou o plano original
 **Modelo**: Opus
 **Partes do plano**: 3.4, 4.1, 4.2
-**Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente as Partes 3.4 e 4.1/4.2. Adicione `public/data/brazil-states.geojson` (contornos simplificados IBGE). Camada de estados no map.js com `google.maps.Data`. Dropdown de estado. Ao selecionar estado: zoom, carregar `GET /api/grid?state=UF`, alternar camada de estados. Mapa pode iniciar no Brasil (center -14.2, -51.9, zoom 4). SP como "Area Prioritaria". Use `GET /api/states` (ja criado na Sessao 6).
 
-**Testar**: Brasil visivel, estados clicaveis, SP carrega grade.
+**O que foi implementado (fora desta sessao):**
+- `public/data/brazil-states.geojson` presente (contornos IBGE).
+- `_loadStateOutlines()` em `map.js` — `google.maps.Data` layer com contornos estaduais.
+- `_applyStateOutlineFilter()` — destaca o estado selecionado, esmaece os demais.
+- State picker modal em `app.js`/`index.html` — busca por nome, geolocalizacao automatica, opcao "Brasil inteiro", grid de cards com contagem de celulas por UF, chip no topbar, persistencia em `localStorage`.
+- `loadStateGrid(uf)` — limpa grid anterior, carrega por estado via `GET /api/grid?state=UF`, ajusta bounds e restricao de pan.
+- Filtragem de mascaras por `grid_cell_id` das celulas carregadas (2026-04-13).
+- Filtragem de pontos por bounds das celulas carregadas (2026-04-13).
+- Cache em memoria (`gridCache`) por estado.
+
+**Nada pendente nesta sessao.**
 
 ---
 
 #### Sessao 8 — API: completar stats + pontos colaboradores + tags + landing-stats (somente backend)
+**Status**: **Adiado** — sem demanda imediata; implementar quando necessario
 **Modelo**: Fast
 **Partes do plano**: 2.1, 2.2, 2.3, 2.4, 2.5
-**Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente **apenas o backend** das Partes 2 (sem UI nova de mapa alem do que a Sessao 7 ja fez). **GET /api/states** e **GET /api/states/:uf/stats** ja existem da Sessao 6 — complete ou refine GET /api/states/:uf/stats se necessario. GET /api/grid?state= ja existe desde a Sessao 3 — alinhar com schema. Abra POST /api/points para colaboradores com added_by/added_by_role. CRUD /api/point-tags e atribuicao em /api/points/:id/tags. Atualize GET /api/landing-stats com contagem por estado. Nao implemente a UI de adicionar ponto com tags (Sessao 9).
 
-**Testar**: curl/Postman nos endpoints.
+**Estado atual:**
+- `GET /api/states` ja existe (contagens de `grid_cell_states`).
+- `GET /api/grid?state=UF` ja existe (junction table, validacao 2 letras).
+- `POST /api/points` existe mas restrito a `isTeamOrAbove`.
+- `GET /api/landing-stats` existe com totais globais (sem per-state).
+
+**O que falta (adiavel):**
+- Abrir `POST /api/points` para colaboradores + `added_by`/`added_by_role` — decisao de produto pendente.
+- CRUD `/api/point-tags` e atribuicao — sem demanda.
+- `GET /api/states/:uf/stats` — sem UI que consuma.
+- `GET /api/landing-stats` per-state — landing ainda e SP.
+
+**Quando implementar:** ao decidir abrir pontos para colaboradores ou ao expandir a landing para escopo Brasil.
 
 ---
 
 #### Sessao 9 — UI: pontos para colaboradores + seletor de tags
+**Status**: **Adiado** — acoplado a Sessao 8
 **Modelo**: Opus
 **Partes do plano**: 4.3
-**Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente a Parte 4.3 (frontend). Backend da Sessao 8 pronto. Habilite adicionar ponto para contributors com seletor de tags e indicadores team vs colaborador se aplicavel.
 
-**Testar**: fluxo ponta a ponta no mapa.
+**Estado atual:**
+- UI de adicionar ponto existe para team/admin (botao, marcador, confirmacao).
+- Indicadores visuais por layer/source (crowdmapping, iNaturalist, GBIF, etc.) ja implementados — diferente do conceito de tags do plano.
+
+**O que falta (adiavel):**
+- Remover restricao no botao de adicionar ponto para contributors (ajuste minimo).
+- Seletor de tags ao adicionar ponto — depende de `point_tags` no banco.
+- Indicador visual team vs contributor — depende de `added_by_role` nos pontos.
+
+**Quando implementar:** apos decisao da Sessao 8.
 
 ---
 
 #### Sessao 10 — Landing page + SEO (mensagem Brasil)
+**Status**: **Adiado** — landing so deve mudar para "Brasil" com multi-estado real
 **Modelo**: Fast
 **Partes do plano**: 5
-**Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente a Parte 5 (Landing page): hero Brasil, piloto SP, SEO/meta, structured data BR, stats nacionais.
 
-**Testar**: landing e SEO conferidos no navegador.
+**Estado atual:**
+- Landing page centrada em SP (hero, OG tags, schema.org, FAQ).
+- FAQ ja menciona presenca no Brasil, mas narrativa principal e SP.
+
+**O que falta (adiavel):**
+- Hero "Brasil" em vez de "SP", subtitulo "Piloto em SP".
+- SEO/meta para Brasil, structured data `addressRegion: "BR"`.
+- Stats nacionais + "X estados participando".
+
+**Quando implementar:** quando houver grid real de pelo menos 2-3 estados. Sessao simples (copy + meta tags + stats).
 
 ---
 
 #### Sessao 11 — Script de geracao de grids por estado
+**Status**: **Feito (parcial)** — seed script funcional; geracao geometrica via QGIS
 **Modelo**: Opus
 **Partes do plano**: 7
-**Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente a Parte 7 (Grid generator) com parametros --state, --all, --cell-size; nao regenerar SP existente.
 
-**Testar**: gerar grid MS, ver no mapa.
+**O que foi implementado:**
+- `scripts/seed_brazil_grid.js` — insere celulas de um GeoJSON nacional e preenche `grid_cell_states`. Suporta `--dry-run`, detecta celulas novas (`grid_id = NULL`), constroi `grid_id` hierarquico.
+- `scripts/delete_grid_cells_from_geojson.js` — remove celulas a partir de GeoJSON (util para limpeza).
+- `scripts/data/grid_id_mapping.json` e `sp_multi_state_map.json` — dados auxiliares para migracoes.
+
+**O que nao foi feito (e provavelmente nao precisa):**
+- Gerador geometrico Node.js (`--state`, `--all`, `--cell-size`) — a geracao de celulas a partir dos limites IBGE e feita no QGIS/Python como parte do workflow GIS do doutorado, exportando GeoJSON que o seed script consome. Criar um gerador Node duplicaria esforco.
+
+**Nada pendente se o workflow QGIS + seed_brazil_grid.js for mantido.**
 
 ---
 
 #### Sessao 12 — i18n: strings nacionais
+**Status**: **Adiado** — alinhar com Sessao 10 (landing Brasil)
 **Modelo**: Fast
 **Partes do plano**: 6
-**Prompt sugerido**:
-> Siga o plano em `plans/brazil_expansion_platform.plan.md`, implemente a Parte 6 (i18n): escopo nacional + strings novas (estado, tags, inbox, auth) em pt/en/es.
 
-**Testar**: troca de idioma.
+**Estado atual:**
+- Strings de funcionalidades novas (Street View, layers, dedup, batch admin, etc.) ja estao no `i18n.js` em pt/en/es.
+- State picker modal usa strings **hardcoded em portugues** no HTML (nao no i18n.js).
+- Ainda ha referencias a SP em contexto de documentacao/FAQ.
+
+**O que falta (adiavel):**
+- Mover strings do state picker para `i18n.js` (busca, "Brasil inteiro", chip, etc.).
+- Ajustar referencias SP-centradas para escopo nacional.
+- Adicionar strings para tags de pontos (se implementado).
+
+**Quando implementar:** junto com a Sessao 10, quando expandir a landing para Brasil.
 
 ---
 
@@ -710,29 +786,32 @@ Voce pode **pausar entre as fases** em producao: deploy da Fase 1 sem prometer �
 
 **Fase 2 — Expansao Brasil**
 
-| Sessao | Conteudo | Modelo |
-|--------|----------|--------|
-| 6 | DB completo + `GET /api/states` (+ stats UF se possivel) | **Fast** |
-| 7 | Contornos + seletor de estado no mapa | **Opus** |
-| 8 | API: pontos colaboradores + tags + landing-stats (backend) | **Fast** |
-| 9 | UI pontos colaboradores + tags | **Opus** |
-| 10 | Landing + SEO Brasil | **Fast** |
-| 11 | Script geracao de grids | **Opus** |
-| 12 | i18n nacional | **Fast** |
+| Sessao | Conteudo | Status | Modelo |
+|--------|----------|--------|--------|
+| 6 | DB completo + `GET /api/states` | **Feito (parcial)** | Fast |
+| 7 | Contornos + seletor de estado no mapa | **Feito** | Opus |
+| 8 | API: pontos colaboradores + tags + landing-stats (backend) | **Adiado** | Fast |
+| 9 | UI pontos colaboradores + tags | **Adiado** | Opus |
+| 10 | Landing + SEO Brasil | **Adiado** | Fast |
+| 11 | Script geracao de grids | **Feito (parcial)** | Opus |
+| 12 | i18n nacional | **Adiado** | Fast |
 
 | (fora do plano) | Debug, fixes, hotfixes | **Misto** — Opus se o bug for complexo, Fast se for ajuste pequeno |
 
-### Estimativa de custo e tempo
+### Estimativa de custo e tempo (revisada 2026-04-13)
 
-| | Interacoes | Modelo | Tempo estimado |
-|---|---|---|---|
-| Tarefas Opus | ~70-110 | Premium | ~15-25h |
-| Tarefas Fast | ~40-70 | Rapido (barato) | ~5-10h |
-| **Total** | **~110-180** | | **~20-35h** |
+**Ja concluido:** Fase 1 completa (Sessoes 1-5) + grande parte da Fase 2 (Sessoes 6, 7, 11).
 
-- **Cursor Pro ($20/mes)**: 1-2 meses de uso focado
-- **Calendario**: 2-4 semanas fazendo algumas horas por dia
-- **Cada sessao**: focar em 1 Parte, testar, commit, seguir para a proxima
+**Pendente (adiavel):**
+
+| Sessao | Esforco estimado | Gatilho |
+|--------|-----------------|---------|
+| 8+9 (pontos collab + tags) | ~3-5h | Decisao de abrir pontos para colaboradores |
+| 10 (landing Brasil) | ~2-3h | Grid real de 2-3+ estados |
+| 12 (i18n nacional) | ~2-3h | Junto com Sessao 10 |
+
+- **Total pendente**: ~7-11h (vs ~20-35h estimadas originalmente)
+- Muitas funcionalidades **fora do plano** ja foram implementadas (Street View, clustering, dedup, export, collaboration, area labels, etc.)
 
 ### Checklist pre-sessao
 
@@ -746,8 +825,9 @@ Antes de cada sessao de implementacao:
 
 ## Notas importantes
 
-- **Backward-compatible**: grids existentes de SP continuam funcionando; a coluna `state` e preenchida via migracao (`UPDATE grid_cells SET state = 'SP'`)
-- **Performance**: com grids de multiplos estados, o filtro por `state` e essencial para nao carregar milhares de celulas. Adicionar indice em `grid_cells.state`
+- **Backward-compatible**: grids existentes de SP continuam funcionando; `grid_cell_states` junction table suporta multi-estado (celulas de fronteira SP/MG, SP/PR, etc.)
+- **Performance ja implementada**: Data Layer, cache em memoria, gzip, carregamento por estado, filtragem de mascaras/pontos por celulas do estado
 - **Render**: nenhuma mudanca na infra de deploy; tudo continua no mesmo banco SQLite com persistent disk
 - **Escala**: 27 UFs com grid similar ao de SP pode gerar ~50k-100k celulas totais; SQLite aguenta bem com indices
+- **Funcionalidades fora do plano**: Socket.IO (colaboracao em tempo real), Street View, MarkerClusterer + spiderfy, export (GeoJSON/grid-status/points), dedup de pontos, area labels, point layers multi-source (iNaturalist/GBIF/SpeciesLink/InstHorus), tester mode, ranking, analytics, backup/restore, password reset, batch admin — tudo ja implementado e funcional
 

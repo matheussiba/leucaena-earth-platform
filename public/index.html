@@ -671,6 +671,11 @@
           <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="app-logo">
           <span class="app-title">leucaena.earth</span>
         </a>
+        <button class="state-chip" id="state-chip" title="Trocar estado">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span id="state-chip-label">--</span>
+          <svg class="state-chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
         <button class="guide-start-btn" id="guide-btn" title="Comece por aqui">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <span data-i18n="app.startHere">Comece por aqui</span>
@@ -769,6 +774,36 @@
         </span>
       </div>
       <button type="button" id="expansion-strip-close" class="expansion-dismiss">&times;</button>
+    </div>
+
+    <!-- State Picker Modal -->
+    <div id="state-picker-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Escolha um estado">
+      <div class="state-picker-card">
+        <div class="state-picker-header">
+          <svg class="state-picker-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <h2 class="state-picker-title">Escolha um estado</h2>
+        </div>
+        <div class="state-picker-search-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="state-picker-search" class="state-picker-search" placeholder="Buscar estado..." autocomplete="off">
+        </div>
+        <div id="state-picker-brazil-wrap" class="state-picker-brazil-wrap">
+          <button type="button" id="state-picker-brazil-btn" class="state-picker-brazil-btn">
+            <span class="state-picker-brazil-flag" aria-hidden="true">&#x1F1E7;&#x1F1F7;</span>
+            <span class="state-picker-brazil-text">
+              <span class="state-picker-brazil-title">Brasil inteiro</span>
+              <span class="state-picker-brazil-sub" id="state-picker-brazil-sub">Carregar todas as células</span>
+            </span>
+          </button>
+        </div>
+        <div id="state-picker-grid" class="state-picker-grid"></div>
+        <div class="state-picker-footer">
+          <button type="button" class="btn state-picker-geo-btn" id="state-picker-geo-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="9"/></svg>
+            Usar minha localização
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Banner do Modo de Inserção de Pontos -->

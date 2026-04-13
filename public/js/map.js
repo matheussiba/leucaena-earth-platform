@@ -6,6 +6,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   const gridCellBounds = {};
   const gridCache = {};         // client-side cache: state key → FeatureCollection
   let _currentState = null;     // loaded state UF (null = all)
+  let _statesLayer = null;      // google.maps.Data — state boundary outlines (non-interactive)
+  let _statesGeoJson = null;    // cached FeatureCollection for state boundaries
   let _gridClickable = true;
   let _gridsHollow = false;
   const pointMarkersById = {};
@@ -46,10 +48,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let initialZoom = null;
   let initialCenter = null;
 
-  function init() {
+  function init(initialState) {
+    if (initialState) _currentState = initialState;
     map = new google.maps.Map(document.getElementById('map'), {
-      center: { lat: -22.5, lng: -48.5 },
-      zoom: 7,
+      center: { lat: -14.2, lng: -51.9 },
+      zoom: 4,
       mapTypeId: 'hybrid',
       mapTypeControl: false,
       zoomControl: false,
@@ -215,6 +218,57 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     loadGrid();
     loadPoints();
     setupFilters();
+    _loadStateOutlines();
+  }
+
+  async function _loadStateOutlines() {
+    if (!map) return;
+    try {
+      if (!_statesGeoJson) {
+        var res = await fetch('/data/brazil-states.geojson');
+        _statesGeoJson = await res.json();
+      }
+      _statesLayer = new google.maps.Data({ map: map });
+      _statesLayer.addGeoJson(_statesGeoJson);
+      _statesLayer.setStyle({
+        fillOpacity: 0,
+        strokeColor: '#94a3b8',
+        strokeWeight: 1.2,
+        strokeOpacity: 0.6,
+        clickable: false,
+        zIndex: 0
+      });
+      _applyStateOutlineFilter(_currentState);
+    } catch (e) { /* non-critical */ }
+  }
+
+  function _applyStateOutlineFilter(uf) {
+    if (!_statesLayer) return;
+    if (!uf) {
+      _statesLayer.setStyle({
+        fillOpacity: 0,
+        strokeColor: '#94a3b8',
+        strokeWeight: 1.2,
+        strokeOpacity: 0.6,
+        clickable: false,
+        zIndex: 0
+      });
+      return;
+    }
+    _statesLayer.setStyle(function (feature) {
+      var fUf = feature.getProperty('abbrev_state');
+      if (fUf === uf) {
+        return {
+          fillOpacity: 0,
+          strokeColor: '#f1f5f9',
+          strokeWeight: 2,
+          strokeOpacity: 0.8,
+          clickable: false,
+          zIndex: 0
+        };
+      }
+      return { visible: false };
+    });
   }
 
   let isSatellite = true;
@@ -499,6 +553,9 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
     map.fitBounds(gridBounds);
     updateFilterCounts();
+    _applyStateOutlineFilter(_currentState);
+    refreshPointVisibility();
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
   }
 
   function getStyleForCell(props, cellId) {
@@ -1464,14 +1521,24 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return showPoints && visiblePointLayers.has(key);
   }
 
-  function refreshPointVisibility() { // layer toggles + viewport: clusterer add/remove (or direct setMap fallback)
+  function isPointInLoadedGrid(position) {
+    if (!gridBounds || !gridBounds.contains(position)) return false;
+    for (const b of Object.values(gridCellBounds)) {
+      if (b.contains(position)) return true;
+    }
+    return false;
+  }
+
+  function refreshPointVisibility() { // layer toggles + viewport + state: clusterer add/remove (or direct setMap fallback)
     const viewport = map ? map.getBounds() : null;
+    const stateFilter = !!_currentState;
     ensureClusterer();
     if (!pointClusterer) {
       for (const entry of Object.values(pointMarkersById)) {
         const layer = entry.data.layer || 'crowdmapping';
         const inView = !viewport || viewport.contains(entry.marker.getPosition());
-        entry.marker.setMap(isPointLayerVisible(layer) && inView ? map : null);
+        const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
+        entry.marker.setMap(isPointLayerVisible(layer) && inView && inState ? map : null);
       }
       return;
     }
@@ -1480,7 +1547,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     for (const entry of Object.values(pointMarkersById)) {
       const layer = entry.data.layer || 'crowdmapping';
       const inView = !viewport || viewport.contains(entry.marker.getPosition());
-      if (isPointLayerVisible(layer) && inView) {
+      const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
+      if (isPointLayerVisible(layer) && inView && inState) {
         toAdd.push(entry.marker);
       } else {
         toRemove.push(entry.marker);
@@ -1584,6 +1652,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     releasePanRestriction,
     updatePointAppearance,
     getGridData,
+    getCurrentState: function () { return _currentState; },
     setSelectedCell,
     setFeaturesClickable,
     setGridsHollow,

@@ -530,6 +530,7 @@ window.LeucenaApp = (function () {
     setupMigrationBanner();
     setupVerificationBanner();
     setupExpansionBanner();
+    setupStatePicker();
     tryRestoreSession().finally(() => { maybeOpenAuthFromHash(); });
     loadRankingWidget();
 
@@ -565,6 +566,7 @@ window.LeucenaApp = (function () {
         ['dedup-modal', () => { document.getElementById('dedup-modal').classList.add('hidden'); }],
         ['ranking-modal', closeRankingModal],
         ['celebration-modal', closeCelebration],
+        ['state-picker-modal', closeStatePicker],
       ];
       for (const [id, closeFn] of modalCloseMap) {
         const el = document.getElementById(id);
@@ -1088,14 +1090,14 @@ window.LeucenaApp = (function () {
       const passConfirm = document.getElementById('auth-password-confirm').value;
       if (!fullName.trim()) {
         errorEl.textContent = LeucenaI18n.t('auth.fullNameRequired');
-        errorEl.classList.remove('hidden');
-        return;
-      }
+      errorEl.classList.remove('hidden');
+      return;
+    }
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         errorEl.textContent = LeucenaI18n.t('auth.emailInvalid');
-        errorEl.classList.remove('hidden');
-        return;
-      }
+      errorEl.classList.remove('hidden');
+      return;
+    }
       if (_emailCheckBlocked) {
         errorEl.textContent = LeucenaI18n.t('auth.emailAlreadyInUse');
         errorEl.classList.remove('hidden');
@@ -1142,8 +1144,8 @@ window.LeucenaApp = (function () {
               ufb.textContent = '';
             }
           } else {
-            errorEl.textContent = data.error;
-            errorEl.classList.remove('hidden');
+        errorEl.textContent = data.error;
+        errorEl.classList.remove('hidden');
           }
         } else {
           errorEl.textContent = data.error;
@@ -1588,6 +1590,351 @@ window.LeucenaApp = (function () {
       strip.classList.add('hidden');
       if (_expInterval) clearInterval(_expInterval);
     });
+  }
+
+  // ── State Picker ──
+
+  var UF_META = {
+    AC: { name: 'Acre', region: 'Norte' },
+    AM: { name: 'Amazonas', region: 'Norte' },
+    AP: { name: 'Amapá', region: 'Norte' },
+    PA: { name: 'Pará', region: 'Norte' },
+    RO: { name: 'Rondônia', region: 'Norte' },
+    RR: { name: 'Roraima', region: 'Norte' },
+    TO: { name: 'Tocantins', region: 'Norte' },
+    AL: { name: 'Alagoas', region: 'Nordeste' },
+    BA: { name: 'Bahia', region: 'Nordeste' },
+    CE: { name: 'Ceará', region: 'Nordeste' },
+    MA: { name: 'Maranhão', region: 'Nordeste' },
+    PB: { name: 'Paraíba', region: 'Nordeste' },
+    PE: { name: 'Pernambuco', region: 'Nordeste' },
+    PI: { name: 'Piauí', region: 'Nordeste' },
+    RN: { name: 'Rio Grande do Norte', region: 'Nordeste' },
+    SE: { name: 'Sergipe', region: 'Nordeste' },
+    DF: { name: 'Distrito Federal', region: 'Centro-Oeste' },
+    GO: { name: 'Goiás', region: 'Centro-Oeste' },
+    MS: { name: 'Mato Grosso do Sul', region: 'Centro-Oeste' },
+    MT: { name: 'Mato Grosso', region: 'Centro-Oeste' },
+    ES: { name: 'Espírito Santo', region: 'Sudeste' },
+    MG: { name: 'Minas Gerais', region: 'Sudeste' },
+    RJ: { name: 'Rio de Janeiro', region: 'Sudeste' },
+    SP: { name: 'São Paulo', region: 'Sudeste' },
+    PR: { name: 'Paraná', region: 'Sul' },
+    RS: { name: 'Rio Grande do Sul', region: 'Sul' },
+    SC: { name: 'Santa Catarina', region: 'Sul' }
+  };
+
+  var UF_BOUNDS = {
+    AC: { minLat: -11.15, maxLat: -7.11, minLng: -73.99, maxLng: -66.62 },
+    AL: { minLat: -10.50, maxLat: -8.81, minLng: -37.94, maxLng: -35.15 },
+    AM: { minLat: -9.82, maxLat: 2.25, minLng: -73.79, maxLng: -56.10 },
+    AP: { minLat: -1.24, maxLat: 4.44, minLng: -54.87, maxLng: -49.88 },
+    BA: { minLat: -18.35, maxLat: -8.53, minLng: -46.62, maxLng: -37.34 },
+    CE: { minLat: -7.86, maxLat: -2.78, minLng: -41.42, maxLng: -37.25 },
+    DF: { minLat: -16.05, maxLat: -15.50, minLng: -48.29, maxLng: -47.31 },
+    ES: { minLat: -21.30, maxLat: -17.89, minLng: -41.88, maxLng: -39.64 },
+    GO: { minLat: -19.50, maxLat: -12.39, minLng: -53.25, maxLng: -45.91 },
+    MA: { minLat: -10.26, maxLat: -1.05, minLng: -48.76, maxLng: -41.79 },
+    MG: { minLat: -22.92, maxLat: -14.23, minLng: -51.05, maxLng: -39.86 },
+    MS: { minLat: -24.07, maxLat: -17.17, minLng: -57.65, maxLng: -50.93 },
+    MT: { minLat: -18.04, maxLat: -7.35, minLng: -61.63, maxLng: -50.22 },
+    PA: { minLat: -9.83, maxLat: 2.59, minLng: -58.90, maxLng: -46.06 },
+    PB: { minLat: -8.30, maxLat: -6.02, minLng: -38.77, maxLng: -34.79 },
+    PE: { minLat: -9.48, maxLat: -7.33, minLng: -41.36, maxLng: -34.86 },
+    PI: { minLat: -10.93, maxLat: -2.74, minLng: -45.99, maxLng: -40.37 },
+    PR: { minLat: -26.72, maxLat: -22.52, minLng: -54.62, maxLng: -48.02 },
+    RJ: { minLat: -23.37, maxLat: -20.76, minLng: -44.89, maxLng: -40.96 },
+    RN: { minLat: -6.98, maxLat: -4.83, minLng: -37.26, maxLng: -34.95 },
+    RO: { minLat: -13.69, maxLat: -7.97, minLng: -66.62, maxLng: -59.77 },
+    RR: { minLat: -1.58, maxLat: 5.27, minLng: -64.82, maxLng: -58.88 },
+    RS: { minLat: -33.75, maxLat: -27.08, minLng: -57.64, maxLng: -49.69 },
+    SC: { minLat: -29.39, maxLat: -25.96, minLng: -53.84, maxLng: -48.55 },
+    SE: { minLat: -11.57, maxLat: -9.51, minLng: -38.25, maxLng: -36.39 },
+    SP: { minLat: -25.31, maxLat: -19.78, minLng: -53.11, maxLng: -44.16 },
+    TO: { minLat: -13.47, maxLat: -5.17, minLng: -50.74, maxLng: -45.73 }
+  };
+
+  var REGION_ORDER = ['Sudeste', 'Sul', 'Centro-Oeste', 'Nordeste', 'Norte'];
+
+  /** localStorage value meaning load full national grid (GET /api/grid without state). */
+  var LS_BRAZIL_ALL = 'BR';
+
+  /**
+   * If the page URL has ?state=..., validate it, remove only that param from the address bar
+   * (other query params and the hash are kept), and return the canonical value for storage
+   * (UF code or LS_BRAZIL_ALL). Invalid or empty values return null after stripping.
+   * Examples: ?state=sp → SP, ?state=BR → Brasil inteiro, ?state=brasil → BR.
+   */
+  function _consumeStateQueryParam() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (!params.has('state')) return null;
+      var raw = params.get('state');
+      params.delete('state');
+      var qs = params.toString();
+      var newUrl = window.location.pathname + (qs ? '?' + qs : '') + (window.location.hash || '');
+      window.history.replaceState({}, '', newUrl);
+
+      if (raw == null || String(raw).trim() === '') return null;
+      var u = String(raw).trim().toUpperCase();
+      if (u === 'BR' || u === 'ALL' || u === 'BRASIL' || u === 'BRAZIL') return LS_BRAZIL_ALL;
+      if (!/^[A-Z]{2}$/.test(u)) return null;
+      if (!UF_META[u]) return null;
+      return u;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  var _statePickerReady = false;
+  var _stateCounts = {};
+  var _selectedUF = null;
+  var _pendingMapInit = null;
+
+  function showStatePicker() {
+    var modal = document.getElementById('state-picker-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    var search = document.getElementById('state-picker-search');
+    if (search) { search.value = ''; _filterStateCards(''); search.focus(); }
+    _highlightActiveCard();
+  }
+
+  function _highlightActiveCard() {
+    var grid = document.getElementById('state-picker-grid');
+    if (grid) {
+      grid.querySelectorAll('.state-card').forEach(function (c) {
+        c.classList.toggle('active', c.dataset.uf === _selectedUF);
+      });
+    }
+    var brBtn = document.getElementById('state-picker-brazil-btn');
+    if (brBtn) brBtn.classList.toggle('active', _selectedUF === LS_BRAZIL_ALL);
+  }
+
+  function _brazilSearchMatch(lower) {
+    if (!lower) return true;
+    if (lower === 'br') return true;
+    if (lower.indexOf('brasil') !== -1) return true;
+    if (lower.indexOf('brazil') !== -1) return true;
+    if (lower.indexOf('inteiro') !== -1) return true;
+    if (lower.indexOf('todo') !== -1 && lower.indexOf('pais') !== -1) return true;
+    if (lower.indexOf('todo') !== -1 && lower.indexOf('país') !== -1) return true;
+    if (lower.indexOf('nacional') !== -1) return true;
+    return false;
+  }
+
+  function _filterStateCards(q) {
+    var lower = q.toLowerCase().trim();
+    var brWrap = document.getElementById('state-picker-brazil-wrap');
+    if (brWrap) {
+      brWrap.classList.toggle('hidden-by-filter', !_brazilSearchMatch(lower));
+    }
+    var grid = document.getElementById('state-picker-grid');
+    if (!grid) return;
+    grid.querySelectorAll('.state-card').forEach(function (c) {
+      var uf = c.dataset.uf;
+      var meta = UF_META[uf];
+      var match = !lower || uf.toLowerCase().indexOf(lower) !== -1 ||
+        (meta && meta.name.toLowerCase().indexOf(lower) !== -1);
+      c.classList.toggle('hidden-by-filter', !match);
+    });
+    grid.querySelectorAll('.state-region-header').forEach(function (h) {
+      var group = h.nextElementSibling;
+      if (!group) return;
+      var anyVisible = group.querySelector('.state-card:not(.hidden-by-filter)');
+      h.style.display = anyVisible ? '' : 'none';
+      group.style.display = anyVisible ? '' : 'none';
+    });
+  }
+
+  function selectState(uf) {
+    _selectedUF = uf;
+    localStorage.setItem('leucena_selected_state', uf);
+    var label = document.getElementById('state-chip-label');
+    if (label) label.textContent = uf;
+    closeStatePicker();
+    if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
+      LeucenaMap.loadStateGrid(uf);
+    }
+  }
+
+  function selectAllBrazil() {
+    _selectedUF = LS_BRAZIL_ALL;
+    localStorage.setItem('leucena_selected_state', LS_BRAZIL_ALL);
+    var label = document.getElementById('state-chip-label');
+    if (label) label.textContent = 'Brasil';
+    closeStatePicker();
+    if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
+      LeucenaMap.loadStateGrid(null);
+    }
+  }
+
+  function _geolocateToState() {
+    if (!navigator.geolocation) {
+      showToast('Geolocalização não suportada pelo navegador.', 'warning');
+      return;
+    }
+    var btn = document.getElementById('state-picker-geo-btn');
+    if (btn) btn.classList.add('loading');
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        if (btn) btn.classList.remove('loading');
+        var lat = pos.coords.latitude;
+        var lng = pos.coords.longitude;
+        var bestUf = null;
+        var bestDist = Infinity;
+        for (var uf in UF_BOUNDS) {
+          var b = UF_BOUNDS[uf];
+          if (lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng) {
+            bestUf = uf;
+            break;
+          }
+          var cLat = (b.minLat + b.maxLat) / 2;
+          var cLng = (b.minLng + b.maxLng) / 2;
+          var d = (lat - cLat) * (lat - cLat) + (lng - cLng) * (lng - cLng);
+          if (d < bestDist) { bestDist = d; bestUf = uf; }
+        }
+        if (bestUf) {
+          selectState(bestUf);
+          showToast('Estado detectado: ' + (UF_META[bestUf] ? UF_META[bestUf].name : bestUf), 'success');
+        } else {
+          showToast('Não foi possível determinar o estado.', 'warning');
+        }
+      },
+      function () {
+        if (btn) btn.classList.remove('loading');
+        showToast('Permissão de localização negada.', 'warning');
+      },
+      { timeout: 8000 }
+    );
+  }
+
+  function _buildStateGrid(counts) {
+    var grid = document.getElementById('state-picker-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var byRegion = {};
+    REGION_ORDER.forEach(function (r) { byRegion[r] = []; });
+    for (var uf in UF_META) {
+      var meta = UF_META[uf];
+      if (!byRegion[meta.region]) byRegion[meta.region] = [];
+      byRegion[meta.region].push(uf);
+    }
+    REGION_ORDER.forEach(function (region) {
+      var ufs = byRegion[region];
+      if (!ufs || ufs.length === 0) return;
+      var header = document.createElement('div');
+      header.className = 'state-region-header';
+      header.textContent = region;
+      grid.appendChild(header);
+      var group = document.createElement('div');
+      group.className = 'state-region-group';
+      ufs.forEach(function (uf) {
+        var card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'state-card';
+        card.dataset.uf = uf;
+        var cnt = counts[uf] || 0;
+        card.innerHTML =
+          '<span class="state-card-uf">' + uf + '</span>' +
+          '<div class="state-card-info">' +
+            '<div class="state-card-name">' + UF_META[uf].name + '</div>' +
+            '<div class="state-card-count">' + cnt + ' célula' + (cnt !== 1 ? 's' : '') + '</div>' +
+          '</div>';
+        card.addEventListener('click', function () { selectState(uf); });
+        group.appendChild(card);
+      });
+      grid.appendChild(group);
+    });
+  }
+
+  async function setupStatePicker() {
+    // Optional deep link: ?state=UF or ?state=BR (wins over previous localStorage for this load).
+    var fromUrl = _consumeStateQueryParam();
+    if (fromUrl) {
+      localStorage.setItem('leucena_selected_state', fromUrl);
+    }
+
+    // Read saved scope synchronously first so LeucenaMap.init() never races the fetch below.
+    var saved = localStorage.getItem('leucena_selected_state');
+    if (saved === LS_BRAZIL_ALL) {
+      _selectedUF = LS_BRAZIL_ALL;
+      _pendingMapInit = null;
+      var labelBr = document.getElementById('state-chip-label');
+      if (labelBr) labelBr.textContent = 'Brasil';
+    } else if (saved && UF_META[saved]) {
+      _selectedUF = saved;
+      _pendingMapInit = saved;
+      var labelEarly = document.getElementById('state-chip-label');
+      if (labelEarly) labelEarly.textContent = saved;
+    } else {
+      _selectedUF = null;
+      // Default map to SP until the user picks another UF (avoids loading all states on first paint).
+      _pendingMapInit = 'SP';
+      var labelDef = document.getElementById('state-chip-label');
+      if (labelDef) labelDef.textContent = 'SP';
+    }
+
+    try {
+      var res = await fetch('/api/states');
+      var rows = await res.json();
+      rows.forEach(function (r) { _stateCounts[r.state] = r.cell_count; });
+      var totalCells = 0;
+      rows.forEach(function (r) { totalCells += r.cell_count || 0; });
+      var sub = document.getElementById('state-picker-brazil-sub');
+      if (sub) {
+        sub.textContent = totalCells + ' células · ' + rows.length + ' estados';
+      }
+    } catch (e) {
+      for (var uf in UF_META) _stateCounts[uf] = 0;
+    }
+    _buildStateGrid(_stateCounts);
+
+    var brazilBtn = document.getElementById('state-picker-brazil-btn');
+    if (brazilBtn) {
+      brazilBtn.addEventListener('click', selectAllBrazil);
+    }
+
+    var modal = document.getElementById('state-picker-modal');
+    if (modal) {
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) closeStatePicker();
+      });
+    }
+    var search = document.getElementById('state-picker-search');
+    if (search) {
+      search.addEventListener('input', function () { _filterStateCards(search.value); });
+    }
+    var geoBtn = document.getElementById('state-picker-geo-btn');
+    if (geoBtn) {
+      geoBtn.addEventListener('click', _geolocateToState);
+    }
+    var chip = document.getElementById('state-chip');
+    if (chip) {
+      chip.addEventListener('click', showStatePicker);
+    }
+
+    _statePickerReady = true;
+
+    var savedOk = saved && (saved === LS_BRAZIL_ALL || UF_META[saved]);
+    if (!savedOk) {
+      showStatePicker();
+    }
+  }
+
+  /** Close modal; if user never confirmed a UF, persist SP as the implicit choice. */
+  function closeStatePicker() {
+    var modal = document.getElementById('state-picker-modal');
+    if (modal) modal.classList.add('hidden');
+    if (!_selectedUF) {
+      _selectedUF = 'SP';
+      localStorage.setItem('leucena_selected_state', 'SP');
+      var label = document.getElementById('state-chip-label');
+      if (label) label.textContent = 'SP';
+      if (mapsInitialized && typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
+        LeucenaMap.loadStateGrid('SP');
+      }
+    }
   }
 
   function setupVerificationBanner() {
@@ -2381,7 +2728,7 @@ window.LeucenaApp = (function () {
   function initMapModules() {
     if (mapsInitialized || !mapsLoaded) return;
     mapsInitialized = true;
-    LeucenaMap.init();
+    LeucenaMap.init(_pendingMapInit);
     LeucenaDrawing.init();
     LeucenaStreetView.init();
     LeucenaExport.init();
@@ -3042,19 +3389,19 @@ window.LeucenaApp = (function () {
       document.getElementById('deletion-toggle').classList.remove('hidden');
       document.getElementById('admin-users-btn').classList.remove('hidden');
       document.getElementById('cell-search-section').classList.remove('hidden');
-
+      
       const maskSub = document.getElementById('mask-subcategories');
       if (maskSub) { maskSub.classList.remove('hidden'); maskSub.classList.add('collapsed'); }
 
       const chevron = document.getElementById('mask-hierarchy-chevron');
       if (chevron) { chevron.classList.remove('hidden'); chevron.classList.remove('expanded'); }
-
+      
       const legendDefault = document.getElementById('legend-mask-default');
       if (legendDefault) legendDefault.classList.add('hidden');
-
+      
       const legendMember = document.getElementById('legend-mask-member');
       if (legendMember) legendMember.classList.remove('hidden');
-
+      
       const legendContrib = document.getElementById('legend-mask-contributor');
       if (legendContrib) legendContrib.classList.remove('hidden');
     }
@@ -3071,19 +3418,19 @@ window.LeucenaApp = (function () {
     document.getElementById('admin-users-btn').classList.add('hidden');
     document.getElementById('cell-search-section').classList.add('hidden');
     document.getElementById('view-counter').classList.add('hidden');
-
+    
     const maskSub = document.getElementById('mask-subcategories');
     if (maskSub) { maskSub.classList.add('hidden'); maskSub.classList.add('collapsed'); }
 
     const chevron = document.getElementById('mask-hierarchy-chevron');
     if (chevron) { chevron.classList.add('hidden'); chevron.classList.remove('expanded'); }
-
+    
     const legendDefault = document.getElementById('legend-mask-default');
     if (legendDefault) legendDefault.classList.remove('hidden');
-
+    
     const legendMember = document.getElementById('legend-mask-member');
     if (legendMember) legendMember.classList.add('hidden');
-
+    
     const legendContrib = document.getElementById('legend-mask-contributor');
     if (legendContrib) legendContrib.classList.add('hidden');
 
@@ -3375,14 +3722,14 @@ window.LeucenaApp = (function () {
       viewToggleEl.classList.add('hidden');
       metricsEl.classList.remove('hidden');
 
-      try {
-        const res = await fetch('/api/admin/users', { headers: authHeaders() });
+    try {
+      const res = await fetch('/api/admin/users', { headers: authHeaders() });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
           document.getElementById('admin-users-list').innerHTML = `<p style="padding:16px;color:var(--danger)">Erro ${res.status}: ${errBody.error || res.statusText}</p>`;
           return;
         }
-        const data = await res.json();
+      const data = await res.json();
 
         const isMember = u => ['superadmin','admin','team'].includes(u.role);
         const isCollab = u => !isMember(u);
@@ -3647,12 +3994,12 @@ window.LeucenaApp = (function () {
         </div>`;
 
         if (effectiveSuperAdmin) {
-          gridHtml += `<div class="admin-tools-section">
-            <div class="admin-tools-label">${t('admin.sectionMaintenance')}</div>
-            <div class="admin-tools-buttons">
-              <button id="admin-dedup-btn" class="admin-tool-btn admin-tool-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ${t('admin.dedupBtn')}</button>
-            </div>
-          </div>`;
+        gridHtml += `<div class="admin-tools-section">
+          <div class="admin-tools-label">${t('admin.sectionMaintenance')}</div>
+          <div class="admin-tools-buttons">
+            <button id="admin-dedup-btn" class="admin-tool-btn admin-tool-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ${t('admin.dedupBtn')}</button>
+          </div>
+        </div>`;
         }
       }
 
@@ -4203,7 +4550,7 @@ window.LeucenaApp = (function () {
           ${batchCbHtml}
           <div class="admin-card-header">
             <div class="admin-card-photo-col">
-              ${photoHtml}
+            ${photoHtml}
               <span class="admin-user-badge admin-role-${role}${(effectiveSuperAdmin && !user.is_immutable) ? ' admin-role-clickable' : ''}" data-user-id="${user.id}" data-current-role="${role}">${roleLabelMap[role]}</span>
             </div>
             <div class="admin-card-identity">
@@ -4337,11 +4684,11 @@ window.LeucenaApp = (function () {
           const handler = async () => {
             const newPw = input.value;
             if (!newPw || newPw.length < 3) { showToast(LeucenaI18n.t('profile.pwTooShort'), 'warning'); return; }
-            const r = await fetch(`/api/admin/users/${user.id}/password`, {
-              method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: newPw })
-            });
-            if (r.ok) { showToast(t('admin.passwordChanged'), 'success'); }
-            else { const err = await r.json(); showToast(err.error, 'error'); }
+          const r = await fetch(`/api/admin/users/${user.id}/password`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: newPw })
+          });
+          if (r.ok) { showToast(t('admin.passwordChanged'), 'success'); }
+          else { const err = await r.json(); showToast(err.error, 'error'); }
             modal.classList.add('hidden');
             confirmBtn.removeEventListener('click', handler);
           };
@@ -4374,7 +4721,7 @@ window.LeucenaApp = (function () {
                 const r = await fetch(`/api/admin/users/${user.id}/username`, {
                   method: 'PUT', headers: authHeaders(), body: JSON.stringify({ new_username: newName })
                 });
-                if (r.ok) {
+            if (r.ok) {
                   modal.classList.add('hidden');
                   showToast(t('admin.renameSuccess', user.username, newName), 'success');
                   openAdminUsersModal();
@@ -4396,8 +4743,8 @@ window.LeucenaApp = (function () {
                 showToast(t('admin.verifySuccess'), 'success');
                 openAdminUsersModal();
               } else { const err = await r.json(); showToast(err.error, 'error'); }
-            } catch (e) { showToast('Erro de conexão', 'error'); }
-          });
+          } catch (e) { showToast('Erro de conexão', 'error'); }
+        });
         }
 
         const deactivateBtn = row.querySelector('.admin-deactivate-btn');
@@ -4407,11 +4754,11 @@ window.LeucenaApp = (function () {
             try {
               const r = await fetch(`/api/admin/users/${user.id}/deactivate`, {
                 method: 'PUT', headers: authHeaders()
-              });
-              if (r.ok) {
+            });
+            if (r.ok) {
                 showToast(t('admin.userDeactivated'), 'success');
                 openAdminUsersModal();
-              } else { const err = await r.json(); showToast(err.error, 'error'); }
+            } else { const err = await r.json(); showToast(err.error, 'error'); }
             } catch (e) { showToast('Erro de conexão', 'error'); }
           });
         }

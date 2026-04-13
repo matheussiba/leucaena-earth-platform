@@ -119,6 +119,8 @@ async function initDB() {
   } catch (e) { /* ignore */ }
   try { db.run('ALTER TABLE occurrence_points ADD COLUMN layer TEXT DEFAULT \'crowdmapping\''); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE occurrence_points ADD COLUMN status INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE occurrence_points ADD COLUMN added_by TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE occurrence_points ADD COLUMN added_by_role TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN full_name TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN description TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN photo TEXT'); } catch (e) { /* already exists */ }
@@ -373,6 +375,22 @@ async function initDB() {
     }
     if (renamed > 0) console.log(`Migration: renamed ${renamed} grid_ids to hierarchical format`);
   } catch (e) { console.error('Grid-id rename migration error:', e.message); }
+
+  // Migration: add missing junction entries for SP border cells (multi-state)
+  try {
+    const spBorderStates = {"KV-334-2":"MG","KV-334-4":"MG","KW-334-2":"MG","KW-335-1":"MG","LA-329-3":"PR","LB-329-1":"PR","LB-329-3":"PR","KP-329-2":"MG","KP-330-1":"MG","LA-329-4":"PR","LB-329-2":"PR","LB-329-4":"PR","LA-328-3":"PR","KP-328-2":"MG","KP-328-4":"MG","KQ-328-2":"MG","KP-328-3":"MG","KQ-328-1":"MG","LA-328-4":"PR","KP-329-1":"MG","KO-331-4":"MG","KP-331-2":"MG","KO-332-3":"MG","KP-332-1":"MG","KP-330-2":"MG","LB-330-1":"PR","LB-330-3":"PR","LC-330-1":"PR","LC-330-2":"PR","KO-331-3":"MG","KP-331-1":"MG","KO-325-3":"MG","KW-325-1":"PR","KW-324-2":"PR","KW-325-2":"PR","KW-325-4":"PR","KO-325-4":"MG","KO-324-3":"MG","KW-323-2":"PR","KO-324-4":"MG","KW-324-1":"PR","KY-327-3":"PR","KZ-327-1":"PR","KZ-327-3":"PR","LA-327-1":"PR","LA-327-3":"PR","KO-327-3":"MG","KP-327-1":"MG","KZ-327-4":"PR","LA-327-2":"PR","LA-327-4":"PR","KP-328-1":"MG","KO-327-4":"MG","KP-327-2":"MG","KP-327-4":"MG","KW-326-3":"PR","KO-326-3":"MG","KW-326-4":"PR","KX-326-2":"PR","KX-326-4":"PR","KY-326-2":"PR","KY-326-4":"PR","KO-326-4":"MG","KS-320-4":"MS","KT-320-2":"MS","KV-320-2":"PR","KV-320-4":"PR","KS-321-3":"MS","KV-321-3":"PR","KV-338-1":"MG","KX-338-2":"RJ","KR-321-1":"MS","KR-321-3":"MS","KS-321-1":"MS","KV-338-2":"MG,RJ","KW-338-2":"RJ","KW-338-4":"RJ","KT-319-4":"MS","KU-319-2":"MS","KU-319-4":"MS","KV-337-3":"MG","KV-319-4":"PR","KU-319-3":"MS","KV-319-1":"PR","KV-319-3":"PR","KT-320-1":"MS","KT-320-3":"MS","KV-337-2":"MG","KV-337-4":"MG","KV-320-1":"PR","KV-320-3":"PR","KP-323-1":"MG,MS","KP-323-3":"MS","KP-322-4":"MS","KV-340-3":"RJ","KW-340-1":"RJ","KV-322-4":"PR","KO-323-4":"MG","KP-323-2":"MG","KV-323-3":"PR","KW-323-1":"PR","KV-321-4":"PR","KQ-321-2":"MS","KQ-321-4":"MS","KR-321-2":"MS","KV-322-3":"PR","KV-339-1":"RJ","KV-339-3":"RJ","KW-339-1":"RJ","KP-322-3":"MS","KQ-322-13":"MS","KQ-322-11":"MS","KQ-322-123":"MS","KQ-322-121":"MS","KV-339-2":"RJ","KV-339-4":"RJ","KW-339-2":"RJ","KS-333-2":"MG","KS-333-4":"MG","KU-333-2":"MG","KU-333-4":"MG","KS-334-4":"MG","KS-334-1":"MG","KS-334-3":"MG","KT-334-1":"MG","KT-334-3":"MG","KU-334-1":"MG","KU-334-3":"MG","KV-334-1":"MG","KP-332-2":"MG","KP-332-4":"MG","KQ-332-2":"MG","KQ-332-4":"MG","KR-332-2":"MG","KR-332-4":"MG","KS-332-2":"MG","KQ-333-3":"MG","KS-333-1":"MG","KS-333-3":"MG","KV-336-1":"MG","KV-336-3":"MG","KW-336-1":"MG","KV-318-1":"MS,PR","KW-335-2":"MG","KV-318-3":"MS,PR","KV-336-2":"MG","KV-336-4":"MG","KU-318-4":"MS","KV-318-2":"MS,PR","KV-318-4":"PR"};
+    let borderAdded = 0;
+    for (const [gridId, statesStr] of Object.entries(spBorderStates)) {
+      const row = db.exec("SELECT id FROM grid_cells WHERE grid_id = ?", [gridId]);
+      if (row.length === 0 || row[0].values.length === 0) continue;
+      const cellId = row[0].values[0][0];
+      for (const uf of statesStr.split(',')) {
+        db.run("INSERT OR IGNORE INTO grid_cell_states (grid_cell_id, state) VALUES (?, ?)", [cellId, uf]);
+        borderAdded++;
+      }
+    }
+    if (borderAdded > 0) console.log(`Migration: added ${borderAdded} border-state junction entries for SP cells`);
+  } catch (e) { console.error('SP border-state migration error:', e.message); }
 
   persist();
   return db;

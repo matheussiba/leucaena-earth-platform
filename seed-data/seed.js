@@ -127,9 +127,22 @@ async function seed() {
   console.log('Assigning unique GRID_IDs...');
   assignUniqueGridIds(gridData.features);
 
+  function buildHierarchicalId(p) {
+    let id = p.sub_4dd;
+    if (p.sub_2dd == null) return id;
+    id += '-' + p.sub_2dd;
+    if (p.sub_1dd == null) return id;
+    id += p.sub_1dd;
+    if (p.sub_05dd == null) return id;
+    id += p.sub_05dd;
+    return id;
+  }
+
   console.log(`Inserting ${gridData.features.length} grid cells...`);
   for (const feature of gridData.features) {
-    const { fid, grid_status, NUMPOINTS, GRID_ID } = feature.properties;
+    const p = feature.properties;
+    const { fid, grid_status, NUMPOINTS, GRID_ID } = p;
+    const gridId = GRID_ID || buildHierarchicalId(p);
     const mappedStatus = STATUS_MAP[grid_status] || 'not_yet_finished';
     const geom = feature.geometry;
     if (geom.type === 'MultiPolygon' && geom.coordinates.length === 1) {
@@ -138,15 +151,19 @@ async function seed() {
     }
     const geometry = JSON.stringify(geom);
     const now = new Date().toISOString();
+    const states = (p.states || '').split(';').map(s => s.trim().toUpperCase()).filter(Boolean);
+    const primaryState = states[0] || 'SP';
 
     runSQL(
-      'INSERT INTO grid_cells (id, fid, grid_id, geometry, grid_status, numpoints, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [fid, fid, GRID_ID, geometry, mappedStatus, NUMPOINTS || 0, now]
+      'INSERT INTO grid_cells (id, fid, grid_id, geometry, grid_status, numpoints, state, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [fid, fid, gridId, geometry, mappedStatus, NUMPOINTS || 0, primaryState, now]
     );
-    runSQL(
-      'INSERT OR IGNORE INTO grid_cell_states (grid_cell_id, state) VALUES (?, ?)',
-      [fid, 'SP']
-    );
+    for (const uf of (states.length > 0 ? states : ['SP'])) {
+      runSQL(
+        'INSERT OR IGNORE INTO grid_cell_states (grid_cell_id, state) VALUES (?, ?)',
+        [fid, uf]
+      );
+    }
   }
   console.log(`Inserted ${gridData.features.length} grid cells.`);
 
