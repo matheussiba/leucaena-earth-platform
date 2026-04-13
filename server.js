@@ -172,7 +172,7 @@ h2{font-size:16px;font-weight:400;color:#64748b;margin-bottom:28px}
   <div class="message">
     Estamos evoluindo a plataforma para<br>
     cobrir <span class="brasil">todo o Brasil</span>!
-  </div>
+</div>
   <div class="countdown" id="cd">
     <div class="unit"><span class="num" id="cd-h">--</span><span class="lbl">horas</span></div>
     <span class="sep">:</span>
@@ -219,10 +219,10 @@ function isMapHost(req) {
   return MAP_HOSTS.some(h => host === h) || host.endsWith('.onrender.com');
 }
 
-/** Maintenance splash only on the map app (not leucaena.earth landing, not localhost preview). */
+/** Maintenance splash on the map platform (map host + localhost for local testing). */
 function isMaintenancePlatformHost(req) {
   const host = (req.hostname || req.headers.host || '').split(':')[0];
-  return host === 'map.leucaena.earth' || host.endsWith('.onrender.com');
+  return host === 'map.leucaena.earth' || host === 'localhost' || host === '127.0.0.1' || host.endsWith('.onrender.com');
 }
 
 app.use((req, res, next) => {
@@ -1483,20 +1483,20 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
   if (code && username) {
     if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
     if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
-    const entry = resetTokens.get(username.toLowerCase());
+  const entry = resetTokens.get(username.toLowerCase());
     if (!entry) return res.status(400).json({ error: 'Nenhum código de recuperação encontrado.' });
-    if (Date.now() > entry.expires) {
-      resetTokens.delete(username.toLowerCase());
+  if (Date.now() > entry.expires) {
+    resetTokens.delete(username.toLowerCase());
       return res.status(400).json({ error: 'Código expirado.' });
-    }
-    if (entry.code !== code.trim()) return res.status(400).json({ error: 'Código inválido' });
+  }
+  if (entry.code !== code.trim()) return res.status(400).json({ error: 'Código inválido' });
     const u = queryOne('SELECT id FROM users WHERE username = ?', [username]);
     if (!u) return res.status(404).json({ error: 'Usuário não encontrado' });
-    const hash = hashPassword(password);
-    runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, username]);
-    resetTokens.delete(username.toLowerCase());
-    logActivity(username, 'password_reset_used', null, null, null);
-    persist();
+  const hash = hashPassword(password);
+  runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, username]);
+  resetTokens.delete(username.toLowerCase());
+  logActivity(username, 'password_reset_used', null, null, null);
+  persist();
     return res.json({ success: true });
   }
 
@@ -2230,24 +2230,24 @@ app.get('/api/grid', (req, res) => {
   const features = cells.map(c => {
     const ms = maskStats[c.id] || { cnt: 0, ha: 0, mapped_by: null };
     return {
-      type: 'Feature',
-      properties: {
-        id: c.id,
-        fid: c.fid,
-        grid_id: c.grid_id || String(c.fid),
-        grid_status: c.grid_status,
-        numpoints: c.numpoints || 0,
-        locked_by: c.locked_by,
-        locked_at: c.locked_at,
-        updated_at: c.updated_at,
-        worked_by: c.worked_by || null,
+    type: 'Feature',
+    properties: {
+      id: c.id,
+      fid: c.fid,
+      grid_id: c.grid_id || String(c.fid),
+      grid_status: c.grid_status,
+      numpoints: c.numpoints || 0,
+      locked_by: c.locked_by,
+      locked_at: c.locked_at,
+      updated_at: c.updated_at,
+      worked_by: c.worked_by || null,
         finished_by: c.finished_by || null,
         states: stateMap[c.id] || [],
         mask_count: ms.cnt,
         mask_area_ha: ms.ha,
         mapped_by: ms.mapped_by || null
-      },
-      geometry: JSON.parse(c.geometry)
+    },
+    geometry: JSON.parse(c.geometry)
     };
   });
   res.json({ type: 'FeatureCollection', features });
@@ -2370,11 +2370,11 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
       }
       finishedBy = username;
     } else {
-      const validation = validateFinished(Number(id));
-      if (!validation.valid) {
-        return res.status(400).json({ error: validation.error, uncoveredPointIds: validation.uncoveredPointIds || [] });
-      }
-      finishedBy = username;
+    const validation = validateFinished(Number(id));
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error, uncoveredPointIds: validation.uncoveredPointIds || [] });
+    }
+    finishedBy = username;
     }
   }
 
@@ -3026,17 +3026,17 @@ io.on('connection', (socket) => {
       const isLastSocket = !userHasOtherSockets(socket.id, user.username);
 
       if (isLastSocket) {
-        const now = new Date().toISOString();
+      const now = new Date().toISOString();
         const locked = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
-        for (const cell of locked) {
+      for (const cell of locked) {
           const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
-          runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
-            [newStatus, now, cell.id]);
-          io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username });
-          io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: user.username });
-          logActivity(user.username, 'cell_unlock_disconnect', cell.id, null, JSON.stringify({ newStatus }));
-        }
-        if (locked.length > 0) persist();
+        runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
+          [newStatus, now, cell.id]);
+        io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username });
+        io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: user.username });
+        logActivity(user.username, 'cell_unlock_disconnect', cell.id, null, JSON.stringify({ newStatus }));
+      }
+      if (locked.length > 0) persist();
       }
 
       const sessionMs = Date.now() - new Date(user.joinedAt).getTime();
