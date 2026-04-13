@@ -529,6 +529,7 @@ window.LeucenaApp = (function () {
     setupGoogleAuth();
     setupMigrationBanner();
     setupVerificationBanner();
+    setupExpansionBanner();
     tryRestoreSession().finally(() => { maybeOpenAuthFromHash(); });
     loadRankingWidget();
 
@@ -1547,6 +1548,46 @@ window.LeucenaApp = (function () {
         localStorage.setItem(_userKey('leucena_migration_dismissed'), '1');
       });
     }
+  }
+
+  function _msUntil7amBR() {
+    var now = new Date();
+    var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+    var brMs = utcMs - 3 * 3600000;
+    var br = new Date(brMs);
+    var target = new Date(br);
+    target.setHours(7, 0, 0, 0);
+    if (target <= br) target.setDate(target.getDate() + 1);
+    return target - br;
+  }
+
+  function setupExpansionBanner() {
+    var strip = document.getElementById('expansion-strip');
+    if (!strip) return;
+    strip.classList.remove('hidden');
+    var _expInterval = null;
+    function expTick() {
+      var diff = _msUntil7amBR();
+      if (diff <= 0) {
+        document.getElementById('exp-cd-h').textContent = '00';
+        document.getElementById('exp-cd-m').textContent = '00';
+        document.getElementById('exp-cd-s').textContent = '00';
+        if (_expInterval) clearInterval(_expInterval);
+        return;
+      }
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      document.getElementById('exp-cd-h').textContent = String(h).padStart(2, '0');
+      document.getElementById('exp-cd-m').textContent = String(m).padStart(2, '0');
+      document.getElementById('exp-cd-s').textContent = String(s).padStart(2, '0');
+    }
+    expTick();
+    _expInterval = setInterval(expTick, 1000);
+    document.getElementById('expansion-strip-close').addEventListener('click', function () {
+      strip.classList.add('hidden');
+      if (_expInterval) clearInterval(_expInterval);
+    });
   }
 
   function setupVerificationBanner() {

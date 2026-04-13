@@ -1208,17 +1208,18 @@
     if (!strip) return;
     strip.classList.add('is-visible');
     document.body.classList.add('landing-expansion-on');
-    function brMidnightCountdownMs() {
+    function brTargetCountdownMs() {
       var now = new Date();
       var utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
       var brMs = utcMs - 3 * 3600000;
       var br = new Date(brMs);
-      var midnight = new Date(br);
-      midnight.setHours(24, 0, 0, 0);
-      return midnight - br;
+      var target = new Date(br);
+      target.setHours(7, 0, 0, 0);
+      if (target <= br) target.setDate(target.getDate() + 1);
+      return target - br;
     }
     function tick() {
-      var diff = brMidnightCountdownMs();
+      var diff = brTargetCountdownMs();
       var hEl = document.getElementById('landing-exp-cd-h');
       var mEl = document.getElementById('landing-exp-cd-m');
       var sEl = document.getElementById('landing-exp-cd-s');

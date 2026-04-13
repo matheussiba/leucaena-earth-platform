@@ -180,7 +180,7 @@ h2{font-size:16px;font-weight:400;color:#64748b;margin-bottom:28px}
     <span class="sep">:</span>
     <div class="unit"><span class="num" id="cd-s">--</span><span class="lbl">seg</span></div>
   </div>
-  <div class="sub">Em breve com novidades.</div>
+  <div class="sub">Previsão de retorno: 7h da manhã (horário de Brasília)</div>
   <div class="dots"><span></span><span></span><span></span></div>
 </div>
 <script>
@@ -190,9 +190,10 @@ h2{font-size:16px;font-weight:400;color:#64748b;margin-bottom:28px}
     var utcMs=now.getTime()+now.getTimezoneOffset()*60000;
     var brMs=utcMs-3*3600000;
     var br=new Date(brMs);
-    var midnight=new Date(br);
-    midnight.setHours(24,0,0,0);
-    var diff=midnight-br;
+    var target=new Date(br);
+    target.setHours(7,0,0,0);
+    if(target<=br) target.setDate(target.getDate()+1);
+    var diff=target-br;
     if(diff<=0){document.getElementById('cd-h').textContent='00';document.getElementById('cd-m').textContent='00';document.getElementById('cd-s').textContent='00';return;}
     var h=Math.floor(diff/3600000);
     var m=Math.floor((diff%3600000)/60000);
