@@ -225,9 +225,36 @@ function isMaintenancePlatformHost(req) {
   return host === 'map.leucaena.earth' || host === 'localhost' || host === '127.0.0.1' || host.endsWith('.onrender.com');
 }
 
+function parseCookies(req) {
+  const str = req.headers.cookie || '';
+  const map = {};
+  str.split(';').forEach(pair => {
+    const idx = pair.indexOf('=');
+    if (idx < 1) return;
+    map[pair.substring(0, idx).trim()] = pair.substring(idx + 1).trim();
+  });
+  return map;
+}
+
+function hasMaintenanceBypass(req, res) {
+  const token = process.env.MAINTENANCE_BYPASS_TOKEN;
+  if (!token) return false;
+  if (req.query.bypass === token) {
+    res.cookie('maint_bypass', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 4 * 60 * 60 * 1000
+    });
+    return true;
+  }
+  const cookies = parseCookies(req);
+  return cookies.maint_bypass === token;
+}
+
 app.use((req, res, next) => {
   if (!isMaintenanceModeEnabled()) return next();
   if (!isMaintenancePlatformHost(req)) return next();
+  if (hasMaintenanceBypass(req, res)) return next();
   const p = req.path || '';
   if (p === '/landing' || p === '/landing.html') return next();
   if (req.path.startsWith('/api/')) return next();
