@@ -212,15 +212,28 @@ function isMaintenanceModeEnabled() {
   return v === 'true' || v === '1' || v === 'yes';
 }
 
+const MAP_HOSTS = ['map.leucaena.earth', 'localhost', '127.0.0.1'];
+
+function isMapHost(req) {
+  const host = (req.hostname || req.headers.host || '').split(':')[0];
+  return MAP_HOSTS.some(h => host === h) || host.endsWith('.onrender.com');
+}
+
+/** Maintenance splash only on the map app (not leucaena.earth landing, not localhost preview). */
+function isMaintenancePlatformHost(req) {
+  const host = (req.hostname || req.headers.host || '').split(':')[0];
+  return host === 'map.leucaena.earth' || host.endsWith('.onrender.com');
+}
+
 app.use((req, res, next) => {
   if (!isMaintenanceModeEnabled()) return next();
-  if (req.path.startsWith('/api/')) return next();
-  // Let static assets through so the maintenance page can load /img/logo, fonts, etc.
+  if (!isMaintenancePlatformHost(req)) return next();
   const p = req.path || '';
+  if (p === '/landing' || p === '/landing.html') return next();
+  if (req.path.startsWith('/api/')) return next();
   if (p.startsWith('/img/') || p.startsWith('/css/') || p.startsWith('/js/') || p.startsWith('/fonts/')) {
     return next();
   }
-  // 200 + HTML: browsers often show a generic error page for 503 and hide the body.
   return res.status(200).type('html').set('X-Robots-Tag', 'noindex').send(MAINTENANCE_HTML);
 });
 
@@ -228,13 +241,6 @@ app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
-
-const MAP_HOSTS = ['map.leucaena.earth', 'localhost', '127.0.0.1'];
-
-function isMapHost(req) {
-  const host = (req.hostname || req.headers.host || '').split(':')[0];
-  return MAP_HOSTS.some(h => host === h) || host.endsWith('.onrender.com');
-}
 
 app.get('/', (req, res) => {
   if (isMapHost(req)) {
