@@ -716,12 +716,23 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     map.setOptions({
       restriction: { latLngBounds: restrictionBounds, strictBounds: false }
     });
+    const ufLoaded = _currentState;
     map.fitBounds(gridBounds);
     updateFilterCounts();
     _applyStateOutlineFilter(_currentState);
     refreshPointVisibility();
     if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
     _toggleSidebarForBrazilView(false);
+    // Após fitBounds o mapa ainda anima: bounds antigos deixam máscaras invisíveis e o grid pode parecer “embaçado”.
+    google.maps.event.addListenerOnce(map, 'idle', function () {
+      if (_currentState !== ufLoaded) return;
+      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
+      refreshPointVisibility();
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+        LeucenaDrawing.refreshPolyVisibility();
+      }
+      updateAreaLabelsForZoom();
+    });
   }
 
   function getStyleForCell(props, cellId) {
@@ -836,7 +847,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     }
   }
 
+  /** Com argumento: metadados de uma célula. Sem argumentos: objeto id→props (filtro de máscaras por estado). */
   function getGridData(cellId) {
+    if (arguments.length === 0) {
+      return gridData;
+    }
     return gridData[cellId] || null;
   }
 
