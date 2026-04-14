@@ -1571,14 +1571,25 @@ window.LeucenaDrawing = (function () {
     refreshPolyVisibility();
   }
 
-  function getPolygonCounts() {
-    let member = 0, contributor = 0;
+  function polygonCountsInLoadedState() {
+    const stateActive = typeof LeucenaMap !== 'undefined' && LeucenaMap.getCurrentState && LeucenaMap.getCurrentState();
+    if (!stateActive) return { member: 0, contributor: 0, total: 0 };
+    const loaded = LeucenaMap.getGridData && LeucenaMap.getGridData();
+    if (!loaded) return { member: 0, contributor: 0, total: 0 };
+    let member = 0;
+    let contributor = 0;
     for (const entry of Object.values(drawnPolygons)) {
+      const gid = entry.data.grid_cell_id;
+      if (!gid || !loaded[gid]) continue;
       const crole = entry.data.created_by_role || 'contributor';
       if (isMemberRole(crole)) member++;
       else contributor++;
     }
     return { member, contributor, total: member + contributor };
+  }
+
+  function getPolygonCounts() {
+    return polygonCountsInLoadedState();
   }
 
   function addRemotePolygon(data) {
@@ -1621,6 +1632,21 @@ window.LeucenaDrawing = (function () {
   }
 
   function getPolygonCount() {
+    const c = polygonCountsInLoadedState();
+    return c.total;
+  }
+
+  /** Contagem de polígonos numa célula (ex.: modal de desbloqueio). */
+  function getPolygonCountForCell(cellId) {
+    if (cellId == null) return 0;
+    let n = 0;
+    for (const entry of Object.values(drawnPolygons)) {
+      if (entry.data.grid_cell_id === cellId) n++;
+    }
+    return n;
+  }
+
+  function getTotalPolygonCount() {
     return Object.keys(drawnPolygons).length;
   }
 
@@ -1660,6 +1686,8 @@ window.LeucenaDrawing = (function () {
     setMode,
     setClickable,
     getPolygonCount,
+    getPolygonCountForCell,
+    getTotalPolygonCount,
     getPolygonCounts,
     clearUndoHistory,
     setAreaLabelsVisible,

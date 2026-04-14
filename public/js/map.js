@@ -240,14 +240,23 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     var name = e.feature.getProperty('name') || uf;
     var stats = _stateStatsCache[uf];
     var cells = stats ? stats.cells : 0;
+    var pts = stats && stats.pointsRegistered != null ? Number(stats.pointsRegistered) : 0;
     var pctF = stats ? stats.pctFinished || 0 : 0;
     var pctM = stats ? stats.pctMapping || 0 : 0;
     var pctT = stats ? stats.pctTomap || 0 : 0;
     var overallPct = pctF + pctM;
 
+    var ptsLine = '';
+    if (typeof LeucenaI18n !== 'undefined' && LeucenaI18n.t) {
+      ptsLine = '<div class="stt-points">' + LeucenaI18n.t('map.stateTooltipPoints', String(pts)) + '</div>';
+    } else {
+      ptsLine = '<div class="stt-points">' + pts + ' pontos registrados</div>';
+    }
+
     _stateTooltipEl.innerHTML =
       '<div class="stt-name">' + name + '</div>' +
       '<div class="stt-uf">' + uf + ' · ' + cells + ' célula' + (cells !== 1 ? 's' : '') + '</div>' +
+      ptsLine +
       '<div class="stt-overall">' + overallPct.toFixed(1) + '%</div>' +
       '<div class="stt-bar">' +
         '<div class="stt-bar-finished" style="width:' + pctF.toFixed(1) + '%"></div>' +
@@ -611,6 +620,47 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     gridLayer.setStyle(gridStyleCallback);
   }
 
+  /**
+   * Após fitBounds o mapa anima e as camadas Data podem renderizar borradas até o zoom/tiles estabilizarem.
+   * Usado no carregamento inicial (loadGrid) e ao trocar de região (loadStateGrid).
+   */
+  function scheduleCrispGridRefresh(ufLoaded, onViewportSettled) {
+    function refreshAfterFit() {
+      if (_currentState !== ufLoaded) return;
+      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
+      refreshPointVisibility();
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+        LeucenaDrawing.refreshPolyVisibility();
+      }
+      updateAreaLabelsForZoom();
+    }
+
+    const zoomListener = map.addListener('zoom_changed', function () {
+      if (_currentState !== ufLoaded) {
+        google.maps.event.removeListener(zoomListener);
+        return;
+      }
+      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
+    });
+
+    google.maps.event.addListenerOnce(map, 'idle', function () {
+      google.maps.event.removeListener(zoomListener);
+      refreshAfterFit();
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          refreshAfterFit();
+        });
+      });
+      setTimeout(refreshAfterFit, 150);
+      setTimeout(refreshAfterFit, 400);
+      setTimeout(refreshAfterFit, 800);
+      google.maps.event.addListenerOnce(map, 'idle', function () {
+        refreshAfterFit();
+      });
+      if (typeof onViewportSettled === 'function') onViewportSettled();
+    });
+  }
+
   function _toggleSidebarForBrazilView(isBrazil) {
     var progress = document.getElementById('mapping-progress');
     var filters = document.getElementById('sidebar-filters');
@@ -669,26 +719,19 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       }
       applyGridGeoJson(fc);
       restrictionBounds = bufferBounds(gridBounds, 0.15);
-      map.fitBounds(gridBounds);
-      map.addListener('idle', () => {
-        refreshPointVisibility();
-        if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
+      map.setOptions({
+        restriction: { latLngBounds: restrictionBounds, strictBounds: false }
       });
-      google.maps.event.addListenerOnce(map, 'idle', () => {
+      map.fitBounds(gridBounds);
+      updateFilterCounts();
+      scheduleCrispGridRefresh(_currentState, function () {
         initialZoom = map.getZoom();
         initialCenter = map.getCenter();
-        map.setOptions({
-          restriction: {
-            latLngBounds: restrictionBounds,
-            strictBounds: false
-          }
-        });
         scheduleAutoLabelsOff();
         if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
           LeucenaApp.scheduleAutoCollapseLegend();
         }
       });
-      updateFilterCounts();
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.gridLoadFail'), 'error');
     }
@@ -719,22 +762,13 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       restriction: { latLngBounds: restrictionBounds, strictBounds: false }
     });
     const ufLoaded = _currentState;
-    map.fitBounds(gridBounds);
     updateFilterCounts();
     _applyStateOutlineFilter(_currentState);
-    refreshPointVisibility();
-    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
     _toggleSidebarForBrazilView(false);
-    // Após fitBounds o mapa ainda anima: bounds antigos deixam máscaras invisíveis e o grid pode parecer “embaçado”.
-    google.maps.event.addListenerOnce(map, 'idle', function () {
-      if (_currentState !== ufLoaded) return;
-      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
-      refreshPointVisibility();
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
-        LeucenaDrawing.refreshPolyVisibility();
-      }
-      updateAreaLabelsForZoom();
-    });
+
+    map.fitBounds(gridBounds);
+
+    scheduleCrispGridRefresh(ufLoaded);
   }
 
   function getStyleForCell(props, cellId) {
@@ -1524,9 +1558,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     setText('count-finished', statusCounts.finished);
 
     if (gridTotal > 0) {
-      const finishedPct = (statusCounts.finished / gridTotal * 100);
-      const mappingPct = ((statusCounts.mapping + statusCounts.in_use) / gridTotal * 100);
-      const tomapPct = ((statusCounts.not_yet_finished + statusCounts.no_points) / gridTotal * 100);
+      const relevantTotal = gridTotal - statusCounts.no_points;
+      const denom = relevantTotal > 0 ? relevantTotal : 1;
+      const finishedPct = (statusCounts.finished / denom * 100);
+      const mappingPct = ((statusCounts.mapping + statusCounts.in_use) / denom * 100);
+      const tomapPct = (statusCounts.not_yet_finished / denom * 100);
       const setW = (id, v) => { const el = document.getElementById(id); if (el) el.style.width = v.toFixed(1) + '%'; };
       setW('progress-finished', finishedPct);
       setW('progress-mapping', mappingPct);
@@ -1541,9 +1577,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     const layerCounts = { crowdmapping: 0, inaturalist: 0, gbif: 0, insthorus: 0, specieslink: 0 };
     let pointsTotal = 0;
+    const stateScopedPoints = !!_currentState;
     for (const entry of Object.values(pointMarkersById)) {
+      if (stateScopedPoints && !isPointInLoadedGrid(entry.marker.getPosition())) continue;
       pointsTotal++;
-      const l = entry.data.layer || 'crowdmapping';
+      const l = (entry.data.layer || 'crowdmapping').toLowerCase();
       if (layerCounts[l] !== undefined) layerCounts[l]++;
     }
     setText('count-points-total', pointsTotal);

@@ -2181,7 +2181,8 @@ app.get('/api/states', (req, res) => {
            COUNT(DISTINCT gcs.grid_cell_id) AS cell_count,
            SUM(CASE WHEN gc.grid_status = 'finished' THEN 1 ELSE 0 END) AS finished_count,
            SUM(CASE WHEN gc.grid_status IN ('mapping', 'in_use') THEN 1 ELSE 0 END) AS mapping_count,
-           SUM(CASE WHEN gc.grid_status = 'not_yet_finished' THEN 1 ELSE 0 END) AS tomap_count
+           SUM(CASE WHEN gc.grid_status = 'not_yet_finished' THEN 1 ELSE 0 END) AS tomap_count,
+           COALESCE(SUM(gc.numpoints), 0) AS points_registered
     FROM grid_cell_states gcs
     LEFT JOIN grid_cells gc ON gc.id = gcs.grid_cell_id
     GROUP BY gcs.state

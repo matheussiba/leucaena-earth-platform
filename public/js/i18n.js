@@ -186,6 +186,7 @@ window.LeucenaI18n = (function () {
     'map.geoNoCellFound': { pt: 'Não há célula de mapeamento na sua localização.', en: 'No mapping cell at your location.', es: 'No hay celda de mapeo en su ubicación.' },
     'map.geoStateDetected': { pt: 'Estado detectado: {0}', en: 'State detected: {0}', es: 'Estado detectado: {0}' },
     'map.geoPickerOutsideBrazil': { pt: 'Sua localização está fora do Brasil.', en: 'Your location is outside Brazil.', es: 'Su ubicación está fuera de Brasil.' },
+    'map.stateTooltipPoints': { pt: '{0} pontos registrados', en: '{0} registered points', es: '{0} puntos registrados' },
 
     // ── Legend ──
     'legend.title': { pt: 'Legenda', en: 'Legend', es: 'Leyenda' },

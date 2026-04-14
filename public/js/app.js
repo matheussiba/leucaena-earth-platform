@@ -1889,15 +1889,18 @@ window.LeucenaApp = (function () {
         var mapping = r.mapping_count || 0;
         var tomap = r.tomap_count || 0;
         var nopoints = total - finished - mapping - tomap;
+        var relevant = total - nopoints;
+        var denom = relevant > 0 ? relevant : 1;
         mapStats[r.state] = {
           cells: total,
           finished: finished,
           mapping: mapping,
-          tomap: tomap + nopoints,
-          pctFinished: total > 0 ? (finished / total) * 100 : 0,
-          pctMapping: total > 0 ? (mapping / total) * 100 : 0,
-          pctTomap: total > 0 ? ((tomap + nopoints) / total) * 100 : 0,
-          pct: total > 0 ? ((finished + mapping) / total) * 100 : 0
+          tomap: tomap,
+          pointsRegistered: r.points_registered != null ? Number(r.points_registered) : 0,
+          pctFinished: relevant > 0 ? (finished / denom) * 100 : 0,
+          pctMapping: relevant > 0 ? (mapping / denom) * 100 : 0,
+          pctTomap: relevant > 0 ? (tomap / denom) * 100 : 0,
+          pct: relevant > 0 ? ((finished + mapping) / denom) * 100 : 0
         };
       });
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.setStateStats) {
@@ -3035,7 +3038,9 @@ window.LeucenaApp = (function () {
       }
     } else {
       const hasCrowd = LeucenaMap.cellHasCrowdmapping(selectedCellId);
-      const hasMasks = (typeof LeucenaDrawing !== 'undefined') && LeucenaDrawing.getPolygonCount() > 0;
+      const hasMasks = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCountForCell)
+        ? LeucenaDrawing.getPolygonCountForCell(selectedCellId) > 0
+        : false;
       const allPointsResolved = !LeucenaMap.cellHasUnvalidatedPoints(selectedCellId);
       const canFinish = hasMasks || (allPointsResolved && LeucenaMap.cellHasAnyPoints(selectedCellId));
 
@@ -3596,7 +3601,9 @@ window.LeucenaApp = (function () {
       const sw = bounds.getSouthWest();
       const center = map.getCenter();
       const mapType = map.getMapTypeId();
-      const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : '-';
+      const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getTotalPolygonCount)
+        ? LeucenaDrawing.getTotalPolygonCount()
+        : '-';
       rows.push(
         { key: 'Zoom', val: map.getZoom() },
         { key: 'Center', val: `${center.lat().toFixed(6)}, ${center.lng().toFixed(6)}` },
