@@ -433,6 +433,105 @@ async function initDB() {
     }
   } catch (e) { console.error('Brazil grid seed migration error:', e.message); }
 
+  // Auto-seed occurrence points from seed-data if DB has significantly fewer points
+  try {
+    const ptCountRow = db.exec('SELECT COUNT(*) FROM occurrence_points');
+    const ptCount = ptCountRow.length > 0 ? ptCountRow[0].values[0][0] : 0;
+    const seedPtsPath = path.join(__dirname, 'seed-data', 'leucaena-points.geojson');
+    if (ptCount < 2000 && fs.existsSync(seedPtsPath)) {
+      console.log(`Migration: seeding occurrence points (current: ${ptCount})...`);
+      const { features } = JSON.parse(fs.readFileSync(seedPtsPath, 'utf8'));
+
+      const existingCoords = new Set();
+      const existingPts = (db.exec('SELECT geometry FROM occurrence_points') || [{}])[0];
+      if (existingPts && existingPts.values) {
+        for (const row of existingPts.values) {
+          const g = JSON.parse(row[0]);
+          existingCoords.add(`${Number(g.coordinates[0]).toFixed(5)}_${Number(g.coordinates[1]).toFixed(5)}`);
+        }
+      }
+
+      const maxFidRow = db.exec('SELECT COALESCE(MAX(fid), 0) FROM occurrence_points');
+      let nextFid = (maxFidRow[0]?.values[0]?.[0] || 0) + 1;
+      let inserted = 0;
+
+      db.run('BEGIN');
+      for (const f of features) {
+        if (!f.geometry || f.geometry.type !== 'Point') continue;
+        const [lng, lat] = f.geometry.coordinates;
+        const key = `${Number(lng).toFixed(5)}_${Number(lat).toFixed(5)}`;
+        if (existingCoords.has(key)) continue;
+        existingCoords.add(key);
+        const layer = (f.properties && f.properties.layer) || 'crowdmapping';
+        const status = (f.properties && f.properties.status) || 0;
+        db.run(
+          'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status) VALUES (?, ?, ?, ?, ?)',
+          [nextFid, JSON.stringify(f.geometry), status, layer, status]
+        );
+        nextFid++;
+        inserted++;
+      }
+      db.run('COMMIT');
+      console.log(`Migration: inserted ${inserted} occurrence points`);
+    }
+  } catch (e) { console.error('Points seed migration error:', e.message); }
+
+  // Auto-update grid cell numpoints + grid_status based on current points
+  try {
+    const ptTotal = db.exec('SELECT COUNT(*) FROM occurrence_points');
+    const total = ptTotal.length > 0 ? ptTotal[0].values[0][0] : 0;
+    const numpointsCheck = db.exec("SELECT COUNT(*) FROM grid_cells WHERE numpoints > 0 AND state != 'SP'");
+    const nonSPWithPoints = numpointsCheck.length > 0 ? numpointsCheck[0].values[0][0] : 0;
+    if (total > 0 && nonSPWithPoints < 10) {
+      console.log('Migration: recalculating grid cell numpoints...');
+      const allPts = (db.exec('SELECT geometry FROM occurrence_points') || [{}])[0];
+      const ptCoords = [];
+      if (allPts && allPts.values) {
+        for (const row of allPts.values) {
+          const g = JSON.parse(row[0]);
+          ptCoords.push([g.coordinates[0], g.coordinates[1]]);
+        }
+      }
+
+      function pipCheck(point, ring) {
+        const [px, py] = point;
+        let inside = false;
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+          const [xi, yi] = ring[i];
+          const [xj, yj] = ring[j];
+          if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) inside = !inside;
+        }
+        return inside;
+      }
+
+      const cellRows = (db.exec('SELECT id, geometry, grid_status FROM grid_cells') || [{}])[0];
+      if (cellRows && cellRows.values) {
+        let updated = 0;
+        db.run('BEGIN');
+        for (const row of cellRows.values) {
+          const cId = row[0];
+          const geom = JSON.parse(row[1]);
+          const cStatus = row[2];
+          const rings = geom.type === 'MultiPolygon' ? geom.coordinates.map(p => p[0]) : [geom.coordinates[0]];
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          for (const ring of rings) { for (const c of ring) { if (c[0] < minX) minX = c[0]; if (c[0] > maxX) maxX = c[0]; if (c[1] < minY) minY = c[1]; if (c[1] > maxY) maxY = c[1]; } }
+          let count = 0;
+          for (const [px, py] of ptCoords) {
+            if (px < minX || px > maxX || py < minY || py > maxY) continue;
+            if (rings.some(ring => pipCheck([px, py], ring))) count++;
+          }
+          db.run('UPDATE grid_cells SET numpoints = ? WHERE id = ?', [count, cId]);
+          if (count > 0 && cStatus === 'no_points') {
+            db.run("UPDATE grid_cells SET grid_status = 'not_yet_finished', updated_at = ? WHERE id = ?", [new Date().toISOString(), cId]);
+          }
+          updated++;
+        }
+        db.run('COMMIT');
+        console.log(`Migration: updated numpoints for ${updated} cells`);
+      }
+    }
+  } catch (e) { console.error('Numpoints migration error:', e.message); }
+
   persist();
   return db;
 }
