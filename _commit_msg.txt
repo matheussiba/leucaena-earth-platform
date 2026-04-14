@@ -1,17 +1,13 @@
-Brazil overview UX overhaul: interactive state map, progress fix, and sidebar refinements
+Brazil launch: update banners, landing page, docs, and polygon visibility
 
-- Add interactive Brazil overview with colored state fills and hover tooltips
-  showing per-state progress (Finalizado/Mapeando/A mapear)
-- Fix critical progress percentage bug: use total cell count as denominator
-  instead of only active cells (no_points were excluded, inflating percentages)
-- Hide sidebar progress and filters when viewing Brazil overview
-- Add "Brasil inteiro" button with flag emoji to region picker modal
-- Rename all state-picker references to region-picker for i18n readiness
-- Add close button to region picker modal
-- Move language/export dropdowns from header to sidebar
-- Increase mobile auth button sizing with visible SVG icons
-- Improve state hover: color matches progress tier, smooth lift effect
-- Clear hover override on state selection to prevent fill persistence
-- Restrict collaborator point deletion to own points only
-- Server: /api/states now returns mapping_count and tomap_count breakdowns
-- Add sidebar-filters ID for programmatic visibility toggle
+- Replace "coming soon" expansion banner with "now available" nationwide
+  announcement on both landing page and map app
+- Banner uses versioned localStorage key to re-show for all users;
+  auto-expires after 2 weeks (2026-04-27)
+- Remove countdown timer (no longer relevant)
+- Refresh landing page messaging: hero, about, collaborate, footer,
+  SEO meta tags — all reflect Brazil-wide availability with SP/FAPESP focus
+- Update README with banner docs, nationwide scope, and landing page notes
+- Fix polygon visibility on Brazil overview: masks no longer flash
+  briefly before first idle event hides them
+- Clean up unused _msUntil7amBR helper and countdown CSS

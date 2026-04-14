@@ -428,7 +428,8 @@ window.LeucenaDrawing = (function () {
     const paths = geojsonRingsToPaths(geometry.coordinates);
     const creatorRole = props.created_by_role || 'contributor';
     const style = getPolyStyle(creatorRole);
-    const visible = LeucenaMap.getShowPolygons() && shouldShowPoly(creatorRole);
+    const currentState = typeof LeucenaMap.getCurrentState === 'function' ? LeucenaMap.getCurrentState() : null;
+    const visible = currentState && LeucenaMap.getShowPolygons() && shouldShowPoly(creatorRole);
 
     const poly = new google.maps.Polygon({
       paths: paths,

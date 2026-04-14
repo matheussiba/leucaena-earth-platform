@@ -8,8 +8,8 @@
 <h1 align="center">leucaena.earth</h1>
 
 <p align="center">
-  <strong>Plataforma colaborativa de mapeamento da Leucena (<em>Leucaena leucocephala</em>)</strong><br>
-  Crowdsourced WebGIS for invasive species mapping
+  <strong>Plataforma colaborativa de mapeamento da Leucena (<em>Leucaena leucocephala</em>) em todo o Brasil</strong><br>
+  Crowdsourced WebGIS for invasive species mapping — now nationwide
 </p>
 
 <p align="center">
@@ -20,9 +20,9 @@
 
 ## About
 
-**leucaena.earth** is a collaborative web-based GIS platform designed for mapping the occurrence of *Leucaena leucocephala*, an invasive species, across **Brazil** — with São Paulo as the pilot state for the PhD research at ESALQ/USP. Researchers, students, and volunteers work together to draw validation masks (polygons) over satellite imagery, validate occurrence points from multiple data sources, and contribute new sightings — all in real time.
+**leucaena.earth** is a collaborative web-based GIS platform designed for mapping the occurrence of *Leucaena leucocephala*, an invasive species, across **all 27 Brazilian states**. Developed as part of a PhD research project at ESALQ/USP and funded by **FAPESP**, the platform enables researchers, students, and volunteers to draw validation masks (polygons) over satellite imagery, validate occurrence points from multiple data sources, and contribute new sightings — all in real time.
 
-The platform divides the territory into a grid of cells organized by **state (UF)**. Each cell can be locked by a user for exclusive editing, ensuring no conflicts. Users draw polygons marking areas where Leucaena is present, punch holes in masks for excluded zones, and validate individual occurrence points sourced from biodiversity databases.
+The in-depth research analysis focuses on **São Paulo** as the primary study area, but **data collection is active and encouraged in every state**. The platform divides the territory into a grid of cells organized by **state (UF)**. Each cell can be locked by a user for exclusive editing, ensuring no conflicts. Users draw polygons marking areas where Leucaena is present, punch holes in masks for excluded zones, and validate individual occurrence points sourced from biodiversity databases.
 
 ### Geographic expansion model
 
@@ -48,17 +48,20 @@ To add a new country, one would: (1) generate a grid GeoJSON for the territory, 
 - **Custom zoom controls** with dynamic restrictions during editing
 - **Performance optimized** — `google.maps.Data` Layer (canvas rendering), viewport culling, marker clustering, gzip compression, in-memory grid cache per state
 
-### State Selector & Brazil Map
+### Region Selector & Brazil Overview
 
-- **State picker modal** — search by name, geolocation-based suggestion, "All of Brazil" option
+- **Interactive Brazil overview** — first-load experience shows all 27 states as interactive, colored outlines with hover tooltips displaying per-state mapping progress (% finished, mapping, to map)
+- **Region picker modal** — search by name, geolocation-based suggestion, "Brasil inteiro" option with 🇧🇷 flag
 - **State cards** showing cell count per UF, organized by region
-- **Topbar chip** displaying the selected state with one-click switch
-- **State outlines** layer (`brazil-states.geojson`) with selected-state highlighting
+- **Topbar chip** displaying the selected region with one-click switch
+- **State outlines** layer (`brazil-states.geojson`) — clickable in Brazil view, reference-only outline when a state is selected
 - **Per-state grid loading** — `GET /api/grid?state=UF` loads only cells for the selected state
 - **In-memory cache** (`gridCache`) — switching back to a previously loaded state is instant
 - **Pan restriction** adjusted to the selected state's bounds
 - **Masks and points filtered** by state — only data belonging to cells of the selected state is visible
-- **`localStorage` persistence** — the selected state is remembered across sessions
+- **Sidebar hides progress/filters** in Brazil overview (no state selected), shows them when a state is active
+- **`localStorage` persistence** — the selected region is remembered across sessions
+- **URL parameter** `?region=UF` (with `?state=` fallback for backward compatibility)
 
 ### Grid & Workflow
 
@@ -168,6 +171,13 @@ Full i18n support with automatic browser language detection:
 - **English**
 - **Espanol**
 
+### Announcements & Banners
+
+- **Expansion banner** — announces the nationwide Brazil launch; auto-expires after a configurable date
+- **Dismiss via `localStorage`** — once closed, the banner does not reappear for the same user (even without login)
+- **Versioned banner key** — changing the key forces the banner to re-show for all users (useful for major announcements)
+- **Landing page** and **map app** share consistent messaging about the platform's national scope
+
 ### UX & Accessibility
 
 - **Keyboard shortcuts** for all major tools with tooltips showing hotkeys
@@ -272,8 +282,8 @@ leucaena-earth-platform/
 ├── plans/
 │   └── brazil_expansion_platform.plan.md  # Implementation plan & session log
 └── public/
-    ├── index.html          # Main map application
-    ├── landing.html        # Landing page (leucaena.earth)
+    ├── index.html          # Main map application (map.leucaena.earth)
+    ├── landing.html        # Landing page (leucaena.earth) — nationwide messaging
     ├── css/
     │   └── style.css       # Full application styles
     ├── data/
@@ -424,7 +434,7 @@ The server exposes RESTful endpoints organized by domain:
 - `POST /api/auth/forgot-password` / `POST /api/auth/reset-password` — password reset
 
 ### States & Grid
-- `GET /api/states` — list states with cell counts (from `grid_cell_states`)
+- `GET /api/states` — list states with cell counts, finished/mapping/tomap breakdowns
 - `GET /api/grid` — all cells (or `?state=UF` for a single state)
 
 ### Polygons (Masks)
@@ -435,9 +445,9 @@ The server exposes RESTful endpoints organized by domain:
 
 ### Occurrence Points
 - `GET /api/points` — all points with layer, status, `added_by`, `added_by_role`
-- `POST /api/points` — add point (team/admin; records `added_by`/`added_by_role`)
+- `POST /api/points` — add point (all verified users; records `added_by`/`added_by_role`)
 - `PUT /api/points/:id/validity` — cycle validity status
-- `DELETE /api/points/:id` — remove point
+- `DELETE /api/points/:id` — remove point (collaborators can only delete their own)
 
 ### Messaging
 - `GET /api/messages` — user's messages
@@ -485,6 +495,6 @@ This project is developed for academic and conservation research purposes.
 ---
 
 <p align="center">
-  <sub>Built with dedication for biodiversity conservation</sub><br>
-  <a href="https://leucaena.earth">leucaena.earth</a>
+  <sub>Built with dedication for biodiversity conservation — now mapping all of Brazil 🇧🇷</sub><br>
+  <a href="https://leucaena.earth">leucaena.earth</a> · Funded by FAPESP · ESALQ/USP
 </p>

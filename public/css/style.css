@@ -635,12 +635,10 @@ a.docs-logo-card:hover {
   justify-content: center;
 }
 .expansion-gear {
-  display: inline-block;
-  animation: expSpin 3s linear infinite;
-  font-size: 17px;
+  font-size: 18px;
   flex-shrink: 0;
+  line-height: 1;
 }
-@keyframes expSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .expansion-text { color: #334155; font-weight: 500; }
 .expansion-text strong { color: #0f172a; font-weight: 600; }
 .expansion-brasil {
@@ -651,19 +649,6 @@ a.docs-logo-card:hover {
   font-weight: 800;
   font-size: 1.22em;
   letter-spacing: 0.03em;
-}
-.expansion-countdown {
-  font-variant-numeric: tabular-nums;
-  color: #15803d;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: .5px;
-  flex-shrink: 0;
-}
-.expansion-countdown span {
-  min-width: 20px;
-  display: inline-block;
-  text-align: right;
 }
 .expansion-dismiss {
   position: absolute;
@@ -681,7 +666,6 @@ a.docs-logo-card:hover {
 @media (max-width: 768px) {
   .expansion-strip { padding: 0 8px; }
   .expansion-strip-content { gap: 8px; font-size: 12px; }
-  .expansion-countdown { font-size: 12px; }
 }
 
 /* ── State chip (topbar) ── */
