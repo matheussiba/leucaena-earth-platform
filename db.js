@@ -392,6 +392,47 @@ async function initDB() {
     if (borderAdded > 0) console.log(`Migration: added ${borderAdded} border-state junction entries for SP cells`);
   } catch (e) { console.error('SP border-state migration error:', e.message); }
 
+  // Auto-seed Brazil-wide grid cells if missing
+  try {
+    const nonSPCount = db.exec("SELECT COUNT(*) FROM grid_cells WHERE state != 'SP'");
+    const hasNonSP = nonSPCount.length > 0 && nonSPCount[0].values[0][0] > 100;
+    if (!hasNonSP) {
+      const seedPath = path.join(__dirname, 'seed-data', 'brazil_grid_non_sp.json');
+      if (fs.existsSync(seedPath)) {
+        console.log('Migration: seeding Brazil-wide grid cells...');
+        const { cells, junctions } = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+        const existingIds = new Set(
+          (db.exec('SELECT grid_id FROM grid_cells') || [{}])[0]?.values?.map(r => r[0]) || []
+        );
+        const maxRow = db.exec('SELECT COALESCE(MAX(id), 0) FROM grid_cells');
+        let nextId = (maxRow[0]?.values[0]?.[0] || 0) + 1;
+        const oldToNew = {};
+        let inserted = 0;
+
+        db.run('BEGIN');
+        for (const c of cells) {
+          if (existingIds.has(c.grid_id)) continue;
+          oldToNew[c.id] = nextId;
+          db.run(
+            'INSERT INTO grid_cells (id, fid, grid_id, geometry, grid_status, numpoints, state, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [nextId, nextId, c.grid_id, c.geometry, c.grid_status || 'no_points', c.numpoints || 0, c.state, c.updated_at || new Date().toISOString()]
+          );
+          nextId++;
+          inserted++;
+        }
+        let jInserted = 0;
+        for (const j of junctions) {
+          const newId = oldToNew[j.grid_cell_id];
+          if (!newId) continue;
+          db.run('INSERT OR IGNORE INTO grid_cell_states (grid_cell_id, state) VALUES (?, ?)', [newId, j.state]);
+          jInserted++;
+        }
+        db.run('COMMIT');
+        console.log(`Migration: inserted ${inserted} Brazil grid cells (${jInserted} junction rows)`);
+      }
+    }
+  } catch (e) { console.error('Brazil grid seed migration error:', e.message); }
+
   persist();
   return db;
 }

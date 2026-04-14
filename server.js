@@ -133,7 +133,7 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
 <html lang="pt">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>leucaena.earth / Evoluindo</title>
+<title>leucaena.earth / Manutenção</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a 0%,#1a2e1a 50%,#0f172a 100%);color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden}
@@ -143,24 +143,18 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;bac
 .logo img{width:100%;height:100%;object-fit:contain;border-radius:50%}
 h1{font-size:26px;margin-bottom:6px;color:#22c55e;letter-spacing:-.5px}
 h2{font-size:16px;font-weight:400;color:#64748b;margin-bottom:28px}
-.message{font-size:17px;line-height:1.7;color:#cbd5e1;margin-bottom:32px}
+.message{font-size:17px;line-height:1.7;color:#cbd5e1;margin-bottom:12px}
 .message .accent{color:#22c55e;font-weight:600}
 .gears{font-size:56px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:2px}
 .gear{display:inline-block;animation:spin 3s linear infinite}
 .gear:nth-child(2){animation-direction:reverse;animation-duration:2.4s;font-size:36px;margin-top:14px}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-.countdown{display:flex;gap:16px;justify-content:center;margin:28px 0 8px}
-.countdown .unit{display:flex;flex-direction:column;align-items:center;min-width:64px}
-.countdown .num{font-size:40px;font-weight:700;color:#22c55e;line-height:1;font-variant-numeric:tabular-nums}
-.countdown .lbl{font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:1px;margin-top:6px}
-.countdown .sep{font-size:32px;color:#334155;align-self:flex-start;margin-top:4px;font-weight:300}
-.sub{font-size:13px;color:#475569;margin-top:8px}
+.sub{font-size:13px;color:#475569;margin-top:16px}
 .dots{display:flex;gap:6px;justify-content:center;margin-top:24px}
 .dots span{width:6px;height:6px;border-radius:50%;background:#22c55e;opacity:.4;animation:pulse 1.4s ease-in-out infinite}
 .dots span:nth-child(2){animation-delay:.2s}
 .dots span:nth-child(3){animation-delay:.4s}
 @keyframes pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
-.brasil{display:inline-block;background:linear-gradient(90deg,#009c3b,#ffdf00,#002776);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
 </style>
 </head>
 <body>
@@ -170,41 +164,13 @@ h2{font-size:16px;font-weight:400;color:#64748b;margin-bottom:28px}
   <h2>Plataforma de Mapeamento</h2>
   <div class="gears"><span class="gear">⚙️</span><span class="gear">⚙️</span></div>
   <div class="message">
-    Estamos evoluindo a plataforma para<br>
-    cobrir <span class="brasil">todo o Brasil</span>!
-</div>
-  <div class="countdown" id="cd">
-    <div class="unit"><span class="num" id="cd-h">--</span><span class="lbl">horas</span></div>
-    <span class="sep">:</span>
-    <div class="unit"><span class="num" id="cd-m">--</span><span class="lbl">min</span></div>
-    <span class="sep">:</span>
-    <div class="unit"><span class="num" id="cd-s">--</span><span class="lbl">seg</span></div>
+    Estamos fazendo alguns ajustes para<br>
+    melhorar sua experiência.<br>
+    <span class="accent">Já já estamos de volta!</span>
   </div>
-  <div class="sub">Previsão de retorno: 7h da manhã (horário de Brasília)</div>
+  <div class="sub">Agradecemos a paciência</div>
   <div class="dots"><span></span><span></span><span></span></div>
 </div>
-<script>
-(function(){
-  function tick(){
-    var now=new Date();
-    var utcMs=now.getTime()+now.getTimezoneOffset()*60000;
-    var brMs=utcMs-3*3600000;
-    var br=new Date(brMs);
-    var target=new Date(br);
-    target.setHours(7,0,0,0);
-    if(target<=br) target.setDate(target.getDate()+1);
-    var diff=target-br;
-    if(diff<=0){document.getElementById('cd-h').textContent='00';document.getElementById('cd-m').textContent='00';document.getElementById('cd-s').textContent='00';return;}
-    var h=Math.floor(diff/3600000);
-    var m=Math.floor((diff%3600000)/60000);
-    var s=Math.floor((diff%60000)/1000);
-    document.getElementById('cd-h').textContent=String(h).padStart(2,'0');
-    document.getElementById('cd-m').textContent=String(m).padStart(2,'0');
-    document.getElementById('cd-s').textContent=String(s).padStart(2,'0');
-  }
-  tick();setInterval(tick,1000);
-})();
-</script>
 </body>
 </html>`;
 

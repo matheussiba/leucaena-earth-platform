@@ -880,7 +880,12 @@ a.docs-logo-card:hover {
   border-color: var(--accent);
 }
 .region-picker-brazil-btn:active { transform: scale(0.98); }
-.region-brazil-flag { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.region-brazil-flag {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+}
 .region-picker-brazil-btn span { flex: 1; text-align: left; }
 .region-brazil-arrow { flex-shrink: 0; opacity: 0.5; }
 .region-picker-brazil-btn:hover .region-brazil-arrow { opacity: 1; }
