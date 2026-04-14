@@ -530,7 +530,7 @@ window.LeucenaApp = (function () {
     setupMigrationBanner();
     setupVerificationBanner();
     setupExpansionBanner();
-    setupStatePicker();
+    setupRegionPicker();
     tryRestoreSession().finally(() => { maybeOpenAuthFromHash(); });
     loadRankingWidget();
 
@@ -566,7 +566,7 @@ window.LeucenaApp = (function () {
         ['dedup-modal', () => { document.getElementById('dedup-modal').classList.add('hidden'); }],
         ['ranking-modal', closeRankingModal],
         ['celebration-modal', closeCelebration],
-        ['state-picker-modal', closeStatePicker],
+        ['region-picker-modal', closeRegionPicker],
       ];
       for (const [id, closeFn] of modalCloseMap) {
         const el = document.getElementById(id);
@@ -1656,28 +1656,25 @@ window.LeucenaApp = (function () {
 
   var REGION_ORDER = ['Sudeste', 'Sul', 'Centro-Oeste', 'Nordeste', 'Norte'];
 
-  /** localStorage value meaning load full national grid (GET /api/grid without state). */
-  var LS_BRAZIL_ALL = 'BR';
-
   /**
-   * If the page URL has ?state=..., validate it, remove only that param from the address bar
-   * (other query params and the hash are kept), and return the canonical value for storage
-   * (UF code or LS_BRAZIL_ALL). Invalid or empty values return null after stripping.
-   * Examples: ?state=sp → SP, ?state=BR → Brasil inteiro, ?state=brasil → BR.
+   * If the page URL has ?region=... (or legacy ?state=...), validate it,
+   * remove the param from the address bar, and return a valid UF code or null.
+   * Examples: ?region=sp → SP, ?region=MG → MG. BR/Brasil/Brazil values → null (no full-grid view).
    */
-  function _consumeStateQueryParam() {
+  function _consumeRegionQueryParam() {
     try {
       var params = new URLSearchParams(window.location.search);
-      if (!params.has('state')) return null;
-      var raw = params.get('state');
-      params.delete('state');
+      var key = params.has('region') ? 'region' : params.has('state') ? 'state' : null;
+      if (!key) return null;
+      var raw = params.get(key);
+      params.delete(key);
       var qs = params.toString();
       var newUrl = window.location.pathname + (qs ? '?' + qs : '') + (window.location.hash || '');
       window.history.replaceState({}, '', newUrl);
 
       if (raw == null || String(raw).trim() === '') return null;
       var u = String(raw).trim().toUpperCase();
-      if (u === 'BR' || u === 'ALL' || u === 'BRASIL' || u === 'BRAZIL') return LS_BRAZIL_ALL;
+      if (u === 'BR' || u === 'ALL' || u === 'BRASIL' || u === 'BRAZIL') return null;
       if (!/^[A-Z]{2}$/.test(u)) return null;
       if (!UF_META[u]) return null;
       return u;
@@ -1686,50 +1683,36 @@ window.LeucenaApp = (function () {
     }
   }
 
-  var _statePickerReady = false;
+  var _regionPickerReady = false;
   var _stateCounts = {};
   var _selectedUF = null;
   var _pendingMapInit = null;
 
-  function showStatePicker() {
-    var modal = document.getElementById('state-picker-modal');
+  function showRegionPicker() {
+    var modal = document.getElementById('region-picker-modal');
     if (!modal) return;
     modal.classList.remove('hidden');
-    var search = document.getElementById('state-picker-search');
+    var search = document.getElementById('region-picker-search');
     if (search) { search.value = ''; _filterStateCards(''); search.focus(); }
     _highlightActiveCard();
   }
 
   function _highlightActiveCard() {
-    var grid = document.getElementById('state-picker-grid');
+    var grid = document.getElementById('region-picker-grid');
     if (grid) {
       grid.querySelectorAll('.state-card').forEach(function (c) {
         c.classList.toggle('active', c.dataset.uf === _selectedUF);
       });
     }
-    var brBtn = document.getElementById('state-picker-brazil-btn');
-    if (brBtn) brBtn.classList.toggle('active', _selectedUF === LS_BRAZIL_ALL);
-  }
-
-  function _brazilSearchMatch(lower) {
-    if (!lower) return true;
-    if (lower === 'br') return true;
-    if (lower.indexOf('brasil') !== -1) return true;
-    if (lower.indexOf('brazil') !== -1) return true;
-    if (lower.indexOf('inteiro') !== -1) return true;
-    if (lower.indexOf('todo') !== -1 && lower.indexOf('pais') !== -1) return true;
-    if (lower.indexOf('todo') !== -1 && lower.indexOf('país') !== -1) return true;
-    if (lower.indexOf('nacional') !== -1) return true;
-    return false;
+    var brazilBtn = document.getElementById('region-picker-brazil-btn');
+    if (brazilBtn) {
+      brazilBtn.classList.toggle('active', !_selectedUF);
+    }
   }
 
   function _filterStateCards(q) {
     var lower = q.toLowerCase().trim();
-    var brWrap = document.getElementById('state-picker-brazil-wrap');
-    if (brWrap) {
-      brWrap.classList.toggle('hidden-by-filter', !_brazilSearchMatch(lower));
-    }
-    var grid = document.getElementById('state-picker-grid');
+    var grid = document.getElementById('region-picker-grid');
     if (!grid) return;
     grid.querySelectorAll('.state-card').forEach(function (c) {
       var uf = c.dataset.uf;
@@ -1750,67 +1733,96 @@ window.LeucenaApp = (function () {
   function selectState(uf) {
     _selectedUF = uf;
     localStorage.setItem('leucena_selected_state', uf);
-    var label = document.getElementById('state-chip-label');
+    var label = document.getElementById('region-chip-label');
     if (label) label.textContent = uf;
-    closeStatePicker();
+    closeRegionPicker();
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(uf);
     }
   }
 
-  function selectAllBrazil() {
-    _selectedUF = LS_BRAZIL_ALL;
-    localStorage.setItem('leucena_selected_state', LS_BRAZIL_ALL);
-    var label = document.getElementById('state-chip-label');
+  function showBrazilOverview() {
+    _selectedUF = null;
+    localStorage.removeItem('leucena_selected_state');
+    var label = document.getElementById('region-chip-label');
     if (label) label.textContent = 'Brasil';
-    closeStatePicker();
+    closeRegionPicker();
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(null);
     }
   }
 
+  function selectStateFromMap(uf) {
+    if (!uf || !UF_META[uf]) return;
+    selectState(uf);
+  }
+
+  var BRAZIL_BBOX = { minLat: -33.75, maxLat: 5.27, minLng: -73.99, maxLng: -34.79 };
+
+  function _isInsideBrazil(lat, lng) {
+    return lat >= BRAZIL_BBOX.minLat && lat <= BRAZIL_BBOX.maxLat &&
+           lng >= BRAZIL_BBOX.minLng && lng <= BRAZIL_BBOX.maxLng;
+  }
+
+  function _detectUfForLatLng(lat, lng) {
+    var exact = null;
+    var bestUf = null;
+    var bestDist = Infinity;
+    for (var uf in UF_BOUNDS) {
+      var b = UF_BOUNDS[uf];
+      if (lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng) {
+        exact = uf;
+        break;
+      }
+      var cLat = (b.minLat + b.maxLat) / 2;
+      var cLng = (b.minLng + b.maxLng) / 2;
+      var d = (lat - cLat) * (lat - cLat) + (lng - cLng) * (lng - cLng);
+      if (d < bestDist) { bestDist = d; bestUf = uf; }
+    }
+    return exact || (_isInsideBrazil(lat, lng) ? bestUf : null);
+  }
+
   function _geolocateToState() {
     if (!navigator.geolocation) {
-      showToast('Geolocalização não suportada pelo navegador.', 'warning');
+      showToast(LeucenaI18n.t('map.geoNotSupported'), 'warning');
       return;
     }
-    var btn = document.getElementById('state-picker-geo-btn');
+    var btn = document.getElementById('region-picker-geo-btn');
     if (btn) btn.classList.add('loading');
     navigator.geolocation.getCurrentPosition(
       function (pos) {
         if (btn) btn.classList.remove('loading');
         var lat = pos.coords.latitude;
         var lng = pos.coords.longitude;
-        var bestUf = null;
-        var bestDist = Infinity;
-        for (var uf in UF_BOUNDS) {
-          var b = UF_BOUNDS[uf];
-          if (lat >= b.minLat && lat <= b.maxLat && lng >= b.minLng && lng <= b.maxLng) {
-            bestUf = uf;
-            break;
-          }
-          var cLat = (b.minLat + b.maxLat) / 2;
-          var cLng = (b.minLng + b.maxLng) / 2;
-          var d = (lat - cLat) * (lat - cLat) + (lng - cLng) * (lng - cLng);
-          if (d < bestDist) { bestDist = d; bestUf = uf; }
+        if (!_isInsideBrazil(lat, lng)) {
+          showBrazilOverview();
+          showToast(LeucenaI18n.t('map.geoPickerOutsideBrazil'), 'warning');
+          return;
         }
-        if (bestUf) {
-          selectState(bestUf);
-          showToast('Estado detectado: ' + (UF_META[bestUf] ? UF_META[bestUf].name : bestUf), 'success');
+        var detectedUf = _detectUfForLatLng(lat, lng);
+        if (detectedUf) {
+          selectState(detectedUf);
+          var name = UF_META[detectedUf] ? UF_META[detectedUf].name : detectedUf;
+          showToast(LeucenaI18n.t('map.geoStateDetected', name), 'success');
         } else {
-          showToast('Não foi possível determinar o estado.', 'warning');
+          showBrazilOverview();
+          showToast(LeucenaI18n.t('map.geoPickerOutsideBrazil'), 'warning');
         }
       },
-      function () {
+      function (err) {
         if (btn) btn.classList.remove('loading');
-        showToast('Permissão de localização negada.', 'warning');
+        if (err.code === 1) {
+          showToast(LeucenaI18n.t('map.geoDenied'), 'warning');
+        } else {
+          showToast(LeucenaI18n.t('map.geoError'), 'warning');
+        }
       },
       { timeout: 8000 }
     );
   }
 
   function _buildStateGrid(counts) {
-    var grid = document.getElementById('state-picker-grid');
+    var grid = document.getElementById('region-picker-grid');
     if (!grid) return;
     grid.innerHTML = '';
     var byRegion = {};
@@ -1848,93 +1860,88 @@ window.LeucenaApp = (function () {
     });
   }
 
-  async function setupStatePicker() {
-    // Optional deep link: ?state=UF or ?state=BR (wins over previous localStorage for this load).
-    var fromUrl = _consumeStateQueryParam();
+  async function setupRegionPicker() {
+    var fromUrl = _consumeRegionQueryParam();
     if (fromUrl) {
       localStorage.setItem('leucena_selected_state', fromUrl);
     }
 
-    // Read saved scope synchronously first so LeucenaMap.init() never races the fetch below.
     var saved = localStorage.getItem('leucena_selected_state');
-    if (saved === LS_BRAZIL_ALL) {
-      _selectedUF = LS_BRAZIL_ALL;
-      _pendingMapInit = null;
-      var labelBr = document.getElementById('state-chip-label');
-      if (labelBr) labelBr.textContent = 'Brasil';
-    } else if (saved && UF_META[saved]) {
+    if (saved && UF_META[saved]) {
       _selectedUF = saved;
       _pendingMapInit = saved;
-      var labelEarly = document.getElementById('state-chip-label');
+      var labelEarly = document.getElementById('region-chip-label');
       if (labelEarly) labelEarly.textContent = saved;
     } else {
       _selectedUF = null;
-      // Default map to SP until the user picks another UF (avoids loading all states on first paint).
-      _pendingMapInit = 'SP';
-      var labelDef = document.getElementById('state-chip-label');
-      if (labelDef) labelDef.textContent = 'SP';
+      _pendingMapInit = null;
+      var labelDef = document.getElementById('region-chip-label');
+      if (labelDef) labelDef.textContent = 'Brasil';
     }
 
     try {
       var res = await fetch('/api/states');
       var rows = await res.json();
-      rows.forEach(function (r) { _stateCounts[r.state] = r.cell_count; });
-      var totalCells = 0;
-      rows.forEach(function (r) { totalCells += r.cell_count || 0; });
-      var sub = document.getElementById('state-picker-brazil-sub');
-      if (sub) {
-        sub.textContent = totalCells + ' células · ' + rows.length + ' estados';
+      var mapStats = {};
+      rows.forEach(function (r) {
+        _stateCounts[r.state] = r.cell_count;
+        var total = r.cell_count || 0;
+        var finished = r.finished_count || 0;
+        var mapping = r.mapping_count || 0;
+        var tomap = r.tomap_count || 0;
+        var nopoints = total - finished - mapping - tomap;
+        mapStats[r.state] = {
+          cells: total,
+          finished: finished,
+          mapping: mapping,
+          tomap: tomap + nopoints,
+          pctFinished: total > 0 ? (finished / total) * 100 : 0,
+          pctMapping: total > 0 ? (mapping / total) * 100 : 0,
+          pctTomap: total > 0 ? ((tomap + nopoints) / total) * 100 : 0,
+          pct: total > 0 ? ((finished + mapping) / total) * 100 : 0
+        };
+      });
+      if (typeof LeucenaMap !== 'undefined' && LeucenaMap.setStateStats) {
+        LeucenaMap.setStateStats(mapStats);
       }
     } catch (e) {
       for (var uf in UF_META) _stateCounts[uf] = 0;
     }
     _buildStateGrid(_stateCounts);
 
-    var brazilBtn = document.getElementById('state-picker-brazil-btn');
-    if (brazilBtn) {
-      brazilBtn.addEventListener('click', selectAllBrazil);
-    }
-
-    var modal = document.getElementById('state-picker-modal');
+    var modal = document.getElementById('region-picker-modal');
     if (modal) {
       modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeStatePicker();
+        if (e.target === modal) closeRegionPicker();
       });
     }
-    var search = document.getElementById('state-picker-search');
+    var closeBtn = document.getElementById('region-picker-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeRegionPicker);
+    }
+    var search = document.getElementById('region-picker-search');
     if (search) {
       search.addEventListener('input', function () { _filterStateCards(search.value); });
     }
-    var geoBtn = document.getElementById('state-picker-geo-btn');
+    var geoBtn = document.getElementById('region-picker-geo-btn');
     if (geoBtn) {
       geoBtn.addEventListener('click', _geolocateToState);
     }
-    var chip = document.getElementById('state-chip');
+    var brazilBtn = document.getElementById('region-picker-brazil-btn');
+    if (brazilBtn) {
+      brazilBtn.addEventListener('click', function () { showBrazilOverview(); });
+    }
+    var chip = document.getElementById('region-chip');
     if (chip) {
-      chip.addEventListener('click', showStatePicker);
+      chip.addEventListener('click', showRegionPicker);
     }
 
-    _statePickerReady = true;
-
-    var savedOk = saved && (saved === LS_BRAZIL_ALL || UF_META[saved]);
-    if (!savedOk) {
-      showStatePicker();
-    }
+    _regionPickerReady = true;
   }
 
-  /** Close modal; if user never confirmed a UF, persist SP as the implicit choice. */
-  function closeStatePicker() {
-    var modal = document.getElementById('state-picker-modal');
+  function closeRegionPicker() {
+    var modal = document.getElementById('region-picker-modal');
     if (modal) modal.classList.add('hidden');
-    if (!_selectedUF) {
-      _selectedUF = 'SP';
-      localStorage.setItem('leucena_selected_state', 'SP');
-      var label = document.getElementById('state-chip-label');
-      if (label) label.textContent = 'SP';
-      if (mapsInitialized && typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
-        LeucenaMap.loadStateGrid('SP');
-      }
-    }
   }
 
   function setupVerificationBanner() {
@@ -3184,6 +3191,55 @@ window.LeucenaApp = (function () {
   }
 
   let _locationMarker = null;
+  let _locationMarkerTimer = null;
+
+  function _showBlueLocationDot(gMap, latlng) {
+    if (_locationMarker) _locationMarker.setMap(null);
+    if (_locationMarkerTimer) clearTimeout(_locationMarkerTimer);
+    _locationMarker = new google.maps.Marker({
+      position: latlng,
+      map: gMap,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.95,
+        strokeColor: '#ffffff',
+        strokeWeight: 3
+      },
+      title: LeucenaI18n.t('map.youAreHere'),
+      zIndex: 9999
+    });
+    _locationMarkerTimer = setTimeout(() => {
+      if (_locationMarker) _locationMarker.setMap(null);
+      _locationMarker = null;
+      _locationMarkerTimer = null;
+    }, 10000);
+  }
+
+  async function _navigateToUserCell(gMap, latlng, detectedUf) {
+    const currentState = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getCurrentState() : null;
+    const needsSwitch = detectedUf && currentState !== detectedUf;
+
+    if (needsSwitch) {
+      var name = UF_META[detectedUf] ? UF_META[detectedUf].name : detectedUf;
+      showToast(LeucenaI18n.t('map.geoSwitchingState', name), 'info');
+      selectState(detectedUf);
+      await new Promise(r => google.maps.event.addListenerOnce(gMap, 'idle', r));
+    }
+
+    const cellId = typeof LeucenaMap !== 'undefined' ? LeucenaMap.findCellAtPosition(latlng) : null;
+    if (cellId) {
+      LeucenaMap.zoomToCellViewOnly(cellId);
+      const data = LeucenaMap.getGridData(cellId);
+      if (data && selectedCellId !== cellId) selectCell(cellId, data);
+    } else {
+      showToast(LeucenaI18n.t('map.geoNoCellFound'), 'info');
+      gMap.setCenter(latlng);
+      gMap.setZoom(window.innerWidth <= 768 ? 14 : 15);
+    }
+  }
+
   function handleMyLocation() {
     if (!navigator.geolocation) {
       showToast(LeucenaI18n.t('map.geoNotSupported'), 'error');
@@ -3191,34 +3247,26 @@ window.LeucenaApp = (function () {
     }
     const btn = document.getElementById('btn-my-location');
     btn.classList.add('locating');
-
     logEvent('geolocation_click');
 
     function onSuccess(pos) {
       btn.classList.remove('locating');
       const gMap = LeucenaMap.getMap();
       if (!gMap) return;
-      const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      const isMobile = window.innerWidth <= 768;
-      gMap.setCenter(latlng);
-      gMap.setZoom(isMobile ? 13 : 12);
-      logEvent('geolocation_success', null, null, { lat: latlng.lat, lng: latlng.lng, accuracy: pos.coords.accuracy });
-      if (_locationMarker) _locationMarker.setMap(null);
-      _locationMarker = new google.maps.Marker({
-        position: latlng,
-        map: gMap,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: '#3b82f6',
-          fillOpacity: 0.9,
-          strokeColor: '#ffffff',
-          strokeWeight: 2.5
-        },
-        title: LeucenaI18n.t('map.youAreHere'),
-        zIndex: 9999
-      });
-      setTimeout(() => { if (_locationMarker) _locationMarker.setMap(null); _locationMarker = null; }, 30000);
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const latlng = { lat, lng };
+      logEvent('geolocation_success', null, null, { lat, lng, accuracy: pos.coords.accuracy });
+
+      if (!_isInsideBrazil(lat, lng)) {
+        showBrazilOverview();
+        showToast(LeucenaI18n.t('map.geoOutsideBrazil'), 'warning');
+        return;
+      }
+
+      const detectedUf = _detectUfForLatLng(lat, lng);
+      _showBlueLocationDot(gMap, latlng);
+      _navigateToUserCell(gMap, latlng, detectedUf);
     }
 
     function onError(err) {
@@ -3307,7 +3355,7 @@ window.LeucenaApp = (function () {
     });
 
     deleteCb.addEventListener('change', () => {
-      if (!isLoggedIn() || !isTeamOrAbove()) { deleteCb.checked = false; return; }
+      if (!isLoggedIn()) { deleteCb.checked = false; return; }
       if (deleteCb.checked) {
         setInsertionMode(false);
         setDeletionMode(true);
@@ -3352,7 +3400,8 @@ window.LeucenaApp = (function () {
       bannerText.textContent = LeucenaI18n.t('banner.insertion');
       banner.classList.remove('hidden');
     } else if (deletionMode) {
-      bannerText.textContent = LeucenaI18n.t('banner.deletion');
+      const key = isTeamOrAbove() ? 'banner.deletion' : 'banner.deletionCollab';
+      bannerText.textContent = LeucenaI18n.t(key);
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
@@ -3383,10 +3432,12 @@ window.LeucenaApp = (function () {
   }
 
   function showAdminTools() {
-    if (isTeamOrAbove()) {
+    if (isLoggedIn()) {
       document.getElementById('insertion-sep').classList.remove('hidden');
       document.getElementById('insertion-toggle').classList.remove('hidden');
       document.getElementById('deletion-toggle').classList.remove('hidden');
+    }
+    if (isTeamOrAbove()) {
       document.getElementById('admin-users-btn').classList.remove('hidden');
       document.getElementById('cell-search-section').classList.remove('hidden');
       
@@ -4838,8 +4889,12 @@ window.LeucenaApp = (function () {
         headers: authHeaders()
       });
       if (!res.ok) {
-        const err = await res.json();
-        showToast(err.error, 'error');
+        const err = await res.json().catch(() => ({}));
+        if (res.status === 403) {
+          showToast(LeucenaI18n.t('toast.cannotDeleteOther'), 'warning');
+        } else {
+          showToast(err.error || LeucenaI18n.t('toast.deleteFail'), 'error');
+        }
         return;
       }
       LeucenaMap.removePointMarker(nearest.id);
@@ -5639,6 +5694,7 @@ window.LeucenaApp = (function () {
     onCellStatusChanged,
     refreshCellSidebarIfSelected,
     onInboxNew,
-    refreshInboxBadge
+    refreshInboxBadge,
+    selectStateFromMap
   };
 })();

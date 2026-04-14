@@ -2210,10 +2210,58 @@ app.post('/api/admin/backup', requireAuth, (req, res) => {
 // ── REST API ──
 
 app.get('/api/states', (req, res) => {
-  const rows = queryAll(
-    'SELECT state, COUNT(*) as cell_count FROM grid_cell_states GROUP BY state ORDER BY state'
-  );
+  const rows = queryAll(`
+    SELECT gcs.state,
+           COUNT(DISTINCT gcs.grid_cell_id) AS cell_count,
+           SUM(CASE WHEN gc.grid_status = 'finished' THEN 1 ELSE 0 END) AS finished_count,
+           SUM(CASE WHEN gc.grid_status IN ('mapping', 'in_use') THEN 1 ELSE 0 END) AS mapping_count,
+           SUM(CASE WHEN gc.grid_status = 'not_yet_finished' THEN 1 ELSE 0 END) AS tomap_count
+    FROM grid_cell_states gcs
+    LEFT JOIN grid_cells gc ON gc.id = gcs.grid_cell_id
+    GROUP BY gcs.state
+    ORDER BY gcs.state
+  `);
   res.json(rows);
+});
+
+app.get('/api/states/:uf/stats', (req, res) => {
+  const uf = String(req.params.uf).trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(uf)) {
+    return res.status(400).json({ error: 'UF inválida. Use 2 letras (ex: SP, MG).' });
+  }
+  const cellIds = queryAll('SELECT DISTINCT grid_cell_id FROM grid_cell_states WHERE UPPER(state) = ?', [uf]);
+  if (cellIds.length === 0) {
+    return res.json({ state: uf, cells: 0, by_status: {}, masks: 0, mask_area_ha: 0, points: 0 });
+  }
+  const ids = cellIds.map(r => r.grid_cell_id);
+  const ph = ids.map(() => '?').join(',');
+  const statusRows = queryAll(`SELECT grid_status, COUNT(*) as cnt FROM grid_cells WHERE id IN (${ph}) GROUP BY grid_status`, ids);
+  const byStatus = {};
+  let totalCells = 0;
+  for (const r of statusRows) { byStatus[r.grid_status] = r.cnt; totalCells += r.cnt; }
+  const maskRow = queryOne(`SELECT COUNT(*) as cnt, COALESCE(SUM(area_ha), 0) as area FROM polygons WHERE grid_cell_id IN (${ph})`, ids);
+  const cells = queryAll(`SELECT geometry FROM grid_cells WHERE id IN (${ph})`, ids);
+  let pointCount = 0;
+  if (cells.length > 0) {
+    const allPoints = queryAll('SELECT geometry FROM occurrence_points');
+    for (const p of allPoints) {
+      const g = JSON.parse(p.geometry);
+      const [lng, lat] = g.coordinates;
+      for (const c of cells) {
+        const cg = JSON.parse(c.geometry);
+        const rings = cg.type === 'MultiPolygon' ? cg.coordinates.map(poly => poly[0]) : [cg.coordinates[0]];
+        if (rings.some(ring => pointInPolygon([lng, lat], ring))) { pointCount++; break; }
+      }
+    }
+  }
+  res.json({
+    state: uf,
+    cells: totalCells,
+    by_status: byStatus,
+    masks: maskRow ? maskRow.cnt : 0,
+    mask_area_ha: maskRow ? Math.round(maskRow.area * 100) / 100 : 0,
+    points: pointCount
+  });
 });
 
 app.get('/api/grid', (req, res) => {
@@ -2833,10 +2881,6 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
   const { lat, lng } = req.body;
   const username = req.username;
 
-  if (!isTeamOrAbove(username)) {
-    return res.status(403).json({ error: 'Colaboradores não podem adicionar pontos' });
-  }
-
   if (lat == null || lng == null) {
     return res.status(400).json({ error: 'lat e lng obrigatórios' });
   }
@@ -2888,12 +2932,12 @@ app.delete('/api/points/:id', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const username = req.username;
 
-  if (!isTeamOrAbove(username)) {
-    return res.status(403).json({ error: 'Colaboradores não podem excluir pontos' });
-  }
-
   const point = queryOne('SELECT * FROM occurrence_points WHERE id = ?', [Number(id)]);
   if (!point) return res.status(404).json({ error: 'Ponto não encontrado' });
+
+  if (!isTeamOrAbove(username) && point.added_by !== username) {
+    return res.status(403).json({ error: 'Você só pode excluir pontos que você mesmo adicionou' });
+  }
 
   const ptGeom = JSON.parse(point.geometry);
   const [ptLng, ptLat] = ptGeom.coordinates;

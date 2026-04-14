@@ -98,6 +98,7 @@ window.LeucenaI18n = (function () {
     // ── Insertion/Deletion banners ──
     'banner.insertion': { pt: 'MODO DE INSERÇÃO DE PONTOS: Pressione L para adicionar ponto, Ctrl+Z para desfazer', en: 'POINT INSERTION MODE: Press L to add point, Ctrl+Z to undo', es: 'MODO DE INSERCIÓN DE PUNTOS: Presione L para agregar punto, Ctrl+Z para deshacer' },
     'banner.deletion': { pt: 'MODO DE EXCLUSÃO DE PONTOS: Clique perto de um ponto para excluir, Ctrl+Z para desfazer', en: 'POINT DELETION MODE: Click near a point to delete, Ctrl+Z to undo', es: 'MODO DE ELIMINACIÓN DE PUNTOS: Haga clic cerca de un punto para eliminar, Ctrl+Z para deshacer' },
+    'banner.deletionCollab': { pt: 'MODO DE EXCLUSÃO: Apenas pontos que você adicionou. Ctrl+Z para desfazer', en: 'DELETION MODE: Only points you added. Ctrl+Z to undo', es: 'MODO DE ELIMINACIÓN: Solo puntos que agregaste. Ctrl+Z para deshacer' },
 
     // ── Sidebar ──
     'sidebar.filters': { pt: 'Filtros', en: 'Filters', es: 'Filtros' },
@@ -180,6 +181,11 @@ window.LeucenaI18n = (function () {
     'map.geoNotSupported': { pt: 'Geolocalização não suportada neste navegador', en: 'Geolocation not supported in this browser', es: 'Geolocalización no soportada en este navegador' },
     'map.geoDenied': { pt: 'Permissão de localização negada. Ative nas configurações do navegador.', en: 'Location permission denied. Enable it in browser settings.', es: 'Permiso de ubicación denegado. Actívelo en la configuración del navegador.' },
     'map.geoError': { pt: 'Não foi possível obter sua localização. Verifique as permissões do navegador.', en: 'Could not get your location. Check browser permissions.', es: 'No se pudo obtener su ubicación. Verifique los permisos del navegador.' },
+    'map.geoOutsideBrazil': { pt: 'Sua localização está fora do Brasil. Exibindo o mapa completo.', en: 'Your location is outside Brazil. Showing the full map.', es: 'Su ubicación está fuera de Brasil. Mostrando el mapa completo.' },
+    'map.geoSwitchingState': { pt: 'Você está em {0}. Alterando para este estado...', en: 'You are in {0}. Switching to this state...', es: 'Usted está en {0}. Cambiando a este estado...' },
+    'map.geoNoCellFound': { pt: 'Não há célula de mapeamento na sua localização.', en: 'No mapping cell at your location.', es: 'No hay celda de mapeo en su ubicación.' },
+    'map.geoStateDetected': { pt: 'Estado detectado: {0}', en: 'State detected: {0}', es: 'Estado detectado: {0}' },
+    'map.geoPickerOutsideBrazil': { pt: 'Sua localização está fora do Brasil.', en: 'Your location is outside Brazil.', es: 'Su ubicación está fuera de Brasil.' },
 
     // ── Legend ──
     'legend.title': { pt: 'Legenda', en: 'Legend', es: 'Leyenda' },
@@ -482,6 +488,7 @@ window.LeucenaI18n = (function () {
     'toast.noNearbyPoint': { pt: 'Nenhum ponto próximo', en: 'No nearby point', es: 'Ningún punto cercano' },
     'toast.pointDeleted': { pt: 'Ponto #{0} excluído', en: 'Point #{0} deleted', es: 'Punto #{0} eliminado' },
     'toast.deleteFail': { pt: 'Falha ao excluir ponto', en: 'Failed to delete point', es: 'Error al eliminar punto' },
+    'toast.cannotDeleteOther': { pt: 'Você só pode excluir pontos que você adicionou', en: 'You can only delete points you added', es: 'Solo puedes eliminar puntos que agregaste' },
     'toast.moveMouseFirst': { pt: 'Mova o mouse sobre o mapa primeiro', en: 'Move mouse over the map first', es: 'Mueva el mouse sobre el mapa primero' },
     'toast.pointAdded': { pt: 'Ponto #{0} adicionado', en: 'Point #{0} added', es: 'Punto #{0} agregado' },
     'toast.addFail': { pt: 'Falha ao adicionar ponto', en: 'Failed to add point', es: 'Error al agregar punto' },

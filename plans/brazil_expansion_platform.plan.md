@@ -30,8 +30,8 @@ todos:
     content: "[Fase 2] GET /api/states implementado (contagens de grid_cell_states). GET /api/states/:uf/stats adiavel."
     status: done
   - id: api-points
-    content: added_by/added_by_role implementado. Abrir POST /api/points para colaboradores — adiado (decisao de produto)
-    status: pending
+    content: POST /api/points aberto para todos os verificados. DELETE restrito (collab so deleta proprios). GET /api/states/:uf/stats implementado.
+    status: done
   - id: api-tags
     content: CRUD de tags + atribuicao de tags a pontos — adiado (sem demanda real ainda)
     status: pending
@@ -39,8 +39,8 @@ todos:
     content: Seletor de estado no mapa com zoom e filtragem de grids
     status: done
   - id: collab-points-ui
-    content: UI para colaboradores adicionarem pontos com seletor de tags — depende de api-points e api-tags
-    status: pending
+    content: Botoes add/remove pontos visiveis para todos verificados. Estilizados com icones SVG. Banner e toast diferenciado para colaboradores. Tags visual adiavel.
+    status: done
   - id: landing-page
     content: Atualizar landing page para escopo Brasil com SP como piloto — adiar ate ter multi-estado real
     status: pending
@@ -95,8 +95,8 @@ isProject: false
 |--------|--------|--------|
 | **6** — DB `states`, tags, APIs | **Feito (parcial)** | Tabela `states` descartada — `grid_cell_states` (junction) + `UF_META` no cliente substitui. `GET /api/states` implementado (contagens). `seed_brazil_grid.js` insere celulas e preenche junction. `added_by`/`added_by_role` em `occurrence_points` implementado (2026-04-13): colunas, INSERT em `POST /api/points` e import, exposto em `GET /api/points` e socket. **Pendente e adiavel:** `point_tags`/`point_tag_assignments`, `GET /api/states/:uf/stats`. |
 | **7** — Contornos UF + seletor no mapa | **Feito** | Supera o plano original: `brazil-states.geojson` presente; `_loadStateOutlines()` + `_applyStateOutlineFilter()` em `map.js`; state picker modal com busca, geolocalizacao, "Brasil inteiro", cards com contagem, chip no topbar, `localStorage`; `loadStateGrid(uf)` com cache; restricao de pan por estado; filtragem de pontos e mascaras por estado (2026-04-13). |
-| **8** — API pontos/tags/stats (backend) | **Adiado** | `POST /api/points` existe (restrito a team). Abrir para colaboradores depende de decisao de produto. Tags CRUD e `landing-stats` per-state sem demanda imediata. Implementar quando necessario. |
-| **9** — UI pontos + tags | **Adiado** | Acoplado a Sessao 8. UI de pontos ja existe para team/admin. Ajuste minimo ao abrir para colaboradores. Tags visuais adiaveis. |
+| **8** — API pontos/tags/stats (backend) | **Feito (parcial)** | `GET /api/states/:uf/stats` implementado (contagens celulas, mascaras, pontos, area). `POST /api/points` aberto para qualquer usuario verificado. `DELETE /api/points/:id` restrito: colaboradores so deletam pontos proprios (`added_by == username`); team+ deleta qualquer. **Pendente e adiavel:** CRUD de tags, `landing-stats` per-state. |
+| **9** — UI pontos + tags | **Feito (parcial)** | Botoes "Add Pontos" e "Remover Pontos" visiveis para todos os usuarios verificados (antes so team+). Botoes estilizados com icones SVG e cores distintas (verde=add, vermelho=remove). Banner de exclusao diferenciado para colaboradores ("apenas pontos que voce adicionou"). Toast amigavel ao tentar deletar ponto de outro usuario. **Pendente e adiavel:** seletor de tags visual. |
 | **10** — Landing + SEO Brasil | **Adiado** | Landing ainda centrada em SP. Mudar para "Brasil" so faz sentido com grid real de 2-3+ estados. Sessao simples quando chegar a hora (copy + meta tags). |
 | **11** — Script geracao de grids | **Feito (parcial)** | `scripts/seed_brazil_grid.js` insere celulas a partir de GeoJSON nacional pre-gerado e preenche `grid_cell_states`. `delete_grid_cells_from_geojson.js` para remocao. Gerador geometrico (criar celulas do zero a partir de limites IBGE) feito via QGIS/Python no workflow GIS — nao precisa de script Node. |
 | **12** — i18n nacional | **Adiado** | Strings de funcionalidades novas (Street View, layers, dedup, etc.) ja estao no i18n.js. State picker usa strings hardcoded em PT no HTML. Alinhar com Sessao 10 quando expandir para Brasil. |
@@ -670,41 +670,37 @@ Voce pode **pausar entre as fases** em producao: deploy da Fase 1 sem prometer �
 ---
 
 #### Sessao 8 — API: completar stats + pontos colaboradores + tags + landing-stats (somente backend)
-**Status**: **Adiado** — sem demanda imediata; implementar quando necessario
+**Status**: **Feito (parcial)** — implementado em 2026-04-13
 **Modelo**: Fast
 **Partes do plano**: 2.1, 2.2, 2.3, 2.4, 2.5
 
-**Estado atual:**
-- `GET /api/states` ja existe (contagens de `grid_cell_states`).
-- `GET /api/grid?state=UF` ja existe (junction table, validacao 2 letras).
-- `POST /api/points` existe mas restrito a `isTeamOrAbove`.
-- `GET /api/landing-stats` existe com totais globais (sem per-state).
+**Implementado:**
+- `GET /api/states/:uf/stats` — retorna contagens de celulas (por status), mascaras, area total, pontos por UF.
+- `POST /api/points` aberto para qualquer usuario verificado (removido `isTeamOrAbove`).
+- `DELETE /api/points/:id` — colaboradores so podem deletar pontos proprios (`added_by == username`); team/admin/superadmin deletam qualquer ponto.
+- `added_by`/`added_by_role` ja gravados em todos os pontos novos (feito na sessao anterior).
 
-**O que falta (adiavel):**
-- Abrir `POST /api/points` para colaboradores + `added_by`/`added_by_role` — decisao de produto pendente.
+**Pendente e adiavel:**
 - CRUD `/api/point-tags` e atribuicao — sem demanda.
-- `GET /api/states/:uf/stats` — sem UI que consuma.
 - `GET /api/landing-stats` per-state — landing ainda e SP.
-
-**Quando implementar:** ao decidir abrir pontos para colaboradores ou ao expandir a landing para escopo Brasil.
 
 ---
 
 #### Sessao 9 — UI: pontos para colaboradores + seletor de tags
-**Status**: **Adiado** — acoplado a Sessao 8
+**Status**: **Feito (parcial)** — implementado em 2026-04-13
 **Modelo**: Opus
 **Partes do plano**: 4.3
 
-**Estado atual:**
-- UI de adicionar ponto existe para team/admin (botao, marcador, confirmacao).
-- Indicadores visuais por layer/source (crowdmapping, iNaturalist, GBIF, etc.) ja implementados — diferente do conceito de tags do plano.
+**Implementado:**
+- Botoes "Add Pontos" e "Remover Pontos" visiveis para todos os usuarios verificados (antes restritos a team+).
+- Botoes completamente reestilizados: icones SVG de pin com `+` (verde) e `−` (vermelho), cores distintas, animacao de `scale` e `glow` ao ativar.
+- Banner de exclusao diferenciado: colaboradores veem "Apenas pontos que voce adicionou", team+ veem a mensagem completa.
+- Toast `cannotDeleteOther` (i18n PT/EN/ES) ao tentar deletar ponto de outro usuario.
+- Responsivo: texto esconde em telas pequenas, icones continuam visiveis.
 
-**O que falta (adiavel):**
-- Remover restricao no botao de adicionar ponto para contributors (ajuste minimo).
+**Pendente e adiavel:**
 - Seletor de tags ao adicionar ponto — depende de `point_tags` no banco.
-- Indicador visual team vs contributor — depende de `added_by_role` nos pontos.
-
-**Quando implementar:** apos decisao da Sessao 8.
+- Indicador visual team vs contributor no marcador — depende de UI design.
 
 ---
 

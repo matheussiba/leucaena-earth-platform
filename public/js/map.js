@@ -221,6 +221,76 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     _loadStateOutlines();
   }
 
+  let _hoveredStateFeature = null;
+  let _stateTooltipEl = null;
+  let _stateStatsCache = {};
+  const BRAZIL_VIEW_BOUNDS = { south: -33.75, west: -73.99, north: 5.27, east: -34.79 };
+
+  function _ensureStateTooltip() {
+    if (_stateTooltipEl) return;
+    _stateTooltipEl = document.createElement('div');
+    _stateTooltipEl.className = 'state-hover-tooltip';
+    _stateTooltipEl.style.display = 'none';
+    map.getDiv().appendChild(_stateTooltipEl);
+  }
+
+  function _showStateTooltip(e) {
+    _ensureStateTooltip();
+    var uf = e.feature.getProperty('abbrev_state');
+    var name = e.feature.getProperty('name') || uf;
+    var stats = _stateStatsCache[uf];
+    var cells = stats ? stats.cells : 0;
+    var pctF = stats ? stats.pctFinished || 0 : 0;
+    var pctM = stats ? stats.pctMapping || 0 : 0;
+    var pctT = stats ? stats.pctTomap || 0 : 0;
+    var overallPct = pctF + pctM;
+
+    _stateTooltipEl.innerHTML =
+      '<div class="stt-name">' + name + '</div>' +
+      '<div class="stt-uf">' + uf + ' · ' + cells + ' célula' + (cells !== 1 ? 's' : '') + '</div>' +
+      '<div class="stt-overall">' + overallPct.toFixed(1) + '%</div>' +
+      '<div class="stt-bar">' +
+        '<div class="stt-bar-finished" style="width:' + pctF.toFixed(1) + '%"></div>' +
+        '<div class="stt-bar-mapping" style="width:' + pctM.toFixed(1) + '%"></div>' +
+        '<div class="stt-bar-tomap" style="width:' + pctT.toFixed(1) + '%"></div>' +
+      '</div>' +
+      '<div class="stt-legend">' +
+        '<span class="stt-leg-item stt-leg-finished">' + pctF.toFixed(1) + '% Finalizado</span>' +
+        '<span class="stt-leg-item stt-leg-mapping">' + pctM.toFixed(1) + '% Mapeando</span>' +
+        '<span class="stt-leg-item stt-leg-tomap">' + pctT.toFixed(1) + '% A mapear</span>' +
+      '</div>';
+    _stateTooltipEl.style.display = '';
+
+    var pixel = _latLngToPixel(e.latLng);
+    if (pixel) {
+      _stateTooltipEl.style.left = (pixel.x + 16) + 'px';
+      _stateTooltipEl.style.top = (pixel.y - 12) + 'px';
+    }
+  }
+
+  function _hideStateTooltip() {
+    if (_stateTooltipEl) _stateTooltipEl.style.display = 'none';
+  }
+
+  let _pixelOverlay = null;
+  function _ensurePixelOverlay() {
+    if (_pixelOverlay) return;
+    _pixelOverlay = new google.maps.OverlayView();
+    _pixelOverlay.draw = function () {};
+    _pixelOverlay.setMap(map);
+  }
+
+  function _latLngToPixel(latLng) {
+    _ensurePixelOverlay();
+    var proj = _pixelOverlay.getProjection();
+    if (!proj) return null;
+    return proj.fromLatLngToContainerPixel(latLng);
+  }
+
+  function setStateStats(stats) {
+    _stateStatsCache = stats || {};
+  }
+
   async function _loadStateOutlines() {
     if (!map) return;
     try {
@@ -230,28 +300,74 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       }
       _statesLayer = new google.maps.Data({ map: map });
       _statesLayer.addGeoJson(_statesGeoJson);
-      _statesLayer.setStyle({
-        fillOpacity: 0,
-        strokeColor: '#94a3b8',
-        strokeWeight: 1.2,
-        strokeOpacity: 0.6,
-        clickable: false,
-        zIndex: 0
+
+      _statesLayer.addListener('mouseover', function (e) {
+        if (_currentState) return;
+        _hoveredStateFeature = e.feature;
+        var uf = e.feature.getProperty('abbrev_state');
+        var stats = _stateStatsCache[uf];
+        var pct = stats ? (stats.pctFinished || stats.pct || 0) : 0;
+        var hoverFill = pct > 50 ? '#4ade80' : pct > 10 ? '#60a5fa' : '#a78bfa';
+        _statesLayer.overrideStyle(e.feature, {
+          fillOpacity: 0.45,
+          fillColor: hoverFill,
+          strokeColor: '#ffffff',
+          strokeWeight: 2.2,
+          strokeOpacity: 1
+        });
+        map.getDiv().style.cursor = 'pointer';
+        _showStateTooltip(e);
       });
+      _statesLayer.addListener('mouseout', function (e) {
+        if (_currentState) return;
+        _hoveredStateFeature = null;
+        _statesLayer.revertStyle(e.feature);
+        map.getDiv().style.cursor = '';
+        _hideStateTooltip();
+      });
+      map.addListener('mousemove', function (e) {
+        if (!_hoveredStateFeature || _currentState || !_stateTooltipEl || _stateTooltipEl.style.display === 'none') return;
+        var pixel = _latLngToPixel(e.latLng);
+        if (pixel) {
+          _stateTooltipEl.style.left = (pixel.x + 16) + 'px';
+          _stateTooltipEl.style.top = (pixel.y - 12) + 'px';
+        }
+      });
+      _statesLayer.addListener('click', function (e) {
+        if (_currentState) return;
+        _hideStateTooltip();
+        var uf = e.feature.getProperty('abbrev_state');
+        if (uf && typeof LeucenaApp !== 'undefined' && LeucenaApp.selectStateFromMap) {
+          LeucenaApp.selectStateFromMap(uf);
+        }
+      });
+
       _applyStateOutlineFilter(_currentState);
     } catch (e) { /* non-critical */ }
   }
 
   function _applyStateOutlineFilter(uf) {
     if (!_statesLayer) return;
+    _hoveredStateFeature = null;
+    _statesLayer.revertStyle();
+    _hideStateTooltip();
     if (!uf) {
-      _statesLayer.setStyle({
-        fillOpacity: 0,
-        strokeColor: '#94a3b8',
-        strokeWeight: 1.2,
-        strokeOpacity: 0.6,
-        clickable: false,
-        zIndex: 0
+      _statesLayer.setStyle(function (feature) {
+        var fUf = feature.getProperty('abbrev_state');
+        var name = feature.getProperty('name') || fUf;
+        var stats = _stateStatsCache[fUf];
+        var pct = stats ? (stats.pctFinished || stats.pct || 0) : 0;
+        var fill = pct > 50 ? '#22c55e' : pct > 10 ? '#3b82f6' : '#6366f1';
+        return {
+          fillOpacity: 0.22,
+          fillColor: fill,
+          strokeColor: 'rgba(255,255,255,0.35)',
+          strokeWeight: 1.4,
+          strokeOpacity: 1,
+          clickable: true,
+          zIndex: 1,
+          title: name
+        };
       });
       return;
     }
@@ -260,9 +376,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (fUf === uf) {
         return {
           fillOpacity: 0,
-          strokeColor: '#f1f5f9',
-          strokeWeight: 2,
-          strokeOpacity: 0.8,
+          fillColor: 'transparent',
+          strokeColor: 'rgba(241,245,249,0.45)',
+          strokeWeight: 1.5,
+          strokeOpacity: 1,
           clickable: false,
           zIndex: 0
         };
@@ -492,10 +609,54 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     gridLayer.setStyle(gridStyleCallback);
   }
 
+  function _toggleSidebarForBrazilView(isBrazil) {
+    var progress = document.getElementById('mapping-progress');
+    var filters = document.getElementById('sidebar-filters');
+    if (progress) progress.style.display = isBrazil ? 'none' : '';
+    if (filters) filters.style.display = isBrazil ? 'none' : '';
+  }
+
+  function _showBrazilOverview() {
+    gridLayer.forEach(f => gridLayer.remove(f));
+    Object.keys(gridData).forEach(k => delete gridData[k]);
+    Object.keys(gridCellBounds).forEach(k => delete gridCellBounds[k]);
+    gridBounds = null;
+    const brBounds = new google.maps.LatLngBounds(
+      { lat: BRAZIL_VIEW_BOUNDS.south, lng: BRAZIL_VIEW_BOUNDS.west },
+      { lat: BRAZIL_VIEW_BOUNDS.north, lng: BRAZIL_VIEW_BOUNDS.east }
+    );
+    restrictionBounds = bufferBounds(brBounds, 0.15);
+    map.setOptions({
+      restriction: { latLngBounds: restrictionBounds, strictBounds: false }
+    });
+    map.fitBounds(brBounds);
+    _applyStateOutlineFilter(null);
+    updateFilterCounts();
+    refreshPointVisibility();
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
+    _toggleSidebarForBrazilView(true);
+  }
+
   async function loadGrid() {
+    if (!_currentState) {
+      _showBrazilOverview();
+      map.addListener('idle', () => {
+        refreshPointVisibility();
+        if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
+      });
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        initialZoom = map.getZoom();
+        initialCenter = map.getCenter();
+        scheduleAutoLabelsOff();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
+          LeucenaApp.scheduleAutoCollapseLegend();
+        }
+      });
+      return;
+    }
     try {
-      const url = _currentState ? `/api/grid?state=${_currentState}` : '/api/grid';
-      const cacheKey = _currentState || '_all';
+      const url = `/api/grid?state=${_currentState}`;
+      const cacheKey = _currentState;
       let fc;
       if (gridCache[cacheKey]) {
         fc = gridCache[cacheKey];
@@ -532,16 +693,20 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   async function loadStateGrid(uf) {
+    _currentState = uf || null;
+    if (!_currentState) {
+      _showBrazilOverview();
+      return;
+    }
     gridLayer.forEach(f => gridLayer.remove(f));
     Object.keys(gridData).forEach(k => delete gridData[k]);
     Object.keys(gridCellBounds).forEach(k => delete gridCellBounds[k]);
-    _currentState = uf || null;
-    const cacheKey = _currentState || '_all';
+    const cacheKey = _currentState;
     let fc;
     if (gridCache[cacheKey]) {
       fc = gridCache[cacheKey];
     } else {
-      const url = _currentState ? `/api/grid?state=${_currentState}` : '/api/grid';
+      const url = `/api/grid?state=${_currentState}`;
       const res = await fetch(url);
       fc = await res.json();
       gridCache[cacheKey] = fc;
@@ -556,6 +721,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     _applyStateOutlineFilter(_currentState);
     refreshPointVisibility();
     if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
+    _toggleSidebarForBrazilView(false);
   }
 
   function getStyleForCell(props, cellId) {
@@ -1340,11 +1506,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     setText('count-no_points', statusCounts.no_points);
     setText('count-finished', statusCounts.finished);
 
-    const relevant = statusCounts.not_yet_finished + statusCounts.in_use + statusCounts.mapping + statusCounts.finished;
-    if (relevant > 0) {
-      const finishedPct = (statusCounts.finished / relevant * 100);
-      const mappingPct = ((statusCounts.mapping + statusCounts.in_use) / relevant * 100);
-      const tomapPct = (statusCounts.not_yet_finished / relevant * 100);
+    if (gridTotal > 0) {
+      const finishedPct = (statusCounts.finished / gridTotal * 100);
+      const mappingPct = ((statusCounts.mapping + statusCounts.in_use) / gridTotal * 100);
+      const tomapPct = ((statusCounts.not_yet_finished + statusCounts.no_points) / gridTotal * 100);
       const setW = (id, v) => { const el = document.getElementById(id); if (el) el.style.width = v.toFixed(1) + '%'; };
       setW('progress-finished', finishedPct);
       setW('progress-mapping', mappingPct);
@@ -1529,17 +1694,32 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return false;
   }
 
-  function refreshPointVisibility() { // layer toggles + viewport + state: clusterer add/remove (or direct setMap fallback)
+  function findCellAtPosition(latLng) {
+    for (const [cellId, b] of Object.entries(gridCellBounds)) {
+      if (b.contains(latLng)) return cellId;
+    }
+    return null;
+  }
+
+  function refreshPointVisibility() {
     const viewport = map ? map.getBounds() : null;
+    const brazilOverview = !_currentState;
     const stateFilter = !!_currentState;
     ensureClusterer();
     if (!pointClusterer) {
       for (const entry of Object.values(pointMarkersById)) {
+        if (brazilOverview) { entry.marker.setMap(null); continue; }
         const layer = entry.data.layer || 'crowdmapping';
         const inView = !viewport || viewport.contains(entry.marker.getPosition());
         const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
         entry.marker.setMap(isPointLayerVisible(layer) && inView && inState ? map : null);
       }
+      return;
+    }
+    if (brazilOverview) {
+      const allMarkers = Object.values(pointMarkersById).map(e => e.marker);
+      if (allMarkers.length) pointClusterer.removeMarkers(allMarkers, true);
+      pointClusterer.render();
       return;
     }
     const toAdd = [];
@@ -1617,18 +1797,25 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   function zoomToInitialView() {
-    if (!gridBounds) return;
     map.setOptions({ restriction: null });
     if (initialZoom != null && initialCenter) {
       map.setCenter(initialCenter);
       map.setZoom(initialZoom);
-    } else {
+    } else if (gridBounds) {
       map.fitBounds(gridBounds);
+    } else {
+      const brBounds = new google.maps.LatLngBounds(
+        { lat: BRAZIL_VIEW_BOUNDS.south, lng: BRAZIL_VIEW_BOUNDS.west },
+        { lat: BRAZIL_VIEW_BOUNDS.north, lng: BRAZIL_VIEW_BOUNDS.east }
+      );
+      map.fitBounds(brBounds);
     }
     google.maps.event.addListenerOnce(map, 'idle', () => {
-      map.setOptions({
-        restriction: { latLngBounds: restrictionBounds || gridBounds, strictBounds: false }
-      });
+      if (restrictionBounds || gridBounds) {
+        map.setOptions({
+          restriction: { latLngBounds: restrictionBounds || gridBounds, strictBounds: false }
+        });
+      }
     });
   }
 
@@ -1665,6 +1852,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     getPointData,
     zoomToInitialView,
     loadStateGrid,
+    findCellAtPosition,
+    setStateStats,
     refreshLabelToggleTitleForLang,
     updateFilterCounts,
     selectPoint,

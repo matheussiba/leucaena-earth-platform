@@ -1,0 +1,17 @@
+Brazil overview UX overhaul: interactive state map, progress fix, and sidebar refinements
+
+- Add interactive Brazil overview with colored state fills and hover tooltips
+  showing per-state progress (Finalizado/Mapeando/A mapear)
+- Fix critical progress percentage bug: use total cell count as denominator
+  instead of only active cells (no_points were excluded, inflating percentages)
+- Hide sidebar progress and filters when viewing Brazil overview
+- Add "Brasil inteiro" button with flag emoji to region picker modal
+- Rename all state-picker references to region-picker for i18n readiness
+- Add close button to region picker modal
+- Move language/export dropdowns from header to sidebar
+- Increase mobile auth button sizing with visible SVG icons
+- Improve state hover: color matches progress tier, smooth lift effect
+- Clear hover override on state selection to prevent fill persistence
+- Restrict collaborator point deletion to own points only
+- Server: /api/states now returns mapping_count and tomap_count breakdowns
+- Add sidebar-filters ID for programmatic visibility toggle

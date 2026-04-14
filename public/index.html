@@ -671,10 +671,10 @@
           <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth" class="app-logo">
           <span class="app-title">leucaena.earth</span>
         </a>
-        <button class="state-chip" id="state-chip" title="Trocar estado">
+        <button class="region-chip" id="region-chip" title="Trocar região" data-i18n-title="map.switchRegion">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <span id="state-chip-label">--</span>
-          <svg class="state-chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          <span id="region-chip-label">--</span>
+          <svg class="region-chip-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <button class="guide-start-btn" id="guide-btn" title="Comece por aqui">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -685,30 +685,6 @@
         <span id="selected-cell-info" class="cell-info-badge hidden">Nenhuma célula selecionada</span>
       </div>
       <div class="top-bar-right">
-        <div class="dropdown" id="lang-dropdown">
-          <button class="btn btn-secondary btn-small" id="lang-btn" title="Idioma / Language">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-            <span id="lang-btn-label">PT</span>
-          </button>
-          <div class="dropdown-menu" id="lang-menu">
-            <a href="#" class="lang-option" data-lang="pt"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#009c3b"/><polygon points="10,1.5 18.5,7 10,12.5 1.5,7" fill="#ffdf00"/><circle cx="10" cy="7" r="2.8" fill="#002776"/></svg> Português</a>
-            <a href="#" class="lang-option" data-lang="en"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#012169"/><path d="M0,0 L20,14 M20,0 L0,14" stroke="white" stroke-width="2.5"/><path d="M0,0 L20,14 M20,0 L0,14" stroke="#C8102E" stroke-width="1.2"/><path d="M10,0 V14 M0,7 H20" stroke="white" stroke-width="3.5"/><path d="M10,0 V14 M0,7 H20" stroke="#C8102E" stroke-width="2"/></svg> English</a>
-            <a href="#" class="lang-option" data-lang="es"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#c60b1e"/><rect y="3.5" width="20" height="7" fill="#ffc400"/></svg> Español</a>
-          </div>
-        </div>
-        <div class="dropdown" id="export-dropdown">
-          <button class="btn btn-secondary" id="export-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span data-i18n="topbar.export">Exportar</span>
-          </button>
-          <div class="dropdown-menu" id="export-menu">
-            <div id="export-login-warn" class="export-login-warn hidden" data-i18n="topbar.loginToDownload">Faça login para baixar</div>
-            <a href="#" id="export-points" data-i18n="topbar.pointsGeoJSON">Pontos de Ocorrência (GeoJSON)</a>
-            <a href="#" id="export-grid" data-i18n="topbar.gridGeoJSON">Grade SP (GeoJSON)</a>
-            <a href="#" id="export-geojson" data-i18n="topbar.polygonsGeoJSON">Polígonos de Leucena (GeoJSON)</a>
-            <div id="export-contributor-disclaimer" class="export-disclaimer hidden" data-i18n="export.masksDisclaimer">Os pontos de ocorrência e os polígonos de leucena ainda estão em fase de validação e não estão disponíveis para download no momento.</div>
-          </div>
-        </div>
         <!-- Deslogado -->
         <div class="auth-nav-group" id="auth-nav-group">
           <button class="btn btn-nav-login" id="login-btn">
@@ -777,28 +753,27 @@
     </div>
 
     <!-- State Picker Modal -->
-    <div id="state-picker-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Escolha um estado">
-      <div class="state-picker-card">
-        <div class="state-picker-header">
-          <svg class="state-picker-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <h2 class="state-picker-title">Escolha um estado</h2>
-        </div>
-        <div class="state-picker-search-wrap">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="state-picker-search" class="state-picker-search" placeholder="Buscar estado..." autocomplete="off">
-        </div>
-        <div id="state-picker-brazil-wrap" class="state-picker-brazil-wrap">
-          <button type="button" id="state-picker-brazil-btn" class="state-picker-brazil-btn">
-            <span class="state-picker-brazil-flag" aria-hidden="true">&#x1F1E7;&#x1F1F7;</span>
-            <span class="state-picker-brazil-text">
-              <span class="state-picker-brazil-title">Brasil inteiro</span>
-              <span class="state-picker-brazil-sub" id="state-picker-brazil-sub">Carregar todas as células</span>
-            </span>
+    <div id="region-picker-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Escolha uma região">
+      <div class="region-picker-card">
+        <div class="region-picker-header">
+          <svg class="region-picker-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <h2 class="region-picker-title">Escolha uma região</h2>
+          <button type="button" class="region-picker-close-btn" id="region-picker-close-btn" aria-label="Fechar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <div id="state-picker-grid" class="state-picker-grid"></div>
-        <div class="state-picker-footer">
-          <button type="button" class="btn state-picker-geo-btn" id="state-picker-geo-btn">
+        <div class="region-picker-search-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="region-picker-search" class="region-picker-search" placeholder="Buscar região..." autocomplete="off">
+        </div>
+        <button type="button" class="region-picker-brazil-btn" id="region-picker-brazil-btn">
+          <span class="region-brazil-flag">🇧🇷</span>
+          <span>Brasil inteiro</span>
+          <svg class="region-brazil-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div id="region-picker-grid" class="region-picker-grid"></div>
+        <div class="region-picker-footer">
+          <button type="button" class="btn region-picker-geo-btn" id="region-picker-geo-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="9"/></svg>
             Usar minha localização
           </button>
@@ -854,7 +829,7 @@
         </div>
 
         <!-- Filtros -->
-        <div class="sidebar-section">
+        <div class="sidebar-section" id="sidebar-filters">
           <h3 data-i18n="sidebar.filters">Filtros</h3>
 
           <!-- Células da Grade -->
@@ -1013,6 +988,34 @@
           <h3 data-i18n="sidebar.onlineUsers">Usuários Online</h3>
           <div id="users-list"></div>
         </div>
+
+        <!-- Idioma & Exportar -->
+        <div class="sidebar-section sidebar-footer-actions">
+          <div class="dropdown" id="lang-dropdown">
+            <button class="btn btn-sidebar-action" id="lang-btn" title="Idioma / Language">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              <span id="lang-btn-label">PT</span>
+            </button>
+            <div class="dropdown-menu" id="lang-menu">
+              <a href="#" class="lang-option" data-lang="pt"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#009c3b"/><polygon points="10,1.5 18.5,7 10,12.5 1.5,7" fill="#ffdf00"/><circle cx="10" cy="7" r="2.8" fill="#002776"/></svg> Português</a>
+              <a href="#" class="lang-option" data-lang="en"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#012169"/><path d="M0,0 L20,14 M20,0 L0,14" stroke="white" stroke-width="2.5"/><path d="M0,0 L20,14 M20,0 L0,14" stroke="#C8102E" stroke-width="1.2"/><path d="M10,0 V14 M0,7 H20" stroke="white" stroke-width="3.5"/><path d="M10,0 V14 M0,7 H20" stroke="#C8102E" stroke-width="2"/></svg> English</a>
+              <a href="#" class="lang-option" data-lang="es"><svg class="lang-flag" width="20" height="14" viewBox="0 0 20 14"><rect width="20" height="14" rx="1" fill="#c60b1e"/><rect y="3.5" width="20" height="7" fill="#ffc400"/></svg> Español</a>
+            </div>
+          </div>
+          <div class="dropdown" id="export-dropdown">
+            <button class="btn btn-sidebar-action" id="export-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span data-i18n="topbar.export">Exportar</span>
+            </button>
+            <div class="dropdown-menu" id="export-menu">
+              <div id="export-login-warn" class="export-login-warn hidden" data-i18n="topbar.loginToDownload">Faça login para baixar</div>
+              <a href="#" id="export-points" data-i18n="topbar.pointsGeoJSON">Pontos de Ocorrência (GeoJSON)</a>
+              <a href="#" id="export-grid" data-i18n="topbar.gridGeoJSON">Grade SP (GeoJSON)</a>
+              <a href="#" id="export-geojson" data-i18n="topbar.polygonsGeoJSON">Polígonos de Leucena (GeoJSON)</a>
+              <div id="export-contributor-disclaimer" class="export-disclaimer hidden" data-i18n="export.masksDisclaimer">Os pontos de ocorrência e os polígonos de leucena ainda estão em fase de validação e não estão disponíveis para download no momento.</div>
+            </div>
+          </div>
+        </div>
       </aside>
 
       <!-- Mapa + Street View -->
@@ -1126,12 +1129,14 @@
           </label>
         </span>
         <div class="toolbar-separator hidden" id="insertion-sep"></div>
-        <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="insertion-toggle" title="Adicionar pontos de Leucena">
-          <input type="checkbox" id="tool-insertion">
+        <label class="toolbar-btn toolbar-btn-add hidden" id="insertion-toggle" data-i18n-title="tool.addPoints">
+          <input type="checkbox" id="tool-insertion" class="sr-only">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="15" y1="18" x2="15" y2="24"/><line x1="12" y1="21" x2="18" y2="21"/></svg>
           <span data-i18n="tool.addPoints">Add Pontos</span>
         </label>
-        <label class="toolbar-checkbox toolbar-checkbox-warn hidden" id="deletion-toggle" title="Remover pontos de Leucena (admin)">
-          <input type="checkbox" id="tool-deletion">
+        <label class="toolbar-btn toolbar-btn-del hidden" id="deletion-toggle" data-i18n-title="tool.delPoints">
+          <input type="checkbox" id="tool-deletion" class="sr-only">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
           <span data-i18n="tool.delPoints">Remover Pontos</span>
         </label>
       </div>

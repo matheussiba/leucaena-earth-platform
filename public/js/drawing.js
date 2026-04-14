@@ -1536,16 +1536,22 @@ window.LeucenaDrawing = (function () {
     refreshPolyVisibility();
   }
 
-  function refreshPolyVisibility() { // viewport culling via polyBounds ∩ map bounds (plus global/role/state visibility)
+  function refreshPolyVisibility() {
     const globalShow = LeucenaMap.getShowPolygons();
     const map = LeucenaMap.getMap();
     const viewport = map ? map.getBounds() : null;
-    const stateActive = typeof LeucenaMap.getCurrentState === 'function' && LeucenaMap.getCurrentState();
-    const loadedCells = stateActive ? LeucenaMap.getGridData() : null;
+    const currentState = typeof LeucenaMap.getCurrentState === 'function' ? LeucenaMap.getCurrentState() : null;
+    const brazilOverview = !currentState;
+    const loadedCells = currentState ? LeucenaMap.getGridData() : null;
     for (const [id, entry] of Object.entries(drawnPolygons)) {
+      if (brazilOverview) {
+        entry.gmapsPoly.setMap(null);
+        if (entry.areaLabel) entry.areaLabel.setMap(null);
+        continue;
+      }
       const crole = entry.data.created_by_role || 'contributor';
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
-      const inState = !stateActive || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
+      const inState = !currentState || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
       const show = globalShow && shouldShowPoly(crole) && inView && inState;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
