@@ -514,11 +514,13 @@ window.LeucenaApp = (function () {
 
     document.getElementById('legend-toggle').addEventListener('click', toggleLegend);
 
-    document.getElementById('toggle-users-btn').addEventListener('click', () => {
-      const main = document.getElementById('main-content');
-      if (!main.classList.contains('sidebar-open')) toggleSidebar();
-      const panel = document.getElementById('users-panel');
-      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('toggle-users-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openUsersOnlineModal();
+    });
+    document.getElementById('users-online-modal-close').addEventListener('click', closeUsersOnlineModal);
+    document.getElementById('users-online-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeUsersOnlineModal();
     });
 
     if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.initAnonymous) {
@@ -565,6 +567,7 @@ window.LeucenaApp = (function () {
         ['guide-modal', closeGuideModal],
         ['dedup-modal', () => { document.getElementById('dedup-modal').classList.add('hidden'); }],
         ['ranking-modal', closeRankingModal],
+        ['users-online-modal', closeUsersOnlineModal],
         ['celebration-modal', closeCelebration],
         ['region-picker-modal', closeRegionPicker],
       ];
@@ -580,7 +583,17 @@ window.LeucenaApp = (function () {
 
   }
 
-  // ── Language dropdown ──
+  // ── Toolbar dropdown helpers (lang & export) ──
+
+  function closeSiblingToolbarDropdown(opening) {
+    const langMenu = document.getElementById('lang-menu');
+    const exportMenu = document.getElementById('export-menu');
+    if (opening === 'lang' && exportMenu) {
+      exportMenu.classList.remove('show');
+    } else if (opening === 'export' && langMenu) {
+      langMenu.classList.remove('show');
+    }
+  }
 
   function setupLangDropdown() {
     const btn = document.getElementById('lang-btn');
@@ -589,14 +602,18 @@ window.LeucenaApp = (function () {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       updateLangMenuActive();
+      closeSiblingToolbarDropdown('lang');
       menu.classList.toggle('show');
     });
 
-    document.addEventListener('click', () => menu.classList.remove('show'));
+    document.addEventListener('click', () => {
+      menu.classList.remove('show');
+    });
 
     document.querySelectorAll('.lang-option').forEach(a => {
       a.addEventListener('click', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const lang = a.getAttribute('data-lang');
         LeucenaI18n.setLang(lang);
         menu.classList.remove('show');
@@ -1362,6 +1379,14 @@ window.LeucenaApp = (function () {
     document.getElementById('ranking-modal').classList.add('hidden');
   }
 
+  function openUsersOnlineModal() {
+    document.getElementById('users-online-modal').classList.remove('hidden');
+  }
+
+  function closeUsersOnlineModal() {
+    document.getElementById('users-online-modal').classList.add('hidden');
+  }
+
   function escapeHtmlRanking(s) {
     const div = document.createElement('div');
     div.textContent = s;
@@ -1938,16 +1963,17 @@ window.LeucenaApp = (function () {
   // ── Onboarding Controller ──
   // Guided tour: dim overlay + spotlight on target + tooltip positioned within the viewport.
   const WELCOME_VERSION = 'v1_howto_video';
-  const TOUR_VERSION = 'v3';
+  const TOUR_VERSION = 'v4';
   let _tourStartedFrom = null;
   let _tourStep = 0;
   let _tourSpotlight = null;
 
   const TOUR_STEPS = [
+    { target: '#region-chip',     text: 'tour.stepRegion' },
     { target: '#guide-btn',       text: 'tour.step1' },
     { target: '#user-badge',      text: 'tour.step2' },
     { target: '#sidebar-toggle',  text: 'tour.step3' },
-    { target: '#tool-maptools',   text: 'tour.step4' },
+    { target: '#toolbar',          text: 'tour.step4' },
     { target: '#btn-my-location', text: 'tour.step5' },
     { target: '#map',             text: 'tour.step6' },
   ];
@@ -2694,9 +2720,11 @@ window.LeucenaApp = (function () {
   function updateLegendVisibility(sidebarOpen) {
     const legend = document.getElementById('map-legend');
     const locBtn = document.getElementById('btn-my-location');
+    const usersBtn = document.getElementById('toggle-users-btn');
     // Sidebar should not hide legend/location; legend is shifted via CSS when sidebar is open.
     if (legend) legend.classList.remove('legend-hidden');
     if (locBtn) locBtn.classList.remove('legend-hidden');
+    if (usersBtn) usersBtn.classList.remove('legend-hidden');
   }
 
   // ── Map init ──
@@ -2951,17 +2979,22 @@ window.LeucenaApp = (function () {
   function enableTools(enabled) {
     const editPanel = document.getElementById('edit-tools-panel');
     const unlockBtn = document.getElementById('tool-unlock');
+    const svWrap = document.getElementById('tool-streetview-wrap');
+    const svSep = document.getElementById('streetview-sep');
     if (enabled) {
       editPanel.classList.remove('hidden');
       unlockBtn.classList.remove('hidden');
+      if (svWrap) svWrap.classList.remove('hidden');
+      if (svSep) svSep.classList.remove('hidden');
       applyRoleRestrictions();
     } else {
       editPanel.classList.add('hidden');
       unlockBtn.classList.add('hidden');
+      if (svWrap) svWrap.classList.add('hidden');
+      if (svSep) svSep.classList.add('hidden');
     }
     const selectBtn = document.getElementById('tool-select');
-    selectBtn.disabled = false;
-    selectBtn.classList.add('active');
+    if (selectBtn) { selectBtn.disabled = false; selectBtn.classList.add('active'); }
     const pointMode = insertionMode || deletionMode;
     document.getElementById('tool-streetview').disabled = !(enabled || pointMode);
     syncStreetViewButtonTitle();
@@ -3389,6 +3422,12 @@ window.LeucenaApp = (function () {
       LeucenaMap.setMapBorder(anyActive);
     }
     const cellLocked = selectedCellData && selectedCellData.locked_by === username;
+    const svWrap = document.getElementById('tool-streetview-wrap');
+    const svSep = document.getElementById('streetview-sep');
+    if (anyActive || cellLocked) {
+      if (svWrap) svWrap.classList.remove('hidden');
+      if (svSep) svSep.classList.remove('hidden');
+    }
     document.getElementById('tool-streetview').disabled = !(anyActive || cellLocked);
     syncStreetViewButtonTitle();
   }
@@ -5669,6 +5708,7 @@ window.LeucenaApp = (function () {
     refreshCellSidebarIfSelected,
     onInboxNew,
     refreshInboxBadge,
-    selectStateFromMap
+    selectStateFromMap,
+    closeSiblingToolbarDropdown
   };
 })();

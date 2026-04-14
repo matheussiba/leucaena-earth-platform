@@ -881,12 +881,13 @@ a.docs-logo-card:hover {
 }
 .region-picker-brazil-btn:active { transform: scale(0.98); }
 .region-brazil-flag {
-  font-size: 20px;
-  line-height: 1;
-  flex-shrink: 0;
-  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  line-height: 0;
 }
-.region-picker-brazil-btn span { flex: 1; text-align: left; }
+.region-brazil-flag svg { display: block; }
+.region-picker-brazil-btn span:not(.region-brazil-flag) { flex: 1; text-align: left; }
 .region-brazil-arrow { flex-shrink: 0; opacity: 0.5; }
 .region-picker-brazil-btn:hover .region-brazil-arrow { opacity: 1; }
 .region-picker-brazil-btn.active {
@@ -1560,11 +1561,9 @@ a.docs-logo-card:hover {
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-/* ── Language Dropdown ── */
+/* ── Language Dropdown (position fixed via app.js — sidebar overflow clips absolute) ── */
 #lang-dropdown .dropdown-menu {
   min-width: 150px;
-  right: 0;
-  left: auto;
 }
 
 .lang-option {
@@ -1642,7 +1641,10 @@ a.docs-logo-card:hover {
   width: var(--sidebar-width);
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   flex-shrink: 0;
   position: absolute;
   top: var(--topbar-height);
@@ -1650,6 +1652,20 @@ a.docs-logo-card:hover {
   height: calc(100% - var(--topbar-height) - var(--toolbar-height));
   z-index: 140;
   transition: left 0.3s ease;
+}
+
+.sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sidebar-bottom {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
 }
 
 #main-content.sidebar-open #sidebar {
@@ -1680,40 +1696,21 @@ a.docs-logo-card:hover {
   font-weight: 600;
 }
 
-.sidebar-footer-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  margin-top: auto;
+/* ── Toolbar dropdowns (lang & export) ── */
+.toolbar-dropdown {
+  position: relative;
 }
-.btn-sidebar-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.btn-sidebar-action:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-color: var(--accent);
-}
-.sidebar-footer-actions .dropdown-menu {
-  top: auto;
-  bottom: calc(100% + 4px);
-  left: 0;
-  right: auto;
+.toolbar-dropdown .dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  left: auto;
+  min-width: 180px;
+  max-height: min(320px, calc(100vh - 16px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 300;
 }
 
 .filter-group {
@@ -2587,6 +2584,67 @@ a.docs-logo-card:hover {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+}
+
+/* ── Online users (map corner, mirror of my-location but top-right below topbar) ── */
+.btn-users-online {
+  position: absolute;
+  top: calc(var(--topbar-height) + 8px);
+  right: 12px;
+  z-index: 150;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, opacity 0.2s, visibility 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  padding: 0;
+}
+
+.btn-users-online:hover {
+  background: rgba(71, 85, 105, 0.8);
+  color: white;
+}
+
+.btn-users-online .user-count-badge {
+  top: -4px;
+  right: -4px;
+}
+
+.btn-users-online.legend-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.modal-card-users-online {
+  max-width: 400px;
+  width: 92vw;
+  max-height: min(520px, 88vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-card-users-online h2 {
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+.users-online-modal-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: min(400px, 65vh);
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Map Legend (accordion) ── */
@@ -4427,6 +4485,11 @@ a.docs-logo-card:hover {
     right: 8px;
   }
 
+  .btn-users-online {
+    top: calc(var(--topbar-height) + 4px);
+    right: 8px;
+  }
+
   .legend-body {
     max-height: 150px;
   }
@@ -5028,6 +5091,10 @@ a.docs-logo-card:hover {
 }
 
 /* ── Sidebar Ranking Widget ── */
+.sidebar-bottom .sidebar-ranking-widget {
+  margin: 10px 8px 6px 8px;
+}
+
 .sidebar-ranking-widget {
   display: flex;
   align-items: center;

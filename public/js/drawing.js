@@ -543,10 +543,13 @@ window.LeucenaDrawing = (function () {
   }
 
   function setupToolbar() {
-    document.getElementById('tool-select').addEventListener('click', () => {
-      if (activeMode === 'select') return;
-      requestToolSwitch('select');
-    });
+    const selectBtn = document.getElementById('tool-select');
+    if (selectBtn) {
+      selectBtn.addEventListener('click', () => {
+        if (activeMode === 'select') return;
+        requestToolSwitch('select');
+      });
+    }
     document.getElementById('tool-draw').addEventListener('click', () => {
       if (activeMode === 'draw') { setMode('select'); return; }
       requestToolSwitch('draw');

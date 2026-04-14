@@ -542,6 +542,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     if (arrow) arrow.textContent = '\u00BB';
     const legend = document.getElementById('map-legend');
     if (legend) legend.classList.remove('legend-hidden');
+    const usersBtn = document.getElementById('toggle-users-btn');
+    if (usersBtn) usersBtn.classList.remove('legend-hidden');
     LeucenaApp.deselectCell();
   }
 

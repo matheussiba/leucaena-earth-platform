@@ -375,6 +375,11 @@ window.LeucenaI18n = (function () {
     'tour.skip': { pt: 'Pular', en: 'Skip', es: 'Saltar' },
     'tour.next': { pt: 'Próximo', en: 'Next', es: 'Siguiente' },
     'tour.finish': { pt: 'Entendi!', en: 'Got it!', es: '¡Entendido!' },
+    'tour.stepRegion': {
+      pt: 'Troque de região aqui: clique para escolher um estado ou voltar à visão geral do Brasil.',
+      en: 'Switch regions here: click to choose a state or return to the Brazil overview.',
+      es: 'Cambie de región aquí: haga clic para elegir un estado o volver a la vista general de Brasil.'
+    },
     'tour.step1': {
       pt: 'Comece por aqui: documentação, tutoriais em vídeo e informações sobre o projeto.',
       en: 'Start here: documentation, video tutorials, and project information.',
@@ -386,14 +391,14 @@ window.LeucenaI18n = (function () {
       es: 'Su perfil: después de iniciar sesión, haga clic aquí para ver y editar su información.'
     },
     'tour.step3': {
-      pt: 'Abra o painel lateral para ver filtros, informações da célula selecionada e os usuários online.',
-      en: 'Open the side panel to see filters, selected cell info, and online users.',
-      es: 'Abra el panel lateral para ver filtros, información de la celda y usuarios en línea.'
+      pt: 'Abra o painel lateral para ver filtros e informações da célula. O botão de usuários no canto superior direito do mapa abre a lista de colaboradores online.',
+      en: 'Open the side panel for filters and cell info. The users button at the top-right of the map opens the list of online collaborators.',
+      es: 'Abra el panel lateral para filtros e información de la celda. El botón de usuarios arriba a la derecha del mapa abre la lista de colaboradores en línea.'
     },
     'tour.step4': {
-      pt: 'Ferramentas do mapa: alterne Satélite/Mapa e ative Rótulos para facilitar a navegação.',
-      en: 'Map tools: switch Satellite/Map and enable Labels to navigate more easily.',
-      es: 'Herramientas del mapa: cambie Satélite/Mapa y active Etiquetas para navegar mejor.'
+      pt: 'Barra de ferramentas: alterne Satélite/Mapa, ative Rótulos, troque o idioma e exporte dados.',
+      en: 'Toolbar: switch Satellite/Map, enable Labels, change language and export data.',
+      es: 'Barra de herramientas: cambie Satélite/Mapa, active Etiquetas, cambie el idioma y exporte datos.'
     },
     'tour.step5': {
       pt: 'Minha localização: centralize o mapa na sua posição para se orientar (celular e computador).',
@@ -885,7 +890,7 @@ window.LeucenaI18n = (function () {
     '<li>Use <strong>Ctrl+Z</strong> para desfazer a última ação (ao adicionar ou remover pontos).</li>' +
     '<li>Use o <strong>zoom</strong> para ver detalhes das copas: leucenas têm copas arredondadas com tom verde-claro.</li>' +
     '<li>As <strong>coordenadas</strong> (lat, long) aparecem na barra inferior conforme você move o mouse sobre o mapa.</li>' +
-    '<li>O ícone de <strong>usuários online</strong> na barra superior mostra quantos colaboradores estão mapeando simultaneamente.</li>' +
+    '<li>O botão de <strong>usuários online</strong> no canto superior direito do mapa mostra quantos colaboradores estão mapeando; clique para ver a lista.</li>' +
     '<li>Acompanhe seu <strong>ranking</strong> na barra lateral para ver sua posição entre os colaboradores.</li>' +
     '</ul></div>';
   }
@@ -974,7 +979,7 @@ window.LeucenaI18n = (function () {
     '<li>Use <strong>Ctrl+Z</strong> to undo the last action (when adding or removing points).</li>' +
     '<li>Use <strong>zoom</strong> to see canopy details: leucaena has rounded canopies with a light-green tone.</li>' +
     '<li><strong>Coordinates</strong> (lat, long) are shown in the bottom bar as you move the mouse over the map.</li>' +
-    '<li>The <strong>online users</strong> icon in the top bar shows how many contributors are mapping simultaneously.</li>' +
+    '<li>The <strong>online users</strong> button at the top-right of the map shows how many contributors are mapping; click to open the list.</li>' +
     '<li>Track your <strong>ranking</strong> in the sidebar to see your position among contributors.</li>' +
     '</ul></div>';
   }
@@ -1063,7 +1068,7 @@ window.LeucenaI18n = (function () {
     '<li>Use <strong>Ctrl+Z</strong> para deshacer la última acción (al agregar o eliminar puntos).</li>' +
     '<li>Use el <strong>zoom</strong> para ver detalles de las copas: la leucaena tiene copas redondeadas con tono verde claro.</li>' +
     '<li>Las <strong>coordenadas</strong> (lat, long) se muestran en la barra inferior mientras mueve el mouse sobre el mapa.</li>' +
-    '<li>El icono de <strong>usuarios en línea</strong> en la barra superior muestra cuántos colaboradores están mapeando simultáneamente.</li>' +
+    '<li>El botón de <strong>usuarios en línea</strong> arriba a la derecha del mapa muestra cuántos colaboradores están mapeando; haga clic para ver la lista.</li>' +
     '<li>Siga su <strong>ranking</strong> en la barra lateral para ver su posición entre los colaboradores.</li>' +
     '</ul></div>';
   }

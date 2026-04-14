@@ -7,6 +7,9 @@ window.LeucenaExport = (function () {
     exportBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       updateExportState();
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.closeSiblingToolbarDropdown) {
+        LeucenaApp.closeSiblingToolbarDropdown('export');
+      }
       exportMenu.classList.toggle('show');
     });
 
