@@ -173,6 +173,8 @@ window.LeucenaCollab = (function () {
       return;
     }
     const isTeamPlus = typeof LeucenaApp !== 'undefined' && LeucenaApp.isTeamOrAbove && LeucenaApp.isTeamOrAbove();
+    const isAdmin = typeof LeucenaApp !== 'undefined' && LeucenaApp.isAdminUser && LeucenaApp.isAdminUser();
+    const currentUser = typeof LeucenaApp !== 'undefined' && LeucenaApp.getUsername ? LeucenaApp.getUsername() : null;
     for (const user of users) {
       const el = document.createElement('div');
       el.className = 'user-item';
@@ -200,18 +202,33 @@ window.LeucenaCollab = (function () {
       if (isTeamPlus && user.locationState && !user.editingCell) {
         locationTag = '<span class="user-location-tag">' + user.locationState + '</span>';
       }
+      var msgBtn = '';
+      if (isAdmin && user.username !== currentUser) {
+        msgBtn = '<button class="btn-user-msg" title="' + LeucenaI18n.t('collab.sendMessage') + '">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>' +
+          '</button>';
+      }
       const zoomHint = isTeamPlus && user.editingCell ? LeucenaI18n.t('collab.dblclickToZoom') : '';
       if (zoomHint) el.title = zoomHint;
       el.innerHTML = `
         <span class="online-dot"></span>
         <span>${user.username}</span>
         <span class="user-cell-info">${cellInfo}</span>
-        ${locationTag}${activityTag}
+        ${locationTag}${activityTag}${msgBtn}
       `;
       if (isTeamPlus && user.editingCell) {
         const cellId = user.editingCell;
         const cellState = user.editingCellState;
         el.addEventListener('dblclick', () => _zoomToUserCell(cellId, cellState));
+      }
+      const msgBtnEl = el.querySelector('.btn-user-msg');
+      if (msgBtnEl) {
+        const targetUser = user.username;
+        msgBtnEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          document.getElementById('users-online-modal').classList.add('hidden');
+          if (LeucenaApp.openComposeModalForUser) LeucenaApp.openComposeModalForUser(targetUser);
+        });
       }
       container.appendChild(el);
     }

@@ -584,6 +584,7 @@ window.LeucenaI18n = (function () {
     'toast.userStartedEditing': { pt: '{0} começou a editar Célula #{1}', en: '{0} started editing Cell #{1}', es: '{0} comenzó a editar Celda #{1}' },
     'toast.userFinishedEditing': { pt: '{0} terminou de editar Célula #{1}', en: '{0} finished editing Cell #{1}', es: '{0} terminó de editar Celda #{1}' },
     'collab.noUsersOnline': { pt: 'Nenhum usuário online no momento', en: 'No users online at the moment', es: 'Ningún usuario en línea en este momento' },
+    'collab.sendMessage': { pt: 'Enviar mensagem', en: 'Send message', es: 'Enviar mensaje' },
     'collab.idle': { pt: 'Ocioso', en: 'Idle', es: 'Inactivo' },
     'collab.cell': { pt: 'Célula #{0}', en: 'Cell #{0}', es: 'Celda #{0}' },
     'collab.cellRegion': { pt: '{0} (#{1})', en: '{0} (#{1})', es: '{0} (#{1})' },

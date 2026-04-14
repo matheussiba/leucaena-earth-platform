@@ -2010,6 +2010,24 @@ a.docs-logo-card:hover {
   padding: 20px 12px;
   font-style: italic;
 }
+.btn-user-msg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.15);
+  border: none;
+  border-radius: 4px;
+  color: #93c5fd;
+  cursor: pointer;
+  padding: 3px 5px;
+  margin-left: auto;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.btn-user-msg:hover {
+  background: rgba(59, 130, 246, 0.35);
+  color: #bfdbfe;
+}
 .user-location-tag {
   display: inline-block;
   font-size: 9px;

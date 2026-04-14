@@ -5510,6 +5510,16 @@ window.LeucenaApp = (function () {
     openComposeModal('reply', msg);
   }
 
+  async function openComposeModalForUser(targetUsername) {
+    await openComposeModal('admin');
+    const select = document.getElementById('inbox-compose-target');
+    if (select) {
+      for (const opt of select.options) {
+        if (opt.value === targetUsername) { select.value = targetUsername; break; }
+      }
+    }
+  }
+
   let _batchTargetUsernames = null;
 
   function openBatchComposeModal(ids, colabUsers) {
@@ -5548,6 +5558,7 @@ window.LeucenaApp = (function () {
   }
 
   function closeComposeModal() {
+    closeSendConfirm();
     document.getElementById('inbox-compose-modal').classList.add('hidden');
     _composeReplyTo = null;
     _composeMode = 'admin';
@@ -5774,6 +5785,7 @@ window.LeucenaApp = (function () {
     onInboxNew,
     refreshInboxBadge,
     selectStateFromMap,
-    closeSiblingToolbarDropdown
+    closeSiblingToolbarDropdown,
+    openComposeModalForUser
   };
 })();
