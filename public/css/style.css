@@ -134,6 +134,40 @@ html, body {
   position: relative;
 }
 
+/* ── App Update Modal ── */
+.app-update-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 32px 28px;
+}
+.app-update-icon {
+  animation: spin-once 0.8s ease-out;
+}
+@keyframes spin-once {
+  from { transform: rotate(-180deg); opacity: 0; }
+  to   { transform: rotate(0deg); opacity: 1; }
+}
+.app-update-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+.app-update-text {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.5;
+  margin: 0;
+}
+.app-update-btn {
+  margin-top: 8px;
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .modal-card-small {
   width: 340px;
   padding: 32px 28px 24px;
@@ -1159,6 +1193,42 @@ a.docs-logo-card:hover {
   gap: 12px;
 }
 
+/* ── Brazil Overview Sidebar Prompt ── */
+.sidebar-brazil-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px 24px;
+  text-align: center;
+  gap: 14px;
+  flex: 1;
+}
+.brazil-prompt-icon {
+  opacity: 0.7;
+}
+.brazil-prompt-text {
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+.brazil-prompt-btn {
+  margin-top: 4px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Cell Search ── */
+.cell-search-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.45);
+  margin: 0 0 6px;
+  font-weight: 600;
+}
 .cell-search-row {
   display: flex;
   align-items: center;
@@ -1917,6 +1987,7 @@ a.docs-logo-card:hover {
   border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
   font-size: 13px;
+  flex-wrap: wrap;
 }
 
 .user-item .online-dot {
@@ -1931,6 +2002,39 @@ a.docs-logo-card:hover {
   color: var(--text-muted);
   font-size: 11px;
   margin-left: auto;
+}
+.users-empty {
+  text-align: center;
+  color: rgba(255,255,255,0.4);
+  font-size: 13px;
+  padding: 20px 12px;
+  font-style: italic;
+}
+.user-location-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.user-activity-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(132, 204, 22, 0.15);
+  color: #a3e635;
+  margin-left: 6px;
+  white-space: nowrap;
 }
 
 .user-item.user-item-zoomable {
@@ -2075,6 +2179,29 @@ a.docs-logo-card:hover {
   justify-content: center;
   max-width: 420px;
   text-align: center;
+}
+
+.btn-badge-unlock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.btn-badge-unlock:hover {
+  background: rgba(239, 68, 68, 0.45);
+  border-color: #ef4444;
+  color: #fff;
+}
+.btn-badge-unlock:active {
+  transform: scale(0.92);
 }
 
 .edit-pulse {

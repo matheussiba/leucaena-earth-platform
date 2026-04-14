@@ -651,6 +651,11 @@ window.LeucenaDrawing = (function () {
       LeucenaApp.logEvent('tool_switch', LeucenaApp.getSelectedCellId(), null, { from: prevMode, to: mode });
     }
 
+    var activityMap = { draw: 'drawing', delete: 'deleting_poly', edit: 'editing_poly', hole: 'drawing_hole' };
+    if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyActivity) {
+      LeucenaCollab.notifyActivity(activityMap[mode] || null);
+    }
+
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.deselectPoint) {
       LeucenaMap.deselectPoint();
     }
@@ -1005,6 +1010,39 @@ window.LeucenaDrawing = (function () {
     LeucenaMap.setGridClickable(false);
     LeucenaDrawing.setClickable(false);
 
+    // Track mousedown position to detect micro-pans that swallow the click event
+    let _drawMouseDownPos = null;
+    let _drawMouseDownTime = 0;
+    const _drawMouseDownHandler = function (evt) {
+      _drawMouseDownPos = { x: evt.clientX, y: evt.clientY };
+      _drawMouseDownTime = Date.now();
+    };
+    const _drawMouseUpHandler = function (evt) {
+      if (!_drawMouseDownPos || activeMode !== 'draw') return;
+      const dx = evt.clientX - _drawMouseDownPos.x;
+      const dy = evt.clientY - _drawMouseDownPos.y;
+      const dt = Date.now() - _drawMouseDownTime;
+      // If mouse barely moved (<6px) and was fast (<300ms), treat as a click
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6 && dt < 300) {
+        // The Google Maps click event should fire normally; but if it was swallowed
+        // by a micro-pan, we add the vertex from the last known mouse position.
+        // We use a short timeout: if click fires, it adds the vertex first and we skip.
+        const countBefore = vertices.length;
+        setTimeout(function () {
+          if (vertices.length === countBefore && _lastMouseLatLng && activeMode === 'draw') {
+            addVertex(_lastMouseLatLng);
+            if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+              LeucenaApp.logEvent('draw_vertex_click', LeucenaApp.getSelectedCellId(), null, { lat: _lastMouseLatLng.lat(), lng: _lastMouseLatLng.lng(), count: vertices.length, recovered: true });
+            }
+            _syncToolbarExtras();
+          }
+        }, 60);
+      }
+      _drawMouseDownPos = null;
+    };
+    map.getDiv().addEventListener('mousedown', _drawMouseDownHandler);
+    map.getDiv().addEventListener('mouseup', _drawMouseUpHandler);
+
     const previewPoly = new google.maps.Polygon({
       paths: [],
       ...POLY_STYLE_MEMBER,
@@ -1096,7 +1134,8 @@ window.LeucenaDrawing = (function () {
     manualDrawState = {
       vertices, vertexMarkers, previewPoly, guideLine,
       clickListener, moveListener, dblClickListener, rightClickListener,
-      removeLastVertex, addVertex, prevDblClickZoom
+      removeLastVertex, addVertex, prevDblClickZoom,
+      _drawMouseDownHandler, _drawMouseUpHandler
     };
     _syncToolbarExtras();
   }
@@ -1157,7 +1196,8 @@ window.LeucenaDrawing = (function () {
   function cleanupManualDraw() {
     if (!manualDrawState) return;
     const { vertexMarkers, previewPoly, guideLine,
-            clickListener, moveListener, dblClickListener, rightClickListener, prevDblClickZoom } = manualDrawState;
+            clickListener, moveListener, dblClickListener, rightClickListener,
+            prevDblClickZoom, _drawMouseDownHandler, _drawMouseUpHandler } = manualDrawState;
 
     vertexMarkers.forEach(m => m.setMap(null));
     if (previewPoly) previewPoly.setMap(null);
@@ -1168,8 +1208,10 @@ window.LeucenaDrawing = (function () {
     if (rightClickListener) google.maps.event.removeListener(rightClickListener);
 
     const map = LeucenaMap.getMap();
-    if (map && prevDblClickZoom !== undefined) {
-      map.setOptions({ disableDoubleClickZoom: prevDblClickZoom });
+    if (map) {
+      if (prevDblClickZoom !== undefined) map.setOptions({ disableDoubleClickZoom: prevDblClickZoom });
+      if (_drawMouseDownHandler) map.getDiv().removeEventListener('mousedown', _drawMouseDownHandler);
+      if (_drawMouseUpHandler) map.getDiv().removeEventListener('mouseup', _drawMouseUpHandler);
     }
 
     LeucenaMap.setGridClickable(true);

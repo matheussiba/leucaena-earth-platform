@@ -27,6 +27,7 @@ const { initDB, queryAll, queryOne, runSQL, persist, DB_PATH } = require('./db')
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const BUILD_ID = Date.now().toString();
 
 const fs = require('fs');
 
@@ -376,9 +377,27 @@ function getUniqueUsers() {
       if (user.editingCell && !existing.editingCell) {
         existing.editingCell = user.editingCell;
       }
+      if (user.activity && !existing.activity) {
+        existing.activity = user.activity;
+      }
+      if (user.locationState && !existing.locationState) {
+        existing.locationState = user.locationState;
+      }
     }
   }
-  return Array.from(byUsername.values());
+  const result = [];
+  for (const u of byUsername.values()) {
+    const dbUser = queryOne('SELECT role FROM users WHERE username = ?', [u.username]);
+    if (dbUser && dbUser.role === 'tester') continue;
+    if (u.editingCell) {
+      const cell = queryOne('SELECT grid_id, fid FROM grid_cells WHERE id = ?', [u.editingCell]);
+      u.editingCellName = cell ? (cell.grid_id || String(cell.fid)) : String(u.editingCell);
+      const stateRow = queryOne('SELECT state FROM grid_cell_states WHERE grid_cell_id = ? LIMIT 1', [u.editingCell]);
+      u.editingCellState = stateRow ? stateRow.state : null;
+    }
+    result.push(u);
+  }
+  return result;
 }
 
 function userHasOtherSockets(socketId, username) {
@@ -568,12 +587,12 @@ function determineCellStatusOnUnlock(cellId, cellGeometry) {
 function releaseExpiredLocks() {
   const cutoff = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
   const now = new Date().toISOString();
-  const expired = queryAll('SELECT id, locked_by, geometry FROM grid_cells WHERE locked_at IS NOT NULL AND locked_at < ?', [cutoff]);
+  const expired = queryAll('SELECT id, locked_by, geometry, grid_id, fid FROM grid_cells WHERE locked_at IS NOT NULL AND locked_at < ?', [cutoff]);
   for (const cell of expired) {
     const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
     runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
       [newStatus, now, cell.id]);
-    io.emit('cell:unlocked', { cellId: cell.id, previousUser: cell.locked_by });
+    io.emit('cell:unlocked', { cellId: cell.id, previousUser: cell.locked_by, cellName: cell.grid_id || String(cell.fid) });
     io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: cell.locked_by });
   }
 }
@@ -1528,8 +1547,8 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
   const callerIsAdminOrAbove = isAdmin(req.username);
   // Team members see all users but without email (privacy)
   const users = callerIsAdminOrAbove
-    ? queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active, referral_source, referral_detail FROM users WHERE username != 'deleted'")
-    : queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, NULL as email, last_active, auth_provider, email_verified, google_id, is_active, NULL as referral_source, NULL as referral_detail FROM users WHERE username != 'deleted'");
+    ? queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active, referral_source, referral_detail, last_location_state, last_edited_state FROM users WHERE username != 'deleted'")
+    : queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, NULL as email, last_active, auth_provider, email_verified, google_id, is_active, NULL as referral_source, NULL as referral_detail, last_location_state, last_edited_state FROM users WHERE username != 'deleted'");
   const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
   const maskMap = {};
   const areaMap = {};
@@ -2362,9 +2381,14 @@ app.post('/api/grid/:id/lock', requireAuth, requireVerified, (req, res) => {
   );
 
   const workedByStr = workedBy.join(',');
-  io.emit('cell:locked', { cellId: Number(id), username });
+  const cellName = cell.grid_id || String(cell.fid);
+  io.emit('cell:locked', { cellId: Number(id), username, cellName });
   io.emit('cell:statusChanged', { cellId: Number(id), status: 'in_use', username, worked_by: workedByStr });
   logActivity(username, 'cell_lock', Number(id), null, { prev_status: cell.grid_status });
+  const cellStateRow = queryOne('SELECT state FROM grid_cell_states WHERE grid_cell_id = ? LIMIT 1', [Number(id)]);
+  if (cellStateRow) {
+    runSQL('UPDATE users SET last_edited_state = ? WHERE username = ?', [cellStateRow.state, username]);
+  }
   persist();
   res.json({ success: true, worked_by: workedByStr });
 });
@@ -2454,8 +2478,9 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
   );
 
   const cellSummary = getCellMaskSummary(Number(id));
+  const unlockCellName = cell.grid_id || String(cell.fid);
 
-  io.emit('cell:unlocked', { cellId: Number(id), username });
+  io.emit('cell:unlocked', { cellId: Number(id), username, cellName: unlockCellName });
   io.emit('cell:statusChanged', {
     cellId: Number(id),
     status: newStatus,
@@ -3047,6 +3072,7 @@ app.get('/api/users', (req, res) => {
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
+  socket.emit('app:buildId', BUILD_ID);
   socket.emit('users:updated', getUniqueUsers());
 
   socket.on('user:join', (data) => {
@@ -3068,6 +3094,23 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('user:activity', (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      user.activity = data.activity || null;
+      io.emit('users:updated', getUniqueUsers());
+    }
+  });
+
+  socket.on('user:locationState', (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user && data.state) {
+      user.locationState = data.state;
+      runSQL('UPDATE users SET last_location_state = ? WHERE username = ?', [data.state, user.username]);
+      io.emit('users:updated', getUniqueUsers());
+    }
+  });
+
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
@@ -3076,12 +3119,12 @@ io.on('connection', (socket) => {
 
       if (isLastSocket) {
       const now = new Date().toISOString();
-        const locked = queryAll('SELECT id, geometry FROM grid_cells WHERE locked_by = ?', [user.username]);
+        const locked = queryAll('SELECT id, geometry, grid_id, fid FROM grid_cells WHERE locked_by = ?', [user.username]);
       for (const cell of locked) {
           const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
         runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
           [newStatus, now, cell.id]);
-        io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username });
+        io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username, cellName: cell.grid_id || String(cell.fid) });
         io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: user.username });
         logActivity(user.username, 'cell_unlock_disconnect', cell.id, null, JSON.stringify({ newStatus }));
       }

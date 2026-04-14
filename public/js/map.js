@@ -128,6 +128,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         return;
       }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) {
+        if (LeucenaApp.handleInsertionClick) LeucenaApp.handleInsertionClick(e.latLng);
         return;
       }
       if (clickedOnFeature) {
@@ -195,6 +196,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         return;
       }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) {
+        if (LeucenaApp.handleInsertionClick) LeucenaApp.handleInsertionClick(event.latLng);
         return;
       }
       if (typeof LeucenaDrawing !== 'undefined') {
@@ -664,8 +666,12 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function _toggleSidebarForBrazilView(isBrazil) {
     var progress = document.getElementById('mapping-progress');
     var filters = document.getElementById('sidebar-filters');
+    var prompt = document.getElementById('sidebar-brazil-prompt');
+    var cellSearch = document.getElementById('cell-search-section');
     if (progress) progress.style.display = isBrazil ? 'none' : '';
     if (filters) filters.style.display = isBrazil ? 'none' : '';
+    if (prompt) prompt.style.display = isBrazil ? '' : 'none';
+    if (cellSearch) cellSearch.style.display = isBrazil ? 'none' : '';
   }
 
   function _showBrazilOverview() {
@@ -673,12 +679,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     Object.keys(gridData).forEach(k => delete gridData[k]);
     Object.keys(gridCellBounds).forEach(k => delete gridCellBounds[k]);
     gridBounds = null;
+    initialZoom = null;
+    initialCenter = null;
+    _editZoomEnforced = false;
     const brBounds = new google.maps.LatLngBounds(
       { lat: BRAZIL_VIEW_BOUNDS.south, lng: BRAZIL_VIEW_BOUNDS.west },
       { lat: BRAZIL_VIEW_BOUNDS.north, lng: BRAZIL_VIEW_BOUNDS.east }
     );
     restrictionBounds = bufferBounds(brBounds, 0.15);
     map.setOptions({
+      minZoom: null,
       restriction: { latLngBounds: restrictionBounds, strictBounds: false }
     });
     map.fitBounds(brBounds);

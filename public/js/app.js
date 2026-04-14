@@ -168,6 +168,7 @@ window.LeucenaApp = (function () {
     });
 
     document.getElementById('tool-unlock').addEventListener('click', openUnlockModal);
+    document.getElementById('badge-unlock-btn').addEventListener('click', openUnlockModal);
     document.getElementById('unlock-finished').addEventListener('click', () => confirmUnlock('finished'));
     document.getElementById('unlock-not-finished').addEventListener('click', () => confirmUnlock('not_yet_finished'));
     document.getElementById('unlock-cancel').addEventListener('click', closeUnlockModal);
@@ -1800,6 +1801,9 @@ window.LeucenaApp = (function () {
         }
         var detectedUf = _detectUfForLatLng(lat, lng);
         if (detectedUf) {
+          if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyLocationState) {
+            LeucenaCollab.notifyLocationState(detectedUf);
+          }
           selectState(detectedUf);
           var name = UF_META[detectedUf] ? UF_META[detectedUf].name : detectedUf;
           showToast(LeucenaI18n.t('map.geoStateDetected', name), 'success');
@@ -1936,6 +1940,11 @@ window.LeucenaApp = (function () {
     var chip = document.getElementById('region-chip');
     if (chip) {
       chip.addEventListener('click', showRegionPicker);
+    }
+
+    var sidebarChooseBtn = document.getElementById('sidebar-choose-state-btn');
+    if (sidebarChooseBtn) {
+      sidebarChooseBtn.addEventListener('click', showRegionPicker);
     }
 
     _regionPickerReady = true;
@@ -2858,7 +2867,7 @@ window.LeucenaApp = (function () {
   }
 
   function selectCell(cellId, cellData) {
-    if (cellId === selectedCellId && !(selectedCellData && selectedCellData.locked_by === username)) {
+    if (cellId === selectedCellId && !(username && selectedCellData && selectedCellData.locked_by === username)) {
       clearCellSelection();
       const main = document.getElementById('main-content');
       main.classList.remove('sidebar-open');
@@ -2989,12 +2998,22 @@ window.LeucenaApp = (function () {
       unlockBtn.classList.remove('hidden');
       if (svWrap) svWrap.classList.remove('hidden');
       if (svSep) svSep.classList.remove('hidden');
+      if (isLoggedIn() && !isTeamOrAbove()) {
+        document.getElementById('insertion-sep').classList.remove('hidden');
+        document.getElementById('insertion-toggle').classList.remove('hidden');
+        document.getElementById('deletion-toggle').classList.remove('hidden');
+      }
       applyRoleRestrictions();
     } else {
       editPanel.classList.add('hidden');
       unlockBtn.classList.add('hidden');
       if (svWrap) svWrap.classList.add('hidden');
       if (svSep) svSep.classList.add('hidden');
+      if (isLoggedIn() && !isTeamOrAbove()) {
+        document.getElementById('insertion-sep').classList.add('hidden');
+        document.getElementById('insertion-toggle').classList.add('hidden');
+        document.getElementById('deletion-toggle').classList.add('hidden');
+      }
     }
     const selectBtn = document.getElementById('tool-select');
     if (selectBtn) { selectBtn.disabled = false; selectBtn.classList.add('active'); }
@@ -3104,6 +3123,7 @@ window.LeucenaApp = (function () {
       LeucenaMap.updateCellAppearance(cellId, selectedCellData || {});
       LeucenaMap.releasePanRestriction();
       LeucenaCollab.notifyEditingCell(null);
+      LeucenaCollab.notifyActivity(null);
 
       const lockBtn = document.getElementById('lock-cell-btn');
       lockBtn.textContent = LeucenaI18n.t('sidebar.lockEdit');
@@ -3277,6 +3297,9 @@ window.LeucenaApp = (function () {
       }
 
       const detectedUf = _detectUfForLatLng(lat, lng);
+      if (detectedUf && typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyLocationState) {
+        LeucenaCollab.notifyLocationState(detectedUf);
+      }
       _showBlueLocationDot(gMap, latlng);
       _navigateToUserCell(gMap, latlng, detectedUf);
     }
@@ -3385,6 +3408,9 @@ window.LeucenaApp = (function () {
     document.getElementById('tool-insertion').checked = active;
     updatePointModeBanner();
     updatePointModeVisuals();
+    if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyActivity) {
+      LeucenaCollab.notifyActivity(active ? 'adding_points' : null);
+    }
     if (!active) restoreEditingState();
   }
 
@@ -3393,6 +3419,9 @@ window.LeucenaApp = (function () {
     document.getElementById('tool-deletion').checked = active;
     updatePointModeBanner();
     updatePointModeVisuals();
+    if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyActivity) {
+      LeucenaCollab.notifyActivity(active ? 'deleting_points' : null);
+    }
     if (!active) restoreEditingState();
   }
 
@@ -3408,6 +3437,7 @@ window.LeucenaApp = (function () {
   function updatePointModeBanner() {
     const banner = document.getElementById('insertion-banner');
     const bannerText = banner.querySelector('span:last-child');
+    const editBadge = document.getElementById('edit-mode-badge');
     if (insertionMode) {
       bannerText.textContent = LeucenaI18n.t('banner.insertion');
       banner.classList.remove('hidden');
@@ -3417,6 +3447,12 @@ window.LeucenaApp = (function () {
       banner.classList.remove('hidden');
     } else {
       banner.classList.add('hidden');
+    }
+    if (editBadge) {
+      const bannerVisible = !banner.classList.contains('hidden');
+      editBadge.style.top = bannerVisible
+        ? 'calc(var(--topbar-height) + 50px)'
+        : '';
     }
   }
 
@@ -3450,7 +3486,7 @@ window.LeucenaApp = (function () {
   }
 
   function showAdminTools() {
-    if (isLoggedIn()) {
+    if (isLoggedIn() && isTeamOrAbove()) {
       document.getElementById('insertion-sep').classList.remove('hidden');
       document.getElementById('insertion-toggle').classList.remove('hidden');
       document.getElementById('deletion-toggle').classList.remove('hidden');
@@ -3961,6 +3997,8 @@ window.LeucenaApp = (function () {
               <div class="admin-card-dates">
                 <span>${t('admin.createdAt')}: ${createdDate}</span>
                 <span>${t('admin.lastAccess')}: ${lastActiveHtml}</span>
+                ${user.last_location_state ? `<span>${t('admin.locationState')}: ${user.last_location_state}</span>` : ''}
+                ${user.last_edited_state ? `<span>${t('admin.editedState')}: ${user.last_edited_state}</span>` : ''}
               </div>
             </div>`;
 
@@ -4661,6 +4699,8 @@ window.LeucenaApp = (function () {
             <div class="admin-card-dates">
               <span>${t('admin.createdAt')}: ${createdDate}</span>
               <span>${t('admin.lastAccess')}: ${lastActiveHtml}</span>
+              ${user.last_location_state ? `<span>${t('admin.locationState')}: ${user.last_location_state}</span>` : ''}
+              ${user.last_edited_state ? `<span>${t('admin.editedState')}: ${user.last_edited_state}</span>` : ''}
             </div>
             ${testerRadioHtml}
             <div class="admin-user-actions">
@@ -4890,6 +4930,23 @@ window.LeucenaApp = (function () {
 
   function closeAdminUsersModal() {
     document.getElementById('admin-users-modal').classList.add('hidden');
+  }
+
+  async function handleInsertionClick(latLng) {
+    if (!insertionMode) return;
+    const lat = latLng.lat();
+    const lng = latLng.lng();
+    try {
+      const res = await fetch('/api/points', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ lat, lng })
+      });
+      if (!res.ok) { const err = await res.json(); showToast(err.error, 'error'); return; }
+      const pt = await res.json();
+      insertionHistory.push(pt.id);
+      showToast(LeucenaI18n.t('toast.pointAdded', pt.fid), 'success');
+    } catch (err) { showToast(LeucenaI18n.t('toast.addFail'), 'error'); }
   }
 
   async function handleDeletionClick(latLng) {
@@ -5698,6 +5755,7 @@ window.LeucenaApp = (function () {
     openAuthModal,
     isDeletionMode,
     isPointModeActive,
+    handleInsertionClick,
     handleDeletionClick,
     scheduleAutoCollapseLegend,
     refreshLegendToggleTitleForLang,

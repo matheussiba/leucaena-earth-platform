@@ -3,10 +3,24 @@ window.LeucenaCollab = (function () {
   let socket = null;
   let username = null;
   let _anonSocket = null;
+  let _knownBuildId = null;
+
+  function _handleBuildId(id) {
+    if (_knownBuildId && _knownBuildId !== id) {
+      _showUpdateModal();
+    }
+    _knownBuildId = id;
+  }
+
+  function _showUpdateModal() {
+    var modal = document.getElementById('app-update-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
 
   function initAnonymous() {
     if (_anonSocket || socket) return;
     _anonSocket = io();
+    _anonSocket.on('app:buildId', _handleBuildId);
     _anonSocket.on('users:updated', (users) => {
       renderUsersList(users);
       document.getElementById('user-count').textContent = users.length;
@@ -27,6 +41,8 @@ window.LeucenaCollab = (function () {
     socket.on('disconnect', () => {
     });
 
+    socket.on('app:buildId', _handleBuildId);
+
     socket.on('users:updated', (users) => {
       renderUsersList(users);
       document.getElementById('user-count').textContent = users.length;
@@ -36,7 +52,7 @@ window.LeucenaCollab = (function () {
     socket.on('cell:locked', (data) => {
       if (data.username !== username) {
         const gd = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getGridData(data.cellId) : null;
-        const displayId = (gd && gd.grid_id) || data.cellId;
+        const displayId = data.cellName || (gd && gd.grid_id) || data.cellId;
         LeucenaApp.showToast(LeucenaI18n.t('toast.userStartedEditing', data.username, displayId), 'info');
       }
       if (typeof LeucenaMap !== 'undefined') {
@@ -48,7 +64,7 @@ window.LeucenaCollab = (function () {
       const who = data.username || data.previousUser;
       if (who !== username) {
         const gd = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getGridData(data.cellId) : null;
-        const displayId = (gd && gd.grid_id) || data.cellId;
+        const displayId = data.cellName || (gd && gd.grid_id) || data.cellId;
         LeucenaApp.showToast(LeucenaI18n.t('toast.userFinishedEditing', who, displayId), 'info');
       }
       if (typeof LeucenaMap !== 'undefined') {
@@ -137,33 +153,80 @@ window.LeucenaCollab = (function () {
     }
   }
 
+  function notifyActivity(activity) {
+    if (socket) {
+      socket.emit('user:activity', { activity });
+    }
+  }
+
+  function notifyLocationState(uf) {
+    if (socket) {
+      socket.emit('user:locationState', { state: uf });
+    }
+  }
+
   function renderUsersList(users) {
     const container = document.getElementById('users-list');
     container.innerHTML = '';
-    const isAdmin = typeof LeucenaApp !== 'undefined' && LeucenaApp.isAdminUser && LeucenaApp.isAdminUser();
+    if (!users || users.length === 0) {
+      container.innerHTML = '<div class="users-empty">' + LeucenaI18n.t('collab.noUsersOnline') + '</div>';
+      return;
+    }
+    const isTeamPlus = typeof LeucenaApp !== 'undefined' && LeucenaApp.isTeamOrAbove && LeucenaApp.isTeamOrAbove();
     for (const user of users) {
       const el = document.createElement('div');
       el.className = 'user-item';
-      if (isAdmin && user.editingCell) el.classList.add('user-item-zoomable');
-      let editDisplay = user.editingCell;
-      if (user.editingCell && typeof LeucenaMap !== 'undefined') {
+      if (isTeamPlus && user.editingCell) el.classList.add('user-item-zoomable');
+      let editDisplay = user.editingCellName || user.editingCell;
+      if (user.editingCell && !user.editingCellName && typeof LeucenaMap !== 'undefined') {
         const gd = LeucenaMap.getGridData(user.editingCell);
         if (gd && gd.grid_id) editDisplay = gd.grid_id;
       }
-      const cellInfo = user.editingCell ? LeucenaI18n.t('collab.cell', editDisplay) : LeucenaI18n.t('collab.idle');
-      const zoomHint = isAdmin && user.editingCell ? LeucenaI18n.t('collab.dblclickToZoom') : '';
+      let cellInfo;
+      if (user.editingCell) {
+        const region = user.editingCellState || '';
+        cellInfo = region
+          ? LeucenaI18n.t('collab.cellRegion', region, editDisplay)
+          : LeucenaI18n.t('collab.cell', editDisplay);
+      } else {
+        cellInfo = LeucenaI18n.t('collab.idle');
+      }
+      var activityTag = '';
+      if (isTeamPlus && user.activity) {
+        var actLabel = LeucenaI18n.t('collab.activity.' + user.activity);
+        if (actLabel) activityTag = '<span class="user-activity-tag">' + actLabel + '</span>';
+      }
+      var locationTag = '';
+      if (isTeamPlus && user.locationState && !user.editingCell) {
+        locationTag = '<span class="user-location-tag">' + user.locationState + '</span>';
+      }
+      const zoomHint = isTeamPlus && user.editingCell ? LeucenaI18n.t('collab.dblclickToZoom') : '';
       if (zoomHint) el.title = zoomHint;
       el.innerHTML = `
         <span class="online-dot"></span>
         <span>${user.username}</span>
         <span class="user-cell-info">${cellInfo}</span>
+        ${locationTag}${activityTag}
       `;
-      if (isAdmin && user.editingCell && typeof LeucenaMap !== 'undefined' && LeucenaMap.zoomToCellViewOnly) {
+      if (isTeamPlus && user.editingCell) {
         const cellId = user.editingCell;
-        el.addEventListener('dblclick', () => LeucenaMap.zoomToCellViewOnly(cellId));
+        const cellState = user.editingCellState;
+        el.addEventListener('dblclick', () => _zoomToUserCell(cellId, cellState));
       }
       container.appendChild(el);
     }
+  }
+
+  async function _zoomToUserCell(cellId, cellState) {
+    if (typeof LeucenaMap === 'undefined') return;
+    const currentState = LeucenaMap.getCurrentState();
+    if (cellState && cellState !== currentState) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.selectStateFromMap) {
+        LeucenaApp.selectStateFromMap(cellState);
+      }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    if (LeucenaMap.zoomToCellViewOnly) LeucenaMap.zoomToCellViewOnly(cellId);
   }
 
   initAnonymous();
@@ -174,5 +237,5 @@ window.LeucenaCollab = (function () {
     initAnonymous();
   }
 
-  return { init, initAnonymous, notifyEditingCell, leave };
+  return { init, initAnonymous, notifyEditingCell, notifyActivity, notifyLocationState, leave };
 })();
