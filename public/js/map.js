@@ -604,7 +604,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     );
   }
 
-  function applyGridGeoJson(fc) {
+  function prepareGridData(fc) {
     gridBounds = new google.maps.LatLngBounds();
     for (const feature of fc.features) {
       const props = feature.properties;
@@ -620,8 +620,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       }
       gridCellBounds[props.id] = cellBnds;
     }
+  }
+
+  function renderGridFeatures(fc) {
     gridLayer.addGeoJson(fc, { idPropertyName: 'id' });
     gridLayer.setStyle(gridStyleCallback);
+  }
+
+  function applyGridGeoJson(fc) {
+    prepareGridData(fc);
+    renderGridFeatures(fc);
   }
 
   /**
@@ -736,14 +744,22 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         fc = await res.json();
         gridCache[cacheKey] = fc;
       }
-      applyGridGeoJson(fc);
+      const ufInit = _currentState;
+      prepareGridData(fc);
       restrictionBounds = bufferBounds(gridBounds, 0.15);
       map.setOptions({
         restriction: { latLngBounds: restrictionBounds, strictBounds: false }
       });
       map.fitBounds(gridBounds);
-      updateFilterCounts();
-      scheduleCrispGridRefresh(_currentState, function () {
+      google.maps.event.addListenerOnce(map, 'idle', function () {
+        if (_currentState !== ufInit) return;
+        renderGridFeatures(fc);
+        updateFilterCounts();
+        refreshPointVisibility();
+        if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+          LeucenaDrawing.refreshPolyVisibility();
+        }
+        updateAreaLabelsForZoom();
         initialZoom = map.getZoom();
         initialCenter = map.getCenter();
         scheduleAutoLabelsOff();
@@ -779,19 +795,33 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       fc = await res.json();
       gridCache[cacheKey] = fc;
     }
-    applyGridGeoJson(fc);
+    prepareGridData(fc);
     restrictionBounds = bufferBounds(gridBounds, 0.15);
     map.setOptions({
       restriction: { latLngBounds: restrictionBounds, strictBounds: false }
     });
     const ufLoaded = _currentState;
-    updateFilterCounts();
     _applyStateOutlineFilter(_currentState);
     _toggleSidebarForBrazilView(false);
 
     map.fitBounds(gridBounds);
 
-    scheduleCrispGridRefresh(ufLoaded);
+    google.maps.event.addListenerOnce(map, 'idle', function () {
+      if (_currentState !== ufLoaded) return;
+      renderGridFeatures(fc);
+      updateFilterCounts();
+      refreshPointVisibility();
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+        LeucenaDrawing.refreshPolyVisibility();
+      }
+      updateAreaLabelsForZoom();
+      initialZoom = map.getZoom();
+      initialCenter = map.getCenter();
+      scheduleAutoLabelsOff();
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
+        LeucenaApp.scheduleAutoCollapseLegend();
+      }
+    });
   }
 
   function getStyleForCell(props, cellId) {
