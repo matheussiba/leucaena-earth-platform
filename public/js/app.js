@@ -5430,6 +5430,8 @@ window.LeucenaApp = (function () {
     composeBtn.addEventListener('click', () => { closeInboxModal(); openComposeModal(); });
     topBar.appendChild(composeBtn);
 
+    const _threadIdMap = {};
+
     if (_inboxMessages.length > 0) {
       const selectAllBtn = document.createElement('button');
       selectAllBtn.className = 'btn btn-secondary btn-sm inbox-select-all-btn';
@@ -5439,8 +5441,10 @@ window.LeucenaApp = (function () {
         const allChecked = [...cbs].every(cb => cb.checked);
         cbs.forEach(cb => {
           cb.checked = !allChecked;
-          const id = Number(cb.dataset.threadRootId);
-          if (!allChecked) _inboxBatchSelected.add(id); else _inboxBatchSelected.delete(id);
+          const rootId = Number(cb.dataset.threadRootId);
+          const ids = _threadIdMap[rootId] || [rootId];
+          if (!allChecked) ids.forEach(id => _inboxBatchSelected.add(id));
+          else ids.forEach(id => _inboxBatchSelected.delete(id));
         });
         selectAllBtn.textContent = allChecked ? t('inbox.selectAll') : t('inbox.deselectAll');
         _updateInboxBatchToolbar();
@@ -5477,6 +5481,7 @@ window.LeucenaApp = (function () {
       const replies = children[root.id] || [];
       const allMsgs = [root, ...replies];
       const allIds = allMsgs.map(m => m.id);
+      _threadIdMap[root.id] = allIds;
       const threadUnread = allMsgs.filter(m => !m.read_at && m.sender !== username).length;
       const lastMsg = allMsgs[allMsgs.length - 1];
       const hasReplies = replies.length > 0;
@@ -5484,6 +5489,8 @@ window.LeucenaApp = (function () {
       const threadEl = document.createElement('div');
       threadEl.className = 'inbox-thread' + (threadUnread > 0 ? ' inbox-thread-unread' : '');
 
+      const cbWrap = document.createElement('div');
+      cbWrap.className = 'inbox-thread-cb-wrap';
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'inbox-thread-cb';
@@ -5497,6 +5504,8 @@ window.LeucenaApp = (function () {
         }
         _updateInboxBatchToolbar();
       });
+      cbWrap.addEventListener('click', (e) => e.stopPropagation());
+      cbWrap.appendChild(cb);
 
       const headerEl = document.createElement('div');
       headerEl.className = 'inbox-thread-header';
@@ -5534,7 +5543,7 @@ window.LeucenaApp = (function () {
       clickZone.appendChild(metaEl);
       clickZone.appendChild(previewEl);
 
-      threadEl.appendChild(cb);
+      threadEl.appendChild(cbWrap);
       threadEl.appendChild(clickZone);
       threadEl.appendChild(bodyEl);
 

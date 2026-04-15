@@ -5680,26 +5680,26 @@ a.docs-logo-card:hover {
   font-size: 14px;
 }
 
-/* ── Inbox threads ── */
+/* ── Inbox top bar & batch ── */
 .inbox-top-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 0 10px 0;
-  flex-wrap: wrap;
+  padding: 0 2px 12px;
 }
 .inbox-select-all-btn {
   font-size: 11px;
   padding: 4px 10px;
+  margin-left: auto;
 }
 .inbox-batch-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.25);
+  gap: 6px;
+  padding: 7px 12px;
+  margin-bottom: 6px;
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.2);
   border-radius: var(--radius);
   flex-wrap: wrap;
 }
@@ -5708,11 +5708,11 @@ a.docs-logo-card:hover {
   font-size: 12px;
   font-weight: 600;
   color: var(--primary);
-  margin-right: 4px;
+  margin-right: auto;
 }
 .inbox-batch-btn {
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -5721,60 +5721,87 @@ a.docs-logo-card:hover {
   border: 1px solid var(--border);
   background: var(--bg-secondary);
   color: var(--text-primary);
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
+  font-weight: 500;
 }
-.inbox-batch-btn:hover { background: var(--bg-tertiary); }
-.inbox-batch-delete { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
-.inbox-batch-delete:hover { background: rgba(248, 113, 113, 0.15); }
-.inbox-thread-cb {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin: 12px 0 0 10px;
-  cursor: pointer;
-  accent-color: var(--primary);
-  align-self: flex-start;
-}
+.inbox-batch-btn:hover { background: var(--bg-tertiary); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.inbox-batch-delete { color: #ef4444; border-color: rgba(239, 68, 68, 0.25); }
+.inbox-batch-delete:hover { background: rgba(239, 68, 68, 0.1); }
+
+/* ── Inbox threads ── */
 .inbox-thread {
   display: flex;
-  flex-wrap: wrap;
-  border-bottom: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  transition: background 0.12s;
+  align-items: stretch;
+  border-radius: var(--radius);
+  transition: background 0.15s, box-shadow 0.15s;
+  margin-bottom: 2px;
+  position: relative;
+}
+.inbox-thread:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 44px;
+  right: 12px;
+  height: 1px;
+  background: var(--border);
 }
 
 .inbox-thread-unread {
-  background: rgba(124,58,237,0.05);
-  border-left: 3px solid var(--primary);
+  background: rgba(124, 58, 237, 0.06);
+}
+.inbox-thread-unread .inbox-item-subject {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.inbox-thread-unread .inbox-thread-preview {
+  color: var(--text-secondary);
+}
+.inbox-thread-unread .inbox-item-date {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.inbox-thread-cb-wrap {
+  display: flex;
+  align-items: flex-start;
+  padding: 14px 0 14px 10px;
+  flex-shrink: 0;
+}
+.inbox-thread-cb {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+  border-radius: 3px;
 }
 
 .inbox-thread-clickzone {
   cursor: pointer;
-  padding: 12px 14px 10px;
-  border-radius: var(--radius-sm);
+  padding: 12px 14px 10px 10px;
   flex: 1;
   min-width: 0;
+  border-radius: var(--radius);
   transition: background 0.12s;
 }
-
 .inbox-thread-clickzone:hover {
-  background: rgba(124,58,237,0.04);
+  background: rgba(124, 58, 237, 0.04);
 }
-
 .inbox-thread-clickzone:active {
-  background: rgba(124,58,237,0.08);
+  background: rgba(124, 58, 237, 0.08);
 }
 
 .inbox-thread-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .inbox-item-subject {
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 500;
+  font-size: 13.5px;
   color: var(--text-primary);
   flex: 1;
   white-space: nowrap;
@@ -5786,6 +5813,7 @@ a.docs-logo-card:hover {
   font-size: 11px;
   color: var(--text-tertiary);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .inbox-item-unread-dot {
@@ -5794,16 +5822,17 @@ a.docs-logo-card:hover {
   border-radius: 50%;
   background: var(--primary);
   flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
 }
 
 .inbox-thread-count {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 1px 7px;
+  padding: 1px 6px;
   flex-shrink: 0;
 }
 
@@ -5821,16 +5850,17 @@ a.docs-logo-card:hover {
 .inbox-item-meta {
   font-size: 11px;
   color: var(--text-tertiary);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .inbox-thread-preview {
   font-size: 12px;
   color: var(--text-tertiary);
-  margin-top: 4px;
+  margin-top: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
 }
 
 .inbox-preview-sender {
@@ -5975,7 +6005,11 @@ a.docs-logo-card:hover {
   }
 
   .inbox-thread-clickzone {
-    padding: 10px 10px 8px;
+    padding: 10px 8px 8px 8px;
+  }
+
+  .inbox-thread-cb-wrap {
+    padding: 12px 0 12px 8px;
   }
 
   .inbox-item-subject {
@@ -5984,6 +6018,11 @@ a.docs-logo-card:hover {
 
   .inbox-item-date {
     font-size: 10px;
+  }
+
+  .inbox-batch-toolbar {
+    gap: 4px;
+    padding: 6px 8px;
   }
 
   .inbox-thread-body {
