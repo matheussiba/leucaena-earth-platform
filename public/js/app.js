@@ -217,10 +217,21 @@ window.LeucenaApp = (function () {
     document.getElementById('guide-back-collaborate').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-about').addEventListener('click', () => showGuidePage('main'));
 
-    document.getElementById('admin-users-btn').addEventListener('click', openAdminUsersModal);
+    document.getElementById('admin-users-btn').addEventListener('click', () => {
+      if (userRole === 'tester') { openTesterRoleModal(); return; }
+      openAdminUsersModal();
+    });
     document.getElementById('admin-users-close').addEventListener('click', closeAdminUsersModal);
     document.getElementById('admin-users-modal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) closeAdminUsersModal();
+    });
+
+    document.getElementById('tester-role-close').addEventListener('click', closeTesterRoleModal);
+    document.getElementById('tester-role-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeTesterRoleModal();
+    });
+    document.querySelectorAll('.tester-role-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTesterMode(btn.dataset.mode));
     });
 
     document.getElementById('cell-search-input').addEventListener('keydown', (e) => {
@@ -3586,6 +3597,9 @@ window.LeucenaApp = (function () {
       document.getElementById('insertion-toggle').classList.remove('hidden');
       document.getElementById('deletion-toggle').classList.remove('hidden');
     }
+    if (userRole === 'tester') {
+      document.getElementById('admin-users-btn').classList.remove('hidden');
+    }
     if (isTeamOrAbove()) {
       document.getElementById('admin-users-btn').classList.remove('hidden');
       document.getElementById('cell-search-section').classList.remove('hidden');
@@ -3618,7 +3632,9 @@ window.LeucenaApp = (function () {
     document.getElementById('insertion-sep').classList.add('hidden');
     document.getElementById('insertion-toggle').classList.add('hidden');
     document.getElementById('deletion-toggle').classList.add('hidden');
-    document.getElementById('admin-users-btn').classList.add('hidden');
+    if (userRole !== 'tester') {
+      document.getElementById('admin-users-btn').classList.add('hidden');
+    }
     document.getElementById('cell-search-section').classList.add('hidden');
     document.getElementById('view-counter').classList.add('hidden');
     
@@ -5031,6 +5047,53 @@ window.LeucenaApp = (function () {
 
   function closeAdminUsersModal() {
     document.getElementById('admin-users-modal').classList.add('hidden');
+  }
+
+  function openTesterRoleModal() {
+    logEvent('tester_role_modal_open');
+    const modal = document.getElementById('tester-role-modal');
+    document.getElementById('tester-btn-team').classList.toggle('active', testerMode === 'team');
+    document.getElementById('tester-btn-contributor').classList.toggle('active', testerMode === 'contributor');
+    modal.classList.remove('hidden');
+  }
+
+  function closeTesterRoleModal() {
+    document.getElementById('tester-role-modal').classList.add('hidden');
+  }
+
+  async function switchTesterMode(newMode) {
+    if (newMode === testerMode) return;
+    try {
+      const res = await fetch('/api/tester/mode', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ tester_mode: newMode })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Erro', 'error');
+        return;
+      }
+      testerMode = newMode;
+      document.getElementById('tester-btn-team').classList.toggle('active', newMode === 'team');
+      document.getElementById('tester-btn-contributor').classList.toggle('active', newMode === 'contributor');
+      logEvent('tester_mode_switch', null, null, { mode: newMode });
+
+      if (isTeamOrAbove()) {
+        showAdminTools();
+      } else {
+        hideAdminTools();
+      }
+
+      if (insertionMode) setInsertionMode(false);
+      if (deletionMode) setDeletionMode(false);
+
+      const roleLabel = newMode === 'team' ? LeucenaI18n.t('tester.roleMember') : LeucenaI18n.t('tester.roleContributor');
+      showToast(LeucenaI18n.t('tester.switched', roleLabel), 'success');
+      closeTesterRoleModal();
+    } catch (e) {
+      showToast('Erro de conexão', 'error');
+    }
   }
 
   async function handleInsertionClick(latLng) {

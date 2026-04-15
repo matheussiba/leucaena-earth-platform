@@ -1727,6 +1727,16 @@ app.put('/api/admin/users/:id/tester-mode', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.put('/api/tester/mode', requireAuth, (req, res) => {
+  const caller = queryOne('SELECT id, role FROM users WHERE username = ?', [req.username]);
+  if (!caller || caller.role !== 'tester') return res.status(403).json({ error: 'Tester only' });
+  const { tester_mode } = req.body;
+  if (!['team', 'contributor'].includes(tester_mode)) return res.status(400).json({ error: 'Modo inválido' });
+  runSQL('UPDATE users SET tester_mode = ? WHERE id = ?', [tester_mode, caller.id]);
+  persist();
+  res.json({ success: true, tester_mode });
+});
+
 app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const { new_username } = req.body;

@@ -237,6 +237,25 @@
     </div>
   </div>
 
+  <!-- Modal Tester: Trocar Role -->
+  <div id="tester-role-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-tester">
+      <button id="tester-role-close" class="modal-close">&times;</button>
+      <h2 data-i18n="tester.title">Modo de Teste</h2>
+      <p class="tester-desc" data-i18n="tester.desc">Escolha o perfil que deseja testar na plataforma:</p>
+      <div class="tester-role-options" id="tester-role-options">
+        <button class="tester-role-btn" id="tester-btn-team" data-mode="team">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <span data-i18n="tester.roleMember">Membro</span>
+        </button>
+        <button class="tester-role-btn" id="tester-btn-contributor" data-mode="contributor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span data-i18n="tester.roleContributor">Colaborador</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Admin: Editor de Usuários -->
   <div id="admin-users-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-docs">

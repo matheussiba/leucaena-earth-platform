@@ -237,6 +237,13 @@ window.LeucenaI18n = (function () {
     'guide.about': { pt: 'Quem Somos', en: 'About Us', es: 'Quiénes Somos' },
     'guide.aboutDesc': { pt: 'Conheça os idealizadores e colaboradores do projeto', en: 'Meet the creators and collaborators of the project', es: 'Conozca a los creadores y colaboradores del proyecto' },
 
+    // ── Tester ──
+    'tester.title': { pt: 'Modo de Teste', en: 'Test Mode', es: 'Modo de Prueba' },
+    'tester.desc': { pt: 'Escolha o perfil que deseja testar na plataforma:', en: 'Choose the profile you want to test on the platform:', es: 'Elija el perfil que desea probar en la plataforma:' },
+    'tester.roleMember': { pt: 'Membro', en: 'Member', es: 'Miembro' },
+    'tester.roleContributor': { pt: 'Colaborador', en: 'Contributor', es: 'Colaborador' },
+    'tester.switched': { pt: 'Perfil alterado para {0}', en: 'Profile switched to {0}', es: 'Perfil cambiado a {0}' },
+
     // ── Admin ──
     'admin.usersTitle': { pt: 'Painel da Equipe', en: 'Team Panel', es: 'Panel del Equipo' },
     'admin.changePassword': { pt: 'Alterar Senha', en: 'Change Password', es: 'Cambiar Contraseña' },
