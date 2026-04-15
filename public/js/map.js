@@ -1068,7 +1068,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       pointClusterer = new markerClusterer.MarkerClusterer({
         map,
         markers: [],
-        algorithmOptions: { maxZoom: 10 },
+        algorithmOptions: { maxZoom: 12 },
         renderer: { render: clusterRenderer },
         onClusterClick: (event, cluster, gMap) => {
           const pos = cluster.position || (event && event.latLng);
