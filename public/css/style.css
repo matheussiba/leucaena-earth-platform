@@ -2212,13 +2212,15 @@ a.docs-logo-card:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  gap: 5px;
+  padding: 4px 12px;
   border: 1px solid rgba(239, 68, 68, 0.6);
   border-radius: 8px;
   background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
   cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
   flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
@@ -2231,7 +2233,7 @@ a.docs-logo-card:hover {
   transform: scale(0.92);
 }
 .btn-badge-unlock .unlock-label {
-  display: none;
+  display: inline;
 }
 
 .edit-pulse {
