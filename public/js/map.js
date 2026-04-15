@@ -753,18 +753,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       map.fitBounds(gridBounds);
       google.maps.event.addListenerOnce(map, 'idle', function () {
         if (_currentState !== ufInit) return;
-        renderGridFeatures(fc);
-        updateFilterCounts();
-        refreshPointVisibility();
-        if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
-          LeucenaDrawing.refreshPolyVisibility();
-        }
-        updateAreaLabelsForZoom();
-        initialZoom = map.getZoom();
-        initialCenter = map.getCenter();
-        scheduleAutoLabelsOff();
-        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
-          LeucenaApp.scheduleAutoCollapseLegend();
+        var fracZoom = map.getZoom();
+        var intZoom = Math.floor(fracZoom);
+        if (fracZoom !== intZoom) {
+          map.setZoom(intZoom);
+          google.maps.event.addListenerOnce(map, 'idle', function () {
+            if (_currentState !== ufInit) return;
+            _finalizeStateLoad(fc, ufInit);
+          });
+        } else {
+          _finalizeStateLoad(fc, ufInit);
         }
       });
     } catch (e) {
@@ -808,20 +806,34 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     google.maps.event.addListenerOnce(map, 'idle', function () {
       if (_currentState !== ufLoaded) return;
-      renderGridFeatures(fc);
-      updateFilterCounts();
-      refreshPointVisibility();
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
-        LeucenaDrawing.refreshPolyVisibility();
-      }
-      updateAreaLabelsForZoom();
-      initialZoom = map.getZoom();
-      initialCenter = map.getCenter();
-      scheduleAutoLabelsOff();
-      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
-        LeucenaApp.scheduleAutoCollapseLegend();
+      var fracZoom = map.getZoom();
+      var intZoom = Math.floor(fracZoom);
+      if (fracZoom !== intZoom) {
+        map.setZoom(intZoom);
+        google.maps.event.addListenerOnce(map, 'idle', function () {
+          if (_currentState !== ufLoaded) return;
+          _finalizeStateLoad(fc, ufLoaded);
+        });
+      } else {
+        _finalizeStateLoad(fc, ufLoaded);
       }
     });
+  }
+
+  function _finalizeStateLoad(fc, ufLoaded) {
+    renderGridFeatures(fc);
+    updateFilterCounts();
+    refreshPointVisibility();
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+      LeucenaDrawing.refreshPolyVisibility();
+    }
+    updateAreaLabelsForZoom();
+    initialZoom = map.getZoom();
+    initialCenter = map.getCenter();
+    scheduleAutoLabelsOff();
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
+      LeucenaApp.scheduleAutoCollapseLegend();
+    }
   }
 
   function getStyleForCell(props, cellId) {
