@@ -7,14 +7,61 @@ window.LeucenaCollab = (function () {
 
   function _handleBuildId(id) {
     if (_knownBuildId && _knownBuildId !== id) {
-      _showUpdateModal();
+      _forceUpdateReload();
     }
     _knownBuildId = id;
   }
 
-  function _showUpdateModal() {
+  function _forceUpdateReload() {
+    _saveMapStateForReload();
+    _autoUnlockBeforeReload();
+
     var modal = document.getElementById('app-update-modal');
     if (modal) modal.classList.remove('hidden');
+
+    var remaining = 3;
+    var cdEl = document.getElementById('update-countdown');
+    var cdInterval = setInterval(function () {
+      remaining--;
+      if (cdEl) cdEl.textContent = remaining;
+      if (remaining <= 0) {
+        clearInterval(cdInterval);
+        window.location.reload();
+      }
+    }, 1000);
+  }
+
+  function _saveMapStateForReload() {
+    try {
+      var state = {};
+      if (typeof LeucenaMap !== 'undefined') {
+        var gmap = LeucenaMap.getMap();
+        if (gmap) {
+          var c = gmap.getCenter();
+          state.zoom = gmap.getZoom();
+          state.lat = c.lat();
+          state.lng = c.lng();
+        }
+        state.uf = LeucenaMap.getCurrentState() || null;
+      }
+      localStorage.setItem('leucena_reload_state', JSON.stringify(state));
+    } catch (e) { /* best effort */ }
+  }
+
+  function _autoUnlockBeforeReload() {
+    try {
+      if (typeof LeucenaApp === 'undefined') return;
+      var cellId = LeucenaApp.getSelectedCellId && LeucenaApp.getSelectedCellId();
+      var cellData = LeucenaApp.getSelectedCellData && LeucenaApp.getSelectedCellData();
+      var user = LeucenaApp.getUsername && LeucenaApp.getUsername();
+      if (cellId && cellData && cellData.locked_by === user) {
+        fetch('/api/grid/' + cellId + '/unlock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('leucena_token') || '') },
+          body: JSON.stringify({ status: cellData.grid_status || 'not_yet_finished' })
+        }).catch(function () {});
+      }
+    } catch (e) { /* best effort */ }
   }
 
   function initAnonymous() {

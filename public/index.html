@@ -800,14 +800,15 @@
       </div>
     </div>
 
-    <!-- Modal de Atualização -->
-    <div id="app-update-modal" class="modal-overlay hidden" style="z-index:9999">
+    <!-- Modal de Atualização (forçada) -->
+    <div id="app-update-modal" class="modal-overlay hidden" style="z-index:99999; pointer-events:all;">
       <div class="modal-card app-update-card">
         <div class="app-update-icon">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M21 12a9 9 0 11-6.22-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
+          <svg class="app-update-spin" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M21 12a9 9 0 11-6.22-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
         </div>
         <h2 class="app-update-title" data-i18n="update.title">Nova versão disponível</h2>
-        <p class="app-update-text" data-i18n="update.message">A plataforma foi atualizada. Recarregue a página para usar a versão mais recente.</p>
+        <p class="app-update-text" data-i18n="update.message">A plataforma foi atualizada. Seu trabalho foi salvo automaticamente.</p>
+        <p class="app-update-countdown" data-i18n="update.reloading">Recarregando em <strong id="update-countdown">3</strong>s...</p>
         <button type="button" class="btn btn-primary app-update-btn" onclick="window.location.reload()" data-i18n="update.reload">Recarregar agora</button>
       </div>
     </div>

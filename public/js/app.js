@@ -2804,6 +2804,26 @@ window.LeucenaApp = (function () {
     LeucenaDrawing.init();
     LeucenaStreetView.init();
     LeucenaExport.init();
+    _restoreReloadState();
+  }
+
+  function _restoreReloadState() {
+    try {
+      var raw = localStorage.getItem('leucena_reload_state');
+      if (!raw) return;
+      localStorage.removeItem('leucena_reload_state');
+      var st = JSON.parse(raw);
+      var gmap = LeucenaMap.getMap();
+      if (!gmap) return;
+      google.maps.event.addListenerOnce(gmap, 'idle', function () {
+        if (st.lat != null && st.lng != null) {
+          gmap.setCenter({ lat: st.lat, lng: st.lng });
+        }
+        if (st.zoom != null) {
+          gmap.setZoom(st.zoom);
+        }
+      });
+    } catch (e) { /* best effort */ }
   }
 
   // ── Cell selection ──
