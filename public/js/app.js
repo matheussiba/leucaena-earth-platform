@@ -3592,11 +3592,6 @@ window.LeucenaApp = (function () {
     const cellLocked = selectedCellData && selectedCellData.locked_by === username;
     document.getElementById('tool-streetview').disabled = !(anyActive || cellLocked);
     syncStreetViewButtonTitle();
-
-    const editPanel = document.getElementById('edit-tools-panel');
-    if (anyActive && editPanel.classList.contains('hidden')) {
-      editPanel.classList.remove('hidden');
-    }
   }
 
   function isPointModeActive() {
@@ -3612,11 +3607,6 @@ window.LeucenaApp = (function () {
   }
 
   function showAdminTools() {
-    if (isLoggedIn() && isTeamOrAbove()) {
-      document.getElementById('insertion-sep').classList.remove('hidden');
-      document.getElementById('insertion-toggle').classList.remove('hidden');
-      document.getElementById('deletion-toggle').classList.remove('hidden');
-    }
     if (userRole === 'tester') {
       document.getElementById('admin-users-btn').classList.remove('hidden');
     }
@@ -3649,9 +3639,6 @@ window.LeucenaApp = (function () {
   }
   
   function hideAdminTools() {
-    document.getElementById('insertion-sep').classList.add('hidden');
-    document.getElementById('insertion-toggle').classList.add('hidden');
-    document.getElementById('deletion-toggle').classList.add('hidden');
     if (userRole !== 'tester') {
       document.getElementById('admin-users-btn').classList.add('hidden');
     }

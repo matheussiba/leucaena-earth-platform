@@ -181,6 +181,7 @@ window.LeucenaI18n = (function () {
     'tool.delPoints': { pt: 'Remover Pontos', en: 'Remove Points', es: 'Remover Puntos' },
     'tool.sectionPoly': { pt: 'Polígonos', en: 'Polygons', es: 'Polígonos' },
     'tool.sectionPoints': { pt: 'Pontos', en: 'Points', es: 'Puntos' },
+    'tool.sectionUtils': { pt: 'Utilitários', en: 'Utilities', es: 'Utilidades' },
     'tool.draw': { pt: 'Desenhar Polígono (Shift+C)', en: 'Draw Polygon (Shift+C)', es: 'Dibujar Polígono (Shift+C)' },
     'tool.drawTouch': { pt: 'Desenhar Polígono', en: 'Draw Polygon', es: 'Dibujar Polígono' },
     'tool.edit': { pt: 'Editar Polígono (Shift+E)', en: 'Edit Polygon (Shift+E)', es: 'Editar Polígono (Shift+E)' },

@@ -2465,14 +2465,18 @@ a.docs-logo-card:hover {
 }
 .edit-tool-btn-labeled {
   width: auto;
-  padding: 0 10px;
-  gap: 5px;
-  font-size: 11px;
+  height: auto;
+  flex-direction: column;
+  padding: 6px 10px 4px;
+  gap: 2px;
+  font-size: 10px;
   font-weight: 500;
   white-space: nowrap;
+  min-width: 52px;
 }
 .edit-tool-btn-labeled span {
   pointer-events: none;
+  line-height: 1.1;
 }
 .edit-tool-btn-point-add {
   background: rgba(34, 197, 94, 0.2);
@@ -4852,9 +4856,10 @@ a.docs-logo-card:hover {
 
   .edit-tool-btn-labeled {
     width: auto;
-    height: 38px;
-    font-size: 11px;
-    padding: 0 8px;
+    height: auto;
+    font-size: 10px;
+    padding: 5px 8px 3px;
+    min-width: 48px;
   }
 
   .edit-tools-row {
