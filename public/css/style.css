@@ -2239,6 +2239,19 @@ a.docs-logo-card:hover {
   50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(234, 179, 8, 0); }
 }
 
+/* ── Editing cell: hide distracting controls, show header & toolbar ── */
+#app:has(#main-content.editing-cell) #top-bar,
+#app:has(#main-content.editing-cell) #toolbar {
+  background: var(--bar-bg-hover);
+}
+#main-content.editing-cell .btn-my-location,
+#main-content.editing-cell .btn-users-online {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
 .tool-hint-text {
   display: block;
   width: 100%;

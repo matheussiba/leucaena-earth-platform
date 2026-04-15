@@ -32,6 +32,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let _editZoomEnforced = false;
   let _zoomWarnCount = 0;
   let pointClusterer = null; // MarkerClusterer; lazily created in ensureClusterer()
+  let _editingCellId = null;
+  let _editNeighborIds = null; // Set of cell IDs adjacent to the editing cell
 
   const SELECTED_STROKE = '#00FFFF';
 
@@ -883,8 +885,47 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return style;
   }
 
+  function _computeNeighborCells(cellId) {
+    const cb = gridCellBounds[cellId];
+    if (!cb) return new Set();
+    const ne = cb.getNorthEast();
+    const sw = cb.getSouthWest();
+    const h = ne.lat() - sw.lat();
+    const w = ne.lng() - sw.lng();
+    const expandedBounds = new google.maps.LatLngBounds(
+      { lat: sw.lat() - h * 0.1, lng: sw.lng() - w * 0.1 },
+      { lat: ne.lat() + h * 0.1, lng: ne.lng() + w * 0.1 }
+    );
+    const neighbors = new Set();
+    for (const [id, b] of Object.entries(gridCellBounds)) {
+      if (id === String(cellId)) continue;
+      if (expandedBounds.intersects(b)) neighbors.add(id);
+    }
+    return neighbors;
+  }
+
+  function setEditingCell(cellId) {
+    if (cellId) {
+      _editingCellId = String(cellId);
+      _editNeighborIds = _computeNeighborCells(cellId);
+    } else {
+      _editingCellId = null;
+      _editNeighborIds = null;
+    }
+    if (gridLayer) gridLayer.setStyle(gridStyleCallback);
+    refreshPointVisibility();
+    if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.refreshPolyVisibility();
+  }
+
+  function isEditNeighborOrSelf(cellId) {
+    if (!_editingCellId) return true;
+    const sid = String(cellId);
+    return sid === _editingCellId || (_editNeighborIds && _editNeighborIds.has(sid));
+  }
+
   function shouldShowCell(props) {
     if (!showGrid) return false;
+    if (_editingCellId && !isEditNeighborOrSelf(props.id)) return false;
     return activeFilters.has(props.grid_status);
   }
 
@@ -1822,6 +1863,19 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return null;
   }
 
+  function _isPointInEditScope(position) {
+    if (!_editingCellId) return true;
+    const editBounds = gridCellBounds[_editingCellId];
+    if (editBounds && editBounds.contains(position)) return true;
+    if (_editNeighborIds) {
+      for (const nid of _editNeighborIds) {
+        const nb = gridCellBounds[nid];
+        if (nb && nb.contains(position)) return true;
+      }
+    }
+    return false;
+  }
+
   function refreshPointVisibility() {
     const viewport = map ? map.getBounds() : null;
     const brazilOverview = !_currentState;
@@ -1833,7 +1887,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         const layer = entry.data.layer || 'crowdmapping';
         const inView = !viewport || viewport.contains(entry.marker.getPosition());
         const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
-        entry.marker.setMap(isPointLayerVisible(layer) && inView && inState ? map : null);
+        const inEditScope = _isPointInEditScope(entry.marker.getPosition());
+        entry.marker.setMap(isPointLayerVisible(layer) && inView && inState && inEditScope ? map : null);
       }
       return;
     }
@@ -1849,7 +1904,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       const layer = entry.data.layer || 'crowdmapping';
       const inView = !viewport || viewport.contains(entry.marker.getPosition());
       const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
-      if (isPointLayerVisible(layer) && inView && inState) {
+      const inEditScope = _isPointInEditScope(entry.marker.getPosition());
+      if (isPointLayerVisible(layer) && inView && inState && inEditScope) {
         toAdd.push(entry.marker);
       } else {
         toRemove.push(entry.marker);
@@ -1958,6 +2014,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     normalizeCellSearchQuery,
     restrictPanToCell,
     releasePanRestriction,
+    setEditingCell,
+    isEditNeighborOrSelf,
     updatePointAppearance,
     getGridData,
     getCurrentState: function () { return _currentState; },

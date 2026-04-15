@@ -2993,8 +2993,10 @@ window.LeucenaApp = (function () {
     _maskBreakdownSeq++;
     if (lockHeartbeatInterval) { clearInterval(lockHeartbeatInterval); lockHeartbeatInterval = null; }
     if (typeof LeucenaMap !== 'undefined') {
+      LeucenaMap.setEditingCell(null);
       LeucenaMap.setSelectedCell(null);
     }
+    document.getElementById('main-content').classList.remove('editing-cell');
     selectedCellId = null;
     selectedCellData = null;
     document.getElementById('cell-actions').classList.add('hidden');
@@ -3154,7 +3156,9 @@ window.LeucenaApp = (function () {
       }
 
       LeucenaMap.updateCellAppearance(cellId, selectedCellData || {});
+      LeucenaMap.setEditingCell(null);
       LeucenaMap.releasePanRestriction();
+      document.getElementById('main-content').classList.remove('editing-cell');
       LeucenaCollab.notifyEditingCell(null);
       LeucenaCollab.notifyActivity(null);
 
@@ -3219,9 +3223,11 @@ window.LeucenaApp = (function () {
 
       selectCell(cellId, selectedCellData);
       LeucenaMap.updateCellAppearance(cellId, selectedCellData);
+      LeucenaMap.setEditingCell(cellId);
       LeucenaMap.zoomToCell(cellId);
       LeucenaCollab.notifyEditingCell(cellId);
 
+      document.getElementById('main-content').classList.add('editing-cell');
       document.getElementById('main-content').classList.remove('sidebar-open');
       updateToggleArrow(false);
       updateLegendVisibility(false);

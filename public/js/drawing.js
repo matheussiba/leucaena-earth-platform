@@ -1589,6 +1589,7 @@ window.LeucenaDrawing = (function () {
     const currentState = typeof LeucenaMap.getCurrentState === 'function' ? LeucenaMap.getCurrentState() : null;
     const brazilOverview = !currentState;
     const loadedCells = currentState ? LeucenaMap.getGridData() : null;
+    const hasEditFilter = typeof LeucenaMap.isEditNeighborOrSelf === 'function';
     for (const [id, entry] of Object.entries(drawnPolygons)) {
       if (brazilOverview) {
         entry.gmapsPoly.setMap(null);
@@ -1598,7 +1599,8 @@ window.LeucenaDrawing = (function () {
       const crole = entry.data.created_by_role || 'contributor';
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
       const inState = !currentState || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
-      const show = globalShow && shouldShowPoly(crole) && inView && inState;
+      const inEditScope = !hasEditFilter || LeucenaMap.isEditNeighborOrSelf(entry.data.grid_cell_id);
+      const show = globalShow && shouldShowPoly(crole) && inView && inState && inEditScope;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
