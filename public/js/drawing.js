@@ -1333,7 +1333,7 @@ window.LeucenaDrawing = (function () {
 
     if (mode === 'draw' || mode === 'delete' || mode === 'edit') {
       if (mode === 'delete' && _pendingDeleteId) {
-        overlay.innerHTML = t('badge.deleteConfirm')
+        overlay.innerHTML = t(touch ? 'badge.deleteConfirmTouch' : 'badge.deleteConfirm')
           + '<div class="draw-overlay-actions">'
           + '<button class="btn-overlay-action btn-overlay-delete" id="overlay-delete-confirm">' + t('badge.deleteBtn') + '</button>'
           + '<button class="btn-overlay-action btn-overlay-cancel" id="overlay-delete-cancel">' + t('badge.cancelBtn') + '</button>'

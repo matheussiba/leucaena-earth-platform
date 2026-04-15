@@ -2221,6 +2221,9 @@ a.docs-logo-card:hover {
 .btn-badge-unlock:active {
   transform: scale(0.92);
 }
+.btn-badge-unlock .unlock-label {
+  display: none;
+}
 
 .edit-pulse {
   width: 8px;
@@ -4489,8 +4492,27 @@ a.docs-logo-card:hover {
 
   .edit-mode-badge {
     font-size: 11px;
-    padding: 5px 12px;
+    padding: 6px 10px;
     gap: 6px;
+    max-width: 95vw;
+    flex-direction: column;
+    border-radius: 14px;
+  }
+
+  .btn-badge-unlock {
+    width: auto;
+    height: auto;
+    padding: 6px 14px;
+    gap: 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.7);
+  }
+
+  .btn-badge-unlock .unlock-label {
+    display: inline;
   }
 
   .tool-hint-text {
@@ -4643,7 +4665,8 @@ a.docs-logo-card:hover {
   }
 
   #main-content.sidebar-open .btn-my-location,
-  #main-content.sidebar-open .btn-users-online {
+  #main-content.sidebar-open .btn-users-online,
+  #main-content.sidebar-open .map-controls-right {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;

@@ -97,11 +97,14 @@ window.LeucenaI18n = (function () {
 
     // ── Insertion/Deletion banners ──
     'banner.insertion': { pt: 'MODO DE INSERÇÃO DE PONTOS: Clique no mapa ou pressione L para adicionar ponto, Ctrl+Z para desfazer', en: 'POINT INSERTION MODE: Click on map or press L to add point, Ctrl+Z to undo', es: 'MODO DE INSERCIÓN DE PUNTOS: Clic en el mapa o presione L para agregar punto, Ctrl+Z para deshacer' },
+    'banner.insertionTouch': { pt: 'INSERÇÃO DE PONTOS: Toque no mapa para adicionar', en: 'POINT INSERTION: Tap on map to add', es: 'INSERCIÓN DE PUNTOS: Toque en el mapa para agregar' },
     'update.title': { pt: 'Nova versão disponível', en: 'New version available', es: 'Nueva versión disponible' },
     'update.message': { pt: 'A plataforma foi atualizada. Recarregue a página para usar a versão mais recente.', en: 'The platform has been updated. Reload the page to use the latest version.', es: 'La plataforma fue actualizada. Recargue la página para usar la versión más reciente.' },
     'update.reload': { pt: 'Recarregar agora', en: 'Reload now', es: 'Recargar ahora' },
     'banner.deletion': { pt: 'MODO DE EXCLUSÃO DE PONTOS: Clique perto de um ponto para excluir, Ctrl+Z para desfazer', en: 'POINT DELETION MODE: Click near a point to delete, Ctrl+Z to undo', es: 'MODO DE ELIMINACIÓN DE PUNTOS: Haga clic cerca de un punto para eliminar, Ctrl+Z para deshacer' },
+    'banner.deletionTouch': { pt: 'EXCLUSÃO DE PONTOS: Toque perto de um ponto para excluir', en: 'POINT DELETION: Tap near a point to delete', es: 'ELIMINACIÓN DE PUNTOS: Toque cerca de un punto para eliminar' },
     'banner.deletionCollab': { pt: 'MODO DE EXCLUSÃO: Apenas pontos que você adicionou. Ctrl+Z para desfazer', en: 'DELETION MODE: Only points you added. Ctrl+Z to undo', es: 'MODO DE ELIMINACIÓN: Solo puntos que agregaste. Ctrl+Z para deshacer' },
+    'banner.deletionCollabTouch': { pt: 'EXCLUSÃO: Apenas pontos que você adicionou', en: 'DELETION: Only points you added', es: 'ELIMINACIÓN: Solo puntos que agregaste' },
 
     // ── Sidebar ──
     'sidebar.filters': { pt: 'Filtros', en: 'Filters', es: 'Filtros' },
@@ -175,10 +178,15 @@ window.LeucenaI18n = (function () {
     'tool.addPoints': { pt: 'Add Pontos', en: 'Add Points', es: 'Agregar Puntos' },
     'tool.delPoints': { pt: 'Remover Pontos', en: 'Remove Points', es: 'Remover Puntos' },
     'tool.draw': { pt: 'Desenhar Polígono (Shift+C)', en: 'Draw Polygon (Shift+C)', es: 'Dibujar Polígono (Shift+C)' },
+    'tool.drawTouch': { pt: 'Desenhar Polígono', en: 'Draw Polygon', es: 'Dibujar Polígono' },
     'tool.edit': { pt: 'Editar Polígono (Shift+E)', en: 'Edit Polygon (Shift+E)', es: 'Editar Polígono (Shift+E)' },
+    'tool.editTouch': { pt: 'Editar Polígono', en: 'Edit Polygon', es: 'Editar Polígono' },
     'tool.deletePoly': { pt: 'Excluir Polígono (Shift+D)', en: 'Delete Polygon (Shift+D)', es: 'Eliminar Polígono (Shift+D)' },
+    'tool.deletePolyTouch': { pt: 'Excluir Polígono', en: 'Delete Polygon', es: 'Eliminar Polígono' },
     'tool.hole': { pt: 'Criar Buraco (Shift+H)', en: 'Hole Tool (Shift+H)', es: 'Crear Agujero (Shift+H)' },
+    'tool.holeTouch': { pt: 'Criar Buraco', en: 'Hole Tool', es: 'Crear Agujero' },
     'tool.undo': { pt: 'Desfazer (Ctrl+Z)', en: 'Undo (Ctrl+Z)', es: 'Deshacer (Ctrl+Z)' },
+    'tool.undoTouch': { pt: 'Desfazer', en: 'Undo', es: 'Deshacer' },
     'tool.finishDraw': { pt: 'Finalizar desenho', en: 'Finish drawing', es: 'Finalizar dibujo' },
     'tool.home': { pt: 'Visão inicial', en: 'Initial view', es: 'Vista inicial' },
     'tool.zoomIn': { pt: 'Zoom +', en: 'Zoom +', es: 'Zoom +' },
@@ -573,6 +581,7 @@ window.LeucenaI18n = (function () {
     'badge.edit': { pt: 'Ctrl+Z = desfazer edição', en: 'Ctrl+Z = undo edit', es: 'Ctrl+Z = deshacer edición' },
     'badge.editTouch': { pt: 'Arraste os vértices para editar', en: 'Drag vertices to edit', es: 'Arrastre los vértices para editar' },
     'badge.pointSelected': { pt: 'Clique com o botão direito para mudar de status', en: 'Right-click to change status', es: 'Clic derecho para cambiar estado' },
+    'badge.pointSelectedTouch': { pt: 'Toque longo para mudar de status', en: 'Long-press to change status', es: 'Toque prolongado para cambiar estado' },
 
     // ── Toast messages (streetview.js) ──
     'toast.svClickHint': { pt: 'Clique no mapa para abrir Street View. Linhas azuis mostram a cobertura disponível.', en: 'Click on the map to open Street View. Blue lines show available coverage.', es: 'Haga clic en el mapa para abrir Street View. Las líneas azules muestran la cobertura disponible.' },
@@ -703,8 +712,11 @@ window.LeucenaI18n = (function () {
       el.innerHTML = t(el.getAttribute('data-i18n-html'));
     });
 
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     document.querySelectorAll('[data-i18n-title]').forEach(el => {
-      el.title = t(el.getAttribute('data-i18n-title'));
+      const key = el.getAttribute('data-i18n-title');
+      const touchKey = key + 'Touch';
+      el.title = (isTouch && T[touchKey]) ? t(touchKey) : t(key);
     });
 
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.refreshLabelToggleTitleForLang) {

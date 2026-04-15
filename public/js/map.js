@@ -1172,7 +1172,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     const hint = document.getElementById('tool-hint-text');
     if (!hint) return;
     if (selectedPointIds.size > 0 && !previewMode) {
-      hint.textContent = LeucenaI18n.t('badge.pointSelected');
+      const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      hint.textContent = LeucenaI18n.t(touch ? 'badge.pointSelectedTouch' : 'badge.pointSelected');
       hint.classList.remove('hidden');
     } else {
       hint.textContent = '';

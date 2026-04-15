@@ -3458,15 +3458,25 @@ window.LeucenaApp = (function () {
 
   function isDeletionMode() { return deletionMode; }
 
+  function _isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }
+
   function updatePointModeBanner() {
     const banner = document.getElementById('insertion-banner');
     const bannerText = banner.querySelector('span:last-child');
     const editBadge = document.getElementById('edit-mode-badge');
+    const touch = _isTouchDevice();
     if (insertionMode) {
-      bannerText.textContent = LeucenaI18n.t('banner.insertion');
+      bannerText.textContent = LeucenaI18n.t(touch ? 'banner.insertionTouch' : 'banner.insertion');
       banner.classList.remove('hidden');
     } else if (deletionMode) {
-      const key = isTeamOrAbove() ? 'banner.deletion' : 'banner.deletionCollab';
+      let key;
+      if (touch) {
+        key = isTeamOrAbove() ? 'banner.deletionTouch' : 'banner.deletionCollabTouch';
+      } else {
+        key = isTeamOrAbove() ? 'banner.deletion' : 'banner.deletionCollab';
+      }
       bannerText.textContent = LeucenaI18n.t(key);
       banner.classList.remove('hidden');
     } else {
