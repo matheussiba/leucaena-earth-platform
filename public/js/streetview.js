@@ -14,13 +14,14 @@ window.LeucenaStreetView = (function () {
   function toggleActive() {
     active = !active;
     const btn = document.getElementById('tool-streetview');
+    const floatBtn = document.getElementById('tool-streetview-float');
     if (active) {
       const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
-      // Idle draw mode → select so SV map clicks open panos instead of starting a polygon.
       if (drawMode === 'draw' && !LeucenaDrawing.isPolygonInProgress()) {
         LeucenaDrawing.setMode('select');
       }
       btn.classList.add('active');
+      if (floatBtn) floatBtn.classList.add('active');
       LeucenaMap.showStreetViewCoverage(true);
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('streetview_open', null, null, null);
@@ -28,6 +29,7 @@ window.LeucenaStreetView = (function () {
       LeucenaApp.showToast(LeucenaI18n.t('toast.svClickHint'), 'info');
     } else {
       btn.classList.remove('active');
+      if (floatBtn) floatBtn.classList.remove('active');
       LeucenaMap.showStreetViewCoverage(false);
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('streetview_close', null, null, null);
@@ -73,10 +75,11 @@ window.LeucenaStreetView = (function () {
   }
 
   function close() {
-    // Hide pano panel and Street View coverage so the map returns to normal editing/interaction.
     document.getElementById('streetview-container').classList.add('hidden');
     active = false;
     document.getElementById('tool-streetview').classList.remove('active');
+    const floatBtn = document.getElementById('tool-streetview-float');
+    if (floatBtn) floatBtn.classList.remove('active');
     LeucenaMap.showStreetViewCoverage(false);
   }
 

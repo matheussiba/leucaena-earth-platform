@@ -171,6 +171,7 @@ window.LeucenaApp = (function () {
 
     document.getElementById('tool-unlock').addEventListener('click', openUnlockModal);
     document.getElementById('badge-unlock-btn').addEventListener('click', openUnlockModal);
+    document.getElementById('tool-unlock-float').addEventListener('click', openUnlockModal);
     document.getElementById('unlock-finished').addEventListener('click', () => confirmUnlock('finished'));
     document.getElementById('unlock-not-finished').addEventListener('click', () => confirmUnlock('not_yet_finished'));
     document.getElementById('unlock-cancel').addEventListener('click', closeUnlockModal);
@@ -3027,29 +3028,13 @@ window.LeucenaApp = (function () {
   function enableTools(enabled) {
     const editPanel = document.getElementById('edit-tools-panel');
     const unlockBtn = document.getElementById('tool-unlock');
-    const svWrap = document.getElementById('tool-streetview-wrap');
-    const svSep = document.getElementById('streetview-sep');
     if (enabled) {
       editPanel.classList.remove('hidden');
       unlockBtn.classList.remove('hidden');
-      if (svWrap) svWrap.classList.remove('hidden');
-      if (svSep) svSep.classList.remove('hidden');
-      if (isLoggedIn() && !isTeamOrAbove()) {
-        document.getElementById('insertion-sep').classList.remove('hidden');
-        document.getElementById('insertion-toggle').classList.remove('hidden');
-        document.getElementById('deletion-toggle').classList.remove('hidden');
-      }
       applyRoleRestrictions();
     } else {
       editPanel.classList.add('hidden');
       unlockBtn.classList.add('hidden');
-      if (svWrap) svWrap.classList.add('hidden');
-      if (svSep) svSep.classList.add('hidden');
-      if (isLoggedIn() && !isTeamOrAbove()) {
-        document.getElementById('insertion-sep').classList.add('hidden');
-        document.getElementById('insertion-toggle').classList.add('hidden');
-        document.getElementById('deletion-toggle').classList.add('hidden');
-      }
     }
     const selectBtn = document.getElementById('tool-select');
     if (selectBtn) { selectBtn.disabled = false; selectBtn.classList.add('active'); }
@@ -3442,14 +3427,51 @@ window.LeucenaApp = (function () {
 
     // Point modes: L / Ctrl+Z here; Shift+C/V/E etc. live in drawing.js (gated by cell lock + not typing in inputs).
     document.addEventListener('keydown', handlePointModeKey);
+
+    // Floating panel point buttons
+    const addPtBtn = document.getElementById('tool-add-point');
+    const delPtBtn = document.getElementById('tool-del-point');
+    if (addPtBtn) {
+      addPtBtn.addEventListener('click', () => {
+        if (!isLoggedIn()) return;
+        if (insertionMode) {
+          setInsertionMode(false);
+        } else {
+          openAddPointsModal();
+        }
+      });
+    }
+    if (delPtBtn) {
+      delPtBtn.addEventListener('click', () => {
+        if (!isLoggedIn()) return;
+        if (deletionMode) {
+          setDeletionMode(false);
+        } else {
+          setInsertionMode(false);
+          setDeletionMode(true);
+        }
+      });
+    }
+
+    // Floating street view button
+    const svFloat = document.getElementById('tool-streetview-float');
+    if (svFloat) {
+      svFloat.addEventListener('click', () => {
+        const mainBtn = document.getElementById('tool-streetview');
+        if (mainBtn && !mainBtn.disabled) mainBtn.click();
+      });
+    }
   }
 
   function setInsertionMode(active) {
     insertionMode = active;
     document.getElementById('tool-insertion').checked = active;
+    const addBtn = document.getElementById('tool-add-point');
+    if (addBtn) addBtn.classList.toggle('active', active);
     logEvent(active ? 'insertion_mode_on' : 'insertion_mode_off', selectedCellId);
     updatePointModeBanner();
     updatePointModeVisuals();
+    syncFloatPointButtons();
     if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyActivity) {
       LeucenaCollab.notifyActivity(active ? 'adding_points' : null);
     }
@@ -3459,13 +3481,28 @@ window.LeucenaApp = (function () {
   function setDeletionMode(active) {
     deletionMode = active;
     document.getElementById('tool-deletion').checked = active;
+    const delBtn = document.getElementById('tool-del-point');
+    if (delBtn) delBtn.classList.toggle('active', active);
     logEvent(active ? 'deletion_mode_on' : 'deletion_mode_off', selectedCellId);
     updatePointModeBanner();
     updatePointModeVisuals();
+    syncFloatPointButtons();
     if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyActivity) {
       LeucenaCollab.notifyActivity(active ? 'deleting_points' : null);
     }
     if (!active) restoreEditingState();
+  }
+
+  function syncFloatPointButtons() {
+    const addBtn = document.getElementById('tool-add-point');
+    const delBtn = document.getElementById('tool-del-point');
+    if (addBtn) addBtn.classList.toggle('active', insertionMode);
+    if (delBtn) delBtn.classList.toggle('active', deletionMode);
+    const svFloat = document.getElementById('tool-streetview-float');
+    if (svFloat) {
+      const svActive = typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive();
+      svFloat.classList.toggle('active', svActive);
+    }
   }
 
   function restoreEditingState() {
@@ -3516,14 +3553,13 @@ window.LeucenaApp = (function () {
       LeucenaMap.setMapBorder(anyActive);
     }
     const cellLocked = selectedCellData && selectedCellData.locked_by === username;
-    const svWrap = document.getElementById('tool-streetview-wrap');
-    const svSep = document.getElementById('streetview-sep');
-    if (anyActive || cellLocked) {
-      if (svWrap) svWrap.classList.remove('hidden');
-      if (svSep) svSep.classList.remove('hidden');
-    }
     document.getElementById('tool-streetview').disabled = !(anyActive || cellLocked);
     syncStreetViewButtonTitle();
+
+    const editPanel = document.getElementById('edit-tools-panel');
+    if (anyActive && editPanel.classList.contains('hidden')) {
+      editPanel.classList.remove('hidden');
+    }
   }
 
   function isPointModeActive() {

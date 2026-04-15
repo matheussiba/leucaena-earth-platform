@@ -2244,6 +2244,14 @@ a.docs-logo-card:hover {
   pointer-events: none;
   transition: opacity 0.2s, visibility 0.2s;
 }
+#app:has(#main-content.editing-cell) #toolbar #insertion-toggle,
+#app:has(#main-content.editing-cell) #toolbar #deletion-toggle,
+#app:has(#main-content.editing-cell) #toolbar #insertion-sep,
+#app:has(#main-content.editing-cell) #toolbar #tool-unlock,
+#app:has(#main-content.editing-cell) #toolbar #tool-streetview-wrap,
+#app:has(#main-content.editing-cell) #toolbar #streetview-sep {
+  display: none !important;
+}
 
 .tool-hint-text {
   display: block;
@@ -2334,7 +2342,7 @@ a.docs-logo-card:hover {
   cursor: crosshair !important;
 }
 
-/* ── Floating Edit Tools (bottom-left on map) ── */
+/* ── Floating Edit Tools (bottom-center on map) ── */
 .edit-tools-panel {
   position: absolute;
   bottom: 56px;
@@ -2342,11 +2350,12 @@ a.docs-logo-card:hover {
   transform: translateX(-50%);
   z-index: 160;
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding: 6px;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: var(--radius);
 }
@@ -2414,6 +2423,65 @@ a.docs-logo-card:hover {
   align-self: stretch;
   background: rgba(255,255,255,0.15);
   margin: 4px 0;
+}
+
+.edit-tools-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.edit-tools-section + .edit-tools-section {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 5px;
+}
+.edit-tools-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.45);
+  padding: 0 2px;
+}
+.edit-tools-row {
+  display: flex;
+  gap: 5px;
+}
+.edit-tool-btn-point-add {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+}
+.edit-tool-btn-point-add:hover {
+  background: rgba(34, 197, 94, 0.4);
+  color: #bbf7d0;
+}
+.edit-tool-btn-point-add.active {
+  background: #16a34a;
+  color: white;
+  border-color: #16a34a;
+}
+.edit-tool-btn-point-del {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+.edit-tool-btn-point-del:hover {
+  background: rgba(239, 68, 68, 0.4);
+  color: #fecaca;
+}
+.edit-tool-btn-point-del.active {
+  background: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+.edit-tool-btn-unlock {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+.edit-tool-btn-unlock:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fecaca;
 }
 
 /* ── Map Controls Right (zoom + home group) ── */
@@ -4685,12 +4753,16 @@ a.docs-logo-card:hover {
   .edit-tools-panel {
     bottom: 48px;
     gap: 4px;
-    padding: 4px;
+    padding: 6px;
   }
 
   .edit-tool-btn {
     width: 44px;
     height: 44px;
+  }
+
+  .edit-tools-row {
+    gap: 4px;
   }
 
   .map-controls-right {

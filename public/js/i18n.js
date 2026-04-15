@@ -178,6 +178,8 @@ window.LeucenaI18n = (function () {
     'tool.labelsReenableHint': { pt: 'Clique aqui para voltar a mostrar os rótulos', en: 'Click here to show labels again', es: 'Haga clic aquí para volver a mostrar las etiquetas' },
     'tool.addPoints': { pt: 'Add Pontos', en: 'Add Points', es: 'Agregar Puntos' },
     'tool.delPoints': { pt: 'Remover Pontos', en: 'Remove Points', es: 'Remover Puntos' },
+    'tool.sectionPoly': { pt: 'Polígonos', en: 'Polygons', es: 'Polígonos' },
+    'tool.sectionPoints': { pt: 'Pontos', en: 'Points', es: 'Puntos' },
     'tool.draw': { pt: 'Desenhar Polígono (Shift+C)', en: 'Draw Polygon (Shift+C)', es: 'Dibujar Polígono (Shift+C)' },
     'tool.drawTouch': { pt: 'Desenhar Polígono', en: 'Draw Polygon', es: 'Dibujar Polígono' },
     'tool.edit': { pt: 'Editar Polígono (Shift+E)', en: 'Edit Polygon (Shift+E)', es: 'Editar Polígono (Shift+E)' },
