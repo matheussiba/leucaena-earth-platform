@@ -2815,23 +2815,24 @@ window.LeucenaApp = (function () {
 
   function updateCellAttributionDisplay(cellData) {
     if (!cellData) return;
+    const teamTools = isTeamOrAbove();
+
     const finishedByRow = document.getElementById('cell-finished-by-row');
     const cleanedFinished = cleanUserList(cellData.finished_by);
-    const hasFinished = !!cleanedFinished;
-    if (finishedByRow) finishedByRow.classList.toggle('hidden', !hasFinished);
+    const showFinished = teamTools && !!cleanedFinished;
+    if (finishedByRow) finishedByRow.classList.toggle('hidden', !showFinished);
     const finEl = document.getElementById('cell-finished-by');
-    if (finEl && hasFinished) finEl.textContent = cleanedFinished;
+    if (finEl && showFinished) finEl.textContent = cleanedFinished;
 
     const mappedRow = document.getElementById('cell-mapped-by-row');
     const mappedEl = document.getElementById('cell-mapped-by');
     const cleanedMapped = cleanUserList(cellData.mapped_by);
-    const hasMapped = !!cleanedMapped;
-    if (mappedRow) mappedRow.classList.toggle('hidden', !hasMapped);
-    if (mappedEl && hasMapped) mappedEl.textContent = cleanedMapped;
+    const showMapped = teamTools && !!cleanedMapped;
+    if (mappedRow) mappedRow.classList.toggle('hidden', !showMapped);
+    if (mappedEl && showMapped) mappedEl.textContent = cleanedMapped;
 
     const lockHistRow = document.getElementById('cell-lock-history-row');
     const lockHistEl = document.getElementById('cell-lock-history');
-    const teamTools = isTeamOrAbove();
     const cleanedLockHist = cleanUserList(cellData.worked_by);
     const showLockHist = teamTools && !!cleanedLockHist;
     if (lockHistRow) lockHistRow.classList.toggle('hidden', !showLockHist);
