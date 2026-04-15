@@ -5681,7 +5681,63 @@ a.docs-logo-card:hover {
 }
 
 /* ── Inbox threads ── */
+.inbox-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 10px 0;
+  flex-wrap: wrap;
+}
+.inbox-select-all-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+.inbox-batch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+.inbox-batch-toolbar.hidden { display: none; }
+.inbox-batch-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-right: 4px;
+}
+.inbox-batch-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background 0.15s;
+}
+.inbox-batch-btn:hover { background: var(--bg-tertiary); }
+.inbox-batch-delete { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+.inbox-batch-delete:hover { background: rgba(248, 113, 113, 0.15); }
+.inbox-thread-cb {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 12px 0 0 10px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  align-self: flex-start;
+}
 .inbox-thread {
+  display: flex;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
   border-radius: var(--radius-sm);
   transition: background 0.12s;
@@ -5696,6 +5752,8 @@ a.docs-logo-card:hover {
   cursor: pointer;
   padding: 12px 14px 10px;
   border-radius: var(--radius-sm);
+  flex: 1;
+  min-width: 0;
   transition: background 0.12s;
 }
 
@@ -5789,6 +5847,7 @@ a.docs-logo-card:hover {
   padding: 4px 14px 14px;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
 }
 
 .inbox-thread-expanded .inbox-thread-body {

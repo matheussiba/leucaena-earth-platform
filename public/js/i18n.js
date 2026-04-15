@@ -667,7 +667,17 @@ window.LeucenaI18n = (function () {
     'inbox.toAdmins': { pt: 'Para: Administradores', en: 'To: Administrators', es: 'Para: Administradores' },
     'inbox.replyTo': { pt: 'Resposta', en: 'Reply', es: 'Respuesta' },
     'inbox.confirmRecipientBatch': { pt: '{0} colaboradores selecionados', en: '{0} selected contributors', es: '{0} colaboradores seleccionados' },
-    'inbox.confirmRecipientSuperadmins': { pt: 'Administradores da Leucaena.Earth', en: 'Leucaena.Earth Administrators', es: 'Administradores de Leucaena.Earth' }
+    'inbox.confirmRecipientSuperadmins': { pt: 'Administradores da Leucaena.Earth', en: 'Leucaena.Earth Administrators', es: 'Administradores de Leucaena.Earth' },
+    'inbox.selectAll': { pt: 'Selecionar tudo', en: 'Select all', es: 'Seleccionar todo' },
+    'inbox.deselectAll': { pt: 'Desmarcar tudo', en: 'Deselect all', es: 'Desmarcar todo' },
+    'inbox.batchDelete': { pt: 'Apagar', en: 'Delete', es: 'Eliminar' },
+    'inbox.batchMarkRead': { pt: 'Marcar lido', en: 'Mark read', es: 'Marcar leído' },
+    'inbox.batchMarkUnread': { pt: 'Marcar não lido', en: 'Mark unread', es: 'Marcar no leído' },
+    'inbox.batchSelected': { pt: '{0} selecionada(s)', en: '{0} selected', es: '{0} seleccionada(s)' },
+    'inbox.batchDeleteConfirm': { pt: 'Apagar {0} mensagem(ns) permanentemente?', en: 'Delete {0} message(s) permanently?', es: '¿Eliminar {0} mensaje(s) permanentemente?' },
+    'inbox.batchDeleteSuccess': { pt: '{0} mensagem(ns) apagada(s)', en: '{0} message(s) deleted', es: '{0} mensaje(s) eliminado(s)' },
+    'inbox.batchReadSuccess': { pt: 'Marcado como lido', en: 'Marked as read', es: 'Marcado como leído' },
+    'inbox.batchUnreadSuccess': { pt: 'Marcado como não lido', en: 'Marked as unread', es: 'Marcado como no leído' }
   };
 
   function t(key, ...args) {

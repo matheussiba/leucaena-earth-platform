@@ -2083,6 +2083,36 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+app.post('/api/messages/batch', requireAuth, (req, res) => {
+  const { action, ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids required' });
+  if (action === 'delete') {
+    if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Apenas Super Admin' });
+    for (const id of ids) {
+      runSQL('DELETE FROM message_reads WHERE message_id = ?', [Number(id)]);
+      runSQL('UPDATE messages SET reply_to = NULL WHERE reply_to = ?', [Number(id)]);
+      runSQL('DELETE FROM messages WHERE id = ?', [Number(id)]);
+    }
+    logActivity(req.username, 'inbox_batch_delete', null, null, JSON.stringify({ count: ids.length, ids }));
+    return res.json({ success: true, affected: ids.length });
+  }
+  if (action === 'mark_read') {
+    const now = new Date().toISOString();
+    for (const id of ids) {
+      const already = queryOne('SELECT message_id FROM message_reads WHERE message_id = ? AND username = ?', [Number(id), req.username]);
+      if (!already) runSQL('INSERT INTO message_reads (message_id, username, read_at) VALUES (?, ?, ?)', [Number(id), req.username, now]);
+    }
+    return res.json({ success: true, affected: ids.length });
+  }
+  if (action === 'mark_unread') {
+    for (const id of ids) {
+      runSQL('DELETE FROM message_reads WHERE message_id = ? AND username = ?', [Number(id), req.username]);
+    }
+    return res.json({ success: true, affected: ids.length });
+  }
+  return res.status(400).json({ error: 'Invalid action' });
+});
+
 app.get('/api/admin/logs', requireAuth, (req, res) => {
   if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Equipe ou admin apenas' });
   const format = req.query.format || 'json';

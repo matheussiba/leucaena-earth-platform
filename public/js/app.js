@@ -5371,17 +5371,97 @@ window.LeucenaApp = (function () {
     return bubble;
   }
 
+  let _inboxBatchSelected = new Set();
+
+  function _updateInboxBatchToolbar() {
+    const t = LeucenaI18n.t;
+    const toolbar = document.getElementById('inbox-batch-toolbar');
+    if (!toolbar) return;
+    const count = _inboxBatchSelected.size;
+    if (count === 0) {
+      toolbar.classList.add('hidden');
+      return;
+    }
+    toolbar.classList.remove('hidden');
+    const countEl = toolbar.querySelector('.inbox-batch-count');
+    if (countEl) countEl.textContent = t('inbox.batchSelected', count);
+  }
+
+  async function _inboxBatchAction(action) {
+    const t = LeucenaI18n.t;
+    const ids = [..._inboxBatchSelected];
+    if (ids.length === 0) return;
+    if (action === 'delete') {
+      if (!confirm(t('inbox.batchDeleteConfirm', ids.length))) return;
+    }
+    try {
+      const r = await fetch('/api/messages/batch', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ids })
+      });
+      if (r.ok) {
+        const msg = action === 'delete' ? t('inbox.batchDeleteSuccess', ids.length)
+                  : action === 'mark_read' ? t('inbox.batchReadSuccess')
+                  : t('inbox.batchUnreadSuccess');
+        showToast(msg, 'success');
+        _inboxBatchSelected.clear();
+        openInboxModal();
+      } else {
+        const j = await r.json();
+        showToast(j.error || 'Error', 'error');
+      }
+    } catch (e) { showToast('Erro de conexão', 'error'); }
+  }
+
   function renderInboxList() {
     const t = LeucenaI18n.t;
     const list = document.getElementById('inbox-list');
     list.innerHTML = '';
+    _inboxBatchSelected.clear();
+
+    const topBar = document.createElement('div');
+    topBar.className = 'inbox-top-bar';
 
     const composeBtn = document.createElement('button');
-    composeBtn.className = 'btn btn-primary btn-full';
-    composeBtn.style.marginBottom = '12px';
-    composeBtn.textContent = isAdminUser() ? t('inbox.compose') : t('inbox.sendToAdmin');
+    composeBtn.className = 'btn btn-primary';
+    composeBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ' +
+      (isAdminUser() ? t('inbox.compose') : t('inbox.sendToAdmin'));
     composeBtn.addEventListener('click', () => { closeInboxModal(); openComposeModal(); });
-    list.appendChild(composeBtn);
+    topBar.appendChild(composeBtn);
+
+    if (_inboxMessages.length > 0) {
+      const selectAllBtn = document.createElement('button');
+      selectAllBtn.className = 'btn btn-secondary btn-sm inbox-select-all-btn';
+      selectAllBtn.textContent = t('inbox.selectAll');
+      selectAllBtn.addEventListener('click', () => {
+        const cbs = list.querySelectorAll('.inbox-thread-cb');
+        const allChecked = [...cbs].every(cb => cb.checked);
+        cbs.forEach(cb => {
+          cb.checked = !allChecked;
+          const id = Number(cb.dataset.threadRootId);
+          if (!allChecked) _inboxBatchSelected.add(id); else _inboxBatchSelected.delete(id);
+        });
+        selectAllBtn.textContent = allChecked ? t('inbox.selectAll') : t('inbox.deselectAll');
+        _updateInboxBatchToolbar();
+      });
+      topBar.appendChild(selectAllBtn);
+    }
+
+    list.appendChild(topBar);
+
+    const batchToolbar = document.createElement('div');
+    batchToolbar.id = 'inbox-batch-toolbar';
+    batchToolbar.className = 'inbox-batch-toolbar hidden';
+    batchToolbar.innerHTML = '<span class="inbox-batch-count"></span>' +
+      '<button class="btn btn-sm inbox-batch-btn inbox-batch-read"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ' + t('inbox.batchMarkRead') + '</button>' +
+      '<button class="btn btn-sm inbox-batch-btn inbox-batch-unread"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg> ' + t('inbox.batchMarkUnread') + '</button>' +
+      (isSuperAdmin() ? '<button class="btn btn-sm inbox-batch-btn inbox-batch-delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ' + t('inbox.batchDelete') + '</button>' : '');
+    batchToolbar.querySelector('.inbox-batch-read').addEventListener('click', () => _inboxBatchAction('mark_read'));
+    batchToolbar.querySelector('.inbox-batch-unread').addEventListener('click', () => _inboxBatchAction('mark_unread'));
+    const delBtn = batchToolbar.querySelector('.inbox-batch-delete');
+    if (delBtn) delBtn.addEventListener('click', () => _inboxBatchAction('delete'));
+    list.appendChild(batchToolbar);
 
     if (_inboxMessages.length === 0) {
       const emptyEl = document.createElement('p');
@@ -5396,12 +5476,27 @@ window.LeucenaApp = (function () {
     for (const root of roots) {
       const replies = children[root.id] || [];
       const allMsgs = [root, ...replies];
+      const allIds = allMsgs.map(m => m.id);
       const threadUnread = allMsgs.filter(m => !m.read_at && m.sender !== username).length;
       const lastMsg = allMsgs[allMsgs.length - 1];
       const hasReplies = replies.length > 0;
 
       const threadEl = document.createElement('div');
       threadEl.className = 'inbox-thread' + (threadUnread > 0 ? ' inbox-thread-unread' : '');
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'inbox-thread-cb';
+      cb.dataset.threadRootId = root.id;
+      cb.addEventListener('change', (e) => {
+        e.stopPropagation();
+        if (cb.checked) {
+          allIds.forEach(id => _inboxBatchSelected.add(id));
+        } else {
+          allIds.forEach(id => _inboxBatchSelected.delete(id));
+        }
+        _updateInboxBatchToolbar();
+      });
 
       const headerEl = document.createElement('div');
       headerEl.className = 'inbox-thread-header';
@@ -5439,11 +5534,13 @@ window.LeucenaApp = (function () {
       clickZone.appendChild(metaEl);
       clickZone.appendChild(previewEl);
 
+      threadEl.appendChild(cb);
       threadEl.appendChild(clickZone);
       threadEl.appendChild(bodyEl);
 
       clickZone.addEventListener('click', (e) => {
         if (e.target.closest('.inbox-reply-btn')) return;
+        if (e.target.closest('.inbox-thread-cb')) return;
         threadEl.classList.toggle('inbox-thread-expanded');
 
         if (threadEl.classList.contains('inbox-thread-expanded') && threadUnread > 0) {
