@@ -121,6 +121,25 @@ async function initDB() {
   try { db.run('ALTER TABLE occurrence_points ADD COLUMN status INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE occurrence_points ADD COLUMN added_by TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE occurrence_points ADD COLUMN added_by_role TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE occurrence_points ADD COLUMN added_at TEXT'); } catch (e) { /* already exists */ }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS point_deletions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      original_point_id INTEGER,
+      fid INTEGER,
+      geometry TEXT,
+      layer TEXT,
+      status INTEGER,
+      added_by TEXT,
+      added_by_role TEXT,
+      added_at TEXT,
+      deleted_by TEXT,
+      deleted_by_role TEXT,
+      deleted_at TEXT NOT NULL,
+      grid_cell_id INTEGER
+    )
+  `);
   try { db.run('ALTER TABLE users ADD COLUMN full_name TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN description TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN photo TEXT'); } catch (e) { /* already exists */ }

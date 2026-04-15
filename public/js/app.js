@@ -3561,6 +3561,9 @@ window.LeucenaApp = (function () {
       
       const legendContrib = document.getElementById('legend-mask-contributor');
       if (legendContrib) legendContrib.classList.remove('hidden');
+
+      const collabFilter = document.getElementById('filter-collaborators');
+      if (collabFilter) collabFilter.classList.remove('hidden');
     }
     if (isTeamOrAbove()) {
       loadViewCount();
@@ -3584,6 +3587,9 @@ window.LeucenaApp = (function () {
     
     const legendDefault = document.getElementById('legend-mask-default');
     if (legendDefault) legendDefault.classList.remove('hidden');
+
+    const collabFilter = document.getElementById('filter-collaborators');
+    if (collabFilter) collabFilter.classList.add('hidden');
     
     const legendMember = document.getElementById('legend-mask-member');
     if (legendMember) legendMember.classList.add('hidden');

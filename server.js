@@ -2772,8 +2772,8 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
     existingSet.add(key);
     const geometry = { type: 'Point', coordinates: [pt.lng, pt.lat] };
     runSQL(
-      'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status, added_by, added_by_role) VALUES (?, ?, 0, ?, 0, ?, ?)',
-      [nextFid, JSON.stringify(geometry), 'crowdmapping', req.username, 'superadmin']
+      'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status, added_by, added_by_role, added_at) VALUES (?, ?, 0, ?, 0, ?, ?, ?)',
+      [nextFid, JSON.stringify(geometry), 'crowdmapping', req.username, 'superadmin', new Date().toISOString()]
     );
     const row = queryOne('SELECT id FROM occurrence_points WHERE fid = ?', [nextFid]);
     createdPoints.push({ id: row.id, fid: nextFid, not_valid: 0, status: 0, layer: 'crowdmapping', geometry });
@@ -2893,7 +2893,7 @@ app.get('/api/points', (req, res) => {
   const points = queryAll('SELECT * FROM occurrence_points');
   const features = points.map(p => ({
     type: 'Feature',
-    properties: { id: p.id, fid: p.fid, not_valid: p.status || 0, status: p.status || 0, layer: p.layer || 'crowdmapping', added_by: p.added_by || null, added_by_role: p.added_by_role || null },
+    properties: { id: p.id, fid: p.fid, not_valid: p.status || 0, status: p.status || 0, layer: p.layer || 'crowdmapping', added_by: p.added_by || null, added_by_role: p.added_by_role || null, added_at: p.added_at || null },
     geometry: JSON.parse(p.geometry)
   }));
   res.json({ type: 'FeatureCollection', features });
@@ -2914,10 +2914,11 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
   const maxFid = queryOne('SELECT MAX(fid) as maxFid FROM occurrence_points');
   const newFid = (maxFid && maxFid.maxFid != null) ? maxFid.maxFid + 1 : 1;
   const addedByRole = getEffectiveRole(username);
+  const addedAt = new Date().toISOString();
 
   runSQL(
-    'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status, added_by, added_by_role) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [newFid, JSON.stringify(geometry), pointStatus, pointLayer, pointStatus, username, addedByRole]
+    'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status, added_by, added_by_role, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [newFid, JSON.stringify(geometry), pointStatus, pointLayer, pointStatus, username, addedByRole, addedAt]
   );
 
   const inserted = queryOne('SELECT * FROM occurrence_points WHERE fid = ?', [newFid]);
@@ -2941,7 +2942,8 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
     geometry,
     grid_cell_id: gridCell ? gridCell.id : null,
     added_by: username,
-    added_by_role: addedByRole
+    added_by_role: addedByRole,
+    added_at: addedAt
   };
 
   io.emit('point:created', pointData);
@@ -2964,6 +2966,14 @@ app.delete('/api/points/:id', requireAuth, requireVerified, (req, res) => {
   const ptGeom = JSON.parse(point.geometry);
   const [ptLng, ptLat] = ptGeom.coordinates;
   const gridCell = findGridForPoint(ptLng, ptLat);
+  const deletedByRole = getEffectiveRole(username);
+
+  runSQL(
+    `INSERT INTO point_deletions (original_point_id, fid, geometry, layer, status, added_by, added_by_role, added_at, deleted_by, deleted_by_role, deleted_at, grid_cell_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [Number(id), point.fid, point.geometry, point.layer, point.status, point.added_by, point.added_by_role, point.added_at,
+     username, deletedByRole, new Date().toISOString(), gridCell ? gridCell.id : null]
+  );
 
   runSQL('DELETE FROM occurrence_points WHERE id = ?', [Number(id)]);
 
@@ -2991,6 +3001,13 @@ app.delete('/api/points/:id', requireAuth, requireVerified, (req, res) => {
   logActivity(username, 'point_delete', gridCell ? gridCell.id : null, String(id), { fid: point.fid, layer: point.layer });
   persist();
   res.json({ success: true, gridStatusChanged });
+});
+
+app.get('/api/admin/point-deletions', requireAuth, (req, res) => {
+  if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Team+ only' });
+  const limit = Math.min(Number(req.query.limit) || 200, 1000);
+  const rows = queryAll('SELECT * FROM point_deletions ORDER BY deleted_at DESC LIMIT ?', [limit]);
+  res.json(rows);
 });
 
 app.put('/api/points/:id/validity', requireAuth, requireVerified, (req, res) => {

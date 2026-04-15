@@ -125,6 +125,7 @@ window.LeucenaI18n = (function () {
     'sidebar.layerGbif': { pt: 'GBIF', en: 'GBIF', es: 'GBIF' },
     'sidebar.layerInsthorus': { pt: 'Instituto Horus', en: 'Instituto Horus', es: 'Instituto Horus' },
     'sidebar.layerSpecieslink': { pt: 'SpeciesLink', en: 'SpeciesLink', es: 'SpeciesLink' },
+    'sidebar.layerCollaborators': { pt: 'Colaboradores', en: 'Contributors', es: 'Colaboradores' },
     'sidebar.cellInfo': { pt: 'Informações da Célula', en: 'Cell Information', es: 'Información de la Celda' },
     'sidebar.cell': { pt: 'Célula', en: 'Cell', es: 'Celda' },
     'cellSearch.title': { pt: 'Procurar célula', en: 'Search cell', es: 'Buscar celda' },

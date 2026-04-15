@@ -34,6 +34,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let pointClusterer = null; // MarkerClusterer; lazily created in ensureClusterer()
   let _editingCellId = null;
   let _editNeighborIds = null; // Set of cell IDs adjacent to the editing cell
+  let _showCollaboratorPoints = true;
 
   const SELECTED_STROKE = '#00FFFF';
 
@@ -1642,6 +1643,14 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.setContributorMasksVisible(this.checked);
     });
 
+    const collabCb = document.getElementById('layer-collaborators');
+    if (collabCb) {
+      collabCb.addEventListener('change', function () {
+        _showCollaboratorPoints = this.checked;
+        refreshPointVisibility();
+      });
+    }
+
     syncPointsParent();
   }
 
@@ -1684,12 +1693,14 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     const layerCounts = { crowdmapping: 0, inaturalist: 0, gbif: 0, insthorus: 0, specieslink: 0 };
     let pointsTotal = 0;
+    let collabCount = 0;
     const stateScopedPoints = !!_currentState;
     for (const entry of Object.values(pointMarkersById)) {
       if (stateScopedPoints && !isPointInLoadedGrid(entry.marker.getPosition())) continue;
       pointsTotal++;
       const l = (entry.data.layer || 'crowdmapping').toLowerCase();
       if (layerCounts[l] !== undefined) layerCounts[l]++;
+      if (_isCollaboratorPoint(entry.data)) collabCount++;
     }
     setText('count-points-total', pointsTotal);
     setText('count-crowdmapping', layerCounts.crowdmapping);
@@ -1697,6 +1708,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     setText('count-gbif', layerCounts.gbif);
     setText('count-insthorus', layerCounts.insthorus);
     setText('count-specieslink', layerCounts.specieslink);
+    setText('count-collaborators', collabCount);
 
     const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : 0;
     setText('count-polygons-total', polyCount);
@@ -1863,6 +1875,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return null;
   }
 
+  function _isCollaboratorPoint(data) {
+    const role = data.added_by_role;
+    return role === 'contributor' || role === 'collaborator';
+  }
+
+  function _passesCollabFilter(data) {
+    if (_showCollaboratorPoints) return true;
+    return !_isCollaboratorPoint(data);
+  }
+
   function _isPointInEditScope(position) {
     if (!_editingCellId) return true;
     const editBounds = gridCellBounds[_editingCellId];
@@ -1888,7 +1910,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         const inView = !viewport || viewport.contains(entry.marker.getPosition());
         const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
         const inEditScope = _isPointInEditScope(entry.marker.getPosition());
-        entry.marker.setMap(isPointLayerVisible(layer) && inView && inState && inEditScope ? map : null);
+        const collabOk = _passesCollabFilter(entry.data);
+        entry.marker.setMap(isPointLayerVisible(layer) && inView && inState && inEditScope && collabOk ? map : null);
       }
       return;
     }
@@ -1905,7 +1928,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       const inView = !viewport || viewport.contains(entry.marker.getPosition());
       const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
       const inEditScope = _isPointInEditScope(entry.marker.getPosition());
-      if (isPointLayerVisible(layer) && inView && inState && inEditScope) {
+      const collabOk = _passesCollabFilter(entry.data);
+      if (isPointLayerVisible(layer) && inView && inState && inEditScope && collabOk) {
         toAdd.push(entry.marker);
       } else {
         toRemove.push(entry.marker);
