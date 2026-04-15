@@ -5673,9 +5673,9 @@ a.docs-logo-card:hover {
 
 /* ── Inbox modal ── */
 .modal-card-inbox {
-  max-width: 520px;
-  width: 94vw;
-  max-height: 80vh;
+  max-width: 640px;
+  width: 96vw;
+  max-height: 82vh;
   display: flex;
   flex-direction: column;
 }
@@ -5683,12 +5683,12 @@ a.docs-logo-card:hover {
 .inbox-list {
   overflow-y: auto;
   flex: 1;
-  padding: 4px 0;
+  padding: 0;
 }
 
 .inbox-empty {
   text-align: center;
-  padding: 32px 16px;
+  padding: 40px 16px;
   color: var(--text-tertiary);
   font-size: 14px;
 }
@@ -5698,7 +5698,7 @@ a.docs-logo-card:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 2px 12px;
+  padding: 0 0 12px;
 }
 .inbox-select-all-btn {
   font-size: 11px;
@@ -5743,57 +5743,67 @@ a.docs-logo-card:hover {
 
 /* ── Inbox threads ── */
 .inbox-thread {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
   border-radius: var(--radius);
-  transition: background 0.15s, box-shadow 0.15s;
-  margin-bottom: 2px;
-  position: relative;
+  transition: background 0.15s;
+  margin-bottom: 1px;
 }
-.inbox-thread:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 44px;
-  right: 12px;
-  height: 1px;
-  background: var(--border);
+.inbox-thread + .inbox-thread {
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
+/* ── Unread thread: strong visual difference ── */
 .inbox-thread-unread {
-  background: rgba(124, 58, 237, 0.06);
+  background: rgba(124, 58, 237, 0.08);
+  border-left: 3px solid var(--primary);
 }
 .inbox-thread-unread .inbox-item-subject {
   font-weight: 700;
-  color: var(--text-primary);
+  color: #fff;
 }
 .inbox-thread-unread .inbox-thread-preview {
   color: var(--text-secondary);
+  font-weight: 500;
 }
 .inbox-thread-unread .inbox-item-date {
   color: var(--primary);
   font-weight: 600;
 }
+.inbox-thread-unread .inbox-item-meta {
+  color: var(--text-secondary);
+}
+
+/* Read thread: dimmer */
+.inbox-thread:not(.inbox-thread-unread) {
+  opacity: 0.75;
+}
+.inbox-thread:not(.inbox-thread-unread):hover {
+  opacity: 1;
+}
 
 .inbox-thread-cb-wrap {
+  grid-row: 1;
+  grid-column: 1;
   display: flex;
-  align-items: flex-start;
-  padding: 14px 0 14px 10px;
-  flex-shrink: 0;
+  align-items: center;
+  padding: 0 4px 0 10px;
 }
 .inbox-thread-cb {
-  width: 16px;
-  height: 16px;
-  margin: 2px 0 0;
+  width: 15px;
+  height: 15px;
   cursor: pointer;
   accent-color: var(--primary);
   border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .inbox-thread-clickzone {
+  grid-row: 1;
+  grid-column: 2;
   cursor: pointer;
-  padding: 12px 14px 10px 10px;
-  flex: 1;
+  padding: 10px 14px 10px 8px;
   min-width: 0;
   border-radius: var(--radius);
   transition: background 0.12s;
@@ -5808,14 +5818,14 @@ a.docs-logo-card:hover {
 .inbox-thread-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 3px;
+  gap: 6px;
+  margin-bottom: 2px;
 }
 
 .inbox-item-subject {
-  font-weight: 500;
+  font-weight: 400;
   font-size: 13.5px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -5835,7 +5845,7 @@ a.docs-logo-card:hover {
   border-radius: 50%;
   background: var(--primary);
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
 
 .inbox-thread-count {
@@ -5850,20 +5860,35 @@ a.docs-logo-card:hover {
 }
 
 .inbox-thread-chevron {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
-  transition: transform 0.2s ease;
+  transition: transform 0.25s ease;
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+.inbox-thread-clickzone:hover .inbox-thread-chevron {
+  background: rgba(255,255,255,0.1);
 }
 
 .inbox-thread-expanded .inbox-thread-chevron {
   transform: rotate(180deg);
+  background: rgba(124, 58, 237, 0.15);
+  color: var(--primary);
 }
 
 .inbox-item-meta {
   font-size: 11px;
   color: var(--text-tertiary);
   margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inbox-thread-preview {
@@ -5886,11 +5911,12 @@ a.docs-logo-card:hover {
 }
 
 .inbox-thread-body {
+  grid-row: 2;
+  grid-column: 1 / -1;
   display: none;
-  padding: 4px 14px 14px;
+  padding: 0 14px 14px 38px;
   flex-direction: column;
   gap: 8px;
-  width: 100%;
 }
 
 .inbox-thread-expanded .inbox-thread-body {
@@ -5914,6 +5940,7 @@ a.docs-logo-card:hover {
 
 .inbox-bubble-unread {
   border-left: 3px solid var(--primary);
+  background: rgba(124,58,237,0.06);
 }
 
 .inbox-bubble-header {
@@ -5939,7 +5966,7 @@ a.docs-logo-card:hover {
 .inbox-bubble-body {
   font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -6018,11 +6045,11 @@ a.docs-logo-card:hover {
   }
 
   .inbox-thread-clickzone {
-    padding: 10px 8px 8px 8px;
+    padding: 10px 10px 8px 8px;
   }
 
   .inbox-thread-cb-wrap {
-    padding: 12px 0 12px 8px;
+    padding: 0 4px 0 8px;
   }
 
   .inbox-item-subject {
@@ -6039,11 +6066,11 @@ a.docs-logo-card:hover {
   }
 
   .inbox-thread-body {
-    padding: 4px 8px 12px;
+    padding: 0 8px 12px 28px;
   }
 
   .inbox-bubble {
-    max-width: 96%;
+    max-width: 98%;
     padding: 8px 10px;
   }
 
