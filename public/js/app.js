@@ -152,6 +152,8 @@ window.LeucenaApp = (function () {
     const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
     if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
 
+    _initSidebarSwipe();
+
     setupCollapsibleFilters();
 
     document.getElementById('login-btn').addEventListener('click', () => openAuthModal('login'));
@@ -2618,6 +2620,28 @@ window.LeucenaApp = (function () {
         });
       }
     });
+  }
+
+  function _initSidebarSwipe() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    let startX = 0, startY = 0, tracking = false;
+    sidebar.addEventListener('touchstart', (e) => {
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      tracking = true;
+    }, { passive: true });
+    sidebar.addEventListener('touchend', (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (dx < -60 && Math.abs(dy) < Math.abs(dx)) {
+        closeSidebar();
+      }
+    }, { passive: true });
   }
 
   function toggleSidebar() {
