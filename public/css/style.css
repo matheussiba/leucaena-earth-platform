@@ -4642,6 +4642,13 @@ a.docs-logo-card:hover {
     right: 8px;
   }
 
+  #main-content.sidebar-open .btn-my-location,
+  #main-content.sidebar-open .btn-users-online {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
   .legend-body {
     max-height: 150px;
   }
