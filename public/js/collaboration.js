@@ -79,7 +79,8 @@ window.LeucenaCollab = (function () {
     username = user;
     if (_anonSocket) { _anonSocket.disconnect(); _anonSocket = null; }
     if (socket) { socket.disconnect(); }
-    socket = io();
+    var authToken = localStorage.getItem('leucena_token');
+    socket = io({ auth: { token: authToken || undefined } });
 
     socket.on('connect', () => {
       socket.emit('user:join', { username });
@@ -247,7 +248,8 @@ window.LeucenaCollab = (function () {
       }
       var locationTag = '';
       if (isTeamPlus && user.locationState) {
-        locationTag = '<span class="user-location-tag">' + user.locationState + '</span>';
+        var safeLocState = String(user.locationState).replace(/[<>"'&]/g, '');
+        locationTag = '<span class="user-location-tag">' + safeLocState + '</span>';
       }
       var msgBtn = '';
       if (isAdmin && user.username !== currentUser) {

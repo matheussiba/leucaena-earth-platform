@@ -36,6 +36,12 @@ window.LeucenaApp = (function () {
     return (cellData && cellData.grid_id) || fallbackId;
   }
 
+  function safePhotoSrc(url) {
+    if (!url || typeof url !== 'string') return '';
+    if (url.startsWith('data:image/') || url.startsWith('https://')) return url;
+    return '';
+  }
+
   function _goToCell(raw) {
     if (!isTeamOrAbove()) return;
     const rawTrim = (raw || '').trim();
@@ -75,6 +81,22 @@ window.LeucenaApp = (function () {
     return h;
   }
 
+  let _sessionExpiredShown = false;
+  function handleSessionExpired(response) {
+    if (response.status === 401 && !_sessionExpiredShown) {
+      response.clone().json().then(data => {
+        if (data.code === 'SESSION_EXPIRED') {
+          _sessionExpiredShown = true;
+          localStorage.removeItem('leucena_token');
+          localStorage.removeItem('leucena_username');
+          showToast(LeucenaI18n.t('auth.sessionExpired'), 'warning', 6000);
+          setTimeout(() => window.location.reload(), 3000);
+        }
+      }).catch(() => {});
+    }
+    return response;
+  }
+
   const _logQueue = [];
   let _logTimer = null;
   function logEvent(action, cellId, objectId, details) {
@@ -88,7 +110,9 @@ window.LeucenaApp = (function () {
     _logTimer = null;
     if (_logQueue.length === 0 || !authToken) return;
     const batch = _logQueue.splice(0, 50);
-    fetch('/api/log', { method: 'POST', headers: authHeaders(), body: JSON.stringify(batch) }).catch(() => {});
+    fetch('/api/log', { method: 'POST', headers: authHeaders(), body: JSON.stringify(batch) })
+      .then(r => { handleSessionExpired(r); })
+      .catch(() => {});
   }
 
   /** Close only when press+release both target the overlay (not when text selection starts inside the card and ends on the dimmed area). */
@@ -941,13 +965,13 @@ window.LeucenaApp = (function () {
               });
               if (r.ok) {
                 feedback.className = 'auth-email-feedback email-exists-unverified';
-                feedback.innerHTML = t('auth.resendSuccess');
+                feedback.textContent = t('auth.resendSuccess');
               } else {
                 const err = await r.json();
-                feedback.innerHTML = err.error;
+                feedback.textContent = err.error;
               }
             } catch (err) {
-              feedback.innerHTML = t('auth.connectionError');
+              feedback.textContent = t('auth.connectionError');
             }
           });
         }
@@ -1252,11 +1276,15 @@ window.LeucenaApp = (function () {
         _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: data.login_count || 0, mask_count: data.mask_count || 0, role: data.role || 'contributor', is_local: !!data.is_local };
         onLoginSuccess(freshOAuthReturn);
       } else {
+        const errData = await res.json().catch(() => ({}));
         localStorage.removeItem('leucena_token');
         localStorage.removeItem('leucena_username');
+        if (errData.code === 'SESSION_EXPIRED') {
+          showToast(LeucenaI18n.t('auth.sessionExpired'), 'warning', 6000);
+        }
       }
     } catch (e) {
-      // Server not reachable or token expired
+      // Server not reachable
     }
   }
 
@@ -1554,16 +1582,42 @@ window.LeucenaApp = (function () {
     handleGoogleAuthReturn();
   }
 
-  function handleGoogleAuthReturn() {
+  async function handleGoogleAuthReturn() {
     const params = new URLSearchParams(window.location.search);
-    const googleToken = params.get('google_auth_token');
+    const googleCode = params.get('google_auth_code') || params.get('google_auth_token');
     const authError = params.get('auth_error');
 
-    if (googleToken) {
-      authToken = googleToken;
-      localStorage.setItem('leucena_token', authToken);
+    if (googleCode) {
       window.history.replaceState({}, '', window.location.pathname);
-      tryRestoreSession(true);
+      if (params.has('google_auth_code')) {
+        try {
+          const resp = await fetch('/api/auth/exchange-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: googleCode })
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            authToken = data.token;
+            username = data.username;
+            userRole = data.role || 'contributor';
+            testerMode = data.tester_mode || 'contributor';
+            if (data.show_migration_banner) _showMigrationBanner = true;
+            _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: 0, mask_count: 0, role: data.role || 'contributor', is_local: false };
+            localStorage.setItem('leucena_token', authToken);
+            localStorage.setItem('leucena_username', username);
+            onLoginSuccess(true);
+          } else {
+            showToast('Erro na autenticação Google', 'error');
+          }
+        } catch (e) {
+          showToast('Erro na autenticação Google', 'error');
+        }
+      } else {
+        authToken = googleCode;
+        localStorage.setItem('leucena_token', authToken);
+        tryRestoreSession(true);
+      }
     } else if (authError) {
       window.history.replaceState({}, '', window.location.pathname);
       const errorMap = {
@@ -2160,8 +2214,9 @@ window.LeucenaApp = (function () {
     const avatarEl = document.getElementById('user-avatar');
     const displayName = profile && profile.full_name ? profile.full_name.split(' ')[0] : username;
     nameEl.textContent = displayName;
-    if (profile && profile.photo) {
-      avatarEl.innerHTML = '<img src="' + profile.photo + '" alt="">';
+    const safeSrc = profile && profile.photo ? safePhotoSrc(profile.photo) : '';
+    if (safeSrc) {
+      avatarEl.innerHTML = '<img src="' + safeSrc + '" alt="">';
     } else {
       avatarEl.innerHTML = '';
       avatarEl.textContent = (displayName || username).toString().charAt(0).toUpperCase();
@@ -2239,8 +2294,9 @@ window.LeucenaApp = (function () {
       _setProfileReferral(targetUser.referral_source, targetUser.referral_detail);
       updateProfileCharCount();
       const preview = document.getElementById('profile-photo-preview');
-      if (targetUser.photo) {
-        preview.innerHTML = '<img src="' + targetUser.photo + '" alt="">';
+      const safeProfSrc = safePhotoSrc(targetUser.photo);
+      if (safeProfSrc) {
+        preview.innerHTML = '<img src="' + safeProfSrc + '" alt="">';
         profilePhotoDataUrl = targetUser.photo;
       } else {
         preview.innerHTML = '';
@@ -2268,8 +2324,9 @@ window.LeucenaApp = (function () {
         _setProfileReferral(p.referral_source, p.referral_detail);
         updateProfileCharCount();
         const preview = document.getElementById('profile-photo-preview');
-        if (p.photo) {
-          preview.innerHTML = '<img src="' + p.photo + '" alt="">';
+        const safeProfSrc2 = safePhotoSrc(p.photo);
+        if (safeProfSrc2) {
+          preview.innerHTML = '<img src="' + safeProfSrc2 + '" alt="">';
           profilePhotoDataUrl = p.photo;
         } else {
           preview.innerHTML = '';
@@ -2510,8 +2567,9 @@ window.LeucenaApp = (function () {
 
       function cardHtml(person, medalIndex, isCollab) {
         const name = person.full_name || person.username;
-        const thumb = person.photo
-          ? '<img src="' + person.photo + '" alt="">'
+        const safePersonPhoto = safePhotoSrc(person.photo);
+        const thumb = safePersonPhoto
+          ? '<img src="' + safePersonPhoto + '" alt="">'
           : name.toString().charAt(0).toUpperCase();
         let rankBadgeHtml = '';
         if (medalIndex !== undefined && medalIndex < 3) {
@@ -3957,7 +4015,12 @@ window.LeucenaApp = (function () {
       const res = await fetch('/api/admin/users', { headers: authHeaders() });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
-          document.getElementById('admin-users-list').innerHTML = `<p style="padding:16px;color:var(--danger)">Erro ${res.status}: ${errBody.error || res.statusText}</p>`;
+          const errEl = document.getElementById('admin-users-list');
+          errEl.textContent = '';
+          const errP = document.createElement('p');
+          errP.style.cssText = 'padding:16px;color:var(--danger)';
+          errP.textContent = 'Erro ' + res.status + ': ' + (errBody.error || res.statusText);
+          errEl.appendChild(errP);
           return;
         }
       const data = await res.json();
@@ -4063,8 +4126,9 @@ window.LeucenaApp = (function () {
           const isVerified = !!(user.email_verified || user.auth_provider === 'google');
           const isInactive = user.is_active === 0;
           const initial = user.username.charAt(0).toUpperCase();
-          const photoHtml = user.photo
-            ? `<img src="${user.photo}" class="admin-card-photo" alt="">`
+          const photoSrc = safePhotoSrc(user.photo);
+          const photoHtml = photoSrc
+            ? `<img src="${photoSrc}" class="admin-card-photo" alt="">`
             : `<div class="admin-card-avatar">${initial}</div>`;
           const verifyBadgeHtml = isVerified
             ? `<span class="admin-verify-badge verified">✓ ${t('admin.verified')}</span>`
@@ -4130,7 +4194,12 @@ window.LeucenaApp = (function () {
         }
       } catch (e) {
         console.error('[TeamPanel] Erro ao carregar usuários:', e);
-        document.getElementById('admin-users-list').innerHTML = `<p style="padding:16px;color:var(--danger)">Erro ao carregar usuários: ${e.message}</p>`;
+        const errEl2 = document.getElementById('admin-users-list');
+        errEl2.textContent = '';
+        const errP2 = document.createElement('p');
+        errP2.style.cssText = 'padding:16px;color:var(--danger)';
+        errP2.textContent = 'Erro ao carregar usuários: ' + e.message;
+        errEl2.appendChild(errP2);
       }
       return;
     }
@@ -4762,8 +4831,9 @@ window.LeucenaApp = (function () {
         const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
         const lastActiveHtml = formatLastActive(user.last_active, user.username);
         const initial = user.username.charAt(0).toUpperCase();
-        const photoHtml = user.photo
-          ? `<img src="${user.photo}" class="admin-card-photo" alt="">`
+        const photoSrcAdmin = safePhotoSrc(user.photo);
+        const photoHtml = photoSrcAdmin
+          ? `<img src="${photoSrcAdmin}" class="admin-card-photo" alt="">`
           : `<div class="admin-card-avatar">${initial}</div>`;
 
         const verifyBadgeHtml = isVerified

@@ -85,11 +85,11 @@ async function sendWelcomeEmail(user) {
   const credentialsBlock = isGoogle
     ? `<p>Você pode entrar usando sua conta <strong>Google</strong> a qualquer momento.</p>`
     : `<p>Para o seu primeiro acesso, seguem suas credenciais:</p>
-       <p><strong>Usuário:</strong> ${user.username}<br><strong>E-mail:</strong> ${user.email}<br><strong>Senha:</strong> a senha que você definiu no cadastro<br>
+       <p><strong>Usuário:</strong> ${escapeHtml(user.username)}<br><strong>E-mail:</strong> ${escapeHtml(user.email)}<br><strong>Senha:</strong> a senha que você definiu no cadastro<br>
        <em>(Você pode alterar a senha no menu da engrenagem depois que entrar.)</em></p>`;
   const html = `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;color:#1e293b;line-height:1.7">
-  <p>Olá <strong>${firstName}</strong>!! Bem-vindo ao <a href="https://leucaena.earth/" style="color:#22c55e;font-weight:600">leucaena.earth</a>! 🌱</p>
+  <p>Olá <strong>${escapeHtml(firstName)}</strong>!! Bem-vindo ao <a href="https://leucaena.earth/" style="color:#22c55e;font-weight:600">leucaena.earth</a>! 🌱</p>
   <p>Fico feliz demais que você entrou em contato e quer fazer parte desse projeto científico com a gente!</p>
   ${credentialsBlock}
   <p>Antes de começar, peço, por gentileza, que dê uma olhada na seção "<a href="https://map.leucaena.earth/#howto" style="color:#22c55e;font-weight:600">Como mapear</a>", pois lá tem instruções bem importantes.</p>
@@ -232,10 +232,31 @@ app.use((req, res, next) => {
   return res.status(200).type('html').set('X-Robots-Tag', 'noindex').send(MAINTENANCE_HTML);
 });
 
-app.use(cors());
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['https://map.leucaena.earth', 'https://leucaena.earth'];
+
+app.use(cors({
+  origin: function (origin, cb) {
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin) || process.env.NODE_ENV !== 'production') return cb(null, true);
+    cb(null, false);
+  },
+  credentials: true
+}));
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 
 app.get('/', (req, res) => {
   if (isMapHost(req)) {
@@ -285,10 +306,11 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
-const loginLimiter = rateLimit('login', 20, 15 * 60 * 1000);
+const loginLimiter = rateLimit('login', 10, 15 * 60 * 1000);
 const registerLimiter = rateLimit('register', 5, 60 * 60 * 1000);
 const resetLimiter = rateLimit('reset', 5, 15 * 60 * 1000);
 const messageLimiter = rateLimit('message', 10, 15 * 60 * 1000);
+const checkEmailLimiter = rateLimit('checkEmail', 15, 15 * 60 * 1000);
 
 const MSG_SUBJECT_MAX = 200;
 const MSG_BODY_MAX = 2000;
@@ -335,6 +357,11 @@ function validateMessageImages(images) {
 
 function stripHtmlTags(html) {
   return html.replace(/<[^>]*>/g, '').trim();
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function sanitizeMessageHtml(html) {
@@ -408,6 +435,7 @@ function userHasOtherSockets(socketId, username) {
 }
 
 const sessions = new Map();
+const oauthCodes = new Map();
 const LOCK_TIMEOUT_MS = 30 * 60 * 1000;
 // Role ladder: superadmin > admin > team > contributor > tester; testers use tester_mode as their effective role for caps.
 function getUserRole(username) {
@@ -444,19 +472,36 @@ async function notifySuperAdminsOfAdminAction(actorUsername, actionLabel, target
   const saEmails = queryAll("SELECT email FROM users WHERE role = 'superadmin' AND email IS NOT NULL AND email != ''").map(u => u.email);
   if (saEmails.length === 0) return;
   const subject = `[Leucaena.Earth] Admin action: ${actionLabel}`;
-  const html = `<p>O admin <strong>${actorUsername}</strong> realizou a seguinte ação:</p>
-    <p><strong>${actionLabel}</strong> no usuário <strong>${targetUsername}</strong></p>
-    ${extraInfo ? `<p>Detalhes: ${extraInfo}</p>` : ''}
+  const html = `<p>O admin <strong>${escapeHtml(actorUsername)}</strong> realizou a seguinte ação:</p>
+    <p><strong>${escapeHtml(actionLabel)}</strong> no usuário <strong>${escapeHtml(targetUsername)}</strong></p>
+    ${extraInfo ? `<p>Detalhes: ${escapeHtml(extraInfo)}</p>` : ''}
     <p style="font-size:13px;color:#64748b;">Esta notificação é automática. Apenas admins (não super admins) geram esta notificação.</p>`;
   for (const email of saEmails) {
     try { await resend.emails.send({ from: RESEND_FROM, to: email, subject, html }); } catch (e) { /* ignore */ }
   }
 }
 
+const bcrypt = require('bcryptjs');
 const PASSWORD_SALT = process.env.PASSWORD_SALT || 'default_salt';
+const BCRYPT_ROUNDS = 10;
+
+function hashPasswordLegacy(password) {
+  return crypto.createHash('sha256').update(password + PASSWORD_SALT).digest('hex');
+}
 
 function hashPassword(password) {
-  return crypto.createHash('sha256').update(password + PASSWORD_SALT).digest('hex');
+  return bcrypt.hashSync(password, BCRYPT_ROUNDS);
+}
+
+function verifyPassword(password, storedHash) {
+  if (storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$')) {
+    return bcrypt.compareSync(password, storedHash);
+  }
+  return hashPasswordLegacy(password) === storedHash;
+}
+
+function needsRehash(storedHash) {
+  return !(storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$'));
 }
 
 let _logCleanupCounter = 0;
@@ -475,11 +520,45 @@ function logActivity(username, action, cellId, objectId, details, role) {
   } catch (e) { /* ignore logging errors */ }
 }
 
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function createSession(username) {
+  const token = uuidv4();
+  sessions.set(token, { username, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS });
+  return token;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of sessions.entries()) {
+    if (typeof session !== 'string' && session.expiresAt && now > session.expiresAt) {
+      sessions.delete(token);
+    }
+  }
+}, 60 * 60 * 1000);
+
 function getUsernameFromToken(req) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) return null;
   const token = header.slice(7);
-  return sessions.get(token) || null;
+  const session = sessions.get(token);
+  if (!session) return null;
+  if (typeof session === 'string') return session;
+  if (session.expiresAt && Date.now() > session.expiresAt) {
+    sessions.delete(token);
+    return null;
+  }
+  return session.username;
+}
+
+function isSessionExpired(req) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return false;
+  const token = header.slice(7);
+  const session = sessions.get(token);
+  if (!session) return false;
+  if (typeof session === 'string') return false;
+  return session.expiresAt && Date.now() > session.expiresAt;
 }
 
 function maskEmail(email) {
@@ -550,6 +629,7 @@ function purgeExpiredUnverifiedUsers() {
 }
 
 function requireAuth(req, res, next) {
+  if (isSessionExpired(req)) return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.', code: 'SESSION_EXPIRED' });
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Login necessário' });
   req.username = username;
@@ -817,7 +897,7 @@ app.get('/api/stats/platform', (req, res) => {
 
 // [REMOVED] Passcode system replaced by Google OAuth + email/password registration
 
-app.post('/api/auth/check-email', (req, res) => {
+app.post('/api/auth/check-email', checkEmailLimiter, (req, res) => {
   const { email } = req.body;
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.json({ exists: false });
   const user = queryOne("SELECT email_verified, auth_provider FROM users WHERE LOWER(email) = ? AND is_active = 1", [email.trim().toLowerCase()]);
@@ -847,7 +927,7 @@ app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, 
       from: RESEND_FROM,
       to: user.email,
       subject: 'Verifique seu e-mail (leucaena.earth)',
-      html: `<p>Olá <strong>${user.username}</strong>,</p>
+      html: `<p>Olá <strong>${escapeHtml(user.username)}</strong>,</p>
              <p>Clique no link abaixo para verificar seu e-mail:</p>
              <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
              <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
@@ -913,7 +993,7 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
         from: RESEND_FROM,
         to: email,
         subject: 'Verifique seu e-mail (leucaena.earth)',
-        html: `<p>Olá <strong>${displayName}</strong>,</p>
+        html: `<p>Olá <strong>${escapeHtml(displayName)}</strong>,</p>
                <p>Clique no link abaixo para verificar seu e-mail e ativar sua conta:</p>
                <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
                <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
@@ -943,8 +1023,13 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
     : queryOne('SELECT * FROM users WHERE username = ?', [idRaw]);
   if (!user) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
 
-  const hash = hashPassword(password);
-  if (user.password_hash !== hash) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+  if (!verifyPassword(password, user.password_hash)) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+
+  if (needsRehash(user.password_hash)) {
+    const newHash = hashPassword(password);
+    runSQL('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, user.id]);
+    persist();
+  }
 
   if (user.is_active === 0) {
     return res.status(403).json({ error: 'Conta desativada. Entre em contato com o administrador.', code: 'ACCOUNT_DEACTIVATED' });
@@ -968,8 +1053,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   if (!isSuperAdmin(realUsername)) bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
   logActivity(realUsername, 'login', null, null, null);
 
-  const token = uuidv4();
-  sessions.set(token, realUsername);
+  const token = createSession(realUsername);
   const role = getUserRole(realUsername);
   const showMigrationBanner = !user.google_id && user.auth_provider !== 'google';
   res.json({
@@ -983,6 +1067,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
 });
 
 app.get('/api/auth/me', (req, res) => {
+  if (isSessionExpired(req)) return res.status(401).json({ error: 'Sessão expirada', code: 'SESSION_EXPIRED' });
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
   const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, role, tester_mode, email, auth_provider, email_verified, google_id, login_count FROM users WHERE username = ?', [username]);
@@ -1023,6 +1108,9 @@ app.put('/api/profile', requireAuth, (req, res) => {
   }
   if (photo != null && typeof photo === 'string' && photo.length > 500000) {
     return res.status(400).json({ error: 'Foto muito grande' });
+  }
+  if (photo != null && typeof photo === 'string' && photo.length > 0 && !photo.startsWith('data:image/') && !photo.startsWith('https://')) {
+    return res.status(400).json({ error: 'URL de foto inválida' });
   }
   const cleanRefSrc = (referral_source && typeof referral_source === 'string') ? referral_source.trim().substring(0, 50) : null;
   const cleanRefDet = (referral_detail && typeof referral_detail === 'string') ? referral_detail.trim().substring(0, 200) : null;
@@ -1317,14 +1405,36 @@ app.get('/auth/google/callback', async (req, res) => {
     if (!isSuperAdmin(user.username)) bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
     logActivity(user.username, 'login_google', null, null, null);
 
-    const sessionToken = uuidv4();
-    sessions.set(sessionToken, user.username);
+    const oneTimeCode = uuidv4();
+    oauthCodes.set(oneTimeCode, { username: user.username, createdAt: Date.now() });
+    setTimeout(() => oauthCodes.delete(oneTimeCode), 60 * 1000);
 
-    res.redirect(`/?google_auth_token=${sessionToken}`);
+    res.redirect(`/?google_auth_code=${oneTimeCode}`);
   } catch (err) {
     console.error('Google OAuth error:', err);
     res.redirect('/?auth_error=server_error');
   }
+});
+
+app.post('/api/auth/exchange-code', (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'Code required' });
+  const entry = oauthCodes.get(code);
+  if (!entry) return res.status(401).json({ error: 'Invalid or expired code' });
+  oauthCodes.delete(code);
+  if (Date.now() - entry.createdAt > 60 * 1000) return res.status(401).json({ error: 'Code expired' });
+  const user = queryOne('SELECT * FROM users WHERE username = ?', [entry.username]);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const token = createSession(user.username);
+  const role = getUserRole(user.username);
+  res.json({
+    token, username: user.username, role,
+    tester_mode: user.tester_mode || 'contributor',
+    auth_provider: user.auth_provider || 'local',
+    email_verified: !!user.email_verified,
+    has_google: !!user.google_id,
+    show_migration_banner: !user.google_id && user.auth_provider !== 'google'
+  });
 });
 
 // ── Email verification ──
@@ -1381,7 +1491,7 @@ app.post('/api/auth/resend-verification', requireAuth, async (req, res) => {
       from: RESEND_FROM,
       to: user.email,
       subject: 'Verifique seu e-mail (leucaena.earth)',
-      html: `<p>Olá <strong>${user.username}</strong>,</p>
+      html: `<p>Olá <strong>${escapeHtml(user.username)}</strong>,</p>
              <p>Clique no link abaixo para verificar seu e-mail:</p>
              <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 24px;background:#22c55e;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">Verificar e-mail</a></p>
              <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
@@ -1472,7 +1582,7 @@ app.get('/api/auth/reset-password', (req, res) => {
   }
 
   const formHtml = `<h2>Redefinir Senha</h2>
-    <p>Crie uma nova senha para <strong>${user.username}</strong></p>
+    <p>Crie uma nova senha para <strong>${escapeHtml(user.username)}</strong></p>
     <form id="rf" method="POST" action="/api/auth/reset-password">
       <input type="hidden" name="token" value="${token}">
       <input type="password" name="password" id="pw1" placeholder="Nova senha (mínimo 3 caracteres)" required minlength="3">
@@ -1757,8 +1867,15 @@ app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
   runSQL('UPDATE grid_cells SET finished_by = ? WHERE finished_by = ?', [new_username, oldUsername]);
   try { runSQL('UPDATE activity_logs SET username = ? WHERE username = ?', [new_username, oldUsername]); } catch (e) { /* ignore */ }
 
-  for (const [token, sessUser] of sessions.entries()) {
-    if (sessUser === oldUsername) sessions.set(token, new_username);
+  for (const [token, sessData] of sessions.entries()) {
+    const sessUsername = typeof sessData === 'string' ? sessData : sessData.username;
+    if (sessUsername === oldUsername) {
+      if (typeof sessData === 'string') {
+        sessions.set(token, new_username);
+      } else {
+        sessData.username = new_username;
+      }
+    }
   }
 
   logActivity(req.username, 'username_change', null, null, { from: oldUsername, to: new_username });
@@ -1897,9 +2014,9 @@ async function sendInboxEmails(senderUsername, subject, body, recipients) {
         from: RESEND_FROM,
         to: u.email,
         subject: `[leucaena.earth] ${subject}`,
-        html: `<p>Olá <strong>${u.full_name || u.username}</strong>,</p>
-               <p>${body.replace(/\n/g, '<br>')}</p>
-               <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${senderUsername}</strong> via leucaena.earth</p>
+        html: `<p>Olá <strong>${escapeHtml(u.full_name || u.username)}</strong>,</p>
+               <p>${sanitizeMessageHtml(body).replace(/\n/g, '<br>')}</p>
+               <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${escapeHtml(senderUsername)}</strong> via leucaena.earth</p>
                <p style="font-size:12px;color:#888;"><a href="https://map.leucaena.earth">Abrir plataforma</a></p>`
       });
       results.push({ username: u.username, sent: true });
@@ -3126,6 +3243,21 @@ app.get('/api/users', (req, res) => {
 
 // ── Socket.IO ──
 
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (token) {
+    const session = sessions.get(token);
+    if (session) {
+      const uname = typeof session === 'string' ? session : session.username;
+      if (typeof session !== 'string' && session.expiresAt && Date.now() > session.expiresAt) {
+        return next(new Error('SESSION_EXPIRED'));
+      }
+      socket.username = uname;
+    }
+  }
+  next();
+});
+
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
@@ -3133,14 +3265,15 @@ io.on('connection', (socket) => {
   socket.emit('users:updated', getUniqueUsers());
 
   socket.on('user:join', (data) => {
+    const joinUsername = socket.username || data.username;
     connectedUsers.set(socket.id, {
-      username: data.username,
+      username: joinUsername,
       editingCell: null,
       joinedAt: new Date().toISOString()
     });
-    runSQL('UPDATE users SET last_active = ? WHERE username = ?', [new Date().toISOString(), data.username]);
+    runSQL('UPDATE users SET last_active = ? WHERE username = ?', [new Date().toISOString(), joinUsername]);
     io.emit('users:updated', getUniqueUsers());
-    console.log(`User joined: ${data.username}`);
+    console.log(`User joined: ${joinUsername}`);
   });
 
   socket.on('user:editingCell', (data) => {
@@ -3154,16 +3287,18 @@ io.on('connection', (socket) => {
   socket.on('user:activity', (data) => {
     const user = connectedUsers.get(socket.id);
     if (user) {
-      user.activity = data.activity || null;
+      const validActivities = ['drawing_polygon', 'adding_points', 'deleting_points', 'editing', 'idle'];
+      user.activity = (data.activity && validActivities.includes(data.activity)) ? data.activity : null;
       io.emit('users:updated', getUniqueUsers());
     }
   });
 
   socket.on('user:locationState', (data) => {
     const user = connectedUsers.get(socket.id);
-    if (user && data.state) {
-      user.locationState = data.state;
-      runSQL('UPDATE users SET last_location_state = ? WHERE username = ?', [data.state, user.username]);
+    if (user && data.state && typeof data.state === 'string') {
+      const cleanState = data.state.replace(/[^a-zA-Z0-9\- ]/g, '').substring(0, 10);
+      user.locationState = cleanState;
+      runSQL('UPDATE users SET last_location_state = ? WHERE username = ?', [cleanState, user.username]);
       io.emit('users:updated', getUniqueUsers());
     }
   });
