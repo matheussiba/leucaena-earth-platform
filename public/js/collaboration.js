@@ -199,7 +199,7 @@ window.LeucenaCollab = (function () {
         if (actLabel) activityTag = '<span class="user-activity-tag">' + actLabel + '</span>';
       }
       var locationTag = '';
-      if (isTeamPlus && user.locationState && !user.editingCell) {
+      if (isTeamPlus && user.locationState) {
         locationTag = '<span class="user-location-tag">' + user.locationState + '</span>';
       }
       var msgBtn = '';

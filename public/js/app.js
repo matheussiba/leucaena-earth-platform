@@ -1745,6 +1745,9 @@ window.LeucenaApp = (function () {
     if (label) label.textContent = uf;
     closeRegionPicker();
     logEvent('state_select', null, null, { state: uf, from: prevState || 'brazil' });
+    if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyLocationState) {
+      LeucenaCollab.notifyLocationState(uf);
+    }
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(uf);
     }
@@ -1758,6 +1761,9 @@ window.LeucenaApp = (function () {
     if (label) label.textContent = 'Brasil';
     closeRegionPicker();
     logEvent('brazil_overview', null, null, { from: prevState || 'brazil' });
+    if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyLocationState) {
+      LeucenaCollab.notifyLocationState('BR');
+    }
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(null);
     }

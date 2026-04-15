@@ -2350,8 +2350,8 @@ a.docs-logo-card:hover {
   transform: translateX(-50%);
   z-index: 160;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  gap: 8px;
   padding: 8px;
   background: rgba(15, 23, 42, 0.82);
   backdrop-filter: blur(10px);
@@ -2431,8 +2431,8 @@ a.docs-logo-card:hover {
   gap: 3px;
 }
 .edit-tools-section + .edit-tools-section {
-  border-top: 1px solid rgba(255,255,255,0.1);
-  padding-top: 5px;
+  border-left: 1px solid rgba(255,255,255,0.12);
+  padding-left: 8px;
 }
 .edit-tools-label {
   font-size: 9px;
@@ -2441,10 +2441,22 @@ a.docs-logo-card:hover {
   letter-spacing: 0.8px;
   color: rgba(255,255,255,0.45);
   padding: 0 2px;
+  white-space: nowrap;
 }
 .edit-tools-row {
   display: flex;
   gap: 5px;
+}
+.edit-tool-btn-labeled {
+  width: auto;
+  padding: 0 10px;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.edit-tool-btn-labeled span {
+  pointer-events: none;
 }
 .edit-tool-btn-point-add {
   background: rgba(34, 197, 94, 0.2);
@@ -4752,13 +4764,28 @@ a.docs-logo-card:hover {
 
   .edit-tools-panel {
     bottom: 48px;
+    flex-direction: column;
     gap: 4px;
     padding: 6px;
+  }
+
+  .edit-tools-section + .edit-tools-section {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 4px;
   }
 
   .edit-tool-btn {
     width: 44px;
     height: 44px;
+  }
+
+  .edit-tool-btn-labeled {
+    width: auto;
+    height: 38px;
+    font-size: 11px;
+    padding: 0 8px;
   }
 
   .edit-tools-row {
