@@ -618,6 +618,7 @@ window.LeucenaApp = (function () {
         e.preventDefault();
         e.stopPropagation();
         const lang = a.getAttribute('data-lang');
+        logEvent('lang_change', null, null, { lang });
         LeucenaI18n.setLang(lang);
         menu.classList.remove('show');
         refreshDynamicTexts();
@@ -1271,6 +1272,7 @@ window.LeucenaApp = (function () {
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) {
       LeucenaMap.updateFilterCounts();
     }
+    logEvent('login_success', null, null, { username });
     showToast(LeucenaI18n.t('auth.welcome', username), 'success');
     Onboarding.onLogin();
 
@@ -1383,6 +1385,7 @@ window.LeucenaApp = (function () {
   }
 
   function openUsersOnlineModal() {
+    logEvent('online_users_open');
     document.getElementById('users-online-modal').classList.remove('hidden');
   }
 
@@ -1693,6 +1696,7 @@ window.LeucenaApp = (function () {
   function showRegionPicker() {
     var modal = document.getElementById('region-picker-modal');
     if (!modal) return;
+    logEvent('region_picker_open');
     modal.classList.remove('hidden');
     var search = document.getElementById('region-picker-search');
     if (search) { search.value = ''; _filterStateCards(''); search.focus(); }
@@ -1733,22 +1737,26 @@ window.LeucenaApp = (function () {
   }
 
   function selectState(uf) {
+    var prevState = _selectedUF;
     _selectedUF = uf;
     localStorage.setItem('leucena_selected_state', uf);
     var label = document.getElementById('region-chip-label');
     if (label) label.textContent = uf;
     closeRegionPicker();
+    logEvent('state_select', null, null, { state: uf, from: prevState || 'brazil' });
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(uf);
     }
   }
 
   function showBrazilOverview() {
+    var prevState = _selectedUF;
     _selectedUF = null;
     localStorage.removeItem('leucena_selected_state');
     var label = document.getElementById('region-chip-label');
     if (label) label.textContent = 'Brasil';
     closeRegionPicker();
+    logEvent('brazil_overview', null, null, { from: prevState || 'brazil' });
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(null);
     }
@@ -2534,6 +2542,7 @@ window.LeucenaApp = (function () {
   }
 
   async function logout() {
+    logEvent('logout');
     _flushLogs();
 
     // Unlock cell before invalidating the token
@@ -3206,6 +3215,7 @@ window.LeucenaApp = (function () {
       selectedCellData.locked_by = username;
       selectedCellData.grid_status = 'in_use';
       if (result.worked_by) selectedCellData.worked_by = result.worked_by;
+      logEvent('cell_lock', cellId);
 
       selectCell(cellId, selectedCellData);
       LeucenaMap.updateCellAppearance(cellId, selectedCellData);
@@ -3430,6 +3440,7 @@ window.LeucenaApp = (function () {
   function setInsertionMode(active) {
     insertionMode = active;
     document.getElementById('tool-insertion').checked = active;
+    logEvent(active ? 'insertion_mode_on' : 'insertion_mode_off', selectedCellId);
     updatePointModeBanner();
     updatePointModeVisuals();
     if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyActivity) {
@@ -3441,6 +3452,7 @@ window.LeucenaApp = (function () {
   function setDeletionMode(active) {
     deletionMode = active;
     document.getElementById('tool-deletion').checked = active;
+    logEvent(active ? 'deletion_mode_on' : 'deletion_mode_off', selectedCellId);
     updatePointModeBanner();
     updatePointModeVisuals();
     if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyActivity) {
@@ -4979,6 +4991,7 @@ window.LeucenaApp = (function () {
       if (!res.ok) { const err = await res.json(); showToast(err.error, 'error'); return; }
       const pt = await res.json();
       insertionHistory.push(pt.id);
+      logEvent('point_added', selectedCellId, pt.id, { lat, lng });
       showToast(LeucenaI18n.t('toast.pointAdded', pt.fid), 'success');
     } catch (err) { showToast(LeucenaI18n.t('toast.addFail'), 'error'); }
   }
@@ -5010,6 +5023,7 @@ window.LeucenaApp = (function () {
       }
       LeucenaMap.removePointMarker(nearest.id);
       deletionHistory.push(pointData);
+      logEvent('point_deleted', selectedCellId, nearest.id, { fid: pointData.fid });
       showToast(LeucenaI18n.t('toast.pointDeleted', pointData.fid), 'info');
     } catch (err) {
       showToast(LeucenaI18n.t('toast.deleteFail'), 'error');

@@ -492,6 +492,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     mapBtn.addEventListener('click', () => {
       isSatellite = !isSatellite;
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('toggle_maptype', null, null, { satellite: isSatellite });
       applyMapType();
       const label = document.getElementById('maptype-label');
       if (isSatellite) {
@@ -509,6 +510,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       clearLabelsAutoOffTimer();
       labelsUserControlled = true;
       showLabels = labelsCheckbox.checked;
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('toggle_labels', null, null, { labels: showLabels });
       if (labelsCheckbox.checked) clearLabelsReenableHint();
       applyMapType();
     });
@@ -656,7 +658,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       setTimeout(refreshAfterFit, 150);
       setTimeout(refreshAfterFit, 400);
       setTimeout(refreshAfterFit, 800);
+      setTimeout(refreshAfterFit, 1500);
       google.maps.event.addListenerOnce(map, 'idle', function () {
+        refreshAfterFit();
+      });
+      google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
         refreshAfterFit();
       });
       if (typeof onViewportSettled === 'function') onViewportSettled();
@@ -699,10 +705,13 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     _toggleSidebarForBrazilView(true);
   }
 
+  let _brazilIdleListener = null;
+
   async function loadGrid() {
     if (!_currentState) {
       _showBrazilOverview();
-      map.addListener('idle', () => {
+      if (_brazilIdleListener) google.maps.event.removeListener(_brazilIdleListener);
+      _brazilIdleListener = map.addListener('idle', () => {
         refreshPointVisibility();
         if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
       });
@@ -749,6 +758,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
   async function loadStateGrid(uf) {
     _currentState = uf || null;
+    if (_brazilIdleListener) {
+      google.maps.event.removeListener(_brazilIdleListener);
+      _brazilIdleListener = null;
+    }
     if (!_currentState) {
       _showBrazilOverview();
       return;
