@@ -642,12 +642,26 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function scheduleCrispGridRefresh(ufLoaded, onViewportSettled) {
     function refreshAfterFit() {
       if (_currentState !== ufLoaded) return;
-      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
+      if (gridLayer) {
+        gridLayer.setStyle(function () { return { visible: false }; });
+        gridLayer.setStyle(gridStyleCallback);
+      }
       refreshPointVisibility();
       if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
         LeucenaDrawing.refreshPolyVisibility();
       }
       updateAreaLabelsForZoom();
+    }
+
+    var snapDone = false;
+    function snapToIntZoom() {
+      if (snapDone || _currentState !== ufLoaded) return;
+      var fracZoom = map.getZoom();
+      var intZoom = Math.round(fracZoom);
+      if (Math.abs(fracZoom - intZoom) > 0.01) {
+        snapDone = true;
+        map.setZoom(intZoom);
+      }
     }
 
     const zoomListener = map.addListener('zoom_changed', function () {
@@ -659,23 +673,18 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
 
     google.maps.event.addListenerOnce(map, 'idle', function () {
+      snapToIntZoom();
+    });
+
+    google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
       google.maps.event.removeListener(zoomListener);
       refreshAfterFit();
       requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          refreshAfterFit();
-        });
+        requestAnimationFrame(refreshAfterFit);
       });
-      setTimeout(refreshAfterFit, 150);
-      setTimeout(refreshAfterFit, 400);
-      setTimeout(refreshAfterFit, 800);
-      setTimeout(refreshAfterFit, 1500);
-      google.maps.event.addListenerOnce(map, 'idle', function () {
-        refreshAfterFit();
-      });
-      google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
-        refreshAfterFit();
-      });
+      setTimeout(refreshAfterFit, 200);
+      setTimeout(refreshAfterFit, 600);
+      setTimeout(refreshAfterFit, 1200);
       if (typeof onViewportSettled === 'function') onViewportSettled();
     });
   }
@@ -837,6 +846,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
       LeucenaApp.scheduleAutoCollapseLegend();
     }
+    scheduleCrispGridRefresh(ufLoaded);
   }
 
   function getStyleForCell(props, cellId) {
