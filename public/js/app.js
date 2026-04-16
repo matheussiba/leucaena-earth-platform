@@ -99,12 +99,41 @@ window.LeucenaApp = (function () {
   }
 
   const _logQueue = [];
+  const _logRing = [];
+  const _LOG_RING_MAX = 500;
   let _logTimer = null;
   function logEvent(action, cellId, objectId, details) {
     if (!authToken) return;
-    _logQueue.push({ action, cell_id: cellId || null, object_id: objectId || null, details: details || null });
+    const entry = { action, cell_id: cellId || null, object_id: objectId || null, details: details || null };
+    _logQueue.push(entry);
+    _logRing.push({ ts: new Date().toISOString(), ...entry });
+    if (_logRing.length > _LOG_RING_MAX) _logRing.shift();
     if (!_logTimer) {
       _logTimer = setTimeout(_flushLogs, 3000);
+    }
+  }
+
+  function _copyRecentLogs(minutes) {
+    const cutoff = Date.now() - (minutes || 5) * 60 * 1000;
+    const recent = _logRing.filter(e => new Date(e.ts).getTime() >= cutoff);
+    const lines = recent.map(e => {
+      const d = e.details ? (' | ' + JSON.stringify(e.details)) : '';
+      return '[' + e.ts + '] ' + (username || '?') + ' (' + getEffectiveRole() + '): ' + e.action + d;
+    });
+    const text = lines.join('\n') || '(nenhum log nos últimos ' + minutes + ' minutos)';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => showToast(LeucenaI18n.t('tester.logsCopied', recent.length), 'success'),
+        () => showToast('Erro ao copiar', 'error')
+      );
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast(LeucenaI18n.t('tester.logsCopied', recent.length), 'success');
     }
   }
   function _flushLogs() {
@@ -259,6 +288,7 @@ window.LeucenaApp = (function () {
     document.querySelectorAll('.tester-role-btn').forEach(btn => {
       btn.addEventListener('click', () => switchTesterMode(btn.dataset.mode));
     });
+    document.getElementById('tester-copy-logs-btn').addEventListener('click', () => _copyRecentLogs(5));
 
     document.getElementById('cell-search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -4330,6 +4360,7 @@ window.LeucenaApp = (function () {
           <div class="admin-tools-label">${t('admin.sectionMaintenance')}</div>
           <div class="admin-tools-buttons">
             <button id="admin-dedup-btn" class="admin-tool-btn admin-tool-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> ${t('admin.dedupBtn')}</button>
+            <button id="admin-covered-btn" class="admin-tool-btn admin-tool-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> ${t('admin.coveredBtn')}</button>
           </div>
         </div>`;
         }
@@ -4513,6 +4544,96 @@ window.LeucenaApp = (function () {
             }
           } catch (e) {
             showToast(t('admin.dedupUndoFail'), 'error');
+          }
+          container.remove();
+        });
+        container.appendChild(undoBtn);
+        document.body.appendChild(container);
+        setTimeout(() => { if (container.parentNode) container.remove(); }, 30000);
+      }
+
+      // Covered-points cleanup: preview → confirm modal → execute → undo toast
+      const coveredBtn = document.getElementById('admin-covered-btn');
+      if (coveredBtn) {
+        coveredBtn.addEventListener('click', async () => {
+          coveredBtn.disabled = true;
+          coveredBtn.textContent = `⏳ ${t('admin.coveredScanning')}`;
+          try {
+            const r = await fetch('/api/admin/points/covered/preview', { headers: authHeaders() });
+            if (!r.ok) { showToast('Error', 'error'); return; }
+            const data = await r.json();
+            if (data.covered_count === 0) {
+              showToast(t('admin.coveredNone'), 'success');
+              return;
+            }
+            const modal = document.getElementById('covered-modal');
+            document.getElementById('covered-modal-text').textContent = t('admin.coveredConfirm', data.covered_count, data.total_checked);
+            const confirmBtn = document.getElementById('covered-modal-confirm');
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = t('admin.dedupModalConfirm');
+            modal.classList.remove('hidden');
+
+            const onConfirm = async () => {
+              confirmBtn.removeEventListener('click', onConfirm);
+              cancelBtn.removeEventListener('click', onCancel);
+              confirmBtn.disabled = true;
+              confirmBtn.textContent = `⏳ ${t('admin.coveredRemoving')}`;
+              try {
+                const res = await fetch('/api/admin/points/covered/remove', { method: 'POST', headers: authHeaders() });
+                const result = await res.json();
+                modal.classList.add('hidden');
+                if (res.ok && result.removed > 0) {
+                  logEvent('admin_cleanup_covered', null, null, { removed: result.removed });
+                  showToast(t('admin.coveredSuccess', result.removed), 'success', 10000);
+                  showCoveredUndoToast(result.removed);
+                } else if (res.ok && result.removed === 0) {
+                  showToast(t('admin.coveredNone'), 'info');
+                } else {
+                  showToast(result.error || t('admin.coveredFail'), 'error');
+                }
+              } catch (e) {
+                modal.classList.add('hidden');
+                showToast(t('admin.coveredFail'), 'error');
+              }
+            };
+            const cancelBtn = document.getElementById('covered-modal-cancel');
+            const onCancel = () => {
+              confirmBtn.removeEventListener('click', onConfirm);
+              cancelBtn.removeEventListener('click', onCancel);
+              modal.classList.add('hidden');
+            };
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+            document.getElementById('covered-modal-close').onclick = onCancel;
+          } catch (e) {
+            showToast(t('admin.coveredFail'), 'error');
+          } finally {
+            coveredBtn.disabled = false;
+            coveredBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> ${t('admin.coveredBtn')}`;
+          }
+        });
+      }
+
+      function showCoveredUndoToast(count) {
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:14px;';
+        container.innerHTML = `<span>${t('admin.coveredSuccess', count)}</span>`;
+        const undoBtn = document.createElement('button');
+        undoBtn.textContent = `↩ ${t('admin.dedupUndo')}`;
+        undoBtn.style.cssText = 'background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:13px;';
+        undoBtn.addEventListener('click', async () => {
+          undoBtn.disabled = true;
+          undoBtn.textContent = '⏳';
+          try {
+            const res = await fetch('/api/admin/points/covered/undo', { method: 'POST', headers: authHeaders() });
+            const result = await res.json();
+            if (res.ok && result.restored > 0) {
+              showToast(t('admin.coveredUndoSuccess', result.restored), 'success', 6000);
+            } else {
+              showToast(result.error || t('admin.coveredFail'), 'error');
+            }
+          } catch (e) {
+            showToast(t('admin.coveredFail'), 'error');
           }
           container.remove();
         });
@@ -5200,6 +5321,10 @@ window.LeucenaApp = (function () {
 
       if (insertionMode) setInsertionMode(false);
       if (deletionMode) setDeletionMode(false);
+
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyStyles) {
+        LeucenaDrawing.refreshPolyStyles();
+      }
 
       const roleLabel = newMode === 'team' ? LeucenaI18n.t('tester.roleMember') : LeucenaI18n.t('tester.roleContributor');
       showToast(LeucenaI18n.t('tester.switched', roleLabel), 'success');

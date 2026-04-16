@@ -164,15 +164,14 @@ window.LeucenaDrawing = (function () {
     return role === 'admin' || role === 'team';
   }
 
-  // Team/admin = green, contributor = orange; mask toggles + styles differ only for team+ viewers.
   function getPolyStyle(creatorRole) {
-    const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getUserRole() : null;
+    const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getEffectiveRole() : null;
     if (!viewerRole || viewerRole === 'contributor') return POLY_STYLE_MEMBER;
     return isMemberRole(creatorRole) ? POLY_STYLE_MEMBER : POLY_STYLE_CONTRIBUTOR;
   }
 
   function shouldShowPoly(creatorRole) {
-    const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getUserRole() : null;
+    const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getEffectiveRole() : null;
     if (!viewerRole || viewerRole === 'contributor') return true;
     return isMemberRole(creatorRole) ? showMemberMasks : showContributorMasks;
   }

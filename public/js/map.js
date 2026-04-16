@@ -637,18 +637,38 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     renderGridFeatures(fc);
   }
 
+  var _repaintTimer = null;
+
   /**
-   * Grid blur fix: detach the Data layer, wait a frame, then re-attach.
-   * Synchronous setMap(null)+setMap(map) gets optimised away by the SDK;
-   * splitting across requestAnimationFrame forces a full re-rasterise.
+   * Grid blur fix: detach the Data layer, wait for the map to fully settle,
+   * then re-attach. A delayed second pass ensures any residual fractional-zoom
+   * rasterisation from the fitBounds animation is overwritten with a crisp
+   * render at the final integer zoom level.
    */
   function _forceGridRepaint() {
     if (!gridLayer) return;
+    if (_repaintTimer) { clearTimeout(_repaintTimer); _repaintTimer = null; }
+
     gridLayer.setMap(null);
     requestAnimationFrame(function () {
       if (!gridLayer) return;
       gridLayer.setMap(map);
       gridLayer.setStyle(gridStyleCallback);
+
+      _repaintTimer = setTimeout(function () {
+        _repaintTimer = null;
+        if (!gridLayer) return;
+        gridLayer.setMap(null);
+        requestAnimationFrame(function () {
+          if (!gridLayer) return;
+          gridLayer.setMap(map);
+          gridLayer.setStyle(gridStyleCallback);
+          google.maps.event.addListenerOnce(map, 'idle', function () {
+            if (!gridLayer) return;
+            gridLayer.setStyle(gridStyleCallback);
+          });
+        });
+      }, 600);
     });
   }
 

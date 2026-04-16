@@ -252,6 +252,8 @@ window.LeucenaI18n = (function () {
     'tester.roleMember': { pt: 'Membro', en: 'Member', es: 'Miembro' },
     'tester.roleContributor': { pt: 'Colaborador', en: 'Contributor', es: 'Colaborador' },
     'tester.switched': { pt: 'Perfil alterado para {0}', en: 'Profile switched to {0}', es: 'Perfil cambiado a {0}' },
+    'tester.copyLogs': { pt: 'Copiar logs (5 min)', en: 'Copy logs (5 min)', es: 'Copiar logs (5 min)' },
+    'tester.logsCopied': { pt: '{0} eventos copiados para a área de transferência', en: '{0} events copied to clipboard', es: '{0} eventos copiados al portapapeles' },
 
     // ── Admin ──
     'admin.usersTitle': { pt: 'Painel da Equipe', en: 'Team Panel', es: 'Panel del Equipo' },
@@ -391,6 +393,15 @@ window.LeucenaI18n = (function () {
     'admin.dedupModalConfirm': { pt: 'Confirmar Remoção', en: 'Confirm Removal', es: 'Confirmar Eliminación' },
     'admin.dedupModalCancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
     'admin.dedupRemoving': { pt: 'Removendo duplicados...', en: 'Removing duplicates...', es: 'Eliminando duplicados...' },
+
+    'admin.coveredBtn': { pt: 'Limpar Pontos sobre Polígonos', en: 'Clean Points over Polygons', es: 'Limpiar Puntos sobre Polígonos' },
+    'admin.coveredScanning': { pt: 'Buscando pontos cobertos...', en: 'Scanning for covered points...', es: 'Buscando puntos cubiertos...' },
+    'admin.coveredNone': { pt: 'Nenhum ponto de colaborador sobre polígono encontrado!', en: 'No collaborator points over polygons found!', es: '¡No se encontraron puntos de colaboradores sobre polígonos!' },
+    'admin.coveredConfirm': { pt: '{0} pontos de colaboradores estão dentro de polígonos existentes (de {1} pontos verificados). Esses pontos são redundantes pois a área já está mapeada. Deseja removê-los?', en: '{0} collaborator points are inside existing polygons (of {1} checked). These points are redundant. Remove them?', es: '{0} puntos de colaboradores están dentro de polígonos existentes (de {1} verificados). Estos puntos son redundantes. ¿Eliminarlos?' },
+    'admin.coveredSuccess': { pt: '{0} pontos redundantes removidos com sucesso!', en: '{0} redundant points removed successfully!', es: '¡{0} puntos redundantes eliminados con éxito!' },
+    'admin.coveredFail': { pt: 'Erro ao remover pontos', en: 'Failed to remove points', es: 'Error al eliminar puntos' },
+    'admin.coveredUndoSuccess': { pt: '{0} pontos restaurados com sucesso!', en: '{0} points restored successfully!', es: '¡{0} puntos restaurados con éxito!' },
+    'admin.coveredRemoving': { pt: 'Removendo pontos...', en: 'Removing points...', es: 'Eliminando puntos...' },
 
     // ── Welcome modal ──
     'welcome.title': { pt: 'Novidades!', en: "What's new!", es: '¡Novedades!' },

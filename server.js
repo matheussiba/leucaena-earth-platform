@@ -3014,6 +3014,105 @@ app.post('/api/admin/points/duplicates/undo', requireAuth, (req, res) => {
   res.json({ success: true, restored, original_timestamp: backup.timestamp });
 });
 
+// ── Cleanup contributor points covered by polygons ──
+
+let _coveredUndoBackup = null;
+
+function _findCoveredContributorPoints() {
+  const collabPoints = queryAll(
+    "SELECT id, fid, geometry, layer, status, not_valid, added_by, added_by_role, added_at FROM occurrence_points WHERE added_by_role = 'contributor' AND layer = 'crowdmapping' ORDER BY id ASC"
+  );
+  const polys = queryAll('SELECT id, geometry FROM polygons');
+  const parsedPolys = polys.map(p => ({ id: p.id, geom: JSON.parse(p.geometry) }));
+
+  const covered = [];
+  for (const pt of collabPoints) {
+    const g = JSON.parse(pt.geometry);
+    const [lng, lat] = g.coordinates;
+    const inside = parsedPolys.some(poly => {
+      const coords = poly.geom.coordinates;
+      if (!pointInPolygon([lng, lat], coords[0])) return false;
+      for (let i = 1; i < coords.length; i++) {
+        if (pointInPolygon([lng, lat], coords[i])) return false;
+      }
+      return true;
+    });
+    if (inside) covered.push(pt);
+  }
+  return { covered, totalChecked: collabPoints.length, totalPolys: polys.length };
+}
+
+app.get('/api/admin/points/covered/preview', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { covered, totalChecked, totalPolys } = _findCoveredContributorPoints();
+  const sample = covered.slice(0, 20).map(p => {
+    const g = JSON.parse(p.geometry);
+    return { id: p.id, fid: p.fid, lat: g.coordinates[1], lng: g.coordinates[0], added_by: p.added_by };
+  });
+  res.json({ covered_count: covered.length, total_checked: totalChecked, total_polys: totalPolys, sample });
+});
+
+app.post('/api/admin/points/covered/remove', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { covered } = _findCoveredContributorPoints();
+
+  if (covered.length === 0) {
+    return res.json({ success: true, removed: 0 });
+  }
+
+  _coveredUndoBackup = { timestamp: new Date().toISOString(), username: req.username, points: covered };
+
+  const now = new Date().toISOString();
+  for (const p of covered) {
+    runSQL(
+      `INSERT INTO point_deletions (original_point_id, fid, geometry, layer, status, added_by, added_by_role, added_at, deleted_by, deleted_by_role, deleted_at, grid_cell_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [p.id, p.fid, p.geometry, p.layer, p.status, p.added_by, p.added_by_role, p.added_at, req.username, 'superadmin', now, null]
+    );
+  }
+
+  const ids = covered.map(d => d.id);
+  const placeholders = ids.map(() => '?').join(',');
+  runSQL(`DELETE FROM occurrence_points WHERE id IN (${placeholders})`, ids);
+  persist();
+
+  logActivity(req.username, 'cleanup_covered_points', null, null, { removed: covered.length });
+
+  for (const d of covered) {
+    io.emit('point:deleted', { id: d.id });
+  }
+
+  res.json({ success: true, removed: covered.length });
+});
+
+app.post('/api/admin/points/covered/undo', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+
+  if (!_coveredUndoBackup || !_coveredUndoBackup.points || _coveredUndoBackup.points.length === 0) {
+    return res.status(400).json({ error: 'Nenhuma limpeza para desfazer' });
+  }
+
+  let restored = 0;
+  for (const p of _coveredUndoBackup.points) {
+    runSQL(
+      'INSERT INTO occurrence_points (fid, geometry, not_valid, layer, status, added_by, added_by_role, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [p.fid, p.geometry, p.not_valid || 0, p.layer || 'crowdmapping', p.status || 0, p.added_by, p.added_by_role, p.added_at]
+    );
+    const row = queryOne('SELECT id FROM occurrence_points WHERE fid = ?', [p.fid]);
+    if (row) {
+      io.emit('point:created', { id: row.id, fid: p.fid, not_valid: p.not_valid || 0, status: p.status || 0, layer: p.layer || 'crowdmapping', geometry: JSON.parse(p.geometry) });
+    }
+    restored++;
+  }
+
+  persist();
+  logActivity(req.username, 'cleanup_covered_undo', null, null, { restored });
+
+  const backup = _coveredUndoBackup;
+  _coveredUndoBackup = null;
+  res.json({ success: true, restored, original_timestamp: backup.timestamp });
+});
+
 // ── Occurrence points ──
 
 app.get('/api/points', (req, res) => {
