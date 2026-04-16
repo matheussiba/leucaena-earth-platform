@@ -644,7 +644,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function scheduleCrispGridRefresh(ufLoaded) {
     function refreshAfterFit() {
       if (_currentState !== ufLoaded) return;
-      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
+      if (gridLayer) {
+        gridLayer.setMap(null);
+        gridLayer.setMap(map);
+        gridLayer.setStyle(gridStyleCallback);
+      }
       refreshPointVisibility();
       if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
         LeucenaDrawing.refreshPolyVisibility();
@@ -652,6 +656,14 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       updateAreaLabelsForZoom();
     }
     google.maps.event.addListenerOnce(map, 'tilesloaded', refreshAfterFit);
+    setTimeout(function () {
+      if (_currentState !== ufLoaded) return;
+      if (gridLayer) {
+        gridLayer.setMap(null);
+        gridLayer.setMap(map);
+        gridLayer.setStyle(gridStyleCallback);
+      }
+    }, 600);
   }
 
   function _toggleSidebarForBrazilView(isBrazil) {
@@ -1531,9 +1543,15 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   function syncPointsParent() {
     const parent = document.getElementById('toggle-points');
     const children = document.querySelectorAll('[data-layer]');
-    const checkedCount = Array.from(children).filter(c => c.checked).length;
+    const collabEl = document.getElementById('layer-collaborators');
+    let checkedCount = Array.from(children).filter(c => c.checked).length;
+    let totalCount = children.length;
+    if (collabEl && collabEl.offsetParent !== null) {
+      totalCount++;
+      if (collabEl.checked) checkedCount++;
+    }
     parent.checked = checkedCount > 0;
-    parent.indeterminate = checkedCount > 0 && checkedCount < children.length;
+    parent.indeterminate = checkedCount > 0 && checkedCount < totalCount;
     showPoints = checkedCount > 0;
   }
 
@@ -1564,6 +1582,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
 
     const layerCheckboxes = document.querySelectorAll('[data-layer]');
+    const collabCb = document.getElementById('layer-collaborators');
+
     layerCheckboxes.forEach(cb => {
       cb.addEventListener('change', function () {
         const layer = this.dataset.layer;
@@ -1582,9 +1602,13 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (checked) {
         POINT_LAYERS.forEach(l => visiblePointLayers.add(l));
         layerCheckboxes.forEach(cb => { cb.checked = true; });
+        _showCollaboratorPoints = true;
+        if (collabCb) collabCb.checked = true;
       } else {
         visiblePointLayers.clear();
         layerCheckboxes.forEach(cb => { cb.checked = false; });
+        _showCollaboratorPoints = false;
+        if (collabCb) collabCb.checked = false;
       }
       refreshPointVisibility();
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_points_all', null, null, { visible: checked });
@@ -1606,21 +1630,15 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.setContributorMasksVisible(this.checked);
     });
 
-    const collabCb = document.getElementById('layer-collaborators');
     if (collabCb) {
       collabCb.addEventListener('change', function () {
         _showCollaboratorPoints = this.checked;
         if (this.checked) {
-          const cmCb = document.getElementById('layer-crowdmapping');
-          if (cmCb && !cmCb.checked) {
-            cmCb.checked = true;
-            visiblePointLayers.add('crowdmapping');
-          }
           showPoints = true;
-          syncPointsParent();
         }
+        syncPointsParent();
         refreshPointVisibility();
-        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_collaborators', null, null, { visible: this.checked });
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_collaborators', null, null, { visible: this.checked, showPoints: showPoints });
       });
     }
 
@@ -1858,6 +1876,12 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return !_isCollaboratorPoint(data);
   }
 
+  function _isPointVisible(data, layer) {
+    if (_showCollaboratorPoints && _isCollaboratorPoint(data) && showPoints) return true;
+    if (!isPointLayerVisible(layer)) return false;
+    return _passesCollabFilter(data);
+  }
+
   function _isPointInEditScope(position) {
     if (!_editingCellId) return true;
     const editBounds = gridCellBounds[_editingCellId];
@@ -1883,8 +1907,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         const inView = !viewport || viewport.contains(entry.marker.getPosition());
         const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
         const inEditScope = _isPointInEditScope(entry.marker.getPosition());
-        const collabOk = _passesCollabFilter(entry.data);
-        entry.marker.setMap(isPointLayerVisible(layer) && inView && inState && inEditScope && collabOk ? map : null);
+        entry.marker.setMap(_isPointVisible(entry.data, layer) && inView && inState && inEditScope ? map : null);
       }
       return;
     }
@@ -1901,8 +1924,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       const inView = !viewport || viewport.contains(entry.marker.getPosition());
       const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
       const inEditScope = _isPointInEditScope(entry.marker.getPosition());
-      const collabOk = _passesCollabFilter(entry.data);
-      if (isPointLayerVisible(layer) && inView && inState && inEditScope && collabOk) {
+      if (_isPointVisible(entry.data, layer) && inView && inState && inEditScope) {
         toAdd.push(entry.marker);
       } else {
         toRemove.push(entry.marker);
