@@ -3273,6 +3273,9 @@ window.LeucenaApp = (function () {
       logEvent('cell_unlock', cellId, null, { status: finalStatus, maskCount: data.maskCount || 0 });
       closeUnlockModal();
 
+      if (insertionMode) setInsertionMode(false);
+      if (deletionMode) setDeletionMode(false);
+
       if (selectedCellData) {
         selectedCellData.locked_by = null;
         selectedCellData.grid_status = finalStatus;
@@ -3607,6 +3610,10 @@ window.LeucenaApp = (function () {
   }
 
   function setInsertionMode(active) {
+    if (active && typeof LeucenaDrawing !== 'undefined') {
+      const dm = LeucenaDrawing.getActiveMode();
+      if (dm !== 'select') LeucenaDrawing.setMode('select');
+    }
     insertionMode = active;
     document.getElementById('tool-insertion').checked = active;
     const addBtn = document.getElementById('tool-add-point');
@@ -3622,6 +3629,10 @@ window.LeucenaApp = (function () {
   }
 
   function setDeletionMode(active) {
+    if (active && typeof LeucenaDrawing !== 'undefined') {
+      const dm = LeucenaDrawing.getActiveMode();
+      if (dm !== 'select') LeucenaDrawing.setMode('select');
+    }
     deletionMode = active;
     document.getElementById('tool-deletion').checked = active;
     const delBtn = document.getElementById('tool-del-point');
@@ -5336,6 +5347,10 @@ window.LeucenaApp = (function () {
 
   async function handleInsertionClick(latLng) {
     if (!insertionMode) return;
+    if (!selectedCellData || selectedCellData.locked_by !== username) {
+      setInsertionMode(false);
+      return;
+    }
     const lat = latLng.lat();
     const lng = latLng.lng();
     try {
@@ -5354,6 +5369,10 @@ window.LeucenaApp = (function () {
 
   async function handleDeletionClick(latLng) {
     if (!deletionMode) return;
+    if (!selectedCellData || selectedCellData.locked_by !== username) {
+      setDeletionMode(false);
+      return;
+    }
     const nearest = LeucenaMap.findNearestPoint(latLng, 20);
     if (!nearest) {
       showToast(LeucenaI18n.t('toast.noNearbyPoint'), 'info');
@@ -6285,6 +6304,8 @@ window.LeucenaApp = (function () {
     openAuthModal,
     isDeletionMode,
     isPointModeActive,
+    setInsertionMode,
+    setDeletionMode,
     handleInsertionClick,
     handleDeletionClick,
     scheduleAutoCollapseLegend,

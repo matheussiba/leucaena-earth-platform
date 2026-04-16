@@ -642,9 +642,14 @@ window.LeucenaDrawing = (function () {
     document.getElementById('delete-warn-modal').classList.remove('hidden');
   }
 
-  function setMode(mode) { // mode transition: clear stacks/edit state, cursor, then draw|edit|hole setup
+  function setMode(mode) {
     const prevMode = activeMode;
     activeMode = mode;
+
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) {
+      if (LeucenaApp.setInsertionMode) LeucenaApp.setInsertionMode(false);
+      if (LeucenaApp.setDeletionMode) LeucenaApp.setDeletionMode(false);
+    }
 
     if (prevMode !== mode && typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
       LeucenaApp.logEvent('tool_switch', LeucenaApp.getSelectedCellId(), null, { from: prevMode, to: mode });
