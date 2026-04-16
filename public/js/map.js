@@ -63,6 +63,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       streetViewControl: false,
       fullscreenControl: false,
       gestureHandling: 'greedy',
+      isFractionalZoomEnabled: false,
       padding: { top: 56, bottom: 48, left: 0, right: 0 }
     });
 
@@ -639,54 +640,17 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
    * Após fitBounds o mapa anima e as camadas Data podem renderizar borradas até o zoom/tiles estabilizarem.
    * Usado no carregamento inicial (loadGrid) e ao trocar de região (loadStateGrid).
    */
-  function scheduleCrispGridRefresh(ufLoaded, onViewportSettled) {
+  function scheduleCrispGridRefresh(ufLoaded) {
     function refreshAfterFit() {
       if (_currentState !== ufLoaded) return;
-      if (gridLayer) {
-        gridLayer.setStyle(function () { return { visible: false }; });
-        gridLayer.setStyle(gridStyleCallback);
-      }
+      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
       refreshPointVisibility();
       if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
         LeucenaDrawing.refreshPolyVisibility();
       }
       updateAreaLabelsForZoom();
     }
-
-    var snapDone = false;
-    function snapToIntZoom() {
-      if (snapDone || _currentState !== ufLoaded) return;
-      var fracZoom = map.getZoom();
-      var intZoom = Math.round(fracZoom);
-      if (Math.abs(fracZoom - intZoom) > 0.01) {
-        snapDone = true;
-        map.setZoom(intZoom);
-      }
-    }
-
-    const zoomListener = map.addListener('zoom_changed', function () {
-      if (_currentState !== ufLoaded) {
-        google.maps.event.removeListener(zoomListener);
-        return;
-      }
-      if (gridLayer) gridLayer.setStyle(gridStyleCallback);
-    });
-
-    google.maps.event.addListenerOnce(map, 'idle', function () {
-      snapToIntZoom();
-    });
-
-    google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
-      google.maps.event.removeListener(zoomListener);
-      refreshAfterFit();
-      requestAnimationFrame(function () {
-        requestAnimationFrame(refreshAfterFit);
-      });
-      setTimeout(refreshAfterFit, 200);
-      setTimeout(refreshAfterFit, 600);
-      setTimeout(refreshAfterFit, 1200);
-      if (typeof onViewportSettled === 'function') onViewportSettled();
-    });
+    google.maps.event.addListenerOnce(map, 'tilesloaded', refreshAfterFit);
   }
 
   function _toggleSidebarForBrazilView(isBrazil) {
@@ -765,17 +729,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       map.fitBounds(gridBounds);
       google.maps.event.addListenerOnce(map, 'idle', function () {
         if (_currentState !== ufInit) return;
-        var fracZoom = map.getZoom();
-        var intZoom = Math.floor(fracZoom);
-        if (fracZoom !== intZoom) {
-          map.setZoom(intZoom);
-          google.maps.event.addListenerOnce(map, 'idle', function () {
-            if (_currentState !== ufInit) return;
-            _finalizeStateLoad(fc, ufInit);
-          });
-        } else {
-          _finalizeStateLoad(fc, ufInit);
-        }
+        _finalizeStateLoad(fc, ufInit);
       });
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.gridLoadFail'), 'error');
@@ -818,17 +772,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     google.maps.event.addListenerOnce(map, 'idle', function () {
       if (_currentState !== ufLoaded) return;
-      var fracZoom = map.getZoom();
-      var intZoom = Math.floor(fracZoom);
-      if (fracZoom !== intZoom) {
-        map.setZoom(intZoom);
-        google.maps.event.addListenerOnce(map, 'idle', function () {
-          if (_currentState !== ufLoaded) return;
-          _finalizeStateLoad(fc, ufLoaded);
-        });
-      } else {
-        _finalizeStateLoad(fc, ufLoaded);
-      }
+      _finalizeStateLoad(fc, ufLoaded);
     });
   }
 
@@ -1657,6 +1601,15 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     if (collabCb) {
       collabCb.addEventListener('change', function () {
         _showCollaboratorPoints = this.checked;
+        if (this.checked) {
+          const cmCb = document.getElementById('layer-crowdmapping');
+          if (cmCb && !cmCb.checked) {
+            cmCb.checked = true;
+            visiblePointLayers.add('crowdmapping');
+          }
+          showPoints = true;
+          syncPointsParent();
+        }
         refreshPointVisibility();
       });
     }
