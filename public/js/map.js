@@ -52,6 +52,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let initialCenter = null;
 
   function init(initialState) {
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('map_init', null, null, { state: initialState || 'brazil' });
     if (initialState) _currentState = initialState;
     map = new google.maps.Map(document.getElementById('map'), {
       center: { lat: -14.2, lng: -51.9 },
@@ -732,11 +733,13 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         _finalizeStateLoad(fc, ufInit);
       });
     } catch (e) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('grid_load_error', null, null, { error: e.message || String(e) });
       LeucenaApp.showToast(LeucenaI18n.t('toast.gridLoadFail'), 'error');
     }
   }
 
   async function loadStateGrid(uf) {
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('grid_load', null, null, { state: uf || 'brazil' });
     _currentState = uf || null;
     if (_brazilIdleListener) {
       google.maps.event.removeListener(_brazilIdleListener);
@@ -1078,6 +1081,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       refreshPointVisibility();
       updateFilterCounts();
     } catch (e) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('points_load_error', null, null, { error: e.message || String(e) });
       LeucenaApp.showToast(LeucenaI18n.t('toast.pointsLoadFail'), 'error');
     }
   }
@@ -1542,6 +1546,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         else activeFilters.delete(status);
         syncGridParent();
         refreshGridVisibility();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_grid_status', null, null, { status: status, visible: this.checked });
       });
     });
 
@@ -1555,6 +1560,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         else activeFilters.delete(cb.dataset.status);
       });
       refreshGridVisibility();
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_grid', null, null, { visible: checked });
     });
 
     const layerCheckboxes = document.querySelectorAll('[data-layer]');
@@ -1565,6 +1571,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         else visiblePointLayers.delete(layer);
         syncPointsParent();
         refreshPointVisibility();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_point_layer', null, null, { layer: layer, visible: this.checked });
       });
     });
 
@@ -1580,6 +1587,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         layerCheckboxes.forEach(cb => { cb.checked = false; });
       }
       refreshPointVisibility();
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_points_all', null, null, { visible: checked });
     });
 
     document.getElementById('toggle-polygons').addEventListener('change', function () {
@@ -1587,6 +1595,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (typeof LeucenaDrawing !== 'undefined') {
         LeucenaDrawing.setVisible(showPolygons);
       }
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_polygons', null, null, { visible: this.checked });
     });
 
     document.getElementById('toggle-masks-member').addEventListener('change', function () {
@@ -1611,6 +1620,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
           syncPointsParent();
         }
         refreshPointVisibility();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_collaborators', null, null, { visible: this.checked });
       });
     }
 

@@ -87,6 +87,7 @@ window.LeucenaApp = (function () {
       response.clone().json().then(data => {
         if (data.code === 'SESSION_EXPIRED') {
           _sessionExpiredShown = true;
+          logEvent('session_expired');
           localStorage.removeItem('leucena_token');
           localStorage.removeItem('leucena_username');
           showToast(LeucenaI18n.t('auth.sessionExpired'), 'warning', 6000);
@@ -171,6 +172,7 @@ window.LeucenaApp = (function () {
   }
 
   function init() {
+    logEvent('app_init', null, null, { url: window.location.href, userAgent: navigator.userAgent, screen: window.innerWidth + 'x' + window.innerHeight });
     document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
     const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
@@ -425,6 +427,7 @@ window.LeucenaApp = (function () {
       try {
         const r = await fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: authHeaders() });
         if (r.ok) {
+          logEvent('admin_delete_user', null, null, { userId: id });
           closePermanentDeleteUserModal();
           showToast(t('admin.userDeleted'), 'success');
           if (rowEl) rowEl.remove();
@@ -1181,6 +1184,7 @@ window.LeucenaApp = (function () {
       });
       const data = await res.json();
       if (!res.ok) {
+        logEvent(authMode === 'login' ? 'login_error' : 'register_error', null, null, { error: data.error, code: data.code, status: res.status });
         if (data.code === 'EMAIL_NOT_VERIFIED' && authMode === 'login') {
           errorEl.classList.add('hidden');
           const successEl = document.getElementById('auth-success');
@@ -1212,6 +1216,7 @@ window.LeucenaApp = (function () {
       }
 
       if (data.needs_verification && !data.token) {
+        logEvent('register_success', null, null, { needs_verification: true });
         const email = document.getElementById('auth-email') ? document.getElementById('auth-email').value.trim() : '';
         const successEl = document.getElementById('auth-success');
         if (successEl) {
@@ -1606,11 +1611,14 @@ window.LeucenaApp = (function () {
             _userAuthInfo = { auth_provider: data.auth_provider, email_verified: data.email_verified, has_google: data.has_google, login_count: 0, mask_count: 0, role: data.role || 'contributor', is_local: false };
             localStorage.setItem('leucena_token', authToken);
             localStorage.setItem('leucena_username', username);
+            logEvent('google_auth_success', null, null, { username: data.username });
             onLoginSuccess(true);
           } else {
+            logEvent('google_auth_error', null, null, { status: resp.status });
             showToast('Erro na autenticação Google', 'error');
           }
         } catch (e) {
+          logEvent('google_auth_error', null, null, { error: e.message || String(e) });
           showToast('Erro na autenticação Google', 'error');
         }
       } else {
@@ -2361,10 +2369,12 @@ window.LeucenaApp = (function () {
         method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: pw })
       });
       if (res.ok) {
+        logEvent('password_change_success');
         showToast(LeucenaI18n.t('profile.pwChanged'), 'success');
         pwInput.value = '';
       } else {
         const err = await res.json();
+        logEvent('password_change_error', null, null, { error: err.error });
         showToast(err.error, 'error');
       }
     } catch (e) { showToast('Erro de conexão', 'error'); }
@@ -2538,9 +2548,11 @@ window.LeucenaApp = (function () {
         const err = await res.json();
         errorEl.textContent = err.error || 'Erro ao salvar';
         errorEl.classList.remove('hidden');
+        logEvent('profile_save_error', null, null, { error: err.error, admin: !!adminEditingUser });
         return;
       }
       const wasAdmin = !!adminEditingUser;
+      logEvent('profile_save_success', null, null, { admin: wasAdmin, target: wasAdmin ? adminEditingUser.username : null });
       closeProfileModal();
       if (!wasAdmin) {
         await loadUserProfile();
@@ -3087,6 +3099,7 @@ window.LeucenaApp = (function () {
   }
 
   function clearCellSelection() {
+    if (selectedCellId) logEvent('cell_deselect', selectedCellId);
     _maskBreakdownSeq++;
     if (lockHeartbeatInterval) { clearInterval(lockHeartbeatInterval); lockHeartbeatInterval = null; }
     if (typeof LeucenaMap !== 'undefined') {
@@ -3222,10 +3235,12 @@ window.LeucenaApp = (function () {
         if (err.uncoveredPointIds && err.uncoveredPointIds.length > 0) {
           pendingUncoveredPointIds = err.uncoveredPointIds;
         }
+        logEvent('cell_unlock_error', cellId, null, { error: err.error, status: res.status, uncoveredPoints: (err.uncoveredPointIds || []).length });
         return;
       }
       const data = await res.json();
       const finalStatus = data.status || status;
+      logEvent('cell_unlock', cellId, null, { status: finalStatus, maskCount: data.maskCount || 0 });
       closeUnlockModal();
 
       if (selectedCellData) {
@@ -3277,6 +3292,7 @@ window.LeucenaApp = (function () {
       showToast(msg, 'success', 6000);
     } catch (e) {
       showToast(LeucenaI18n.t('toast.unlockFail'), 'error');
+      logEvent('cell_unlock_error', cellId, null, { error: e.message || String(e) });
     }
   }
 
@@ -3293,6 +3309,7 @@ window.LeucenaApp = (function () {
       if (!res.ok) {
         const err = await res.json();
         showToast(err.error, 'error');
+        logEvent('cell_lock_error', cellId, null, { error: err.error, status: res.status });
         return;
       }
       const result = await res.json();
@@ -3331,6 +3348,7 @@ window.LeucenaApp = (function () {
       }, 2 * 60 * 1000);
     } catch (e) {
       showToast(LeucenaI18n.t('toast.lockFail'), 'error');
+      logEvent('cell_lock_error', cellId, null, { error: e.message || String(e) });
     }
   }
 
@@ -3980,6 +3998,7 @@ window.LeucenaApp = (function () {
             method: 'PUT', headers: authHeaders(), body: JSON.stringify({ role: newRole })
           });
           if (r.ok) {
+            logEvent('admin_role_change', null, null, { target: user.username, newRole: newRole });
             showToast(t('admin.roleUpdated'), 'success');
             closeModal();
             openAdminUsersModal();
@@ -4380,6 +4399,7 @@ window.LeucenaApp = (function () {
               return;
             }
 
+            logEvent('geojson_import', null, null, { imported: data.imported, duplicates: data.duplicates, skipped: data.skipped, total: count });
             if (data.imported > 0) {
               showToast(t('admin.importSuccess', data.imported), 'success', 6000);
             }
@@ -4394,6 +4414,7 @@ window.LeucenaApp = (function () {
             }
 
           } catch (e) {
+            logEvent('geojson_import_error', null, null, { error: e.message || String(e) });
             showToast('Erro ao ler arquivo', 'error');
           }
         });
@@ -4430,6 +4451,7 @@ window.LeucenaApp = (function () {
                 const result = await res.json();
                 modal.classList.add('hidden');
                 if (res.ok && result.removed > 0) {
+                  logEvent('admin_dedup', null, null, { removed: result.removed });
                   showToast(t('admin.dedupSuccess', result.removed), 'success', 10000);
                   showDedupUndoToast(result.removed);
                 } else if (res.ok && result.removed === 0) {
@@ -4538,6 +4560,7 @@ window.LeucenaApp = (function () {
             return;
           }
           document.getElementById('admin-create-user').classList.add('hidden');
+          logEvent('admin_create_user', null, null, { username: u });
           showToast(t('admin.createUserSuccess', u), 'success');
           openAdminUsersModal();
         } catch (err) {
@@ -4992,7 +5015,7 @@ window.LeucenaApp = (function () {
           const r = await fetch(`/api/admin/users/${user.id}/password`, {
             method: 'PUT', headers: authHeaders(), body: JSON.stringify({ password: newPw })
           });
-          if (r.ok) { showToast(t('admin.passwordChanged'), 'success'); }
+          if (r.ok) { logEvent('admin_password_change', null, null, { target: user.username }); showToast(t('admin.passwordChanged'), 'success'); }
           else { const err = await r.json(); showToast(err.error, 'error'); }
             modal.classList.add('hidden');
             confirmBtn.removeEventListener('click', handler);
@@ -5061,6 +5084,7 @@ window.LeucenaApp = (function () {
                 method: 'PUT', headers: authHeaders()
             });
             if (r.ok) {
+                logEvent('admin_deactivate', null, null, { target: user.username });
                 showToast(t('admin.userDeactivated'), 'success');
                 openAdminUsersModal();
             } else { const err = await r.json(); showToast(err.error, 'error'); }
@@ -5076,6 +5100,7 @@ window.LeucenaApp = (function () {
                 method: 'PUT', headers: authHeaders()
               });
               if (r.ok) {
+                logEvent('admin_reactivate', null, null, { target: user.username });
                 showToast(t('admin.userReactivated'), 'success');
                 openAdminUsersModal();
               } else { const err = await r.json(); showToast(err.error, 'error'); }
@@ -5183,12 +5208,12 @@ window.LeucenaApp = (function () {
         headers: authHeaders(),
         body: JSON.stringify({ lat, lng })
       });
-      if (!res.ok) { const err = await res.json(); showToast(err.error, 'error'); return; }
+      if (!res.ok) { const err = await res.json(); logEvent('point_add_error', selectedCellId, null, { lat, lng, error: err.error, status: res.status }); showToast(err.error, 'error'); return; }
       const pt = await res.json();
       insertionHistory.push(pt.id);
       logEvent('point_added', selectedCellId, pt.id, { lat, lng });
       showToast(LeucenaI18n.t('toast.pointAdded', pt.fid), 'success');
-    } catch (err) { showToast(LeucenaI18n.t('toast.addFail'), 'error'); }
+    } catch (err) { logEvent('point_add_error', selectedCellId, null, { lat, lng, error: err.message || String(err) }); showToast(LeucenaI18n.t('toast.addFail'), 'error'); }
   }
 
   async function handleDeletionClick(latLng) {
@@ -5209,6 +5234,7 @@ window.LeucenaApp = (function () {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        logEvent('point_delete_error', selectedCellId, nearest.id, { fid: pointData.fid, status: res.status, error: err.error });
         if (res.status === 403) {
           showToast(LeucenaI18n.t('toast.cannotDeleteOther'), 'warning');
         } else {
@@ -5221,6 +5247,7 @@ window.LeucenaApp = (function () {
       logEvent('point_deleted', selectedCellId, nearest.id, { fid: pointData.fid });
       showToast(LeucenaI18n.t('toast.pointDeleted', pointData.fid), 'info');
     } catch (err) {
+      logEvent('point_delete_error', selectedCellId, nearest.id, { fid: pointData.fid, error: err.message || String(err) });
       showToast(LeucenaI18n.t('toast.deleteFail'), 'error');
     }
   }
@@ -5334,6 +5361,7 @@ window.LeucenaApp = (function () {
   }
 
   async function openInboxModal() {
+    logEvent('inbox_open');
     const t = LeucenaI18n.t;
     const modal = document.getElementById('inbox-modal');
     const list = document.getElementById('inbox-list');
@@ -5596,6 +5624,7 @@ window.LeucenaApp = (function () {
         body: JSON.stringify({ action, ids })
       });
       if (r.ok) {
+        logEvent('inbox_batch', null, null, { action: action, count: ids.length });
         const msg = action === 'delete' ? t('inbox.batchDeleteSuccess', ids.length)
                   : action === 'mark_read' ? t('inbox.batchReadSuccess')
                   : t('inbox.batchUnreadSuccess');
@@ -5801,6 +5830,7 @@ window.LeucenaApp = (function () {
   let _composeReplyTo = null;
 
   async function openComposeModal(mode, replyMsg) {
+    logEvent('inbox_compose_open', null, null, { mode: mode || 'admin', reply: !!replyMsg });
     const t = LeucenaI18n.t;
     _composeMode = mode || (isAdminUser() ? 'admin' : 'user');
     _composeReplyTo = replyMsg || null;
@@ -6013,8 +6043,10 @@ window.LeucenaApp = (function () {
           if (r.ok) ok++; else fail++;
         }
         closeComposeModal();
+        logEvent('inbox_batch_send', null, null, { ok: ok, fail: fail, total: _batchTargetUsernames.length });
         showToast(t('inbox.sentSuccess') + ` (${ok}/${_batchTargetUsernames.length})`, 'success');
       } catch (err) {
+        logEvent('inbox_batch_send_error', null, null, { error: err.message || String(err), total: _batchTargetUsernames.length });
         errEl.textContent = t('inbox.sentFail');
         errEl.classList.remove('hidden');
       } finally { btn.disabled = false; }
@@ -6055,10 +6087,12 @@ window.LeucenaApp = (function () {
       if (r.ok) {
         closeComposeModal();
         showToast(t('inbox.sentSuccess'), 'success');
+        logEvent('inbox_send', null, null, { mode: _composeMode, target: payload.target || null });
       } else {
         const j = await r.json();
         errEl.textContent = j.error || t('inbox.sentFail');
         errEl.classList.remove('hidden');
+        logEvent('inbox_send_error', null, null, { mode: _composeMode, error: j.error, status: r.status });
       }
     } catch (err) {
       errEl.textContent = t('inbox.sentFail');

@@ -7,12 +7,14 @@ window.LeucenaCollab = (function () {
 
   function _handleBuildId(id) {
     if (_knownBuildId && _knownBuildId !== id) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('new_version_detected', null, null, { oldBuild: _knownBuildId, newBuild: id });
       _forceUpdateReload();
     }
     _knownBuildId = id;
   }
 
   function _forceUpdateReload() {
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('version_reload', null, null, { oldBuild: _knownBuildId });
     _saveMapStateForReload();
     _autoUnlockBeforeReload();
 
@@ -84,9 +86,15 @@ window.LeucenaCollab = (function () {
 
     socket.on('connect', () => {
       socket.emit('user:join', { username });
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('socket_connect');
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('socket_disconnect', null, null, { reason: reason });
+    });
+
+    socket.on('connect_error', (err) => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('socket_error', null, null, { error: err.message || String(err) });
     });
 
     socket.on('app:buildId', _handleBuildId);

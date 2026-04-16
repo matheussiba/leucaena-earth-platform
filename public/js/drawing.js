@@ -998,6 +998,9 @@ window.LeucenaDrawing = (function () {
   }
 
   function startDrawing() {
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('draw_start', LeucenaApp.getSelectedCellId());
+    }
     cleanupManualDraw();
     showDrawOverlay();
     const map = LeucenaMap.getMap();
@@ -1145,6 +1148,9 @@ window.LeucenaDrawing = (function () {
     const { vertices } = manualDrawState;
 
     if (vertices.length < 3) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('draw_cancel', LeucenaApp.getSelectedCellId(), null, { vertices: vertices.length });
+      }
       cleanupManualDraw();
       if (vertices.length > 0) {
         LeucenaApp.showToast(LeucenaI18n.t('toast.min3Vertices'), 'warning');
@@ -1177,6 +1183,9 @@ window.LeucenaDrawing = (function () {
       if (!res.ok) {
         const err = await res.json();
         LeucenaApp.showToast(err.error, 'error');
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('polygon_create_error', cellId, null, { error: err.error, status: res.status });
+        }
         if (activeMode === 'draw' && !_suppressDrawRestart) startDrawing();
         return;
       }
@@ -1186,8 +1195,14 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaved'), 'success');
       if (typeof LeucenaApp.onPolygonSaved === 'function') LeucenaApp.onPolygonSaved(result.area_ha || 0, result.cell_summary);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_create', cellId, result.id, { vertices: coordinates.length - 1, area_ha: result.area_ha || 0 });
+      }
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polySaveFail'), 'error');
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_create_error', cellId, null, { error: e.message || String(e), vertices: coordinates.length - 1 });
+      }
     }
 
     if (activeMode === 'draw' && !_suppressDrawRestart) startDrawing();
@@ -1438,15 +1453,22 @@ window.LeucenaDrawing = (function () {
   async function savePolygonGeometry(id, gmapsPoly) {
     const coordinates = pathsToGeoJSONCoords(gmapsPoly);
     const geometry = { type: 'Polygon', coordinates: coordinates };
+    const entry = drawnPolygons[id];
 
     try {
-      await fetch(`/api/polygons/${id}`, {
+      const res = await fetch(`/api/polygons/${id}`, {
         method: 'PUT',
         headers: LeucenaApp.authHeaders(),
         body: JSON.stringify({ geometry })
       });
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_edit_save', entry ? entry.data.grid_cell_id : null, id, { rings: coordinates.length, ok: res.ok });
+      }
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_edit_save_error', entry ? entry.data.grid_cell_id : null, id, { error: e.message || String(e) });
+      }
     }
   }
 
@@ -1540,8 +1562,14 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.updateFilterCounts) LeucenaMap.updateFilterCounts();
       if (typeof LeucenaApp.onPolygonDeleted === 'function') LeucenaApp.onPolygonDeleted(entry.data.area_ha || 0, delBody.cell_summary);
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleted'), 'success');
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_delete', cellId, id, { created_by: backup.created_by });
+      }
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleteFail'), 'error');
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('polygon_delete_error', cellId, id, { error: e.message || String(e) });
+      }
     }
     _syncToolbarExtras();
   }
