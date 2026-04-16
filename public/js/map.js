@@ -638,32 +638,18 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   /**
-   * Após fitBounds o mapa anima e as camadas Data podem renderizar borradas até o zoom/tiles estabilizarem.
-   * Usado no carregamento inicial (loadGrid) e ao trocar de região (loadStateGrid).
+   * Grid blur fix: detach the Data layer, wait a frame, then re-attach.
+   * Synchronous setMap(null)+setMap(map) gets optimised away by the SDK;
+   * splitting across requestAnimationFrame forces a full re-rasterise.
    */
-  function scheduleCrispGridRefresh(ufLoaded) {
-    function refreshAfterFit() {
-      if (_currentState !== ufLoaded) return;
-      if (gridLayer) {
-        gridLayer.setMap(null);
-        gridLayer.setMap(map);
-        gridLayer.setStyle(gridStyleCallback);
-      }
-      refreshPointVisibility();
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
-        LeucenaDrawing.refreshPolyVisibility();
-      }
-      updateAreaLabelsForZoom();
-    }
-    google.maps.event.addListenerOnce(map, 'tilesloaded', refreshAfterFit);
-    setTimeout(function () {
-      if (_currentState !== ufLoaded) return;
-      if (gridLayer) {
-        gridLayer.setMap(null);
-        gridLayer.setMap(map);
-        gridLayer.setStyle(gridStyleCallback);
-      }
-    }, 600);
+  function _forceGridRepaint() {
+    if (!gridLayer) return;
+    gridLayer.setMap(null);
+    requestAnimationFrame(function () {
+      if (!gridLayer) return;
+      gridLayer.setMap(map);
+      gridLayer.setStyle(gridStyleCallback);
+    });
   }
 
   function _toggleSidebarForBrazilView(isBrazil) {
@@ -740,7 +726,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         restriction: { latLngBounds: restrictionBounds, strictBounds: false }
       });
       map.fitBounds(gridBounds);
-      google.maps.event.addListenerOnce(map, 'idle', function () {
+      google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
         if (_currentState !== ufInit) return;
         _finalizeStateLoad(fc, ufInit);
       });
@@ -785,27 +771,33 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     map.fitBounds(gridBounds);
 
-    google.maps.event.addListenerOnce(map, 'idle', function () {
+    google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
       if (_currentState !== ufLoaded) return;
       _finalizeStateLoad(fc, ufLoaded);
     });
   }
 
   function _finalizeStateLoad(fc, ufLoaded) {
-    renderGridFeatures(fc);
-    updateFilterCounts();
-    refreshPointVisibility();
-    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
-      LeucenaDrawing.refreshPolyVisibility();
-    }
-    updateAreaLabelsForZoom();
     initialZoom = map.getZoom();
     initialCenter = map.getCenter();
     scheduleAutoLabelsOff();
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
       LeucenaApp.scheduleAutoCollapseLegend();
     }
-    scheduleCrispGridRefresh(ufLoaded);
+    updateFilterCounts();
+
+    renderGridFeatures(fc);
+    refreshPointVisibility();
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+      LeucenaDrawing.refreshPolyVisibility();
+    }
+    updateAreaLabelsForZoom();
+
+    _forceGridRepaint();
+
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('grid_rendered', null, null, { state: ufLoaded, zoom: map.getZoom() });
+    }
   }
 
   function getStyleForCell(props, cellId) {
