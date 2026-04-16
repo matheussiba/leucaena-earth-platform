@@ -22,10 +22,14 @@ window.LeucenaCollab = (function () {
     if (modal) modal.classList.remove('hidden');
 
     var remaining = 3;
-    var cdEl = document.getElementById('update-countdown');
+    var cdEl = document.getElementById('update-countdown-text');
+    function _updateCdText() {
+      if (cdEl) cdEl.textContent = (typeof LeucenaI18n !== 'undefined' ? LeucenaI18n.t('update.reloading', remaining) : 'Recarregando em ' + remaining + 's...');
+    }
+    _updateCdText();
     var cdInterval = setInterval(function () {
       remaining--;
-      if (cdEl) cdEl.textContent = remaining;
+      _updateCdText();
       if (remaining <= 0) {
         clearInterval(cdInterval);
         window.location.reload();

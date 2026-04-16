@@ -93,11 +93,17 @@ window.LeucenaI18n = (function () {
       en: 'You are about to enter point insertion mode. While active, press <strong>L</strong> to add a Leucaena point at the cursor position.',
       es: 'Está a punto de entrar en el modo de inserción de puntos. Mientras esté activo, presione <strong>L</strong> para agregar un punto de Leucaena en la posición del cursor.'
     },
+    'addPts.descCollab': {
+      pt: '<strong>Importante:</strong> Use pontos apenas para <strong>árvores isoladas</strong> de Leucena. Para aglomerados ou áreas com várias Leucenas, use <strong>polígonos</strong> — não é necessário adicionar pontos sobre polígonos já criados.<br><br>Para adicionar um ponto, <strong>clique/toque no mapa</strong> na posição desejada.',
+      en: '<strong>Important:</strong> Use points only for <strong>isolated Leucaena trees</strong>. For clusters or areas with multiple Leucaena, use <strong>polygons</strong> — there is no need to add points on top of existing polygons.<br><br>To add a point, <strong>click/tap on the map</strong> at the desired position.',
+      es: '<strong>Importante:</strong> Use puntos solo para <strong>árboles aislados</strong> de Leucaena. Para agrupaciones o áreas con varias Leucenas, use <strong>polígonos</strong> — no es necesario agregar puntos sobre polígonos ya creados.<br><br>Para agregar un punto, <strong>haga clic/toque en el mapa</strong> en la posición deseada.'
+    },
     'addPts.confirm': { pt: 'Deseja continuar?', en: 'Do you want to continue?', es: '¿Desea continuar?' },
     'addPts.yes': { pt: 'Sim, iniciar inserção de pontos', en: 'Yes, start inserting points', es: 'Sí, comenzar inserción de puntos' },
 
     // ── Insertion/Deletion banners ──
     'banner.insertion': { pt: 'MODO DE INSERÇÃO DE PONTOS: Clique no mapa ou pressione L para adicionar ponto, Ctrl+Z para desfazer', en: 'POINT INSERTION MODE: Click on map or press L to add point, Ctrl+Z to undo', es: 'MODO DE INSERCIÓN DE PUNTOS: Clic en el mapa o presione L para agregar punto, Ctrl+Z para deshacer' },
+    'banner.insertionCollab': { pt: 'INSERÇÃO DE PONTOS: Clique no mapa para adicionar, Ctrl+Z para desfazer', en: 'POINT INSERTION: Click on map to add, Ctrl+Z to undo', es: 'INSERCIÓN DE PUNTOS: Clic en el mapa para agregar, Ctrl+Z para deshacer' },
     'banner.insertionTouch': { pt: 'INSERÇÃO DE PONTOS: Toque no mapa para adicionar', en: 'POINT INSERTION: Tap on map to add', es: 'INSERCIÓN DE PUNTOS: Toque en el mapa para agregar' },
     'update.title': { pt: 'Nova versão disponível', en: 'New version available', es: 'Nueva versión disponible' },
     'update.message': { pt: 'A plataforma foi atualizada. Seu trabalho foi salvo automaticamente.', en: 'The platform has been updated. Your work has been saved automatically.', es: 'La plataforma fue actualizada. Su trabajo fue guardado automáticamente.' },

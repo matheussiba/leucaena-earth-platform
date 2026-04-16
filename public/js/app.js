@@ -3637,7 +3637,13 @@ window.LeucenaApp = (function () {
     const editBadge = document.getElementById('edit-mode-badge');
     const touch = _isTouchDevice();
     if (insertionMode) {
-      bannerText.textContent = LeucenaI18n.t(touch ? 'banner.insertionTouch' : 'banner.insertion');
+      let key;
+      if (touch) {
+        key = 'banner.insertionTouch';
+      } else {
+        key = isTeamOrAbove() ? 'banner.insertion' : 'banner.insertionCollab';
+      }
+      bannerText.textContent = LeucenaI18n.t(key);
       banner.classList.remove('hidden');
     } else if (deletionMode) {
       let key;
@@ -3675,6 +3681,11 @@ window.LeucenaApp = (function () {
   }
 
   function openAddPointsModal() {
+    const descEl = document.querySelector('#addpoints-modal [data-i18n-html="addPts.desc"]');
+    if (descEl) {
+      const key = isTeamOrAbove() ? 'addPts.desc' : 'addPts.descCollab';
+      descEl.innerHTML = LeucenaI18n.t(key);
+    }
     document.getElementById('addpoints-modal').classList.remove('hidden');
   }
 
@@ -5254,7 +5265,7 @@ window.LeucenaApp = (function () {
 
   async function handlePointModeKey(e) {
     if (insertionMode) {
-      if (e.key === 'l' || e.key === 'L') {
+      if ((e.key === 'l' || e.key === 'L') && isTeamOrAbove()) {
         e.preventDefault();
         const coords = LeucenaMap.getLastCoords();
         if (!coords) { showToast(LeucenaI18n.t('toast.moveMouseFirst'), 'warning'); return; }
