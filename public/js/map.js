@@ -774,6 +774,12 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     let fc;
     if (gridCache[cacheKey]) {
       fc = gridCache[cacheKey];
+      // Defer to next frame so the click handler returns immediately even on cache hit.
+      // Equalises timing vs the uncached path; without this the synchronous prepareGridData +
+      // setOptions + fitBounds runs inside the same click event, blocking the compositor for
+      // 200 ms+ and producing visible blur during the camera animation (esp. on hi-DPI).
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      if (_currentState !== cacheKey) return;
     } else {
       const url = `/api/grid?state=${_currentState}`;
       const res = await fetch(url);
@@ -798,6 +804,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
   }
 
+  // Spread the post-fitBounds work over multiple animation frames. Doing it all in the same
+  // frame as the camera 'idle' bunches a 14-25 ms layout (hundreds of dirty objects) with
+  // addGeoJson/setStyle for every cell and the MarkerClusterer render — which on hi-DPI
+  // (DPR > 1) translates to a visibly blurred frame while the compositor catches up.
   function _finalizeStateLoad(fc, ufLoaded) {
     initialZoom = map.getZoom();
     initialCenter = map.getCenter();
@@ -805,22 +815,38 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.scheduleAutoCollapseLegend) {
       LeucenaApp.scheduleAutoCollapseLegend();
     }
-    updateFilterCounts();
 
+    // Frame 1: render grid features and outline only. No DOM work, no clusterer.
     requestAnimationFrame(function () {
       if (_currentState !== ufLoaded) return;
       if (gridLayer && map) gridLayer.setMap(map);
       renderGridFeatures(fc);
       _applyStateOutlineFilter(ufLoaded);
-      refreshPointVisibility();
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
-        LeucenaDrawing.refreshPolyVisibility();
-      }
-      updateAreaLabelsForZoom();
 
-      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('grid_rendered', null, null, { state: ufLoaded, zoom: map.getZoom() });
-      }
+      // Frame 2: sidebar/filter DOM updates. Triggers the big layout, but now decoupled
+      // from grid rendering and from the Maps composite frame.
+      requestAnimationFrame(function () {
+        if (_currentState !== ufLoaded) return;
+        updateFilterCounts();
+
+        // Frame 3: marker clusterer render and area labels.
+        requestAnimationFrame(function () {
+          if (_currentState !== ufLoaded) return;
+          refreshPointVisibility();
+          if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+            LeucenaDrawing.refreshPolyVisibility();
+          }
+          updateAreaLabelsForZoom();
+
+          // Nudge the map so Maps recomposes tiles at the final DPR. Cheap on hi-DPI
+          // displays where the previous frames may have left soft tiles in place.
+          try { map.panBy(0, 0); } catch (e) { /* noop */ }
+
+          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+            LeucenaApp.logEvent('grid_rendered', null, null, { state: ufLoaded, zoom: map.getZoom() });
+          }
+        });
+      });
     });
   }
 
@@ -1664,6 +1690,24 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     if (gridLayer) gridLayer.setStyle(gridStyleCallback);
   }
 
+  // Cached element refs for updateFilterCounts. Avoids the per-call getElementById storm
+  // (was 14+ lookups per frame) and skips setting textContent/style.width when the value
+  // hasn't changed — DOM no-op writes still cost layout invalidation in some Chrome versions.
+  const _filterCountEls = {};
+  function _fcEl(id) {
+    let el = _filterCountEls[id];
+    if (el === undefined) { el = document.getElementById(id); _filterCountEls[id] = el; }
+    return el;
+  }
+  function _fcSetText(id, txt) {
+    const el = _fcEl(id);
+    if (el && el.textContent !== txt) el.textContent = txt;
+  }
+  function _fcSetWidth(id, pctStr) {
+    const el = _fcEl(id);
+    if (el && el.style.width !== pctStr) el.style.width = pctStr;
+  }
+
   function updateFilterCounts() {
     const statusCounts = { not_yet_finished: 0, in_use: 0, mapping: 0, no_points: 0, finished: 0 };
     let gridTotal = 0;
@@ -1671,7 +1715,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       gridTotal++;
       if (statusCounts[props.grid_status] !== undefined) statusCounts[props.grid_status]++;
     }
-    const setText = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = '(' + n + ')'; };
+    const setText = (id, n) => _fcSetText(id, '(' + n + ')');
     setText('count-grid-total', gridTotal);
     setText('count-not_yet_finished', statusCounts.not_yet_finished);
     setText('count-in_use', statusCounts.in_use);
@@ -1685,16 +1729,13 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       const finishedPct = (statusCounts.finished / denom * 100);
       const mappingPct = ((statusCounts.mapping + statusCounts.in_use) / denom * 100);
       const tomapPct = (statusCounts.not_yet_finished / denom * 100);
-      const setW = (id, v) => { const el = document.getElementById(id); if (el) el.style.width = v.toFixed(1) + '%'; };
-      setW('progress-finished', finishedPct);
-      setW('progress-mapping', mappingPct);
-      setW('progress-tomap', tomapPct);
-      const lbl = document.getElementById('progress-pct-label');
-      if (lbl) lbl.textContent = (finishedPct + mappingPct).toFixed(1) + '%';
-      const setPct = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toFixed(1) + '%'; };
-      setPct('progress-finished-pct', finishedPct);
-      setPct('progress-mapping-pct', mappingPct);
-      setPct('progress-tomap-pct', tomapPct);
+      _fcSetWidth('progress-finished', finishedPct.toFixed(1) + '%');
+      _fcSetWidth('progress-mapping', mappingPct.toFixed(1) + '%');
+      _fcSetWidth('progress-tomap', tomapPct.toFixed(1) + '%');
+      _fcSetText('progress-pct-label', (finishedPct + mappingPct).toFixed(1) + '%');
+      _fcSetText('progress-finished-pct', finishedPct.toFixed(1) + '%');
+      _fcSetText('progress-mapping-pct', mappingPct.toFixed(1) + '%');
+      _fcSetText('progress-tomap-pct', tomapPct.toFixed(1) + '%');
     }
 
     const layerCounts = { crowdmapping: 0, inaturalist: 0, gbif: 0, insthorus: 0, specieslink: 0 };
@@ -1708,16 +1749,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (layerCounts[l] !== undefined) layerCounts[l]++;
       if (_isCollaboratorPoint(entry.data)) collabCount++;
     }
-    setText('count-points-total', pointsTotal);
-    setText('count-crowdmapping', layerCounts.crowdmapping);
-    setText('count-inaturalist', layerCounts.inaturalist);
-    setText('count-gbif', layerCounts.gbif);
-    setText('count-insthorus', layerCounts.insthorus);
-    setText('count-specieslink', layerCounts.specieslink);
-    setText('count-collaborators', collabCount);
+    _fcSetText('count-points-total', '(' + pointsTotal + ')');
+    _fcSetText('count-crowdmapping', '(' + layerCounts.crowdmapping + ')');
+    _fcSetText('count-inaturalist', '(' + layerCounts.inaturalist + ')');
+    _fcSetText('count-gbif', '(' + layerCounts.gbif + ')');
+    _fcSetText('count-insthorus', '(' + layerCounts.insthorus + ')');
+    _fcSetText('count-specieslink', '(' + layerCounts.specieslink + ')');
+    _fcSetText('count-collaborators', '(' + collabCount + ')');
 
     const polyCount = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCount) ? LeucenaDrawing.getPolygonCount() : 0;
-    setText('count-polygons-total', polyCount);
+    _fcSetText('count-polygons-total', '(' + polyCount + ')');
 
     const subEl = document.getElementById('mask-subcategories');
     if (subEl && typeof LeucenaApp !== 'undefined') {
@@ -1743,8 +1784,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (conLeg) conLeg.classList.toggle('hidden', !showSubs);
       if (showSubs && typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCounts) {
         const counts = LeucenaDrawing.getPolygonCounts();
-        setText('count-masks-member', counts.member);
-        setText('count-masks-contributor', counts.contributor);
+        _fcSetText('count-masks-member', '(' + counts.member + ')');
+        _fcSetText('count-masks-contributor', '(' + counts.contributor + ')');
       }
     }
   }
