@@ -3556,6 +3556,22 @@ window.LeucenaApp = (function () {
   const insertionHistory = [];
   const deletionHistory = [];
 
+  // If the user has an unfinished polygon, route through the drawing.js safety modal
+  // instead of silently discarding it. The caller passes the work to run after the user
+  // resolves the modal (proceed = cancel draw / finish draw) and an optional onCancel
+  // (user picked "continue drawing") so it can roll back an optimistic UI change.
+  function _guardAbandonDraw(onProceed, onCancel) {
+    if (typeof LeucenaDrawing !== 'undefined'
+        && LeucenaDrawing.isPolygonInProgress
+        && LeucenaDrawing.isPolygonInProgress()
+        && LeucenaDrawing.confirmAbandonDraw) {
+      LeucenaDrawing.confirmAbandonDraw(onProceed, onCancel);
+      return true;
+    }
+    if (typeof onProceed === 'function') onProceed();
+    return false;
+  }
+
   function setupPointModes() {
     const insertCb = document.getElementById('tool-insertion');
     const deleteCb = document.getElementById('tool-deletion');
@@ -3564,7 +3580,7 @@ window.LeucenaApp = (function () {
       if (!isLoggedIn()) { insertCb.checked = false; return; }
       if (insertCb.checked) {
         insertCb.checked = false;
-        openAddPointsModal();
+        _guardAbandonDraw(() => openAddPointsModal());
       } else {
         setInsertionMode(false);
       }
@@ -3572,8 +3588,10 @@ window.LeucenaApp = (function () {
 
     document.getElementById('addpoints-yes').addEventListener('click', () => {
       closeAddPointsModal();
-      setDeletionMode(false);
-      setInsertionMode(true);
+      _guardAbandonDraw(() => {
+        setDeletionMode(false);
+        setInsertionMode(true);
+      });
     });
     document.getElementById('addpoints-cancel').addEventListener('click', () => {
       closeAddPointsModal();
@@ -3585,8 +3603,10 @@ window.LeucenaApp = (function () {
     deleteCb.addEventListener('change', () => {
       if (!isLoggedIn()) { deleteCb.checked = false; return; }
       if (deleteCb.checked) {
-        setInsertionMode(false);
-        setDeletionMode(true);
+        _guardAbandonDraw(
+          () => { setInsertionMode(false); setDeletionMode(true); },
+          () => { deleteCb.checked = false; }
+        );
       } else {
         setDeletionMode(false);
       }
@@ -3604,7 +3624,7 @@ window.LeucenaApp = (function () {
         if (insertionMode) {
           setInsertionMode(false);
         } else {
-          openAddPointsModal();
+          _guardAbandonDraw(() => openAddPointsModal());
         }
       });
     }
@@ -3614,8 +3634,10 @@ window.LeucenaApp = (function () {
         if (deletionMode) {
           setDeletionMode(false);
         } else {
-          setInsertionMode(false);
-          setDeletionMode(true);
+          _guardAbandonDraw(() => {
+            setInsertionMode(false);
+            setDeletionMode(true);
+          });
         }
       });
     }

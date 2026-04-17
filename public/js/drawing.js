@@ -25,8 +25,11 @@ window.LeucenaDrawing = (function () {
   let manualHoleState = null;
   let _areaLabelsVisible = false;
   // Tool flags: _pendingToolSwitch = target mode while safety modal open; _suppressDrawRestart skips draw auto-restart after completeManualDraw when switching tools.
+  // _pendingAfterConfirm holds an external { onProceed, onCancel } pair for callers outside the tool bar
+  // (e.g. entering point-insertion mode) that also need to gate on an unfinished polygon.
   let _editModified = false;
   let _pendingToolSwitch = null;
+  let _pendingAfterConfirm = null;
   let _suppressDrawRestart = false;
   let _pendingDeleteId = null;
   let _lastMouseLatLng = null;
@@ -528,6 +531,22 @@ window.LeucenaDrawing = (function () {
     return activeMode === 'draw' && manualDrawState && manualDrawState.vertices.length > 0;
   }
 
+  // Prompt the "unfinished polygon" safety modal from an external caller (e.g. point-insertion
+  // toggle, sidebar actions). If no polygon is in progress, onProceed() runs immediately.
+  // onCancel (optional) fires when the user picks "continue drawing" so the caller can roll
+  // back its UI (e.g. uncheck a toggle it optimistically turned on).
+  function confirmAbandonDraw(onProceed, onCancel) {
+    if (!isPolygonInProgress()) {
+      if (typeof onProceed === 'function') onProceed();
+      return;
+    }
+    _pendingAfterConfirm = {
+      onProceed: typeof onProceed === 'function' ? onProceed : null,
+      onCancel: typeof onCancel === 'function' ? onCancel : null,
+    };
+    document.getElementById('tool-switch-modal').classList.remove('hidden');
+  }
+
   function requestToolSwitch(targetMode) { // in-progress polygon opens safety modal instead of discarding work
     if (isPolygonInProgress()) {
       _pendingToolSwitch = targetMode;
@@ -576,12 +595,15 @@ window.LeucenaDrawing = (function () {
 
     document.getElementById('tool-switch-cancel-draw').addEventListener('click', () => {
       const target = _pendingToolSwitch;
+      const ext = _pendingAfterConfirm;
       _pendingToolSwitch = null;
+      _pendingAfterConfirm = null;
       document.getElementById('tool-switch-modal').classList.add('hidden');
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('tool_switch_cancel_draw', LeucenaApp.getSelectedCellId(), null, { target });
+        LeucenaApp.logEvent('tool_switch_cancel_draw', LeucenaApp.getSelectedCellId(), null, { target: target || (ext ? 'external' : null) });
       }
       cleanupManualDraw();
+      if (ext) { if (ext.onProceed) ext.onProceed(); return; }
       if (target === 'delete') {
         showDeleteWarningModal();
       } else {
@@ -590,14 +612,17 @@ window.LeucenaDrawing = (function () {
     });
     document.getElementById('tool-switch-finish-draw').addEventListener('click', () => {
       const target = _pendingToolSwitch;
+      const ext = _pendingAfterConfirm;
       _pendingToolSwitch = null;
+      _pendingAfterConfirm = null;
       document.getElementById('tool-switch-modal').classList.add('hidden');
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('tool_switch_finish_draw', LeucenaApp.getSelectedCellId(), null, { target });
+        LeucenaApp.logEvent('tool_switch_finish_draw', LeucenaApp.getSelectedCellId(), null, { target: target || (ext ? 'external' : null) });
       }
       _suppressDrawRestart = true;
       completeManualDraw().then(() => {
         _suppressDrawRestart = false;
+        if (ext) { if (ext.onProceed) ext.onProceed(); return; }
         if (target === 'delete') {
           showDeleteWarningModal();
         } else {
@@ -606,8 +631,11 @@ window.LeucenaDrawing = (function () {
       });
     });
     document.getElementById('tool-switch-continue').addEventListener('click', () => {
+      const ext = _pendingAfterConfirm;
       _pendingToolSwitch = null;
+      _pendingAfterConfirm = null;
       document.getElementById('tool-switch-modal').classList.add('hidden');
+      if (ext && ext.onCancel) ext.onCancel();
     });
 
     document.getElementById('tool-undo').addEventListener('click', () => {
@@ -1769,6 +1797,7 @@ window.LeucenaDrawing = (function () {
     setAreaLabelsVisible,
     refreshPolyVisibility,
     isPolygonInProgress,
+    confirmAbandonDraw,
     updateMouseLatLng(latLng) { _lastMouseLatLng = latLng; },
     isEditModified() { return _editModified; },
     exitEditMode() { if (activeMode === 'edit') { setMode('select'); } }
