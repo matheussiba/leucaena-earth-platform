@@ -2350,6 +2350,24 @@ a.docs-logo-card:hover {
   min-height: 0;
 }
 
+/* Overlay used to hide the native Google Maps blur during camera transitions.
+   Covers #map completely; fades in before fitBounds and fades out only after the
+   destination tiles are loaded. pointer-events stay off so the fade never blocks
+   the user, and the opacity stays at 0 by default so it's fully invisible. */
+#map-transition-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-primary);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 140;
+  transition: opacity 140ms ease-out;
+  will-change: opacity;
+}
+#map-transition-overlay.active {
+  opacity: 1;
+}
+
 .map-crosshair-mode,
 .map-crosshair-mode *,
 .map-crosshair-mode div,

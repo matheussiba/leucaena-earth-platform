@@ -1066,6 +1066,10 @@
           <span class="user-count-badge" id="user-count">0</span>
         </button>
         <div id="map"></div>
+        <!-- Overlay mostrado durante transições de câmara (Brasil ↔ estado) para
+             esconder o blur nativo do Google Maps enquanto os tiles do novo zoom
+             ainda não chegaram. Controlado por LeucenaMap._showMapTransition/_hideMapTransition. -->
+        <div id="map-transition-overlay" aria-hidden="true"></div>
         <!-- Ferramentas de edição flutuantes (só visíveis em modo de edição) -->
         <div id="edit-tools-panel" class="edit-tools-panel hidden">
           <!-- Polígonos -->

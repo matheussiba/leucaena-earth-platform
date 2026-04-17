@@ -671,6 +671,70 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     renderGridFeatures(fc);
   }
 
+  // ── Camera transition overlay ─────────────────────────────────────────────
+  // The Google Maps JS API animates fitBounds/panTo by scaling the currently
+  // loaded tiles toward the target viewport while it fetches the new-zoom tiles.
+  // On hi-DPI displays (DPR >= 2) the intermediate scaled frames look noticeably
+  // blurred, and the blur persists for 100-400 ms after the camera settles
+  // because the compositor renders upscaled placeholders until the new tiles
+  // arrive. Nothing we do on the main thread can remove that — it's inside the
+  // Maps renderer. So we hide the transition behind an opaque overlay that
+  // matches the app background, and only fade it out once tilesloaded fires for
+  // the destination. The user sees: crisp frame -> short fade -> crisp frame.
+  let _transitionFallbackTimer = null;
+  let _transitionTilesloadedListener = null;
+  const TRANSITION_SAFETY_TIMEOUT_MS = 1500;
+
+  function _showMapTransition() {
+    const overlay = document.getElementById('map-transition-overlay');
+    if (!overlay) return;
+    if (_transitionFallbackTimer) {
+      clearTimeout(_transitionFallbackTimer);
+      _transitionFallbackTimer = null;
+    }
+    if (_transitionTilesloadedListener) {
+      google.maps.event.removeListener(_transitionTilesloadedListener);
+      _transitionTilesloadedListener = null;
+    }
+    overlay.classList.add('active');
+  }
+
+  function _hideMapTransition() {
+    if (_transitionFallbackTimer) {
+      clearTimeout(_transitionFallbackTimer);
+      _transitionFallbackTimer = null;
+    }
+    if (_transitionTilesloadedListener) {
+      google.maps.event.removeListener(_transitionTilesloadedListener);
+      _transitionTilesloadedListener = null;
+    }
+    const overlay = document.getElementById('map-transition-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+  }
+
+  // Wait for the destination tiles to be fully loaded before fading out.
+  // tilesloaded may have already fired for the old viewport; to make sure we
+  // react to the *new* one, arm the listener only after the idle callback that
+  // follows fitBounds. A safety timeout guarantees we never leave the overlay
+  // stuck in the active state if tilesloaded doesn't fire (e.g. offline).
+  function _hideMapTransitionWhenTilesReady() {
+    if (!map) { _hideMapTransition(); return; }
+    if (_transitionTilesloadedListener) {
+      google.maps.event.removeListener(_transitionTilesloadedListener);
+      _transitionTilesloadedListener = null;
+    }
+    _transitionTilesloadedListener = google.maps.event.addListenerOnce(map, 'tilesloaded', () => {
+      _transitionTilesloadedListener = null;
+      requestAnimationFrame(() => _hideMapTransition());
+    });
+    if (_transitionFallbackTimer) clearTimeout(_transitionFallbackTimer);
+    _transitionFallbackTimer = setTimeout(() => {
+      _transitionFallbackTimer = null;
+      _hideMapTransition();
+    }, TRANSITION_SAFETY_TIMEOUT_MS);
+  }
+
   function _toggleSidebarForBrazilView(isBrazil) {
     var progress = document.getElementById('mapping-progress');
     var filters = document.getElementById('sidebar-filters');
@@ -701,12 +765,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       restriction: { latLngBounds: restrictionBounds, strictBounds: false }
     });
     if (gridLayer) gridLayer.setMap(map);
+    _showMapTransition();
     map.fitBounds(brBounds);
     _applyStateOutlineFilter(null);
     updateFilterCounts();
     refreshPointVisibility();
     if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) LeucenaDrawing.refreshPolyVisibility();
     _toggleSidebarForBrazilView(true);
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      _hideMapTransitionWhenTilesReady();
+    });
   }
 
   let _brazilIdleListener = null;
@@ -747,6 +815,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         restriction: { latLngBounds: restrictionBounds, strictBounds: false }
       });
       if (gridLayer) gridLayer.setMap(null);
+      _showMapTransition();
       map.fitBounds(gridBounds);
       google.maps.event.addListenerOnce(map, 'idle', function () {
         if (_currentState !== ufInit) return;
@@ -769,6 +838,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       _showBrazilOverview();
       return;
     }
+    // Cover the map immediately: the user may see a few frames of the previous
+    // view (Brasil, or another state) being cleared before fitBounds runs, and
+    // the fetch for uncached states can take 100-300 ms. Hiding everything
+    // behind the overlay from the very first frame keeps the transition clean.
+    _showMapTransition();
     gridLayer.forEach(f => gridLayer.remove(f));
     Object.keys(gridData).forEach(k => delete gridData[k]);
     Object.keys(gridCellBounds).forEach(k => delete gridCellBounds[k]);
@@ -799,6 +873,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     _toggleSidebarForBrazilView(false);
 
     if (gridLayer) gridLayer.setMap(null);
+    _showMapTransition();
     map.fitBounds(gridBounds);
 
     google.maps.event.addListenerOnce(map, 'idle', function () {
@@ -844,6 +919,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
           // Nudge the map so Maps recomposes tiles at the final DPR. Cheap on hi-DPI
           // displays where the previous frames may have left soft tiles in place.
           try { map.panBy(0, 0); } catch (e) { /* noop */ }
+
+          // Only now ask the overlay to fade out — and only after the destination
+          // tiles report loaded. Any blur the Maps compositor shows while tiles
+          // upscale from the old viewport stays hidden behind the overlay.
+          _hideMapTransitionWhenTilesReady();
 
           if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
             LeucenaApp.logEvent('grid_rendered', null, null, { state: ufLoaded, zoom: map.getZoom() });
