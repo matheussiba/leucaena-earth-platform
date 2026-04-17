@@ -545,6 +545,7 @@ window.LeucenaI18n = (function () {
     'toast.moveMouseFirst': { pt: 'Mova o mouse sobre o mapa primeiro', en: 'Move mouse over the map first', es: 'Mueva el mouse sobre el mapa primero' },
     'toast.pointAdded': { pt: 'Ponto #{0} adicionado', en: 'Point #{0} added', es: 'Punto #{0} agregado' },
     'toast.addFail': { pt: 'Falha ao adicionar ponto', en: 'Failed to add point', es: 'Error al agregar punto' },
+    'toast.pointOutsideCell': { pt: 'Só é possível adicionar pontos dentro da célula que você bloqueou para mapear.', en: 'You can only add points inside the cell you locked for mapping.', es: 'Solo puedes añadir puntos dentro de la celda que bloqueaste para mapear.' },
     'toast.nothingToUndo': { pt: 'Nada para desfazer', en: 'Nothing to undo', es: 'Nada para deshacer' },
     'toast.lastPointRemoved': { pt: 'Último ponto removido (desfazer)', en: 'Last point removed (undo)', es: 'Último punto eliminado (deshacer)' },
     'toast.undoFail': { pt: 'Falha ao desfazer ponto', en: 'Failed to undo point', es: 'Error al deshacer punto' },

@@ -4,6 +4,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let gridLayer = null;         // google.maps.Data — single layer replaces per-cell Polygons
   const gridData = {};
   const gridCellBounds = {};
+  const gridCellGeometry = {}; // GeoJSON geometry per cell id (for point-in-cell checks)
   const gridCache = {};         // client-side cache: state key → FeatureCollection
   let _currentState = null;     // loaded state UF (null = all)
   let _statesLayer = null;      // google.maps.Data — state boundary outlines (non-interactive)
@@ -596,6 +597,35 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return [geometry.coordinates[0]];
   }
 
+  function pointInPolygonRing(lng, lat, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0];
+      const yi = ring[i][1];
+      const xj = ring[j][0];
+      const yj = ring[j][1];
+      if (((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  function isLngLatInsideGeometry(lng, lat, geometry) {
+    if (!geometry) return false;
+    const rings = getGeometryRings(geometry);
+    return rings.some(ring => pointInPolygonRing(lng, lat, ring));
+  }
+
+  function isLatLngInsideMappingCell(cellId, latLng) {
+    if (cellId == null || latLng == null) return false;
+    const geom = gridCellGeometry[String(cellId)];
+    if (!geom) return false;
+    const lat = typeof latLng.lat === 'function' ? latLng.lat() : latLng.lat;
+    const lng = typeof latLng.lng === 'function' ? latLng.lng() : latLng.lng;
+    return isLngLatInsideGeometry(lng, lat, geom);
+  }
+
   function bufferBounds(bounds, factor) {
     const ne = bounds.getNorthEast();
     const sw = bounds.getSouthWest();
@@ -614,6 +644,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     for (const feature of fc.features) {
       const props = feature.properties;
       gridData[props.id] = props;
+      gridCellGeometry[String(props.id)] = feature.geometry;
       const rings = getGeometryRings(feature.geometry);
       const cellBnds = new google.maps.LatLngBounds();
       for (const ring of rings) {
@@ -652,6 +683,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     gridLayer.forEach(f => gridLayer.remove(f));
     Object.keys(gridData).forEach(k => delete gridData[k]);
     Object.keys(gridCellBounds).forEach(k => delete gridCellBounds[k]);
+    Object.keys(gridCellGeometry).forEach(k => delete gridCellGeometry[k]);
     gridBounds = null;
     initialZoom = null;
     initialCenter = null;
@@ -665,6 +697,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       minZoom: null,
       restriction: { latLngBounds: restrictionBounds, strictBounds: false }
     });
+    if (gridLayer) gridLayer.setMap(map);
     map.fitBounds(brBounds);
     _applyStateOutlineFilter(null);
     updateFilterCounts();
@@ -710,6 +743,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       map.setOptions({
         restriction: { latLngBounds: restrictionBounds, strictBounds: false }
       });
+      if (gridLayer) gridLayer.setMap(null);
       map.fitBounds(gridBounds);
       google.maps.event.addListenerOnce(map, 'idle', function () {
         if (_currentState !== ufInit) return;
@@ -735,6 +769,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     gridLayer.forEach(f => gridLayer.remove(f));
     Object.keys(gridData).forEach(k => delete gridData[k]);
     Object.keys(gridCellBounds).forEach(k => delete gridCellBounds[k]);
+    Object.keys(gridCellGeometry).forEach(k => delete gridCellGeometry[k]);
     const cacheKey = _currentState;
     let fc;
     if (gridCache[cacheKey]) {
@@ -754,6 +789,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     _applyStateOutlineFilter(_currentState);
     _toggleSidebarForBrazilView(false);
 
+    if (gridLayer) gridLayer.setMap(null);
     map.fitBounds(gridBounds);
 
     google.maps.event.addListenerOnce(map, 'idle', function () {
@@ -773,6 +809,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     requestAnimationFrame(function () {
       if (_currentState !== ufLoaded) return;
+      if (gridLayer && map) gridLayer.setMap(map);
       renderGridFeatures(fc);
       _applyStateOutlineFilter(ufLoaded);
       refreshPointVisibility();
@@ -828,7 +865,6 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     if (!props || !shouldShowCell(props)) return { visible: false };
     const style = getStyleForCell(props, cellId);
     if (_gridsHollow) style.fillOpacity = 0;
-    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isPointModeActive && LeucenaApp.isPointModeActive()) style.fillOpacity = 0;
     style.clickable = _gridClickable;
     style.cursor = _gridClickable ? 'pointer' : '';
     return style;
@@ -2030,6 +2066,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     zoomToInitialView,
     loadStateGrid,
     findCellAtPosition,
+    isLatLngInsideMappingCell,
     setStateStats,
     refreshLabelToggleTitleForLang,
     updateFilterCounts,

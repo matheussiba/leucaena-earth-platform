@@ -1851,6 +1851,7 @@ window.LeucenaApp = (function () {
     if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyLocationState) {
       LeucenaCollab.notifyLocationState(uf);
     }
+    _clearSelectionForRegionNav();
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(uf);
     }
@@ -1867,6 +1868,7 @@ window.LeucenaApp = (function () {
     if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.notifyLocationState) {
       LeucenaCollab.notifyLocationState('BR');
     }
+    _clearSelectionForRegionNav();
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.loadStateGrid) {
       LeucenaMap.loadStateGrid(null);
     }
@@ -3128,6 +3130,12 @@ window.LeucenaApp = (function () {
     clearCellSelection();
   }
 
+  /** Drop map/UI cell selection when changing Brasil ↔ UF, unless this user still holds the edit lock. */
+  function _clearSelectionForRegionNav() {
+    if (selectedCellData && selectedCellData.locked_by === username) return;
+    clearCellSelection();
+  }
+
   function clearCellSelection() {
     if (selectedCellId) logEvent('cell_deselect', selectedCellId);
     _maskBreakdownSeq++;
@@ -3709,7 +3717,7 @@ window.LeucenaApp = (function () {
   function updatePointModeVisuals() {
     const anyActive = insertionMode || deletionMode;
     if (typeof LeucenaMap !== 'undefined') {
-      LeucenaMap.setGridsHollow(anyActive);
+      LeucenaMap.setGridsHollow(false);
       LeucenaMap.setMapBorder(anyActive);
     }
     const cellLocked = selectedCellData && selectedCellData.locked_by === username;
@@ -5353,6 +5361,11 @@ window.LeucenaApp = (function () {
     }
     const lat = latLng.lat();
     const lng = latLng.lng();
+    if (!LeucenaMap.isLatLngInsideMappingCell || !LeucenaMap.isLatLngInsideMappingCell(selectedCellId, latLng)) {
+      logEvent('point_add_outside_cell', selectedCellId, null, { lat, lng });
+      showToast(LeucenaI18n.t('toast.pointOutsideCell'), 'warning');
+      return;
+    }
     try {
       const res = await fetch('/api/points', {
         method: 'POST',
@@ -5416,6 +5429,11 @@ window.LeucenaApp = (function () {
         const parts = coords.split(',').map(s => parseFloat(s.trim()));
         if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return;
         const [lat, lng] = parts;
+        if (!LeucenaMap.isLatLngInsideMappingCell || !LeucenaMap.isLatLngInsideMappingCell(selectedCellId, { lat, lng })) {
+          logEvent('point_add_outside_cell', selectedCellId, null, { lat, lng, via: 'hotkey_l' });
+          showToast(LeucenaI18n.t('toast.pointOutsideCell'), 'warning');
+          return;
+        }
 
         try {
           const res = await fetch('/api/points', {

@@ -782,6 +782,13 @@ function findGridForPoint(lng, lat) {
   return bestCell;
 }
 
+function isLngLatInsideCellGeometry(geom, lng, lat) {
+  const rings = geom.type === 'MultiPolygon'
+    ? geom.coordinates.map(p => p[0])
+    : [geom.coordinates[0]];
+  return rings.some(ring => pointInPolygon([lng, lat], ring));
+}
+
 // Block "finished" unless every status=0 point in the cell lies in a mask exterior or within ~5.5m of the outer ring.
 function validateFinished(cellId) {
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [cellId]);
@@ -3132,8 +3139,25 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
   if (lat == null || lng == null) {
     return res.status(400).json({ error: 'lat e lng obrigatórios' });
   }
+  const nLat = Number(lat);
+  const nLng = Number(lng);
+  if (!Number.isFinite(nLat) || !Number.isFinite(nLng)) {
+    return res.status(400).json({ error: 'lat e lng inválidos' });
+  }
 
-  const geometry = { type: 'Point', coordinates: [lng, lat] };
+  const lockedCell = queryOne('SELECT id, geometry FROM grid_cells WHERE locked_by = ? LIMIT 1', [username]);
+  if (lockedCell) {
+    try {
+      const cellGeom = JSON.parse(lockedCell.geometry);
+      if (!isLngLatInsideCellGeometry(cellGeom, nLng, nLat)) {
+        return res.status(400).json({ error: 'Ponto fora da célula em edição' });
+      }
+    } catch (e) {
+      return res.status(500).json({ error: 'Erro ao validar célula' });
+    }
+  }
+
+  const geometry = { type: 'Point', coordinates: [nLng, nLat] };
   const pointStatus = req.body.status != null ? req.body.status : (req.body.not_valid != null ? (req.body.not_valid ? 1 : 0) : 0);
   const pointLayer = req.body.layer || 'crowdmapping';
 
@@ -3149,7 +3173,7 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
 
   const inserted = queryOne('SELECT * FROM occurrence_points WHERE fid = ?', [newFid]);
 
-  const gridCell = findGridForPoint(lng, lat);
+  const gridCell = findGridForPoint(nLng, nLat);
   let gridStatusChanged = null;
   if (gridCell && gridCell.grid_status === 'no_points') {
     const now = new Date().toISOString();
