@@ -683,7 +683,13 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   // the destination. The user sees: crisp frame -> short fade -> crisp frame.
   let _transitionFallbackTimer = null;
   let _transitionTilesloadedListener = null;
-  const TRANSITION_SAFETY_TIMEOUT_MS = 1500;
+  // Hard cap on how long the overlay can stay visible. The point of the overlay
+  // is to mask the Maps compositor's blur during the brief window where it
+  // upscales old tiles, not to gate the entire load. Keep this short so a slow
+  // network never leaves the user staring at the spinner: even if tiles aren't
+  // fully loaded yet, revealing the map mid-load reads as "still loading"
+  // rather than "site broken".
+  const TRANSITION_SAFETY_TIMEOUT_MS = 700;
 
   function _showMapTransition() {
     const overlay = document.getElementById('map-transition-overlay');

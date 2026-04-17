@@ -2350,22 +2350,45 @@ a.docs-logo-card:hover {
   min-height: 0;
 }
 
-/* Overlay used to hide the native Google Maps blur during camera transitions.
-   Covers #map completely; fades in before fitBounds and fades out only after the
-   destination tiles are loaded. pointer-events stay off so the fade never blocks
-   the user, and the opacity stays at 0 by default so it's fully invisible. */
+/* Overlay used to mask the native Google Maps blur during camera transitions.
+   - Semi-transparent (not a solid black slab): the user keeps seeing the map
+     under it so the transition never feels like the page crashed.
+   - Soft backdrop blur smooths out the Maps compositor's intermediate
+     upscaled tiles into a uniform haze that reads as "settling" instead of
+     "broken".
+   - Centered spinner communicates "loading" so even if a slow network keeps
+     the overlay on screen for a few hundred ms it still looks intentional.
+   pointer-events stay off so the fade never blocks the user, and opacity
+   stays at 0 by default so it's fully invisible outside of transitions. */
 #map-transition-overlay {
   position: absolute;
   inset: 0;
-  background: var(--bg-primary);
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   opacity: 0;
   pointer-events: none;
   z-index: 140;
-  transition: opacity 140ms ease-out;
+  transition: opacity 120ms ease-out;
   will-change: opacity;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #map-transition-overlay.active {
   opacity: 1;
+}
+#map-transition-overlay::before {
+  content: '';
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.18);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  animation: mapTransitionSpin 0.7s linear infinite;
+}
+@keyframes mapTransitionSpin {
+  to { transform: rotate(360deg); }
 }
 
 .map-crosshair-mode,
