@@ -637,41 +637,6 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     renderGridFeatures(fc);
   }
 
-  var _repaintTimer = null;
-
-  /**
-   * Grid blur fix: detach the Data layer, wait for the map to fully settle,
-   * then re-attach. A delayed second pass ensures any residual fractional-zoom
-   * rasterisation from the fitBounds animation is overwritten with a crisp
-   * render at the final integer zoom level.
-   */
-  function _forceGridRepaint() {
-    if (!gridLayer) return;
-    if (_repaintTimer) { clearTimeout(_repaintTimer); _repaintTimer = null; }
-
-    gridLayer.setMap(null);
-    requestAnimationFrame(function () {
-      if (!gridLayer) return;
-      gridLayer.setMap(map);
-      gridLayer.setStyle(gridStyleCallback);
-
-      _repaintTimer = setTimeout(function () {
-        _repaintTimer = null;
-        if (!gridLayer) return;
-        gridLayer.setMap(null);
-        requestAnimationFrame(function () {
-          if (!gridLayer) return;
-          gridLayer.setMap(map);
-          gridLayer.setStyle(gridStyleCallback);
-          google.maps.event.addListenerOnce(map, 'idle', function () {
-            if (!gridLayer) return;
-            gridLayer.setStyle(gridStyleCallback);
-          });
-        });
-      }, 600);
-    });
-  }
-
   function _toggleSidebarForBrazilView(isBrazil) {
     var progress = document.getElementById('mapping-progress');
     var filters = document.getElementById('sidebar-filters');
@@ -746,7 +711,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         restriction: { latLngBounds: restrictionBounds, strictBounds: false }
       });
       map.fitBounds(gridBounds);
-      google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
+      google.maps.event.addListenerOnce(map, 'idle', function () {
         if (_currentState !== ufInit) return;
         _finalizeStateLoad(fc, ufInit);
       });
@@ -791,7 +756,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
     map.fitBounds(gridBounds);
 
-    google.maps.event.addListenerOnce(map, 'tilesloaded', function () {
+    google.maps.event.addListenerOnce(map, 'idle', function () {
       if (_currentState !== ufLoaded) return;
       _finalizeStateLoad(fc, ufLoaded);
     });
@@ -806,18 +771,20 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     }
     updateFilterCounts();
 
-    renderGridFeatures(fc);
-    refreshPointVisibility();
-    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
-      LeucenaDrawing.refreshPolyVisibility();
-    }
-    updateAreaLabelsForZoom();
+    requestAnimationFrame(function () {
+      if (_currentState !== ufLoaded) return;
+      renderGridFeatures(fc);
+      _applyStateOutlineFilter(ufLoaded);
+      refreshPointVisibility();
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+        LeucenaDrawing.refreshPolyVisibility();
+      }
+      updateAreaLabelsForZoom();
 
-    _forceGridRepaint();
-
-    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-      LeucenaApp.logEvent('grid_rendered', null, null, { state: ufLoaded, zoom: map.getZoom() });
-    }
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('grid_rendered', null, null, { state: ufLoaded, zoom: map.getZoom() });
+      }
+    });
   }
 
   function getStyleForCell(props, cellId) {

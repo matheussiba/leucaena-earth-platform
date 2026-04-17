@@ -90,6 +90,10 @@ window.LeucenaCollab = (function () {
 
     socket.on('connect', () => {
       socket.emit('user:join', { username });
+      if (typeof LeucenaMap !== 'undefined' && LeucenaMap.getCurrentState) {
+        var currentUf = LeucenaMap.getCurrentState();
+        if (currentUf) socket.emit('user:locationState', { state: currentUf });
+      }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('socket_connect');
     });
 

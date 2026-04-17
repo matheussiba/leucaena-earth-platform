@@ -3365,9 +3365,11 @@ io.on('connection', (socket) => {
 
   socket.on('user:join', (data) => {
     const joinUsername = socket.username || data.username;
+    const dbRow = queryOne('SELECT last_location_state FROM users WHERE username = ?', [joinUsername]);
     connectedUsers.set(socket.id, {
       username: joinUsername,
       editingCell: null,
+      locationState: (dbRow && dbRow.last_location_state) || null,
       joinedAt: new Date().toISOString()
     });
     runSQL('UPDATE users SET last_active = ? WHERE username = ?', [new Date().toISOString(), joinUsername]);
