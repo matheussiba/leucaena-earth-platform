@@ -2909,20 +2909,33 @@ window.LeucenaApp = (function () {
     _restoreReloadState();
   }
 
+  // Restore the user's last camera/UF after the map mounts. We read a per-user key first so
+  // distinct accounts on the same browser don't see each other's view, falling back to the
+  // legacy anonymous key. The entry is *not* deleted — collaboration.js keeps it fresh on
+  // every idle, so a normal F5 (no deploy) also restores transparently.
   function _restoreReloadState() {
     try {
-      var raw = localStorage.getItem('leucena_reload_state');
-      if (!raw) return;
-      localStorage.removeItem('leucena_reload_state');
+      var u = localStorage.getItem('leucena_username');
+      var keys = u ? ['leucena_reload_state_' + u, 'leucena_reload_state'] : ['leucena_reload_state'];
+      var raw = null;
+      for (var i = 0; i < keys.length && !raw; i++) raw = localStorage.getItem(keys[i]);
+      if (!raw) {
+        if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.installContinuousStateSaver) {
+          LeucenaCollab.installContinuousStateSaver();
+        }
+        return;
+      }
       var st = JSON.parse(raw);
       var gmap = LeucenaMap.getMap();
       if (!gmap) return;
+      // After the very first 'idle' (post fitBounds for the UF), re-apply the saved camera.
+      // Stays a single-frame correction, so it reads as a continuation of the page load
+      // rather than a separate animation.
       google.maps.event.addListenerOnce(gmap, 'idle', function () {
-        if (st.lat != null && st.lng != null) {
-          gmap.setCenter({ lat: st.lat, lng: st.lng });
-        }
-        if (st.zoom != null) {
-          gmap.setZoom(st.zoom);
+        if (st.lat != null && st.lng != null) gmap.setCenter({ lat: st.lat, lng: st.lng });
+        if (st.zoom != null) gmap.setZoom(st.zoom);
+        if (typeof LeucenaCollab !== 'undefined' && LeucenaCollab.installContinuousStateSaver) {
+          LeucenaCollab.installContinuousStateSaver();
         }
       });
     } catch (e) { /* best effort */ }

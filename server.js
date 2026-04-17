@@ -522,9 +522,48 @@ function logActivity(username, action, cellId, objectId, details, role) {
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Persistence helpers. The in-memory `sessions` Map stays the hot path; the SQLite table is
+// only the durable mirror so tokens survive a redeploy/restart. All writes are best-effort —
+// if the DB write throws we still keep the in-memory entry so the live request succeeds.
+function _persistSession(token, username, createdAt, expiresAt) {
+  try {
+    runSQL(
+      'INSERT OR REPLACE INTO sessions (token, username, created_at, expires_at) VALUES (?, ?, ?, ?)',
+      [token, username, createdAt, expiresAt]
+    );
+  } catch (e) { /* best effort */ }
+}
+function deleteSession(token) {
+  sessions.delete(token);
+  try { runSQL('DELETE FROM sessions WHERE token = ?', [token]); } catch (e) { /* best effort */ }
+}
+function deleteSessionsForUser(username) {
+  for (const [token, session] of sessions.entries()) {
+    const u = typeof session === 'string' ? session : session && session.username;
+    if (u === username) sessions.delete(token);
+  }
+  try { runSQL('DELETE FROM sessions WHERE username = ?', [username]); } catch (e) { /* best effort */ }
+}
+
+// Rehydrate the in-memory map from disk on boot. Called from start() after initDB().
+function _hydrateSessionsFromDisk() {
+  try {
+    const now = Date.now();
+    runSQL('DELETE FROM sessions WHERE expires_at < ?', [now]);
+    const rows = queryAll('SELECT token, username, created_at, expires_at FROM sessions');
+    for (const r of rows) {
+      sessions.set(r.token, { username: r.username, createdAt: r.created_at, expiresAt: r.expires_at });
+    }
+    if (rows.length > 0) console.log(`  Restored ${rows.length} active session(s) from disk`);
+  } catch (e) { console.error('Session hydration failed:', e.message); }
+}
+
 function createSession(username) {
   const token = uuidv4();
-  sessions.set(token, { username, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS });
+  const now = Date.now();
+  const expiresAt = now + SESSION_TTL_MS;
+  sessions.set(token, { username, createdAt: now, expiresAt });
+  _persistSession(token, username, now, expiresAt);
   return token;
 }
 
@@ -535,6 +574,7 @@ setInterval(() => {
       sessions.delete(token);
     }
   }
+  try { runSQL('DELETE FROM sessions WHERE expires_at < ?', [now]); } catch (e) { /* best effort */ }
 }, 60 * 60 * 1000);
 
 function getUsernameFromToken(req) {
@@ -545,7 +585,7 @@ function getUsernameFromToken(req) {
   if (!session) return null;
   if (typeof session === 'string') return session;
   if (session.expiresAt && Date.now() > session.expiresAt) {
-    sessions.delete(token);
+    deleteSession(token);
     return null;
   }
   return session.username;
@@ -593,9 +633,7 @@ function permanentlyDeleteUserAccount(user, logActorUsername) {
     runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ? WHERE id = ?', [newStatus, cell.id]);
   }
 
-  for (const [token, uname] of sessions.entries()) {
-    if (uname === user.username) sessions.delete(token);
-  }
+  deleteSessionsForUser(user.username);
 
   runSQL('UPDATE users SET email = NULL, google_id = NULL, verification_token = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
   runSQL('DELETE FROM users WHERE id = ?', [user.id]);
@@ -1275,8 +1313,9 @@ app.post('/api/auth/logout', (req, res) => {
   let logUser = null;
   if (header && header.startsWith('Bearer ')) {
     const token = header.slice(7);
-    logUser = sessions.get(token) || null;
-    sessions.delete(token);
+    const sess = sessions.get(token);
+    logUser = (typeof sess === 'string') ? sess : (sess && sess.username) || null;
+    deleteSession(token);
   }
   if (logUser) logActivity(logUser, 'logout', null, null, null);
   res.json({ success: true });
@@ -1778,9 +1817,7 @@ app.put('/api/admin/users/:id/deactivate', requireAuth, (req, res) => {
     runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ? WHERE id = ?', [newStatus, cell.id]);
   }
 
-  for (const [token, uname] of sessions.entries()) {
-    if (uname === user.username) sessions.delete(token);
-  }
+  deleteSessionsForUser(user.username);
 
   logActivity(req.username, 'user_deactivate', null, null, { target_user: user.username, target_role: user.role });
   persist();
@@ -1884,6 +1921,7 @@ app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
       }
     }
   }
+  try { runSQL('UPDATE sessions SET username = ? WHERE username = ?', [new_username, oldUsername]); } catch (e) { /* best effort */ }
 
   logActivity(req.username, 'username_change', null, null, { from: oldUsername, to: new_username });
   persist();
@@ -3466,6 +3504,7 @@ const PORT = process.env.PORT || 3000;
 
 async function start() {
   await initDB();
+  _hydrateSessionsFromDisk();
 
   // Startup backfill: legacy polygons missing area_ha get polygonAreaHa() before API traffic relies on it.
   const emptyArea = queryAll('SELECT id, geometry FROM polygons WHERE area_ha IS NULL OR area_ha = 0');

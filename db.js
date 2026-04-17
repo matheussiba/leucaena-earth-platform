@@ -169,6 +169,19 @@ async function initDB() {
 
   try { db.run('ALTER TABLE activity_logs ADD COLUMN role TEXT'); } catch (e) { /* already exists */ }
 
+  // Sessions: persisted so users stay logged in across server redeploys.
+  // The in-memory Map in server.js stays as the hot cache; this table is the source of truth on boot.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )
+  `);
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_sessions_username ON sessions(username)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)'); } catch (e) { /* ignore */ }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

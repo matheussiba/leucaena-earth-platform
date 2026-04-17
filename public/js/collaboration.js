@@ -37,6 +37,15 @@ window.LeucenaCollab = (function () {
     }, 1000);
   }
 
+  // Snapshot of where the user is on the map. Persisted continuously (debounced) and on
+  // forced reloads so the next page load restores the same camera + UF transparently.
+  function _mapStateStorageKey() {
+    try {
+      var u = localStorage.getItem('leucena_username');
+      return u ? 'leucena_reload_state_' + u : 'leucena_reload_state';
+    } catch (e) { return 'leucena_reload_state'; }
+  }
+
   function _saveMapStateForReload() {
     try {
       var state = {};
@@ -50,8 +59,27 @@ window.LeucenaCollab = (function () {
         }
         state.uf = LeucenaMap.getCurrentState() || null;
       }
-      localStorage.setItem('leucena_reload_state', JSON.stringify(state));
+      state.savedAt = Date.now();
+      localStorage.setItem(_mapStateStorageKey(), JSON.stringify(state));
     } catch (e) { /* best effort */ }
+  }
+
+  // Wire up a debounced 'idle' listener on the map so any pan/zoom/UF change is silently
+  // captured. Safe to call multiple times: the guard avoids attaching twice.
+  var _idleSaveAttached = false;
+  var _idleSaveTimer = null;
+  function _installContinuousStateSaver() {
+    if (_idleSaveAttached) return;
+    if (typeof LeucenaMap === 'undefined' || !LeucenaMap.getMap) return;
+    var gmap = LeucenaMap.getMap();
+    if (!gmap || typeof google === 'undefined' || !google.maps) return;
+    _idleSaveAttached = true;
+    gmap.addListener('idle', function () {
+      if (_idleSaveTimer) clearTimeout(_idleSaveTimer);
+      _idleSaveTimer = setTimeout(_saveMapStateForReload, 600);
+    });
+    // Last-ditch save on tab close / refresh (covers the normal F5 path too).
+    window.addEventListener('beforeunload', _saveMapStateForReload);
   }
 
   function _autoUnlockBeforeReload() {
@@ -319,5 +347,9 @@ window.LeucenaCollab = (function () {
     initAnonymous();
   }
 
-  return { init, initAnonymous, notifyEditingCell, notifyActivity, notifyLocationState, leave };
+  return {
+    init, initAnonymous, notifyEditingCell, notifyActivity, notifyLocationState, leave,
+    installContinuousStateSaver: _installContinuousStateSaver,
+    saveMapStateNow: _saveMapStateForReload,
+  };
 })();
