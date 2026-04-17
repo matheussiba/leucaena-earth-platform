@@ -141,7 +141,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         clickedOnFeature = false;
         return;
       }
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'edit' && LeucenaDrawing.isEditModified()) {
+      // Map clicks outside any polygon should drop edit mode. Polygon clicks are intercepted
+      // by the polygon's own listener (which routes to toggleEditPolygon) and don't reach here,
+      // so this only fires when the user clicks empty map / a grid tile / etc.
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'edit') {
         LeucenaDrawing.exitEditMode();
         return;
       }

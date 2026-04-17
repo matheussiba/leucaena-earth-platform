@@ -670,7 +670,29 @@ window.LeucenaDrawing = (function () {
     document.getElementById('delete-warn-modal').classList.remove('hidden');
   }
 
+  // Edit only makes sense if the locked cell has at least one polygon the user can edit.
+  // Without this guard, clicking "edit" looked broken: the button stayed toggled, the cursor
+  // never engaged, and clicks on the map did nothing.
+  function _hasEditablePolygonsInLockedCell() {
+    if (typeof LeucenaApp === 'undefined') return false;
+    const cellId = LeucenaApp.getSelectedCellId && LeucenaApp.getSelectedCellId();
+    const cellData = LeucenaApp.getSelectedCellData && LeucenaApp.getSelectedCellData();
+    const username = LeucenaApp.getUsername && LeucenaApp.getUsername();
+    if (!cellId || !cellData || cellData.locked_by !== username) return false;
+    for (const entry of Object.values(drawnPolygons)) {
+      if (entry.data.grid_cell_id !== cellId) continue;
+      if (canEditPolygon(entry)) return true;
+    }
+    return false;
+  }
+
   function setMode(mode) {
+    if (mode === 'edit' && !_hasEditablePolygonsInLockedCell()) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.showToast) {
+        LeucenaApp.showToast(LeucenaI18n.t('toast.editNoPolygons'), 'info');
+      }
+      mode = 'select';
+    }
     const prevMode = activeMode;
     activeMode = mode;
 
