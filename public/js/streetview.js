@@ -11,38 +11,60 @@ window.LeucenaStreetView = (function () {
     document.getElementById('close-streetview').addEventListener('click', close);
   }
 
-  function toggleActive() {
-    active = !active;
-    const btn = document.getElementById('tool-streetview');
-    const floatBtn = document.getElementById('tool-streetview-float');
-    if (active) {
-      const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
-      if (drawMode === 'draw' && !LeucenaDrawing.isPolygonInProgress()) {
-        // setMode clears .active on all .tool-btn and .edit-tool-btn; LeucenaDrawing re-syncs SV.
-        LeucenaDrawing.setMode('select');
-      }
-      btn.classList.add('active');
-      if (floatBtn) floatBtn.classList.add('active');
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.syncStreetViewToolbarActive) {
-        LeucenaDrawing.syncStreetViewToolbarActive();
-      }
-      LeucenaMap.showStreetViewCoverage(true);
-      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('streetview_open', null, null, null);
-      }
-      LeucenaApp.showToast(LeucenaI18n.t('toast.svClickHint'), 'info');
-    } else {
-      btn.classList.remove('active');
-      if (floatBtn) floatBtn.classList.remove('active');
-      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.syncStreetViewToolbarActive) {
-        LeucenaDrawing.syncStreetViewToolbarActive();
-      }
-      LeucenaMap.showStreetViewCoverage(false);
-      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('streetview_close', null, null, null);
-      }
-      close();
+  // Turn off any polygon mode (draw/edit/delete/hole) AND any point mode (insert/delete)
+  // so map clicks reach the Street View coverage lines instead of being intercepted
+  // by the editing tools. setMode('select') already clears point modes when active.
+  function _disableAllEditTools() {
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.setMode) {
+      LeucenaDrawing.setMode('select');
     }
+    if (typeof LeucenaApp !== 'undefined') {
+      if (LeucenaApp.setInsertionMode) LeucenaApp.setInsertionMode(false);
+      if (LeucenaApp.setDeletionMode) LeucenaApp.setDeletionMode(false);
+    }
+  }
+
+  function toggleActive() {
+    if (active) {
+      _deactivate();
+      return;
+    }
+
+    // Activating: if the user is mid-draw, route through the abandon-draw modal so
+    // their work isn't silently discarded.
+    if (typeof LeucenaDrawing !== 'undefined'
+        && LeucenaDrawing.isPolygonInProgress
+        && LeucenaDrawing.isPolygonInProgress()
+        && LeucenaDrawing.confirmAbandonDraw) {
+      LeucenaDrawing.confirmAbandonDraw(_activate, function () { /* user kept drawing */ });
+      return;
+    }
+    _activate();
+  }
+
+  function _activate() {
+    _disableAllEditTools();
+    active = true;
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.syncStreetViewToolbarActive) {
+      LeucenaDrawing.syncStreetViewToolbarActive();
+    }
+    LeucenaMap.showStreetViewCoverage(true);
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('streetview_open', null, null, null);
+    }
+    LeucenaApp.showToast(LeucenaI18n.t('toast.svClickHint'), 'info');
+  }
+
+  function _deactivate() {
+    active = false;
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.syncStreetViewToolbarActive) {
+      LeucenaDrawing.syncStreetViewToolbarActive();
+    }
+    LeucenaMap.showStreetViewCoverage(false);
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('streetview_close', null, null, null);
+    }
+    close();
   }
 
   function isActive() {
