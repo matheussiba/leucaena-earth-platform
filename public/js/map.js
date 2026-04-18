@@ -1577,7 +1577,14 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     const results = [];
     for (const id in gridData) {
       const gid = (gridData[id].grid_id || String(id)).toUpperCase();
-      if (gid === q || gid.startsWith(q + '-')) {
+      // Cell ids look like "KX-330-1". The user may type with or without the
+      // 2-letter cell-code prefix (e.g. "kx330", "330", "330-1", "KX-330-1",
+      // "KX-330"). normalizeCellSearchQuery() already strips a leading 2-letter
+      // prefix, so we also match against the cell id's tail (everything after
+      // a leading "AA-") to make those joined / prefix-less variants work.
+      const tail = gid.replace(/^[A-Z]{2}-/, '');
+      if (gid === q || gid.startsWith(q + '-')
+          || tail === q || tail.startsWith(q + '-')) {
         results.push({ id: Number(id), grid_id: gridData[id].grid_id || String(id) });
       }
     }
