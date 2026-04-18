@@ -268,6 +268,7 @@ window.LeucenaDrawing = (function () {
       }
 
       if (e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        if (e.repeat) return;
         e.preventDefault();
         const svBtn = document.getElementById('tool-streetview');
         if (svBtn && !svBtn.disabled) svBtn.click();
@@ -667,7 +668,25 @@ window.LeucenaDrawing = (function () {
   }
 
   function showDeleteWarningModal() {
+    if (!_hasDeletablePolygonsInLockedCell()) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.showToast) {
+        LeucenaApp.showToast(LeucenaI18n.t('toast.deleteNoPolygons'), 'info');
+      }
+      return;
+    }
     document.getElementById('delete-warn-modal').classList.remove('hidden');
+  }
+
+  // Street View is toggled from streetview.js; setMode() clears .active on every .tool-btn
+  // and .edit-tool-btn (including the floating SV control). Re-apply both toolbar buttons
+  // whenever the internal SV "active" flag is true so Shift+S / draw→select / tool switches
+  // never leave SV coverage on with a visually "off" control.
+  function syncStreetViewToolbarActive() {
+    const on = typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive && LeucenaStreetView.isActive();
+    const main = document.getElementById('tool-streetview');
+    const float = document.getElementById('tool-streetview-float');
+    if (main) main.classList.toggle('active', !!on);
+    if (float) float.classList.toggle('active', !!on);
   }
 
   // Edit only makes sense if the locked cell has at least one polygon the user can edit.
@@ -686,7 +705,26 @@ window.LeucenaDrawing = (function () {
     return false;
   }
 
+  function _hasDeletablePolygonsInLockedCell() {
+    if (typeof LeucenaApp === 'undefined') return false;
+    const cellId = LeucenaApp.getSelectedCellId && LeucenaApp.getSelectedCellId();
+    const cellData = LeucenaApp.getSelectedCellData && LeucenaApp.getSelectedCellData();
+    const username = LeucenaApp.getUsername && LeucenaApp.getUsername();
+    if (!cellId || !cellData || cellData.locked_by !== username) return false;
+    for (const entry of Object.values(drawnPolygons)) {
+      if (entry.data.grid_cell_id !== cellId) continue;
+      if (canDeletePolygon(entry)) return true;
+    }
+    return false;
+  }
+
   function setMode(mode) {
+    if (mode === 'delete' && !_hasDeletablePolygonsInLockedCell()) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.showToast) {
+        LeucenaApp.showToast(LeucenaI18n.t('toast.deleteNoPolygons'), 'info');
+      }
+      mode = 'select';
+    }
     if (mode === 'edit' && !_hasEditablePolygonsInLockedCell()) {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.showToast) {
         LeucenaApp.showToast(LeucenaI18n.t('toast.editNoPolygons'), 'info');
@@ -729,9 +767,7 @@ window.LeucenaDrawing = (function () {
     const activeBtn = document.getElementById(btnMap[mode]);
     if (activeBtn) activeBtn.classList.add('active');
 
-    if (LeucenaStreetView.isActive()) {
-      document.getElementById('tool-streetview').classList.add('active');
-    }
+    syncStreetViewToolbarActive();
 
     if (drawingManager) {
       drawingManager.setMap(null);
@@ -1810,6 +1846,7 @@ window.LeucenaDrawing = (function () {
     removeRemotePolygon,
     getActiveMode,
     setMode,
+    syncStreetViewToolbarActive,
     setClickable,
     getPolygonCount,
     getPolygonCountForCell,

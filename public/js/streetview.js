@@ -18,10 +18,14 @@ window.LeucenaStreetView = (function () {
     if (active) {
       const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
       if (drawMode === 'draw' && !LeucenaDrawing.isPolygonInProgress()) {
+        // setMode clears .active on all .tool-btn and .edit-tool-btn; LeucenaDrawing re-syncs SV.
         LeucenaDrawing.setMode('select');
       }
       btn.classList.add('active');
       if (floatBtn) floatBtn.classList.add('active');
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.syncStreetViewToolbarActive) {
+        LeucenaDrawing.syncStreetViewToolbarActive();
+      }
       LeucenaMap.showStreetViewCoverage(true);
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('streetview_open', null, null, null);
@@ -30,6 +34,9 @@ window.LeucenaStreetView = (function () {
     } else {
       btn.classList.remove('active');
       if (floatBtn) floatBtn.classList.remove('active');
+      if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.syncStreetViewToolbarActive) {
+        LeucenaDrawing.syncStreetViewToolbarActive();
+      }
       LeucenaMap.showStreetViewCoverage(false);
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('streetview_close', null, null, null);
