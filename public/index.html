@@ -871,6 +871,42 @@
           <button type="button" class="btn btn-primary brazil-prompt-btn" id="sidebar-choose-state-btn" data-i18n="sidebar.chooseStateBtn">Selecionar região</button>
         </div>
 
+        <!-- Informações da Célula (dinâmica: aparece somente quando uma célula é selecionada).
+             Fica no topo do scroll para ficar mais visível em cima do progresso/filtros estáticos. -->
+        <div class="sidebar-section sidebar-section-dynamic hidden" id="cell-actions">
+          <h3 data-i18n="sidebar.cellInfo">Informações da Célula</h3>
+          <p class="cell-id-label"><span data-i18n="sidebar.cell">Célula</span> #<span id="cell-id-display"></span></p>
+          <button class="btn btn-primary btn-full" id="lock-cell-btn" data-i18n="sidebar.lockEdit">Bloquear e Editar</button>
+          <div class="cell-detail">
+            <span class="cell-detail-label" data-i18n="sidebar.status">Status:</span>
+            <span id="cell-status-display" class="cell-detail-value">--</span>
+          </div>
+          <div class="cell-detail">
+            <span class="cell-detail-label" data-i18n="sidebar.numpoints">Nº de pontos:</span>
+            <span id="cell-numpoints" class="cell-detail-value">--</span>
+          </div>
+          <div class="cell-detail" id="cell-masks-row">
+            <span class="cell-detail-label" data-i18n="sidebar.masks">Polígonos:</span>
+            <span id="cell-masks" class="cell-detail-value">--</span>
+          </div>
+          <div class="cell-detail hidden" id="cell-mapped-by-row">
+            <span class="cell-detail-label" data-i18n="sidebar.mappedBy">Polígonos desenhados por:</span>
+            <span id="cell-mapped-by" class="cell-detail-value">--</span>
+          </div>
+          <div class="cell-detail cell-detail-admin hidden" id="cell-lock-history-row">
+            <span class="cell-detail-label" data-i18n="sidebar.lockHistory">Quem abriu a célula (log):</span>
+            <span id="cell-lock-history" class="cell-detail-value cell-detail-value--small">--</span>
+          </div>
+          <div class="cell-admin-mask-breakdown hidden" id="cell-admin-mask-breakdown-wrap">
+            <div class="cell-admin-mask-breakdown-title" data-i18n="sidebar.maskBreakdownTitle">Polígonos por colaborador</div>
+            <ul id="cell-admin-mask-breakdown" class="cell-admin-mask-breakdown-list"></ul>
+          </div>
+          <div class="cell-detail" id="cell-finished-by-row">
+            <span class="cell-detail-label" data-i18n="sidebar.finishedBy">Finalizado por:</span>
+            <span id="cell-finished-by" class="cell-detail-value">--</span>
+          </div>
+        </div>
+
         <!-- Progresso do Mapeamento -->
         <div class="sidebar-section sidebar-progress-section" id="mapping-progress">
           <h3 data-i18n="sidebar.mappingProgress">Progresso</h3>
@@ -999,41 +1035,6 @@
           </div>
         </div>
 
-        <!-- Busca de Célula (equipe+) -->
-        <!-- Informações da Célula -->
-        <div class="sidebar-section hidden" id="cell-actions">
-          <h3 data-i18n="sidebar.cellInfo">Informações da Célula</h3>
-          <p class="cell-id-label"><span data-i18n="sidebar.cell">Célula</span> #<span id="cell-id-display"></span></p>
-          <button class="btn btn-primary btn-full" id="lock-cell-btn" data-i18n="sidebar.lockEdit">Bloquear e Editar</button>
-          <div class="cell-detail">
-            <span class="cell-detail-label" data-i18n="sidebar.status">Status:</span>
-            <span id="cell-status-display" class="cell-detail-value">--</span>
-          </div>
-          <div class="cell-detail">
-            <span class="cell-detail-label" data-i18n="sidebar.numpoints">Nº de pontos:</span>
-            <span id="cell-numpoints" class="cell-detail-value">--</span>
-          </div>
-          <div class="cell-detail" id="cell-masks-row">
-            <span class="cell-detail-label" data-i18n="sidebar.masks">Polígonos:</span>
-            <span id="cell-masks" class="cell-detail-value">--</span>
-          </div>
-          <div class="cell-detail hidden" id="cell-mapped-by-row">
-            <span class="cell-detail-label" data-i18n="sidebar.mappedBy">Polígonos desenhados por:</span>
-            <span id="cell-mapped-by" class="cell-detail-value">--</span>
-          </div>
-          <div class="cell-detail cell-detail-admin hidden" id="cell-lock-history-row">
-            <span class="cell-detail-label" data-i18n="sidebar.lockHistory">Quem abriu a célula (log):</span>
-            <span id="cell-lock-history" class="cell-detail-value cell-detail-value--small">--</span>
-          </div>
-          <div class="cell-admin-mask-breakdown hidden" id="cell-admin-mask-breakdown-wrap">
-            <div class="cell-admin-mask-breakdown-title" data-i18n="sidebar.maskBreakdownTitle">Polígonos por colaborador</div>
-            <ul id="cell-admin-mask-breakdown" class="cell-admin-mask-breakdown-list"></ul>
-          </div>
-          <div class="cell-detail" id="cell-finished-by-row">
-            <span class="cell-detail-label" data-i18n="sidebar.finishedBy">Finalizado por:</span>
-            <span id="cell-finished-by" class="cell-detail-value">--</span>
-          </div>
-        </div>
         </div>
 
         <div class="sidebar-bottom">
