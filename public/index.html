@@ -818,17 +818,16 @@
       </div>
     </div>
 
-    <!-- Modal de Atualização (forçada) -->
-    <div id="app-update-modal" class="modal-overlay hidden" style="z-index:99999; pointer-events:all;">
-      <div class="modal-card app-update-card">
-        <div class="app-update-icon">
-          <svg class="app-update-spin" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path d="M21 12a9 9 0 11-6.22-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
-        </div>
-        <h2 class="app-update-title" data-i18n="update.title">Nova versão disponível</h2>
-        <p class="app-update-text" data-i18n="update.message">A plataforma foi atualizada. Seu trabalho foi salvo automaticamente.</p>
-        <p class="app-update-countdown" id="update-countdown-text"></p>
-        <button type="button" class="btn btn-primary app-update-btn" onclick="window.location.reload()" data-i18n="update.reload">Recarregar agora</button>
-      </div>
+    <!-- Banner discreto de nova versão. Não bloqueia a UI: o usuário decide quando recarregar
+         (preserva o trabalho em andamento, ex.: polígono em edição, formulário aberto). -->
+    <div id="app-update-banner" class="app-update-banner hidden" role="status" aria-live="polite">
+      <span class="app-update-banner-dot"></span>
+      <span class="app-update-banner-text">
+        <strong data-i18n="update.bannerTitle">Nova versão disponível</strong>
+        <span data-i18n="update.bannerHint">Recarregue quando puder — seu trabalho foi salvo.</span>
+      </span>
+      <button type="button" id="app-update-banner-reload" class="app-update-banner-btn" data-i18n="update.reload">Recarregar agora</button>
+      <button type="button" id="app-update-banner-dismiss" class="app-update-banner-close" aria-label="Dismiss">&#x2715;</button>
     </div>
 
     <!-- Banner do Modo de Inserção de Pontos -->
@@ -1076,23 +1075,29 @@
           <div class="edit-tools-section" id="edit-section-poly">
             <span class="edit-tools-label" data-i18n="tool.sectionPoly">Polígonos</span>
             <div class="edit-tools-row">
-              <button class="edit-tool-btn" id="tool-draw" data-i18n-title="tool.draw" title="Desenhar Polígono (Shift+C)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+              <button class="edit-tool-btn edit-tool-btn-labeled" id="tool-draw" data-i18n-title="tool.draw" title="Desenhar Polígono (Shift+C)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
+                <span data-i18n="tool.drawShort">Desenhar</span>
               </button>
-              <button class="edit-tool-btn" id="tool-edit" data-i18n-title="tool.edit" title="Editar Polígono (Shift+E)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <button class="edit-tool-btn edit-tool-btn-labeled" id="tool-edit" data-i18n-title="tool.edit" title="Editar Polígono (Shift+E)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span data-i18n="tool.editShort">Editar</span>
               </button>
-              <button class="edit-tool-btn" id="tool-delete" data-i18n-title="tool.deletePoly" title="Excluir Polígono (Shift+D)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              <button class="edit-tool-btn edit-tool-btn-labeled" id="tool-delete" data-i18n-title="tool.deletePoly" title="Excluir Polígono (Shift+D)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                <span data-i18n="tool.deletePolyShort">Excluir</span>
               </button>
-              <button class="edit-tool-btn edit-tool-btn-special" id="tool-hole" data-i18n-title="tool.hole" title="Criar Buraco (Shift+H)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="2 2 22 2 22 22 2 22"/><polygon points="7 7 17 7 17 17 7 17" stroke-dasharray="3 2"/></svg>
+              <button class="edit-tool-btn edit-tool-btn-labeled edit-tool-btn-special" id="tool-hole" data-i18n-title="tool.hole" title="Criar Buraco (Shift+H)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="2 2 22 2 22 22 2 22"/><polygon points="7 7 17 7 17 17 7 17" stroke-dasharray="3 2"/></svg>
+                <span data-i18n="tool.holeShort">Buraco</span>
               </button>
-              <button class="edit-tool-btn hidden" id="tool-undo" data-i18n-title="tool.undo" title="Desfazer (Ctrl+Z)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-11.36L1 10"/></svg>
+              <button class="edit-tool-btn edit-tool-btn-labeled hidden" id="tool-undo" data-i18n-title="tool.undo" title="Desfazer (Ctrl+Z)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.64-11.36L1 10"/></svg>
+                <span data-i18n="tool.undoShort">Desfazer</span>
               </button>
-              <button class="edit-tool-btn edit-tool-btn-accent hidden" id="tool-finish-draw" data-i18n-title="tool.finishDraw" title="Finalizar desenho (Enter)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              <button class="edit-tool-btn edit-tool-btn-labeled edit-tool-btn-accent hidden" id="tool-finish-draw" data-i18n-title="tool.finishDraw" title="Finalizar desenho (Enter)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span data-i18n="tool.finishDrawShort">Finalizar</span>
               </button>
             </div>
           </div>

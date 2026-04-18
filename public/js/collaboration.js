@@ -8,33 +8,41 @@ window.LeucenaCollab = (function () {
   function _handleBuildId(id) {
     if (_knownBuildId && _knownBuildId !== id) {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('new_version_detected', null, null, { oldBuild: _knownBuildId, newBuild: id });
-      _forceUpdateReload();
+      _showUpdateBanner();
     }
     _knownBuildId = id;
   }
 
-  function _forceUpdateReload() {
-    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('version_reload', null, null, { oldBuild: _knownBuildId });
-    _saveMapStateForReload();
-    _autoUnlockBeforeReload();
+  // Non-blocking notice. We never auto-reload anymore: the user keeps full control of
+  // when they want to refresh, so an in-progress edit / drawing / form is never lost.
+  // The banner only appears once per session; clicking "reload" saves state, releases
+  // any held cell lock, and reloads.
+  var _updateBannerShown = false;
+  function _showUpdateBanner() {
+    if (_updateBannerShown) return;
+    _updateBannerShown = true;
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('update_banner_shown', null, null, { oldBuild: _knownBuildId });
 
-    var modal = document.getElementById('app-update-modal');
-    if (modal) modal.classList.remove('hidden');
+    var banner = document.getElementById('app-update-banner');
+    if (!banner) return;
+    var btn = document.getElementById('app-update-banner-reload');
+    var dismiss = document.getElementById('app-update-banner-dismiss');
 
-    var remaining = 3;
-    var cdEl = document.getElementById('update-countdown-text');
-    function _updateCdText() {
-      if (cdEl) cdEl.textContent = (typeof LeucenaI18n !== 'undefined' ? LeucenaI18n.t('update.reloading', remaining) : 'Recarregando em ' + remaining + 's...');
+    if (btn) {
+      btn.onclick = function () {
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('update_reload_clicked');
+        _saveMapStateForReload();
+        _autoUnlockBeforeReload();
+        setTimeout(function () { window.location.reload(); }, 120);
+      };
     }
-    _updateCdText();
-    var cdInterval = setInterval(function () {
-      remaining--;
-      _updateCdText();
-      if (remaining <= 0) {
-        clearInterval(cdInterval);
-        window.location.reload();
-      }
-    }, 1000);
+    if (dismiss) {
+      dismiss.onclick = function () {
+        banner.classList.add('hidden');
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('update_banner_dismissed');
+      };
+    }
+    banner.classList.remove('hidden');
   }
 
   // Snapshot of where the user is on the map. Persisted continuously (debounced) and on
