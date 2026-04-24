@@ -6323,21 +6323,42 @@ window.LeucenaApp = (function () {
       const btn = document.getElementById('inbox-compose-submit');
       btn.disabled = true;
       try {
-        let ok = 0, fail = 0;
-        for (const target of _batchTargetUsernames) {
-          const r = await fetch('/api/admin/messages', {
-            method: 'POST',
-            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subject, body, target, allow_reply: allowReply, images: _composeImages.length ? _composeImages : undefined })
-          });
-          if (r.ok) ok++; else fail++;
+        // Server queues the recipients and drains today's slice immediately.
+        // The daily cap (default 95) lives on the server so we don't have to
+        // duplicate the limit logic on the client.
+        const r = await fetch('/api/admin/messages/batch', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject, body,
+            usernames: _batchTargetUsernames,
+            allow_reply: allowReply,
+            images: _composeImages.length ? _composeImages : undefined
+          })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(j.error || ('HTTP ' + r.status));
         }
         closeComposeModal();
-        logEvent('inbox_batch_send', null, null, { ok: ok, fail: fail, total: _batchTargetUsernames.length });
-        showToast(t('inbox.sentSuccess') + ` (${ok}/${_batchTargetUsernames.length})`, 'success');
+        logEvent('inbox_batch_send', null, null, {
+          total: j.total, sentToday: j.sentToday, plan: j.plan, dailyLimit: j.dailyLimit
+        });
+        const total = Number(j.total || 0);
+        const sentToday = Number(j.sentToday || 0);
+        const remaining = total - sentToday;
+        if (remaining > 0 && Array.isArray(j.plan) && j.plan.length > 1) {
+          // Multi-day delivery — explain when the rest goes out.
+          const upcoming = j.plan.slice(1);
+          const nextDate = upcoming[0] ? upcoming[0].date : '';
+          const days = j.plan.length;
+          showToast(t('inbox.batchScheduled', sentToday, total, remaining, days, nextDate), 'success', 8000);
+        } else {
+          showToast(t('inbox.sentSuccess') + ` (${sentToday}/${total})`, 'success');
+        }
       } catch (err) {
         logEvent('inbox_batch_send_error', null, null, { error: err.message || String(err), total: _batchTargetUsernames.length });
-        errEl.textContent = t('inbox.sentFail');
+        errEl.textContent = (err && err.message) ? err.message : t('inbox.sentFail');
         errEl.classList.remove('hidden');
       } finally { btn.disabled = false; }
       return;

@@ -690,6 +690,11 @@ window.LeucenaI18n = (function () {
     'inbox.unreadCount': { pt: '{0} não lida(s)', en: '{0} unread', es: '{0} sin leer' },
     'inbox.sentSuccess': { pt: 'Mensagem enviada com sucesso', en: 'Message sent successfully', es: 'Mensaje enviado con éxito' },
     'inbox.sentFail': { pt: 'Falha ao enviar mensagem', en: 'Failed to send message', es: 'Error al enviar mensaje' },
+    'inbox.batchScheduled': {
+      pt: 'Enviadas hoje: {0}/{1}. Restantes {2} agendadas para os próximos {3} dias (próxima leva: {4}).',
+      en: 'Sent today: {0}/{1}. Remaining {2} scheduled across the next {3} days (next batch: {4}).',
+      es: 'Enviadas hoy: {0}/{1}. Restantes {2} programadas para los próximos {3} días (próximo lote: {4}).'
+    },
     'inbox.newMessage': { pt: 'Nova mensagem: {0}', en: 'New message: {0}', es: 'Nuevo mensaje: {0}' },
     'inbox.compose': { pt: 'Nova Mensagem', en: 'New Message', es: 'Nuevo Mensaje' },
     'inbox.subject': { pt: 'Assunto', en: 'Subject', es: 'Asunto' },

@@ -2129,6 +2129,251 @@ app.post('/api/admin/messages', requireAuth, messageLimiter, async (req, res) =>
   res.json({ success: true, messageId: msg ? msg.id : null, emailResults });
 });
 
+// ── Email queue (daily batch sender) ──
+//
+// Resend's free tier caps us at ~100 outbound emails per day. When an admin
+// broadcasts to >100 collaborators we cannot deliver in a single shot, so we
+// store the per-recipient envelopes in `message_queue` and drain at most
+// EMAIL_DAILY_LIMIT entries per day. Recipients are sorted by polygon count
+// descending, so the most active mappers always hear from us first.
+const EMAIL_DAILY_LIMIT = parseInt(process.env.EMAIL_DAILY_LIMIT || '95', 10);
+const EMAIL_QUEUE_TICK_MS = 5 * 60 * 1000; // 5 min — cheap and self-correcting.
+
+function _todayUtcDateStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function _startOfTodayUtcIso() {
+  return _todayUtcDateStr() + 'T00:00:00.000Z';
+}
+
+function _emailsSentToday() {
+  // Counts both immediate sends from /api/admin/messages and queue-drained sends.
+  // Immediate sends don't go through the queue, so we conservatively count any
+  // queue row marked 'sent' since UTC midnight as the floor of today's usage.
+  const row = queryOne(
+    "SELECT COUNT(*) AS n FROM message_queue WHERE status = 'sent' AND sent_at >= ?",
+    [_startOfTodayUtcIso()]
+  );
+  return row ? Number(row.n || 0) : 0;
+}
+
+function _remainingEmailBudgetToday() {
+  return Math.max(0, EMAIL_DAILY_LIMIT - _emailsSentToday());
+}
+
+async function _sendOneQueueRow(row, msg) {
+  if (!resend) {
+    runSQL("UPDATE message_queue SET status = 'failed', last_error = ?, attempts = attempts + 1 WHERE id = ?",
+      ['email provider not configured', row.id]);
+    return false;
+  }
+  try {
+    await resend.emails.send({
+      from: RESEND_FROM,
+      to: row.recipient_email,
+      subject: `[leucaena.earth] ${msg.subject}`,
+      html: `<p>Olá <strong>${escapeHtml(row.recipient_full_name || row.recipient_username)}</strong>,</p>
+             <p>${sanitizeMessageHtml(msg.body).replace(/\n/g, '<br>')}</p>
+             <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${escapeHtml(msg.sender)}</strong> via leucaena.earth</p>
+             <p style="font-size:12px;color:#888;"><a href="https://map.leucaena.earth">Abrir plataforma</a></p>`
+    });
+    runSQL("UPDATE message_queue SET status = 'sent', sent_at = ?, attempts = attempts + 1, last_error = NULL WHERE id = ?",
+      [new Date().toISOString(), row.id]);
+    return true;
+  } catch (e) {
+    const errMsg = (e && e.message) ? String(e.message).slice(0, 500) : 'unknown error';
+    console.error('Queue email error:', row.recipient_username, errMsg);
+    runSQL("UPDATE message_queue SET attempts = attempts + 1, last_error = ? WHERE id = ?", [errMsg, row.id]);
+    // Hard-fail after 3 attempts so we don't block the queue forever.
+    if ((row.attempts || 0) + 1 >= 3) {
+      runSQL("UPDATE message_queue SET status = 'failed' WHERE id = ?", [row.id]);
+    }
+    return false;
+  }
+}
+
+let _drainingQueue = false;
+async function drainMessageQueueDueToday() {
+  if (_drainingQueue) return { skipped: true };
+  _drainingQueue = true;
+  try {
+    const today = _todayUtcDateStr();
+    const remaining = _remainingEmailBudgetToday();
+    if (remaining <= 0) return { sent: 0, failed: 0, remainingBudget: 0 };
+
+    const due = queryAll(
+      `SELECT * FROM message_queue
+       WHERE status = 'pending' AND scheduled_for <= ?
+       ORDER BY scheduled_for ASC, priority DESC, id ASC
+       LIMIT ?`,
+      [today, remaining]
+    );
+    let sent = 0, failed = 0;
+    for (const row of due) {
+      const msg = queryOne('SELECT id, sender, subject, body FROM messages WHERE id = ?', [row.message_id]);
+      if (!msg) {
+        runSQL("UPDATE message_queue SET status = 'failed', last_error = 'parent message missing' WHERE id = ?", [row.id]);
+        failed++;
+        continue;
+      }
+      const ok = await _sendOneQueueRow(row, msg);
+      if (ok) sent++; else failed++;
+    }
+    if (sent > 0 || failed > 0) {
+      try { persist(); } catch (e) { /* best-effort */ }
+      console.log(`[email-queue] drained ${sent} sent, ${failed} failed (budget left: ${_remainingEmailBudgetToday()})`);
+    }
+    return { sent, failed, remainingBudget: _remainingEmailBudgetToday() };
+  } finally {
+    _drainingQueue = false;
+  }
+}
+
+// Build the daily delivery plan for a recipient list. Returns an array
+// of `{ date: 'YYYY-MM-DD', count: N }` describing how the recipients will be
+// spread across days, given today's remaining budget.
+function _planDailyDelivery(totalRecipients, startingBudget) {
+  const plan = [];
+  if (totalRecipients <= 0) return plan;
+  let remaining = totalRecipients;
+  let dayOffset = 0;
+  let budget = Math.max(0, Math.min(startingBudget, EMAIL_DAILY_LIMIT));
+  // Day 0 (today) uses whatever budget we have left for today, then each
+  // following day gets the full EMAIL_DAILY_LIMIT.
+  while (remaining > 0) {
+    const slot = dayOffset === 0 ? budget : EMAIL_DAILY_LIMIT;
+    const take = Math.min(slot, remaining);
+    if (take > 0) {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() + dayOffset);
+      plan.push({ date: d.toISOString().slice(0, 10), count: take });
+      remaining -= take;
+    }
+    dayOffset++;
+    if (dayOffset > 365) break; // safety cap, should never hit
+  }
+  return plan;
+}
+
+app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const { subject, body, usernames, allow_reply, images, target_kind } = req.body;
+  const textErr = validateMessageText(subject, body);
+  if (textErr) return res.status(400).json({ error: textErr });
+  const limitErr = checkMessageLimits(req.username);
+  if (limitErr) return res.status(429).json(limitErr);
+
+  let cleanImages = null;
+  try { cleanImages = validateMessageImages(images); } catch (e) { return res.status(400).json({ error: e.message }); }
+
+  // Resolve the recipient roster, joined with mask_count for ordering. We
+  // count polygons via `created_by` (the polygons table uses that column,
+  // not `username`).
+  let recipients;
+  if (target_kind === 'all_collaborators') {
+    recipients = queryAll(`
+      SELECT u.username, u.email, u.full_name,
+             COALESCE((SELECT COUNT(*) FROM polygons p WHERE p.created_by = u.username), 0) AS mask_count
+      FROM users u
+      WHERE u.is_active = 1 AND u.role = 'contributor'
+        AND u.email IS NOT NULL AND TRIM(u.email) != ''
+        AND u.username != 'deleted'
+    `);
+  } else {
+    if (!Array.isArray(usernames) || usernames.length === 0) {
+      return res.status(400).json({ error: 'usernames array required' });
+    }
+    const cleanList = [...new Set(usernames.map(s => String(s || '').trim()).filter(Boolean))];
+    if (cleanList.length === 0) return res.status(400).json({ error: 'usernames array required' });
+    const placeholders = cleanList.map(() => '?').join(',');
+    recipients = queryAll(`
+      SELECT u.username, u.email, u.full_name,
+             COALESCE((SELECT COUNT(*) FROM polygons p WHERE p.created_by = u.username), 0) AS mask_count
+      FROM users u
+      WHERE u.username IN (${placeholders})
+        AND u.is_active = 1
+        AND u.email IS NOT NULL AND TRIM(u.email) != ''
+    `, cleanList);
+  }
+
+  recipients = recipients.filter(r => r && r.email);
+  if (recipients.length === 0) return res.status(400).json({ error: 'No deliverable recipients (need active users with email).' });
+
+  // Sort: most polygons first, alphabetical tiebreak.
+  recipients.sort((a, b) => (b.mask_count || 0) - (a.mask_count || 0)
+    || String(a.username || '').localeCompare(String(b.username || '')));
+
+  const allowReply = allow_reply === false || allow_reply === 0 ? 0 : 1;
+  const imagesJson = cleanImages.length > 0 ? JSON.stringify(cleanImages) : null;
+  const now = new Date().toISOString();
+  // One messages row per batch — UI shows it as a single broadcast. Recipients
+  // can still see/read it via inbox visibility (target='all') even though we
+  // email them in waves.
+  const batchTarget = target_kind === 'all_collaborators' ? 'all' : 'all';
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, images, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [req.username, subject.trim(), sanitizeMessageHtml(body.trim()), batchTarget, allowReply, imagesJson, now]);
+  const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
+  if (!msg) return res.status(500).json({ error: 'Failed to persist message' });
+
+  // Plan the daily distribution.
+  const startingBudget = _remainingEmailBudgetToday();
+  const plan = _planDailyDelivery(recipients.length, startingBudget);
+
+  // Insert queue rows: walk recipients in priority order, advancing through plan slots.
+  let recipientIdx = 0;
+  for (const slot of plan) {
+    for (let k = 0; k < slot.count && recipientIdx < recipients.length; k++) {
+      const r = recipients[recipientIdx++];
+      runSQL(
+        `INSERT INTO message_queue
+           (message_id, recipient_username, recipient_email, recipient_full_name, scheduled_for, priority, status, attempts, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?)`,
+        [msg.id, r.username, r.email, r.full_name || null, slot.date, Number(r.mask_count || 0), now]
+      );
+    }
+  }
+  persist();
+
+  logActivity(req.username, 'inbox_message_batch', null, String(msg.id),
+    JSON.stringify({ subject: subject.trim(), total: recipients.length, plan, allow_reply: allowReply }));
+  io.emit('inbox:new', { id: msg.id, subject: subject.trim(), sender: req.username, target: batchTarget, created_at: now });
+
+  // Drain today's slice immediately (best-effort; the worker covers retries).
+  const drained = await drainMessageQueueDueToday();
+
+  res.json({
+    success: true,
+    messageId: msg.id,
+    total: recipients.length,
+    plan,
+    sentToday: drained.sent || 0,
+    failedToday: drained.failed || 0,
+    dailyLimit: EMAIL_DAILY_LIMIT,
+    remainingBudgetToday: _remainingEmailBudgetToday()
+  });
+});
+
+app.get('/api/admin/messages/queue/status', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const today = _todayUtcDateStr();
+  const perDay = queryAll(
+    `SELECT scheduled_for AS date, status, COUNT(*) AS n
+     FROM message_queue
+     WHERE status IN ('pending', 'failed')
+     GROUP BY scheduled_for, status
+     ORDER BY scheduled_for ASC`
+  );
+  const sentToday = _emailsSentToday();
+  res.json({
+    today,
+    dailyLimit: EMAIL_DAILY_LIMIT,
+    sentToday,
+    remainingBudgetToday: _remainingEmailBudgetToday(),
+    upcoming: perDay
+  });
+});
+
 app.post('/api/messages/send', requireAuth, messageLimiter, async (req, res) => {
   const { subject, body, images } = req.body;
   const textErr = validateMessageText(subject, body);
@@ -3535,6 +3780,13 @@ async function start() {
 
   purgeExpiredUnverifiedUsers();
   setInterval(purgeExpiredUnverifiedUsers, 24 * 60 * 60 * 1000);
+
+  // Email batch queue: drain on boot, then every EMAIL_QUEUE_TICK_MS so a long
+  // overnight gap between sends always picks up the new day's budget quickly.
+  drainMessageQueueDueToday().catch(err => console.error('initial queue drain error:', err));
+  setInterval(() => {
+    drainMessageQueueDueToday().catch(err => console.error('queue drain error:', err));
+  }, EMAIL_QUEUE_TICK_MS);
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  Leucena Mapping Platform running at:`);

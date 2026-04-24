@@ -207,6 +207,34 @@ async function initDB() {
   try { db.run('ALTER TABLE messages ADD COLUMN allow_reply INTEGER DEFAULT 1'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE messages ADD COLUMN images TEXT'); } catch (e) { /* already exists */ }
 
+  // ── Message email queue ──
+  // Resend (and similar providers) cap us at ~100 emails/day on the free tier.
+  // When an admin batch-sends to >100 collaborators we cannot just blast them
+  // all in one shot, so each recipient becomes a row here, scheduled across
+  // multiple days and processed in order of `priority` (mask_count) within
+  // each day. The actual `messages` row is created once per batch — this
+  // table only tracks per-recipient *email delivery*.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS message_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      message_id INTEGER NOT NULL,
+      recipient_username TEXT NOT NULL,
+      recipient_email TEXT NOT NULL,
+      recipient_full_name TEXT,
+      scheduled_for TEXT NOT NULL,
+      priority INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      sent_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (message_id) REFERENCES messages(id)
+    )
+  `);
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_msgq_status_due ON message_queue(status, scheduled_for)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_msgq_message ON message_queue(message_id)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_msgq_priority ON message_queue(scheduled_for, priority DESC)'); } catch (e) { /* ignore */ }
+
   // One-time: mark pre-existing local users as email_verified so they aren't locked out
   try {
     db.run("UPDATE users SET email_verified = 1 WHERE email_verified = 0 AND verification_token IS NULL AND (auth_provider IS NULL OR auth_provider = 'local')");
