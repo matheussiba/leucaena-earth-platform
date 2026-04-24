@@ -1916,17 +1916,23 @@ a.docs-logo-card:hover {
   font-weight: 600;
 }
 
-/* ── Toolbar dropdowns (lang & export) ── */
+/* ── Toolbar dropdowns (lang & export) ──
+   These dropdowns live in the footer, so they MUST open upward. The base
+   `.dropdown-menu` rule sets `top: calc(100% + 4px)`; without explicitly
+   resetting `top` here both anchors would apply, the menu would stretch
+   between them, and the bottom of the menu would end up clipped under the
+   footer (the user just sees a sliver of the dropdown). */
 .toolbar-dropdown {
   position: relative;
 }
 .toolbar-dropdown .dropdown-menu {
   position: absolute;
+  top: auto;
   bottom: calc(100% + 6px);
   right: 0;
   left: auto;
   min-width: 180px;
-  max-height: min(320px, calc(100vh - 16px));
+  max-height: min(320px, calc(100vh - 80px));
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
