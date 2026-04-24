@@ -3321,6 +3321,11 @@ window.LeucenaApp = (function () {
       LeucenaMap.updateCellAppearance(cellId, selectedCellData || {});
       LeucenaMap.setEditingCell(null);
       LeucenaMap.releasePanRestriction();
+      // After unlock the viewport itself doesn't move, so no map 'idle' will
+      // fire. We still need to re-add every state point that was hidden by the
+      // edit-scope filter back into the clusterer; otherwise only points from
+      // the just-unlocked cell remain visible until the user pans.
+      if (LeucenaMap.refreshPointVisibility) LeucenaMap.refreshPointVisibility();
       document.getElementById('main-content').classList.remove('editing-cell');
       LeucenaCollab.notifyEditingCell(null);
       LeucenaCollab.notifyActivity(null);

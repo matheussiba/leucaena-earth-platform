@@ -784,6 +784,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   let _brazilIdleListener = null;
+  let _stateIdleListener = null;
 
   async function loadGrid() {
     if (!_currentState) {
@@ -839,6 +840,10 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     if (_brazilIdleListener) {
       google.maps.event.removeListener(_brazilIdleListener);
       _brazilIdleListener = null;
+    }
+    if (_stateIdleListener) {
+      google.maps.event.removeListener(_stateIdleListener);
+      _stateIdleListener = null;
     }
     if (!_currentState) {
       _showBrazilOverview();
@@ -934,6 +939,20 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
           if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
             LeucenaApp.logEvent('grid_rendered', null, null, { state: ufLoaded, zoom: map.getZoom() });
           }
+
+          // Persistent idle listener so that pan/zoom inside the state always
+          // re-syncs the marker clusterer (and the polygon DOM layer). Without
+          // this, locking + unlocking a cell while staying zoomed-in left the
+          // clusterer holding only the markers from that small viewport, and
+          // panning out wouldn't bring the rest of the state's points back.
+          if (_stateIdleListener) google.maps.event.removeListener(_stateIdleListener);
+          _stateIdleListener = map.addListener('idle', function () {
+            if (_currentState !== ufLoaded) return;
+            refreshPointVisibility();
+            if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.refreshPolyVisibility) {
+              LeucenaDrawing.refreshPolyVisibility();
+            }
+          });
         });
       });
     });
@@ -2187,6 +2206,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     releasePanRestriction,
     setEditingCell,
     isEditNeighborOrSelf,
+    refreshPointVisibility,
     updatePointAppearance,
     getGridData,
     getCurrentState: function () { return _currentState; },
