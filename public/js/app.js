@@ -12,6 +12,11 @@ window.LeucenaApp = (function () {
   let mapsLoaded = false;
   let mapsInitialized = false;
   let _adminViewMode = false;
+  // Superadmin-only sort key for the Colaboradores list inside the admin users
+  // modal. Persisted across re-renders of the modal so the user keeps their
+  // chosen ordering. Values: 'alpha' (A→Z, default), 'polygons' (most→least),
+  // 'area' (most→least ha).
+  let _colabSort = 'alpha';
   /** Superadmin permanent delete: { id, expectedPhrase, rowEl } */
   let _pendingPermanentDelete = null;
 
@@ -273,7 +278,15 @@ window.LeucenaApp = (function () {
     document.getElementById('guide-back-about').addEventListener('click', () => showGuidePage('main'));
 
     document.getElementById('admin-users-btn').addEventListener('click', () => {
-      if (userRole === 'tester') { openTesterRoleModal(); return; }
+      // For testers we route based on the *effective* role: a tester acting as
+      // 'team' should see the actual team panel (not just the role-switch modal),
+      // and they can still flip back to 'contributor' through the small switcher
+      // we render inside that panel. While acting as 'contributor', the team
+      // panel is not available so we still surface the role-switch modal.
+      if (userRole === 'tester' && getEffectiveRole() === 'contributor') {
+        openTesterRoleModal();
+        return;
+      }
       openAdminUsersModal();
     });
     document.getElementById('admin-users-close').addEventListener('click', closeAdminUsersModal);
@@ -3836,8 +3849,16 @@ window.LeucenaApp = (function () {
 
     if (insertionMode) setInsertionMode(false);
     if (deletionMode) setDeletionMode(false);
-    userRole = 'contributor';
-    testerMode = 'contributor';
+    // Important: never overwrite userRole when the *actual* server-assigned role
+    // is 'tester'. A tester can switch back and forth between team/contributor
+    // through the role-switch modal; if we clobber userRole here, subsequent
+    // `userRole === 'tester'` checks (e.g. the admin-users-btn click handler)
+    // start failing and the user can no longer reach the role-switch UI nor
+    // the team panel.
+    if (userRole !== 'tester') {
+      userRole = 'contributor';
+      testerMode = 'contributor';
+    }
   }
 
   // ── View counter ──
@@ -4117,6 +4138,20 @@ window.LeucenaApp = (function () {
     const viewToggleEl = document.getElementById('admin-view-toggle');
     const createUserSection = document.getElementById('admin-create-user');
     if (createUserSection) createUserSection.classList.add('hidden');
+
+    // Tester-only shortcut: a small button that re-opens the role-switch modal
+    // so testers can flip back to 'contributor' (or back into 'team') without
+    // leaving the team panel.
+    const testerSwitchBtn = document.getElementById('admin-tester-switch-btn');
+    if (testerSwitchBtn) {
+      if (userRole === 'tester') {
+        testerSwitchBtn.classList.remove('hidden');
+        testerSwitchBtn.onclick = () => openTesterRoleModal();
+      } else {
+        testerSwitchBtn.classList.add('hidden');
+        testerSwitchBtn.onclick = null;
+      }
+    }
 
     const callerIsTeam = !isAdminUser();
 
@@ -4785,7 +4820,19 @@ window.LeucenaApp = (function () {
         return (a.username || '').localeCompare(b.username || '');
       });
       const collabIsVerified = u => !!(u.email_verified || u.auth_provider === 'google');
-      const colabUsers = data.users.filter(u => !isEquipe(u)).sort((a, b) => {
+      // Superadmin-only sort override. Defaults to alpha (with unverified first)
+      // for everyone else, preserving the previous behavior.
+      const colabBase = data.users.filter(u => !isEquipe(u));
+      const colabUsers = colabBase.sort((a, b) => {
+        if (effectiveSuperAdmin && _colabSort === 'polygons') {
+          return (b.mask_count || 0) - (a.mask_count || 0)
+              || (a.username || '').localeCompare(b.username || '');
+        }
+        if (effectiveSuperAdmin && _colabSort === 'area') {
+          return (b.mask_area_ha || 0) - (a.mask_area_ha || 0)
+              || (a.username || '').localeCompare(b.username || '');
+        }
+        // Default: unverified first, then alphabetical.
         const va = collabIsVerified(a), vb = collabIsVerified(b);
         if (va !== vb) return va ? 1 : -1;
         return (a.username || '').localeCompare(b.username || '');
@@ -4880,15 +4927,38 @@ window.LeucenaApp = (function () {
 
         const searchRow = document.createElement('div');
         searchRow.className = 'admin-colab-search-row';
+        // Superadmin gets an extra sort selector to order the colab list by
+        // alphabetical / # polygons (desc) / area in ha (desc). Other roles
+        // keep the existing unverified-first + alpha ordering.
+        const sortSelectHtml = effectiveSuperAdmin
+          ? '<label class="admin-colab-sort-wrap" title="' + t('admin.sortLabel') + '">'
+            + '<span class="admin-colab-sort-label">' + t('admin.sortLabel') + '</span>'
+            + '<select class="admin-colab-sort">'
+              + '<option value="alpha"' + (_colabSort === 'alpha' ? ' selected' : '') + '>' + t('admin.sortAlpha') + '</option>'
+              + '<option value="polygons"' + (_colabSort === 'polygons' ? ' selected' : '') + '>' + t('admin.sortPolygonsDesc') + '</option>'
+              + '<option value="area"' + (_colabSort === 'area' ? ' selected' : '') + '>' + t('admin.sortAreaDesc') + '</option>'
+            + '</select>'
+          + '</label>'
+          : '';
         searchRow.innerHTML =
           '<div class="admin-colab-search-wrap">' +
           '<svg class="admin-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
           '<input type="text" class="admin-colab-search" placeholder="' + t('admin.searchPlaceholder') + '">' +
           '<button type="button" class="admin-search-clear hidden" title="Limpar">&times;</button>' +
           '</div>' +
+          sortSelectHtml +
           '<span class="admin-colab-filter-info"></span>';
         colabDropdown.body.insertBefore(searchRow, colabDropdown.body.firstChild);
         colabDropdown.body.insertBefore(batchToolbar, searchRow.nextSibling);
+
+        const sortSelect = searchRow.querySelector('.admin-colab-sort');
+        if (sortSelect) {
+          sortSelect.addEventListener('change', () => {
+            _colabSort = sortSelect.value;
+            logEvent('admin_colab_sort_change', null, null, { sort: _colabSort });
+            openAdminUsersModal();
+          });
+        }
 
         _colabSearchInput = searchRow.querySelector('.admin-colab-search');
         _colabFilterInfo = searchRow.querySelector('.admin-colab-filter-info');
@@ -5383,6 +5453,18 @@ window.LeucenaApp = (function () {
       const roleLabel = newMode === 'team' ? LeucenaI18n.t('tester.roleMember') : LeucenaI18n.t('tester.roleContributor');
       showToast(LeucenaI18n.t('tester.switched', roleLabel), 'success');
       closeTesterRoleModal();
+
+      // When the tester switches *into* team mode we open the team panel right
+      // away — that's the whole point of switching: see and use the team UI.
+      // When switching back to contributor, refresh the panel if it happens to
+      // be open so its read-only / hidden controls reflect the new role.
+      const adminModal = document.getElementById('admin-users-modal');
+      const adminOpen = adminModal && !adminModal.classList.contains('hidden');
+      if (newMode === 'team') {
+        openAdminUsersModal();
+      } else if (adminOpen) {
+        closeAdminUsersModal();
+      }
     } catch (e) {
       showToast('Erro de conexão', 'error');
     }

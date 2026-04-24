@@ -260,6 +260,7 @@ window.LeucenaI18n = (function () {
     'tester.roleMember': { pt: 'Membro', en: 'Member', es: 'Miembro' },
     'tester.roleContributor': { pt: 'Colaborador', en: 'Contributor', es: 'Colaborador' },
     'tester.switched': { pt: 'Perfil alterado para {0}', en: 'Profile switched to {0}', es: 'Perfil cambiado a {0}' },
+    'tester.switchRole': { pt: 'Trocar perfil de teste', en: 'Switch test profile', es: 'Cambiar perfil de prueba' },
     'tester.copyLogs': { pt: 'Copiar logs (5 min)', en: 'Copy logs (5 min)', es: 'Copiar logs (5 min)' },
     'tester.logsCopied': { pt: '{0} eventos copiados para a área de transferência', en: '{0} events copied to clipboard', es: '{0} eventos copiados al portapapeles' },
 
@@ -289,6 +290,10 @@ window.LeucenaI18n = (function () {
     'admin.batchDeselectAll': { pt: 'Limpar seleção', en: 'Clear selection', es: 'Limpiar selección' },
     'admin.batchSelected': { pt: '{0} selecionado(s)', en: '{0} selected', es: '{0} seleccionado(s)' },
     'admin.searchPlaceholder': { pt: 'Buscar colaborador...', en: 'Search collaborator...', es: 'Buscar colaborador...' },
+    'admin.sortLabel': { pt: 'Ordenar', en: 'Sort', es: 'Ordenar' },
+    'admin.sortAlpha': { pt: 'A → Z (alfabética)', en: 'A → Z (alphabetical)', es: 'A → Z (alfabética)' },
+    'admin.sortPolygonsDesc': { pt: 'Mais polígonos', en: 'Most polygons', es: 'Más polígonos' },
+    'admin.sortAreaDesc': { pt: 'Maior área (ha)', en: 'Largest area (ha)', es: 'Mayor área (ha)' },
     'admin.searchResult': { pt: '{0} de {1} colaboradores', en: '{0} of {1} collaborators', es: '{0} de {1} colaboradores' },
     'admin.batchVerify': { pt: 'Verificar', en: 'Verify', es: 'Verificar' },
     'admin.batchDeactivate': { pt: 'Desativar', en: 'Deactivate', es: 'Desactivar' },

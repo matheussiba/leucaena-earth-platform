@@ -4131,10 +4131,22 @@ a.docs-logo-card:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 4px;
 }
 .admin-title-row h2 {
   margin: 0;
+  margin-right: auto;
+}
+.admin-tester-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.admin-tester-switch svg {
+  flex-shrink: 0;
 }
 .admin-view-toggle {
   display: flex;
@@ -4470,12 +4482,39 @@ a.docs-logo-card:hover {
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 .admin-colab-search-wrap {
   flex: 1;
+  min-width: 180px;
   position: relative;
   display: flex;
   align-items: center;
+}
+.admin-colab-sort-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.admin-colab-sort-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.admin-colab-sort {
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.admin-colab-sort:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 .admin-search-icon {
   position: absolute;
