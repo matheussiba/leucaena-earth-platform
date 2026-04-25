@@ -206,7 +206,15 @@ window.LeucenaApp = (function () {
   }
 
   function init() {
-    logEvent('app_init', null, null, { url: window.location.href, userAgent: navigator.userAgent, screen: window.innerWidth + 'x' + window.innerHeight });
+    logEvent('app_init', null, null, {
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      screen: window.innerWidth + 'x' + window.innerHeight,
+      dpr: window.devicePixelRatio || 1,
+      lang: navigator.language || null,
+      tz: (Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : null,
+      online: typeof navigator.onLine === 'boolean' ? navigator.onLine : null
+    });
     document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
     const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
@@ -598,6 +606,11 @@ window.LeucenaApp = (function () {
     document.getElementById('btn-my-location').addEventListener('click', handleMyLocation);
 
     document.getElementById('legend-toggle').addEventListener('click', toggleLegend);
+    // Desktop-only mirror of the legend toggle, lives in the footer toolbar
+    // next to map-type/labels. Keeping the same toggleLegend() handler means
+    // the floating legend body and the toolbar button stay perfectly in sync.
+    const legendToolbarBtn = document.getElementById('legend-toggle-toolbar');
+    if (legendToolbarBtn) legendToolbarBtn.addEventListener('click', toggleLegend);
 
     document.getElementById('toggle-users-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -2892,6 +2905,13 @@ window.LeucenaApp = (function () {
     if (!legendEl) return;
     const collapsed = legendEl.classList.toggle('collapsed');
     syncLegendToggleTitle();
+    // Keep the toolbar mirror's aria-pressed in sync; CSS uses it for the
+    // active styling so users can see at a glance whether the legend is open.
+    const toolbarBtn = document.getElementById('legend-toggle-toolbar');
+    if (toolbarBtn) {
+      toolbarBtn.classList.toggle('active', !collapsed);
+      toolbarBtn.setAttribute('aria-pressed', collapsed ? 'false' : 'true');
+    }
     logEvent(collapsed ? 'legend_collapse' : 'legend_expand');
   }
 

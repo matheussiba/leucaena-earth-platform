@@ -86,8 +86,10 @@ window.LeucenaExport = (function () {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
+      if (LeucenaApp.logEvent) LeucenaApp.logEvent('export_complete', null, null, { filename });
       LeucenaApp.showToast(LeucenaI18n.t('toast.exportDone'), 'success');
     } catch (e) {
+      if (LeucenaApp.logEvent) LeucenaApp.logEvent('export_error', null, null, { filename, error: e.message || String(e) });
       LeucenaApp.showToast(LeucenaI18n.t('toast.exportFail'), 'error');
     }
   }

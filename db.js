@@ -168,6 +168,18 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN last_edited_state TEXT'); } catch (e) { /* already exists */ }
 
   try { db.run('ALTER TABLE activity_logs ADD COLUMN role TEXT'); } catch (e) { /* already exists */ }
+  // Device telemetry per logged event so we can debug "this user could not
+  // do X" reports without asking them what device/OS they were on. Stored as
+  // small string columns so they're cheap to index/filter on. ip is stored
+  // truncated (last octet zeroed) for very rough geo without keeping
+  // identifiable data.
+  try { db.run('ALTER TABLE activity_logs ADD COLUMN device_type TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE activity_logs ADD COLUMN os TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE activity_logs ADD COLUMN browser TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE activity_logs ADD COLUMN user_agent TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE activity_logs ADD COLUMN ip TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_activity_logs_username_ts ON activity_logs(username, timestamp DESC)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action)'); } catch (e) { /* ignore */ }
 
   // Sessions: persisted so users stay logged in across server redeploys.
   // The in-memory Map in server.js stays as the hot cache; this table is the source of truth on boot.

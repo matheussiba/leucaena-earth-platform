@@ -506,12 +506,32 @@ function needsRehash(storedHash) {
 
 let _logCleanupCounter = 0;
 // Amortized retention: every 50 inserts, purge activity_logs older than 48h.
-function logActivity(username, action, cellId, objectId, details, role) {
+//
+// Backwards compatible signature: (username, action, cellId, objectId, details, role).
+// The new optional 7th arg `ctx` accepts either an Express `req` (we'll
+// extract device info from it) or an object like `{ device_type, os, browser,
+// user_agent, ip }`. We keep the legacy positional form so the dozens of
+// existing call sites don't have to change.
+function logActivity(username, action, cellId, objectId, details, role, ctx) {
   try {
     const dets = (details && typeof details === 'object') ? JSON.stringify(details) : (details || null);
     const userRole = role || (username ? (getUserRole(username) || null) : null);
-    runSQL('INSERT INTO activity_logs (timestamp, username, action, cell_id, object_id, details, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [new Date().toISOString(), username || null, action, cellId || null, objectId || null, dets, userRole]);
+    let device = null;
+    if (ctx) {
+      // Heuristic: if it walks like a req object, extract from it.
+      if (ctx.headers || ctx.connection || ctx.ip) {
+        device = _deviceContextFromReq(ctx);
+      } else {
+        device = ctx;
+      }
+    }
+    const dev = device || {};
+    runSQL(
+      'INSERT INTO activity_logs (timestamp, username, action, cell_id, object_id, details, role, device_type, os, browser, user_agent, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [new Date().toISOString(), username || null, action, cellId || null, objectId || null, dets, userRole,
+        dev.device_type || null, dev.os || null, dev.browser || null,
+        dev.user_agent ? String(dev.user_agent).slice(0, 500) : null, dev.ip || null]
+    );
     if (++_logCleanupCounter >= 50) {
       _logCleanupCounter = 0;
       const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
@@ -613,7 +633,7 @@ function maskEmail(email) {
  * @param {object} user - row from users
  * @param {string|null} logActorUsername - superadmin who triggered delete, or null for system purge
  */
-function permanentlyDeleteUserAccount(user, logActorUsername) {
+function permanentlyDeleteUserAccount(user, logActorUsername, req) {
   if (!user || user.username === 'deleted') return;
 
   const deletedExists = queryOne("SELECT id FROM users WHERE username = 'deleted'");
@@ -639,7 +659,7 @@ function permanentlyDeleteUserAccount(user, logActorUsername) {
   runSQL('DELETE FROM users WHERE id = ?', [user.id]);
 
   if (logActorUsername) {
-    logActivity(logActorUsername, 'user_delete', null, null, { deleted_user: user.username, deleted_role: user.role });
+    logActivity(logActorUsername, 'user_delete', null, null, { deleted_user: user.username, deleted_role: user.role }, null, req);
   } else {
     logActivity(null, 'user_purge_unverified', null, null, { username: user.username, id: user.id });
   }
@@ -882,11 +902,93 @@ function validateFinished(cellId) {
   return { valid: true };
 }
 
-// ── Device detection helper ──
+// ── Device detection helpers ──
+//
+// We don't pull in an external UA parser to keep cold-start light; the regex
+// below covers > 99% of browsers we see in production. `parseUserAgent` is
+// the canonical entry point and returns { device_type, os, browser } so the
+// activity log row carries enough context to debug issues without asking the
+// user "what device are you on?".
 
 function isMobileUA(req) {
   const ua = (req.headers['user-agent'] || '').toLowerCase();
   return /mobile|android|iphone|ipad|ipod|webos|blackberry|opera mini|iemobile/.test(ua);
+}
+
+function parseUserAgent(uaRaw) {
+  const ua = String(uaRaw || '');
+  if (!ua) return { device_type: null, os: null, browser: null };
+  const lc = ua.toLowerCase();
+  // Tablet detection comes first: iPad and many Android tablets identify as
+  // "Mobile" too, so the order matters.
+  let device_type = 'desktop';
+  if (/ipad|tablet|playbook|silk|kindle/.test(lc)) device_type = 'tablet';
+  else if (/android(?!.*mobi)/.test(lc)) device_type = 'tablet';
+  else if (/mobile|android|iphone|ipod|webos|blackberry|opera mini|iemobile/.test(lc)) device_type = 'mobile';
+  let os = null;
+  if (/windows nt 11/.test(lc)) os = 'Windows 11';
+  else if (/windows nt 10/.test(lc)) os = 'Windows 10';
+  else if (/windows nt/.test(lc)) os = 'Windows';
+  else if (/iphone|ipad|ipod/.test(lc)) {
+    const m = ua.match(/OS (\d+)[._](\d+)/);
+    os = m ? `iOS ${m[1]}.${m[2]}` : 'iOS';
+  } else if (/android/.test(lc)) {
+    const m = ua.match(/Android (\d+(?:\.\d+)?)/);
+    os = m ? `Android ${m[1]}` : 'Android';
+  } else if (/mac os x/.test(lc)) {
+    const m = ua.match(/Mac OS X (\d+[._]\d+)/);
+    os = m ? `macOS ${m[1].replace('_', '.')}` : 'macOS';
+  } else if (/cros/.test(lc)) os = 'ChromeOS';
+  else if (/linux/.test(lc)) os = 'Linux';
+  let browser = null;
+  // Order matters: Edge/Opera/Chromium-based browsers also include "Chrome".
+  let m;
+  if ((m = ua.match(/Edg\/(\d+)/))) browser = `Edge ${m[1]}`;
+  else if ((m = ua.match(/OPR\/(\d+)/))) browser = `Opera ${m[1]}`;
+  else if ((m = ua.match(/Firefox\/(\d+)/))) browser = `Firefox ${m[1]}`;
+  else if ((m = ua.match(/Chrome\/(\d+)/))) browser = `Chrome ${m[1]}`;
+  else if (/Safari/.test(ua) && (m = ua.match(/Version\/(\d+)/))) browser = `Safari ${m[1]}`;
+  else if (/Safari/.test(ua)) browser = 'Safari';
+  return { device_type, os, browser };
+}
+
+// Extract the client IP and zero its last octet (IPv4) or last hextet (IPv6)
+// so we can keep coarse "where" data without retaining a fully identifying
+// address.
+function _coarseIp(req) {
+  if (!req) return null;
+  const xfwd = req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip']);
+  let ip = null;
+  if (typeof xfwd === 'string' && xfwd.length > 0) {
+    ip = xfwd.split(',')[0].trim();
+  } else if (req.ip) {
+    ip = req.ip;
+  } else if (req.connection && req.connection.remoteAddress) {
+    ip = req.connection.remoteAddress;
+  }
+  if (!ip) return null;
+  ip = ip.replace(/^::ffff:/, '');
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip.replace(/\.\d+$/, '.0');
+  if (ip.includes(':')) {
+    const parts = ip.split(':');
+    if (parts.length >= 2) parts[parts.length - 1] = '0';
+    return parts.join(':');
+  }
+  return ip;
+}
+
+function _deviceContextFromReq(req) {
+  if (!req || !req.headers) return null;
+  const uaRaw = String(req.headers['user-agent'] || '').slice(0, 500);
+  if (!uaRaw) return null;
+  const parsed = parseUserAgent(uaRaw);
+  return {
+    device_type: parsed.device_type,
+    os: parsed.os,
+    browser: parsed.browser,
+    user_agent: uaRaw,
+    ip: _coarseIp(req)
+  };
 }
 
 function bumpStat(key) {
@@ -978,9 +1080,11 @@ app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, 
              <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
              <p>leucaena.earth</p>`
     });
+    logActivity(user.username, 'auth_resend_verification_unauthed', null, null, null, null, req);
     res.json({ success: true });
   } catch (e) {
     console.error('Resend error:', e.message);
+    logActivity(user.username, 'auth_resend_verification_unauthed_error', null, null, { error: e.message || String(e) }, null, req);
     res.status(500).json({ error: 'Falha ao enviar e-mail' });
   }
 });
@@ -1025,7 +1129,7 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
      VALUES (?, ?, ?, ?, 'local', 0, ?, ?, ?, ?, ?)`,
     [username, hash, now, email, verifyToken, verifyExpires, cleanFullName, cleanRefSource, cleanRefDetail]
   );
-  logActivity(username, 'register', null, null, null);
+  logActivity(username, 'register', null, null, { email, full_name: cleanFullName, referral_source: cleanRefSource }, null, req);
   persist();
 
   let emailSent = false;
@@ -1066,9 +1170,15 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   const user = isEmail
     ? queryOne('SELECT * FROM users WHERE email = ?', [idRaw.toLowerCase()])
     : queryOne('SELECT * FROM users WHERE username = ?', [idRaw]);
-  if (!user) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+  if (!user) {
+    logActivity(null, 'login_failed', null, null, { reason: 'unknown_user', identifier: idRaw }, null, req);
+    return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+  }
 
-  if (!verifyPassword(password, user.password_hash)) return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+  if (!verifyPassword(password, user.password_hash)) {
+    logActivity(user.username, 'login_failed', null, null, { reason: 'bad_password' }, null, req);
+    return res.status(401).json({ error: 'Usuário ou senha inválidos' });
+  }
 
   if (needsRehash(user.password_hash)) {
     const newHash = hashPassword(password);
@@ -1077,12 +1187,14 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   }
 
   if (user.is_active === 0) {
+    logActivity(user.username, 'login_blocked', null, null, { reason: 'deactivated' }, null, req);
     return res.status(403).json({ error: 'Conta desativada. Entre em contato com o administrador.', code: 'ACCOUNT_DEACTIVATED' });
   }
 
   const realUsername = user.username;
   const userRole = (user.role || 'contributor');
   if (user.auth_provider !== 'google' && userRole !== 'tester' && !user.email_verified) {
+    logActivity(realUsername, 'login_blocked', null, null, { reason: 'email_not_verified' }, null, req);
     if (!user.email) {
       return res.status(403).json({ error: 'Seu cadastro não tem e-mail. Entre em contato com o administrador.', code: 'EMAIL_NOT_VERIFIED' });
     }
@@ -1096,7 +1208,10 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
 
   runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE username = ?', [new Date().toISOString(), realUsername]);
   if (!isSuperAdmin(realUsername)) bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
-  logActivity(realUsername, 'login', null, null, null);
+  // Pass req so the login row carries device_type/os/browser/UA — answers the
+  // user's "I want device per login" requirement without a separate sessions
+  // table mutation.
+  logActivity(realUsername, 'login', null, null, { method: isEmail ? 'email' : 'username' }, null, req);
 
   const token = createSession(realUsername);
   const role = getUserRole(realUsername);
@@ -1159,10 +1274,23 @@ app.put('/api/profile', requireAuth, (req, res) => {
   }
   const cleanRefSrc = (referral_source && typeof referral_source === 'string') ? referral_source.trim().substring(0, 50) : null;
   const cleanRefDet = (referral_detail && typeof referral_detail === 'string') ? referral_detail.trim().substring(0, 200) : null;
+  // Capture which fields actually changed so the activity_log row is useful
+  // for "who changed what when" audits without leaking the new content.
+  const before = queryOne('SELECT full_name, occupation, description, linkedin, scholar, referral_source, referral_detail, photo FROM users WHERE username = ?', [req.username]) || {};
   runSQL(
     'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, referral_source = ?, referral_detail = ? WHERE username = ?',
     [full_name || null, occStr || null, description != null ? description : null, photo != null ? photo : null, linkedin || null, scholar || null, cleanRefSrc, cleanRefDet, req.username]
   );
+  const changed = [];
+  if ((before.full_name || null) !== (full_name || null)) changed.push('full_name');
+  if ((before.occupation || null) !== (occStr || null)) changed.push('occupation');
+  if ((before.description || null) !== (description || null)) changed.push('description');
+  if ((before.linkedin || null) !== (linkedin || null)) changed.push('linkedin');
+  if ((before.scholar || null) !== (scholar || null)) changed.push('scholar');
+  if ((before.referral_source || null) !== (cleanRefSrc || null)) changed.push('referral_source');
+  if ((before.referral_detail || null) !== (cleanRefDet || null)) changed.push('referral_detail');
+  if ((before.photo || null) !== (photo || null)) changed.push('photo');
+  logActivity(req.username, 'profile_save', null, null, { changed }, null, req);
   persist();
   res.json({ success: true });
 });
@@ -1172,6 +1300,7 @@ app.put('/api/profile/password', requireAuth, (req, res) => {
   if (!password || password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
   const hash = hashPassword(password);
   runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, req.username]);
+  logActivity(req.username, 'password_change_self', null, null, null, null, req);
   persist();
   res.json({ success: true });
 });
@@ -1179,6 +1308,8 @@ app.put('/api/profile/password', requireAuth, (req, res) => {
 app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const { full_name, occupation, description, photo, linkedin, scholar, email, referral_source, referral_detail } = req.body || {};
+  // Note: actor + target are recorded so audit trails make sense for super
+  // admins editing other users' profiles. Logged after we resolve the user.
   if (occupation !== undefined && occupation !== null && typeof occupation === 'string' && occupation.length > 120) {
     return res.status(400).json({ error: 'Ocupação deve ter no máximo 120 caracteres' });
   }
@@ -1196,6 +1327,7 @@ app.put('/api/admin/users/:id/profile', requireAuth, (req, res) => {
     'UPDATE users SET full_name = ?, occupation = ?, description = ?, photo = ?, linkedin = ?, scholar = ?, email = ?, referral_source = ?, referral_detail = ? WHERE id = ?',
     [full_name !== undefined ? (full_name || null) : user.full_name, occVal, description !== undefined ? (description || null) : user.description, photo !== undefined ? (photo || null) : user.photo, linkedin !== undefined ? (linkedin || null) : user.linkedin, scholar !== undefined ? (scholar || null) : user.scholar, email !== undefined ? (email || null) : user.email, refSrcVal, refDetVal, Number(req.params.id)]
   );
+  logActivity(req.username, 'admin_profile_save', null, null, { target_user: user.username }, null, req);
   persist();
   res.json({ success: true });
 });
@@ -1317,7 +1449,7 @@ app.post('/api/auth/logout', (req, res) => {
     logUser = (typeof sess === 'string') ? sess : (sess && sess.username) || null;
     deleteSession(token);
   }
-  if (logUser) logActivity(logUser, 'logout', null, null, null);
+  if (logUser) logActivity(logUser, 'logout', null, null, null, null, req);
   res.json({ success: true });
 });
 
@@ -1401,7 +1533,7 @@ app.get('/auth/google/callback', async (req, res) => {
       user = queryOne('SELECT * FROM users WHERE LOWER(email) = ? AND is_active = 1', [googleEmail]);
       if (user) {
         runSQL('UPDATE users SET google_id = ?, auth_provider = ?, email_verified = 1 WHERE id = ?', [googleId, 'google', user.id]);
-        logActivity(user.username, 'google_auto_link', null, null, { google_email: googleEmail });
+        logActivity(user.username, 'google_auto_link', null, null, { google_email: googleEmail }, null, req);
         user.google_id = googleId;
       }
     }
@@ -1423,7 +1555,7 @@ app.get('/auth/google/callback', async (req, res) => {
         [finalUsername, randomHash, now, googleEmail, googleId, googleName]
       );
       user = queryOne('SELECT * FROM users WHERE username = ?', [finalUsername]);
-      logActivity(user.username, 'register_google', null, null, { google_email: googleEmail });
+      logActivity(user.username, 'register_google', null, null, { google_email: googleEmail }, null, req);
       persist();
       sendWelcomeEmail(user).catch(e => console.error('Welcome email error:', e));
       sendWelcomeInboxMessage(user.username);
@@ -1449,7 +1581,7 @@ app.get('/auth/google/callback', async (req, res) => {
 
     runSQL('UPDATE users SET login_count = COALESCE(login_count, 0) + 1, last_active = ? WHERE id = ?', [new Date().toISOString(), user.id]);
     if (!isSuperAdmin(user.username)) bumpStat(isMobileUA(req) ? 'login_count_mobile' : 'login_count_desktop');
-    logActivity(user.username, 'login_google', null, null, null);
+    logActivity(user.username, 'login_google', null, null, { google_email: googleEmail }, null, req);
 
     const oneTimeCode = uuidv4();
     oauthCodes.set(oneTimeCode, { username: user.username, createdAt: Date.now() });
@@ -1496,7 +1628,7 @@ app.get('/api/auth/verify-email', (req, res) => {
   }
 
   runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
-  logActivity(user.username, 'email_verified', null, null, null);
+  logActivity(user.username, 'email_verified', null, null, null, null, req);
   persist();
 
   const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [user.id]);
@@ -1543,9 +1675,11 @@ app.post('/api/auth/resend-verification', requireAuth, async (req, res) => {
              <p style="font-size:13px;color:#64748b;">Se não encontrar na caixa de entrada, verifique também a pasta de <strong>spam</strong> ou lixo eletrônico.</p>
              <p>leucaena.earth</p>`
     });
+    logActivity(user.username, 'auth_resend_verification', null, null, null, null, req);
     res.json({ success: true });
   } catch (e) {
     console.error('Resend error:', e.message);
+    logActivity(user.username, 'auth_resend_verification_error', null, null, { error: e.message || String(e) }, null, req);
     res.status(500).json({ error: 'Falha ao enviar e-mail' });
   }
 });
@@ -1556,6 +1690,7 @@ app.post('/api/profile/link-google', requireAuth, (req, res) => {
   const user = queryOne('SELECT * FROM users WHERE username = ?', [req.username]);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   if (user.google_id) return res.json({ success: true, already_linked: true });
+  logActivity(req.username, 'profile_link_google_init', null, null, null, null, req);
   res.json({ redirect: '/auth/google?link=true' });
 });
 
@@ -1596,7 +1731,7 @@ app.post('/api/auth/forgot-password', resetLimiter, async (req, res) => {
     });
   } catch (e) { console.error('Resend reset email error:', e.message); }
 
-  logActivity(user.username, 'password_reset_requested', null, null, null);
+  logActivity(user.username, 'password_reset_requested', null, null, null, null, req);
   res.json({ success: true, message: genericMsg });
 });
 
@@ -1664,7 +1799,7 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
   const hash = hashPassword(password);
   runSQL('UPDATE users SET password_hash = ? WHERE username = ?', [hash, username]);
   resetTokens.delete(username.toLowerCase());
-  logActivity(username, 'password_reset_used', null, null, null);
+  logActivity(username, 'password_reset_used', null, null, { flow: 'in_app' }, null, req);
   persist();
     return res.json({ success: true });
   }
@@ -1691,7 +1826,7 @@ app.post('/api/auth/reset-password', resetLimiter, (req, res) => {
 
   const hash = hashPassword(password);
   runSQL('UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?', [hash, user.id]);
-  logActivity(user.username, 'password_reset_used', null, null, null);
+  logActivity(user.username, 'password_reset_used', null, null, { flow: 'email_link' }, null, req);
   persist();
   res.send(resetPasswordPageHtml('success', '<h2>Senha redefinida!</h2><p>Sua senha foi atualizada com sucesso.</p><a class="link" href="https://map.leucaena.earth">Ir para a plataforma</a>'));
 });
@@ -1774,7 +1909,7 @@ app.post('/api/admin/users/create', requireAuth, (req, res) => {
     'INSERT INTO users (username, password_hash, created_at, email, email_verified, auth_provider, full_name) VALUES (?, ?, ?, ?, 1, ?, ?)',
     [username, hash, now, email, 'local', cleanFullName]
   );
-  logActivity(req.username, 'admin_create_user', null, null, { target_user: username, full_name: cleanFullName });
+  logActivity(req.username, 'admin_create_user', null, null, { target_user: username, full_name: cleanFullName }, null, req);
   persist();
 
   const freshUser = queryOne('SELECT * FROM users WHERE username = ?', [username]);
@@ -1795,7 +1930,7 @@ app.put('/api/admin/users/:id/password', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) return res.status(403).json({ error: 'Admins só podem gerenciar colaboradores e testers' });
   const hash = hashPassword(password);
   runSQL('UPDATE users SET password_hash = ? WHERE id = ?', [hash, Number(req.params.id)]);
-  logActivity(req.username, 'password_change', null, null, { target_user: user.username });
+  logActivity(req.username, 'password_change', null, null, { target_user: user.username }, null, req);
   persist();
   notifySuperAdminsOfAdminAction(req.username, 'Alteração de senha', user.username);
   res.json({ success: true });
@@ -1819,7 +1954,7 @@ app.put('/api/admin/users/:id/deactivate', requireAuth, (req, res) => {
 
   deleteSessionsForUser(user.username);
 
-  logActivity(req.username, 'user_deactivate', null, null, { target_user: user.username, target_role: user.role });
+  logActivity(req.username, 'user_deactivate', null, null, { target_user: user.username, target_role: user.role }, null, req);
   persist();
   io.emit('users:updated', getUniqueUsers());
   notifySuperAdminsOfAdminAction(req.username, 'Desativação de usuário', user.username, `Role: ${user.role}`);
@@ -1834,7 +1969,7 @@ app.put('/api/admin/users/:id/reactivate', requireAuth, (req, res) => {
   if (user.is_active) return res.status(400).json({ error: 'Usuário já está ativo' });
 
   runSQL('UPDATE users SET is_active = 1 WHERE id = ?', [Number(req.params.id)]);
-  logActivity(req.username, 'user_reactivate', null, null, { target_user: user.username, target_role: user.role });
+  logActivity(req.username, 'user_reactivate', null, null, { target_user: user.username, target_role: user.role }, null, req);
   persist();
   notifySuperAdminsOfAdminAction(req.username, 'Reativação de usuário', user.username, `Role: ${user.role}`);
   res.json({ success: true });
@@ -1847,7 +1982,7 @@ app.delete('/api/admin/users/:id', requireAuth, (req, res) => {
   if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) return res.status(403).json({ error: 'Este usuário é protegido' });
   if (user.role === 'superadmin') return res.status(400).json({ error: 'Não é possível excluir um Super Admin' });
 
-  permanentlyDeleteUserAccount(user, req.username);
+  permanentlyDeleteUserAccount(user, req.username, req);
   io.emit('users:updated', getUniqueUsers());
   res.json({ success: true });
 });
@@ -1864,7 +1999,7 @@ app.put('/api/admin/users/:id/role', requireAuth, (req, res) => {
   }
   const oldRole = user.role || 'contributor';
   runSQL('UPDATE users SET role = ? WHERE id = ?', [role, Number(req.params.id)]);
-  logActivity(req.username, 'role_change', null, null, { target_user: user.username, from: oldRole, to: role });
+  logActivity(req.username, 'role_change', null, null, { target_user: user.username, from: oldRole, to: role }, null, req);
   persist();
   res.json({ success: true });
 });
@@ -1877,6 +2012,7 @@ app.put('/api/admin/users/:id/tester-mode', requireAuth, (req, res) => {
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   if (user.role !== 'tester') return res.status(400).json({ error: 'Usuário não é tester' });
   runSQL('UPDATE users SET tester_mode = ? WHERE id = ?', [tester_mode, Number(req.params.id)]);
+  logActivity(req.username, 'admin_tester_mode_set', null, null, { target_user: user.username, tester_mode }, null, req);
   persist();
   res.json({ success: true });
 });
@@ -1887,6 +2023,7 @@ app.put('/api/tester/mode', requireAuth, (req, res) => {
   const { tester_mode } = req.body;
   if (!['team', 'contributor'].includes(tester_mode)) return res.status(400).json({ error: 'Modo inválido' });
   runSQL('UPDATE users SET tester_mode = ? WHERE id = ?', [tester_mode, caller.id]);
+  logActivity(req.username, 'tester_mode_switch', null, null, { tester_mode }, null, req);
   persist();
   res.json({ success: true, tester_mode });
 });
@@ -1923,7 +2060,7 @@ app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
   }
   try { runSQL('UPDATE sessions SET username = ? WHERE username = ?', [new_username, oldUsername]); } catch (e) { /* best effort */ }
 
-  logActivity(req.username, 'username_change', null, null, { from: oldUsername, to: new_username });
+  logActivity(req.username, 'username_change', null, null, { from: oldUsername, to: new_username }, null, req);
   persist();
   notifySuperAdminsOfAdminAction(req.username, 'Renomeação de usuário', oldUsername, `Novo username: ${new_username}`);
   res.json({ success: true, old_username: oldUsername, new_username });
@@ -1935,7 +2072,7 @@ app.put('/api/admin/users/:id/verify', requireAuth, async (req, res) => {
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   if (user.email_verified) return res.json({ success: true, already_verified: true });
   runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [Number(req.params.id)]);
-  logActivity(req.username, 'admin_verify_email', null, null, { target_user: user.username });
+  logActivity(req.username, 'admin_verify_email', null, null, { target_user: user.username }, null, req);
   persist();
 
   const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
@@ -1954,6 +2091,7 @@ app.put('/api/admin/users/:id/founder', requireAuth, (req, res) => {
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   if (!['superadmin', 'admin', 'team'].includes(user.role)) return res.status(400).json({ error: 'Apenas membros da equipe podem ser Idealizadores' });
   runSQL('UPDATE users SET is_founder = ? WHERE id = ?', [is_founder ? 1 : 0, Number(req.params.id)]);
+  logActivity(req.username, 'founder_toggle', null, null, { target_user: user.username, is_founder: !!is_founder }, null, req);
   persist();
   res.json({ success: true });
 });
@@ -1970,7 +2108,7 @@ app.post('/api/admin/batch/verify', requireAuth, async (req, res) => {
     if (!user) { skipped++; continue; }
     if (user.email_verified) { skipped++; continue; }
     runSQL('UPDATE users SET email_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [Number(id)]);
-    logActivity(req.username, 'admin_verify_email', null, null, { target_user: user.username, batch: true });
+    logActivity(req.username, 'admin_verify_email', null, null, { target_user: user.username, batch: true }, null, req);
     const freshUser = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
     if (freshUser) {
       sendWelcomeEmail(freshUser).catch(e => console.error('Welcome email error:', e));
@@ -1998,7 +2136,7 @@ app.post('/api/admin/batch/deactivate', requireAuth, (req, res) => {
       runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ? WHERE id = ?', [newStatus, c.id]);
     }
     runSQL('UPDATE users SET is_active = 0 WHERE id = ?', [Number(id)]);
-    logActivity(req.username, 'user_deactivate', null, null, { target_user: user.username, batch: true });
+    logActivity(req.username, 'user_deactivate', null, null, { target_user: user.username, batch: true }, null, req);
     processed++;
   }
   persist();
@@ -2016,7 +2154,7 @@ app.post('/api/admin/batch/reactivate', requireAuth, (req, res) => {
     if (!user || user.is_active === 1) continue;
     if (!isSuperAdmin(req.username) && ['admin', 'superadmin', 'team'].includes(user.role)) continue;
     runSQL('UPDATE users SET is_active = 1 WHERE id = ?', [Number(id)]);
-    logActivity(req.username, 'user_reactivate', null, null, { target_user: user.username, batch: true });
+    logActivity(req.username, 'user_reactivate', null, null, { target_user: user.username, batch: true }, null, req);
     processed++;
   }
   persist();
@@ -2037,7 +2175,7 @@ app.post('/api/admin/batch/delete', requireAuth, (req, res) => {
     const user = queryOne('SELECT * FROM users WHERE id = ?', [Number(id)]);
     if (!user || user.role === 'superadmin') continue;
     if (IMMUTABLE_USER && user.username === IMMUTABLE_USER) continue;
-    permanentlyDeleteUserAccount(user, req.username);
+    permanentlyDeleteUserAccount(user, req.username, req);
     deleted++;
   }
   io.emit('users:updated', getUniqueUsers());
@@ -2050,18 +2188,54 @@ app.post('/api/admin/batch/delete', requireAuth, (req, res) => {
 
 // ── Inbox: messages ──
 
+// Build the "Mensagem enviada por …" footer line. Superadmins were getting
+// notifications without enough context to know who actually wrote (only the
+// username), so we now render "Display Name (@username) <email>" whenever
+// we can resolve the sender's profile.
+function _renderSenderFooter(senderProfile, senderUsername) {
+  const name = senderProfile && senderProfile.full_name ? String(senderProfile.full_name).trim() : '';
+  const uname = (senderProfile && senderProfile.username) || senderUsername || '';
+  const email = senderProfile && senderProfile.email ? String(senderProfile.email).trim() : '';
+  const safeUname = escapeHtml(uname);
+  const handle = `<a href="https://map.leucaena.earth/?u=${encodeURIComponent(uname)}">@${safeUname}</a>`;
+  let line;
+  if (name) {
+    line = `<strong>${escapeHtml(name)}</strong> (${handle})`;
+  } else {
+    line = `<strong>${handle}</strong>`;
+  }
+  if (email) line += ` &lt;${escapeHtml(email)}&gt;`;
+  return `<p style="font-size:12px;color:#888;">Mensagem enviada por ${line} via leucaena.earth</p>`;
+}
+
+// Resolves a username to the row we store in `users` (full_name, email, role)
+// so callers don't have to thread the lookup through every email path.
+function _lookupSenderProfile(username) {
+  if (!username) return null;
+  return queryOne('SELECT username, full_name, email, role FROM users WHERE username = ?', [username]);
+}
+
 async function sendInboxEmails(senderUsername, subject, body, recipients) {
   const results = [];
   if (!resend) return results;
+  const senderProfile = _lookupSenderProfile(senderUsername);
+  const senderFooter = _renderSenderFooter(senderProfile, senderUsername);
+  // Subject prefix with the sender's display name (or username) so the
+  // superadmin can scan their inbox and know who wrote without opening each
+  // email. Username is always included so cross-referencing is unambiguous.
+  const senderLabel = senderProfile && senderProfile.full_name
+    ? `${senderProfile.full_name} (@${senderUsername})`
+    : `@${senderUsername}`;
+  const subjectLine = `[leucaena.earth] ${subject} — ${senderLabel}`;
   for (const u of recipients) {
     try {
       await resend.emails.send({
         from: RESEND_FROM,
         to: u.email,
-        subject: `[leucaena.earth] ${subject}`,
+        subject: subjectLine,
         html: `<p>Olá <strong>${escapeHtml(u.full_name || u.username)}</strong>,</p>
                <p>${sanitizeMessageHtml(body).replace(/\n/g, '<br>')}</p>
-               <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${escapeHtml(senderUsername)}</strong> via leucaena.earth</p>
+               <hr>${senderFooter}
                <p style="font-size:12px;color:#888;"><a href="https://map.leucaena.earth">Abrir plataforma</a></p>`
       });
       results.push({ username: u.username, sent: true });
@@ -2112,7 +2286,7 @@ app.post('/api/admin/messages', requireAuth, messageLimiter, async (req, res) =>
   runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, images, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [req.username, subject.trim(), sanitizeMessageHtml(body.trim()), cleanTarget, allowReply, imagesJson, now]);
   const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
-  logActivity(req.username, 'inbox_message_sent', null, msg ? String(msg.id) : null, JSON.stringify({ target: cleanTarget, subject: subject.trim(), allow_reply: allowReply }));
+  logActivity(req.username, 'inbox_message_sent', null, msg ? String(msg.id) : null, { target: cleanTarget, subject: subject.trim(), allow_reply: allowReply }, null, req);
 
   let recipients;
   if (cleanTarget === 'all') {
@@ -2169,13 +2343,18 @@ async function _sendOneQueueRow(row, msg) {
     return false;
   }
   try {
+    const senderProfile = _lookupSenderProfile(msg.sender);
+    const senderFooter = _renderSenderFooter(senderProfile, msg.sender);
+    const senderLabel = senderProfile && senderProfile.full_name
+      ? `${senderProfile.full_name} (@${msg.sender})`
+      : `@${msg.sender}`;
     await resend.emails.send({
       from: RESEND_FROM,
       to: row.recipient_email,
-      subject: `[leucaena.earth] ${msg.subject}`,
+      subject: `[leucaena.earth] ${msg.subject} — ${senderLabel}`,
       html: `<p>Olá <strong>${escapeHtml(row.recipient_full_name || row.recipient_username)}</strong>,</p>
              <p>${sanitizeMessageHtml(msg.body).replace(/\n/g, '<br>')}</p>
-             <hr><p style="font-size:12px;color:#888;">Mensagem enviada por <strong>${escapeHtml(msg.sender)}</strong> via leucaena.earth</p>
+             <hr>${senderFooter}
              <p style="font-size:12px;color:#888;"><a href="https://map.leucaena.earth">Abrir plataforma</a></p>`
     });
     runSQL("UPDATE message_queue SET status = 'sent', sent_at = ?, attempts = attempts + 1, last_error = NULL WHERE id = ?",
@@ -2336,7 +2515,7 @@ app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, r
   persist();
 
   logActivity(req.username, 'inbox_message_batch', null, String(msg.id),
-    JSON.stringify({ subject: subject.trim(), total: recipients.length, plan, allow_reply: allowReply }));
+    { subject: subject.trim(), total: recipients.length, plan, allow_reply: allowReply }, null, req);
   io.emit('inbox:new', { id: msg.id, subject: subject.trim(), sender: req.username, target: batchTarget, created_at: now });
 
   // Drain today's slice immediately (best-effort; the worker covers retries).
@@ -2387,7 +2566,7 @@ app.post('/api/messages/send', requireAuth, messageLimiter, async (req, res) => 
   runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, images, created_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
     [req.username, subject.trim(), sanitizeMessageHtml(body.trim()), 'admins', imagesJson, now]);
   const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
-  logActivity(req.username, 'inbox_message_to_admin', null, msg ? String(msg.id) : null, JSON.stringify({ subject: subject.trim() }));
+  logActivity(req.username, 'inbox_message_to_admin', null, msg ? String(msg.id) : null, { subject: subject.trim() }, null, req);
 
   const superadmins = queryAll("SELECT username, email, full_name FROM users WHERE role = 'superadmin' AND is_active = 1 AND email IS NOT NULL AND TRIM(email) != '' AND username != 'deleted'");
   const emailResults = await sendInboxEmails(req.username, subject.trim(), body.trim(), superadmins);
@@ -2425,7 +2604,7 @@ app.post('/api/messages/reply', requireAuth, messageLimiter, async (req, res) =>
   runSQL('INSERT INTO messages (sender, subject, body, target, reply_to, allow_reply, images, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)',
     [req.username, replySubject, sanitizeMessageHtml(body.trim()), replyTarget, parent.id, imagesJson, now]);
   const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
-  logActivity(req.username, 'inbox_message_reply', null, msg ? String(msg.id) : null, JSON.stringify({ parent_id, subject: replySubject }));
+  logActivity(req.username, 'inbox_message_reply', null, msg ? String(msg.id) : null, { parent_id, subject: replySubject }, null, req);
 
   let recipients;
   if (replyTarget === 'all') {
@@ -2468,7 +2647,7 @@ app.put('/api/messages/:id/read', requireAuth, (req, res) => {
   const already = queryOne('SELECT message_id FROM message_reads WHERE message_id = ? AND username = ?', [msgId, req.username]);
   if (!already) {
     runSQL('INSERT INTO message_reads (message_id, username, read_at) VALUES (?, ?, ?)', [msgId, req.username, new Date().toISOString()]);
-    logActivity(req.username, 'inbox_message_read', null, String(msgId), null);
+    logActivity(req.username, 'inbox_message_read', null, String(msgId), null, null, req);
   }
   res.json({ success: true });
 });
@@ -2496,7 +2675,7 @@ app.delete('/api/messages/:id', requireAuth, (req, res) => {
   runSQL('DELETE FROM message_reads WHERE message_id = ?', [msgId]);
   runSQL('UPDATE messages SET reply_to = NULL WHERE reply_to = ?', [msgId]);
   runSQL('DELETE FROM messages WHERE id = ?', [msgId]);
-  logActivity(req.username, 'inbox_message_delete', null, String(msgId), JSON.stringify({ subject: msg.subject, sender: msg.sender }));
+  logActivity(req.username, 'inbox_message_delete', null, String(msgId), { subject: msg.subject, sender: msg.sender }, null, req);
   res.json({ success: true });
 });
 
@@ -2510,7 +2689,7 @@ app.post('/api/messages/batch', requireAuth, (req, res) => {
       runSQL('UPDATE messages SET reply_to = NULL WHERE reply_to = ?', [Number(id)]);
       runSQL('DELETE FROM messages WHERE id = ?', [Number(id)]);
     }
-    logActivity(req.username, 'inbox_batch_delete', null, null, JSON.stringify({ count: ids.length, ids }));
+    logActivity(req.username, 'inbox_batch_delete', null, null, { count: ids.length, ids }, null, req);
     return res.json({ success: true, affected: ids.length });
   }
   if (action === 'mark_read') {
@@ -2559,7 +2738,9 @@ app.post('/api/log', requireAuth, (req, res) => {
   const max = Math.min(events.length, 50);
   for (let i = 0; i < max; i++) {
     const e = events[i];
-    logActivity(req.username, e.action || 'unknown', e.cell_id || null, e.object_id || null, e.details || null);
+    // Pass req so each batched event carries device/UA context; cheap because
+    // we parse the UA once per insert and the columns are tiny strings.
+    logActivity(req.username, e.action || 'unknown', e.cell_id || null, e.object_id || null, e.details || null, null, req);
   }
   res.json({ logged: max });
 });
@@ -2611,7 +2792,7 @@ app.get('/api/admin/backup', requireAuth, (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="leucena_backup_${ts}.db"`);
   res.setHeader('Content-Type', 'application/octet-stream');
   const data = fs.readFileSync(DB_PATH);
-  logActivity(req.username, 'db_backup_download', null, null, null);
+  logActivity(req.username, 'db_backup_download', null, null, null, null, req);
   res.send(data);
 });
 
@@ -2632,7 +2813,7 @@ app.post('/api/admin/backup', requireAuth, (req, res) => {
   if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
   const dest = createBackup();
   if (dest) {
-    logActivity(req.username, 'db_backup_manual', null, null, null);
+    logActivity(req.username, 'db_backup_manual', null, null, null, null, req);
     res.json({ success: true, file: path.basename(dest) });
   } else {
     res.status(500).json({ error: 'Backup failed' });
@@ -2831,7 +3012,7 @@ app.post('/api/grid/:id/lock', requireAuth, requireVerified, (req, res) => {
   const cellName = cell.grid_id || String(cell.fid);
   io.emit('cell:locked', { cellId: Number(id), username, cellName });
   io.emit('cell:statusChanged', { cellId: Number(id), status: 'in_use', username, worked_by: workedByStr });
-  logActivity(username, 'cell_lock', Number(id), null, { prev_status: cell.grid_status });
+  logActivity(username, 'cell_lock', Number(id), null, { prev_status: cell.grid_status }, null, req);
   const cellStateRow = queryOne('SELECT state FROM grid_cell_states WHERE grid_cell_id = ? LIMIT 1', [Number(id)]);
   if (cellStateRow) {
     runSQL('UPDATE users SET last_edited_state = ? WHERE username = ?', [cellStateRow.state, username]);
@@ -2938,7 +3119,7 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
     mask_area_ha: cellSummary.mask_area_ha,
     mapped_by: cellSummary.mapped_by
   });
-  logActivity(username, 'cell_unlock', Number(id), null, JSON.stringify({ newStatus }));
+  logActivity(username, 'cell_unlock', Number(id), null, { newStatus }, null, req);
   persist();
   res.json({
     success: true,
@@ -3026,7 +3207,7 @@ app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
     cell_mapped_by: cellSummary.mapped_by
   });
   if (!isSuperAdmin(username)) bumpStat(isMobileUA(req) ? 'mask_count_mobile' : 'mask_count_desktop');
-  logActivity(username, 'polygon_create', Number(grid_cell_id), id, null);
+  logActivity(username, 'polygon_create', Number(grid_cell_id), id, null, null, req);
   persist();
   res.json({ ...polygon, cell_summary: cellSummary });
 });
@@ -3053,7 +3234,7 @@ app.put('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   runSQL('UPDATE polygons SET geometry = ?, updated_at = ?, area_ha = ? WHERE id = ?', [JSON.stringify(geometry), now, areaHa, id]);
 
   io.emit('polygon:updated', { id, geometry, updated_at: now, area_ha: areaHa });
-  logActivity(username, 'polygon_edit', poly.grid_cell_id, id, null);
+  logActivity(username, 'polygon_edit', poly.grid_cell_id, id, null, null, req);
   persist();
   res.json({ success: true, area_ha: areaHa });
 });
@@ -3083,7 +3264,7 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
     cell_mask_area_ha: afterSummary.mask_area_ha,
     cell_mapped_by: afterSummary.mapped_by
   });
-  logActivity(username, 'polygon_delete', poly.grid_cell_id, id, null);
+  logActivity(username, 'polygon_delete', poly.grid_cell_id, id, null, null, req);
 
   if (cell) {
     const remaining = queryAll('SELECT id, geometry FROM polygons WHERE grid_cell_id = ?', [poly.grid_cell_id]);
@@ -3199,7 +3380,7 @@ app.post('/api/admin/points/import', requireAuth, (req, res) => {
   }
 
   persist();
-  logActivity(req.username, 'import_points', null, null, { count: inserted, duplicates, errors: errors.length });
+  logActivity(req.username, 'import_points', null, null, { count: inserted, duplicates, errors: errors.length }, null, req);
 
   for (const p of createdPoints) {
     io.emit('point:created', p);
@@ -3267,7 +3448,7 @@ app.post('/api/admin/points/duplicates/remove', requireAuth, (req, res) => {
   runSQL(`DELETE FROM occurrence_points WHERE id IN (${placeholders})`, ids);
   persist();
 
-  logActivity(req.username, 'dedup_points', null, null, { removed: toDelete.length });
+  logActivity(req.username, 'dedup_points', null, null, { removed: toDelete.length }, null, req);
 
   for (const d of toDelete) {
     io.emit('point:deleted', { id: d.id });
@@ -3297,7 +3478,7 @@ app.post('/api/admin/points/duplicates/undo', requireAuth, (req, res) => {
   }
 
   persist();
-  logActivity(req.username, 'dedup_undo', null, null, { restored });
+  logActivity(req.username, 'dedup_undo', null, null, { restored }, null, req);
 
   const backup = _dedupUndoBackup;
   _dedupUndoBackup = null;
@@ -3366,7 +3547,7 @@ app.post('/api/admin/points/covered/remove', requireAuth, (req, res) => {
   runSQL(`DELETE FROM occurrence_points WHERE id IN (${placeholders})`, ids);
   persist();
 
-  logActivity(req.username, 'cleanup_covered_points', null, null, { removed: covered.length });
+  logActivity(req.username, 'cleanup_covered_points', null, null, { removed: covered.length }, null, req);
 
   for (const d of covered) {
     io.emit('point:deleted', { id: d.id });
@@ -3396,7 +3577,7 @@ app.post('/api/admin/points/covered/undo', requireAuth, (req, res) => {
   }
 
   persist();
-  logActivity(req.username, 'cleanup_covered_undo', null, null, { restored });
+  logActivity(req.username, 'cleanup_covered_undo', null, null, { restored }, null, req);
 
   const backup = _coveredUndoBackup;
   _coveredUndoBackup = null;
@@ -3480,7 +3661,7 @@ app.post('/api/points', requireAuth, requireVerified, (req, res) => {
   };
 
   io.emit('point:created', pointData);
-  logActivity(username, 'point_create', gridCell ? gridCell.id : null, String(inserted.id), { fid: newFid, lat, lng, layer: pointLayer });
+  logActivity(username, 'point_create', gridCell ? gridCell.id : null, String(inserted.id), { fid: newFid, lat, lng, layer: pointLayer }, null, req);
   persist();
   res.json(pointData);
 });
@@ -3531,7 +3712,7 @@ app.delete('/api/points/:id', requireAuth, requireVerified, (req, res) => {
   }
 
   io.emit('point:deleted', { id: Number(id) });
-  logActivity(username, 'point_delete', gridCell ? gridCell.id : null, String(id), { fid: point.fid, layer: point.layer });
+  logActivity(username, 'point_delete', gridCell ? gridCell.id : null, String(id), { fid: point.fid, layer: point.layer }, null, req);
   persist();
   res.json({ success: true, gridStatusChanged });
 });
@@ -3557,7 +3738,7 @@ app.put('/api/points/:id/validity', requireAuth, requireVerified, (req, res) => 
   runSQL('UPDATE occurrence_points SET status = ?, not_valid = ? WHERE id = ?', [newStatus, newStatus, Number(id)]);
 
   io.emit('point:validityChanged', { id: Number(id), not_valid: newStatus, status: newStatus });
-  logActivity(req.username, 'point_status_change', null, String(id), JSON.stringify({ from: currentStatus, to: newStatus }));
+  logActivity(req.username, 'point_status_change', null, String(id), { from: currentStatus, to: newStatus }, null, req);
   persist();
   res.json({ id: Number(id), not_valid: newStatus, status: newStatus });
 });
@@ -3583,7 +3764,7 @@ app.get('/api/export/geojson', requireAuth, (req, res) => {
       geometry: JSON.parse(p.geometry)
     }))
   };
-  logActivity(req.username, 'export_masks', null, null, { count: fc.features.length });
+  logActivity(req.username, 'export_masks', null, null, { count: fc.features.length }, null, req);
   res.setHeader('Content-Disposition', 'attachment; filename="leucena_polygons.geojson"');
   res.setHeader('Content-Type', 'application/geo+json');
   res.json(fc);
@@ -3616,7 +3797,7 @@ app.get('/api/export/grid-status', (req, res) => {
     }))
   };
   const uname = getUsernameFromToken(req);
-  if (uname) logActivity(uname, 'export_grid', null, null, { count: fc.features.length });
+  if (uname) logActivity(uname, 'export_grid', null, null, { count: fc.features.length }, null, req);
   res.setHeader('Content-Disposition', 'attachment; filename="grid_status.geojson"');
   res.setHeader('Content-Type', 'application/geo+json');
   res.json(fc);
@@ -3635,7 +3816,7 @@ app.get('/api/export/points', requireAuth, (req, res) => {
       geometry: JSON.parse(p.geometry)
     }))
   };
-  logActivity(req.username, 'export_points', null, null, { count: fc.features.length });
+  logActivity(req.username, 'export_points', null, null, { count: fc.features.length }, null, req);
   res.setHeader('Content-Disposition', 'attachment; filename="leucena_points.geojson"');
   res.setHeader('Content-Type', 'application/geo+json');
   res.json(fc);
@@ -3664,6 +3845,19 @@ io.use((socket, next) => {
   next();
 });
 
+// Build a fake `req`-like object from a socket so we can reuse the same
+// device-context extractor as the HTTP routes. Socket.IO exposes the original
+// upgrade request at `socket.handshake` (with `headers` and `address`), so we
+// don't need a separate parser path.
+function _socketReqLike(socket) {
+  if (!socket || !socket.handshake) return null;
+  return {
+    headers: socket.handshake.headers || {},
+    ip: socket.handshake.address || null,
+    connection: { remoteAddress: socket.handshake.address || null }
+  };
+}
+
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
@@ -3680,6 +3874,10 @@ io.on('connection', (socket) => {
       joinedAt: new Date().toISOString()
     });
     runSQL('UPDATE users SET last_active = ? WHERE username = ?', [new Date().toISOString(), joinUsername]);
+    // Logged here — gives us a "session start" event with full UA, which is
+    // the canonical "what device did this user join from?" datapoint that the
+    // user asked for.
+    logActivity(joinUsername, 'session_join', null, null, { socket_id: socket.id }, null, _socketReqLike(socket));
     io.emit('users:updated', getUniqueUsers());
     console.log(`User joined: ${joinUsername}`);
   });
@@ -3714,7 +3912,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
-      logActivity(user.username, 'disconnect', null, null, null);
+      logActivity(user.username, 'disconnect', null, null, { socket_id: socket.id }, null, _socketReqLike(socket));
       const isLastSocket = !userHasOtherSockets(socket.id, user.username);
 
       if (isLastSocket) {
@@ -3726,7 +3924,7 @@ io.on('connection', (socket) => {
           [newStatus, now, cell.id]);
         io.emit('cell:unlocked', { cellId: cell.id, previousUser: user.username, cellName: cell.grid_id || String(cell.fid) });
         io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: user.username });
-        logActivity(user.username, 'cell_unlock_disconnect', cell.id, null, JSON.stringify({ newStatus }));
+        logActivity(user.username, 'cell_unlock_disconnect', cell.id, null, { newStatus }, null, _socketReqLike(socket));
       }
       if (locked.length > 0) persist();
       }
