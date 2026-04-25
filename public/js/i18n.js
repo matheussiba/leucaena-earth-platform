@@ -457,9 +457,29 @@ window.LeucenaI18n = (function () {
       es: 'Abra el panel lateral para filtros e información de la celda. El botón de usuarios arriba a la derecha del mapa abre la lista de colaboradores en línea.'
     },
     'tour.step4': {
-      pt: 'Barra de ferramentas: alterne Satélite/Mapa, ative Rótulos, troque o idioma e exporte dados.',
-      en: 'Toolbar: switch Satellite/Map, enable Labels, change language and export data.',
-      es: 'Barra de herramientas: cambie Satélite/Mapa, active Etiquetas, cambie el idioma y exporte datos.'
+      pt: 'Barra de ferramentas: legenda, Satélite/Mapa, Rótulos, idioma e exportação ficam todos juntos aqui à esquerda.',
+      en: 'Toolbar: legend, Satellite/Map, Labels, language and export are all grouped here on the left.',
+      es: 'Barra de herramientas: leyenda, Satélite/Mapa, Etiquetas, idioma y exportación están agrupados aquí a la izquierda.'
+    },
+    'tour.stepLegend': {
+      pt: 'Legenda: clique para mostrar/ocultar a legenda das cores das células do mapa.',
+      en: 'Legend: click to show/hide the legend explaining the map cell colours.',
+      es: 'Leyenda: haga clic para mostrar/ocultar la leyenda con los colores de las celdas del mapa.'
+    },
+    'tour.stepEditPanel': {
+      pt: 'Painel flutuante de edição: aparece ao bloquear uma célula, com Desenhar, Editar, Excluir, Buraco, Add/Remover Pontos, Street View e Desbloquear.',
+      en: 'Floating edit panel: appears once you lock a cell, with Draw, Edit, Delete, Hole, Add/Remove Points, Street View and Unlock.',
+      es: 'Panel flotante de edición: aparece al bloquear una celda, con Dibujar, Editar, Eliminar, Agujero, Agregar/Quitar Puntos, Street View y Desbloquear.'
+    },
+    'tour.stepStreetView': {
+      pt: 'Street View (Shift+S): ajuda a confirmar a espécie. Você pode redimensionar o painel arrastando a borda e um pontinho no mapa mostra para onde você está olhando.',
+      en: 'Street View (Shift+S): helps confirm the species. You can resize the pane by dragging its edge, and a dot on the map shows your viewing direction.',
+      es: 'Street View (Shift+S): ayuda a confirmar la especie. Puede redimensionar el panel arrastrando el borde y un punto en el mapa muestra hacia dónde está mirando.'
+    },
+    'tour.stepCoords': {
+      pt: 'Coordenadas: aparecem aqui conforme você move o mouse. Mantenha o botão direito pressionado por 2 segundos em qualquer ponto do mapa para copiar lat,long para a área de transferência.',
+      en: 'Coordinates: shown here as you move the mouse. Hold the right mouse button for 2 seconds anywhere on the map to copy lat,long to the clipboard.',
+      es: 'Coordenadas: se muestran aquí mientras mueve el mouse. Mantenga el botón derecho presionado 2 segundos en cualquier punto del mapa para copiar lat,long al portapapeles.'
     },
     'tour.step5': {
       pt: 'Minha localização: centralize o mapa na sua posição para se orientar (celular e computador).',
@@ -467,9 +487,9 @@ window.LeucenaI18n = (function () {
       es: 'Mi ubicación: centre el mapa en su posición para orientarse (móvil y escritorio).'
     },
     'tour.step6': {
-      pt: 'Este é o mapa: clique nas células e explore para começar a mapear.',
-      en: 'This is the map: click grid cells and explore to start mapping.',
-      es: 'Este es el mapa: haga clic en las celdas y explore para empezar a mapear.'
+      pt: 'Este é o mapa: clique nas células e explore para começar a mapear. A busca por ID é flexível (ex: "kx330" encontra "KX-330-1").',
+      en: 'This is the map: click grid cells and explore to start mapping. The cell ID search is flexible (e.g. "kx330" finds "KX-330-1").',
+      es: 'Este es el mapa: haga clic en las celdas y explore para empezar a mapear. La búsqueda por ID es flexible (ej: "kx330" encuentra "KX-330-1").'
     },
 
     // ── Debug (map / stats modal) ──
@@ -926,13 +946,19 @@ window.LeucenaI18n = (function () {
 
     step(4, 'Explore a barra lateral', '<p>A barra lateral (acessível pelo botão ☰ no canto superior esquerdo) contém:</p>' +
       '<ul>' +
-      '<li><strong>Informações da célula</strong>: status, quem está editando, polígonos existentes</li>' +
+      '<li><strong>Informações da célula</strong>: ao clicar em qualquer célula, esse cartão aparece destacado <em>no topo da barra lateral</em> mostrando status, quem está editando e os polígonos existentes</li>' +
       '<li><strong>Barra de progresso</strong>: percentual de conclusão do mapeamento geral</li>' +
       '<li><strong>Filtros</strong>: clique no ▾ para expandir/recolher. Filtre por status das células, fontes dos pontos de ocorrência (Crowdmapping, iNaturalist, GBIF, Instituto Horus, SpeciesLink) e polígonos de leucena</li>' +
       '<li><strong>Ranking</strong>: sua posição entre os colaboradores baseada na quantidade de polígonos criados</li>' +
+      '<li><strong>Busca por ID</strong>: a busca é flexível — digitar "kx330" já encontra "KX-330-1"</li>' +
       '</ul>') +
 
-    step(5, 'Bloqueie a célula', '<p>Clique no botão ' + btn(ICO.lock, 'Bloquear e Editar') + ' na barra lateral. A célula ficará reservada para você e as ferramentas de edição aparecerão.</p>' +
+    step(5, 'Bloqueie a célula', '<p>Clique no botão ' + btn(ICO.lock, 'Bloquear e Editar') + ' na barra lateral. A célula ficará reservada para você e o <strong>painel flutuante de edição</strong> aparece no mapa, com as ferramentas em três grupos rotulados:</p>' +
+      '<ul>' +
+      '<li><strong>Polígonos</strong>: ' + btn(ICO.draw, 'Desenhar') + ' · ' + btn(ICO.edit, 'Editar') + ' · ' + btn(ICO.del, 'Excluir') + ' · ' + btn(ICO.hole, 'Buraco', true) + '</li>' +
+      '<li><strong>Pontos</strong>: Add Pontos · Remover Pontos</li>' +
+      '<li><strong>Utilitários</strong>: ' + btn(ICO.sv, 'Street View') + ' · ' + btn(ICO.unlock, 'Desbloquear') + '</li>' +
+      '</ul>' +
       '<div class="guide-warning"><strong>Importante:</strong> Enquanto a célula estiver bloqueada, nenhum outro usuário pode editá-la. Lembre-se de desbloquear quando terminar!</div>') +
 
     step(6, 'Desenhe os polígonos', '<p>Localize os <strong>aglomerados de leucena</strong> na imagem de satélite (áreas onde há duas ou mais leucenas juntas) e use o botão:</p>' +
@@ -959,7 +985,12 @@ window.LeucenaI18n = (function () {
       '<div class="guide-warning"><strong>Nota:</strong> Você só pode excluir polígonos que <strong>você mesmo</strong> desenhou.</div>') +
 
     step(10, 'Use o Street View', '<p>Na dúvida se a vegetação é leucena? Use:</p>' +
-      '<p>' + btn(ICO.sv, 'Street View') + ': Clique no botão na barra inferior e depois clique em qualquer ponto do mapa. Uma janela do Google Street View abrirá no local, permitindo que você confirme visualmente a espécie. Procure pelas características: folhas bipinadas, flores brancas esféricas e vagens.</p>') +
+      '<p>' + btn(ICO.sv, 'Street View') + ': Clique no botão (no painel flutuante ou na barra inferior, atalho <strong>Shift+S</strong>) e depois clique em qualquer ponto do mapa coberto pela linha azul. Uma janela do Google Street View abrirá no local, permitindo que você confirme visualmente a espécie. Procure pelas características: folhas bipinadas, flores brancas esféricas e vagens.</p>' +
+      '<ul>' +
+      '<li><strong>Redimensione o painel</strong>: arraste a borda entre o mapa e o Street View para cima ou para baixo (o tamanho fica salvo no seu navegador).</li>' +
+      '<li><strong>Direção de visada</strong>: um pontinho verde aparece no mapa indicando a posição e o sentido para onde você está olhando no panorama.</li>' +
+      '<li><strong>Edição pausada</strong>: enquanto o Street View estiver ativo, as ferramentas de polígonos e pontos ficam temporariamente desabilitadas para que você consiga clicar nas linhas azuis de cobertura. Os ícones também ficam compactos para liberar espaço.</li>' +
+      '</ul>') +
 
     step(11, 'Desbloqueie a célula', '<p>Quando terminar o trabalho na célula, clique no botão:</p>' +
       '<p>' + btn(ICO.unlock, 'Desbloquear') + ' na barra inferior. Um modal aparecerá com duas opções:</p>' +
@@ -981,9 +1012,11 @@ window.LeucenaI18n = (function () {
     '<li>Alterne entre <strong>Satélite</strong> e <strong>Mapa</strong> para melhor visualização das copas das árvores.</li>' +
     '<li>Use <strong>Ctrl+Z</strong> para desfazer a última ação (ao adicionar ou remover pontos).</li>' +
     '<li>Use o <strong>zoom</strong> para ver detalhes das copas: leucenas têm copas arredondadas com tom verde-claro.</li>' +
-    '<li>As <strong>coordenadas</strong> (lat, long) aparecem na barra inferior conforme você move o mouse sobre o mapa.</li>' +
+    '<li>As <strong>coordenadas</strong> (lat, long) aparecem na barra inferior conforme você move o mouse sobre o mapa. <strong>Mantenha o botão direito pressionado por 2 segundos</strong> em qualquer ponto do mapa (inclusive sobre polígonos ou durante edição de célula) para copiar lat,long para a área de transferência.</li>' +
+    '<li>A barra inferior à esquerda agora reúne <strong>Legenda</strong>, <strong>Satélite/Mapa</strong>, <strong>Rótulos</strong>, <strong>Idioma</strong> e <strong>Exportar</strong>. Os menus abrem para cima para não serem cortados pela borda da tela.</li>' +
     '<li>O botão de <strong>usuários online</strong> no canto superior direito do mapa mostra quantos colaboradores estão mapeando; clique para ver a lista.</li>' +
     '<li>Acompanhe seu <strong>ranking</strong> na barra lateral para ver sua posição entre os colaboradores.</li>' +
+    '<li>Para apagar pontos rapidamente em uma célula bloqueada, use <strong>Add Pontos</strong> / <strong>Remover Pontos</strong> no painel flutuante. Cada ação pode ser desfeita com <strong>Ctrl+Z</strong>.</li>' +
     '</ul></div>';
   }
 
@@ -1015,13 +1048,19 @@ window.LeucenaI18n = (function () {
 
     step(4, 'Explore the sidebar', '<p>The sidebar (accessible via the ☰ button in the upper left corner) contains:</p>' +
       '<ul>' +
-      '<li><strong>Cell information</strong>: status, who is editing, existing polygons</li>' +
+      '<li><strong>Cell information</strong>: when you click any cell, this card appears highlighted <em>at the top of the sidebar</em>, showing status, who is editing, and existing polygons</li>' +
       '<li><strong>Progress bar</strong>: overall mapping completion percentage</li>' +
       '<li><strong>Filters</strong>: click the ▾ to expand/collapse. Filter by cell status, occurrence point sources (Crowdmapping, iNaturalist, GBIF, Instituto Horus, SpeciesLink), and leucaena polygons</li>' +
       '<li><strong>Ranking</strong>: your position among contributors based on the number of polygons created</li>' +
+      '<li><strong>ID search</strong>: the search is forgiving — typing "kx330" already finds "KX-330-1"</li>' +
       '</ul>') +
 
-    step(5, 'Lock the cell', '<p>Click the ' + btn(ICO.lock, 'Lock & Edit') + ' button in the sidebar. The cell will be reserved for you and the editing tools will appear.</p>' +
+    step(5, 'Lock the cell', '<p>Click the ' + btn(ICO.lock, 'Lock & Edit') + ' button in the sidebar. The cell will be reserved for you and the <strong>floating edit panel</strong> appears on the map, with tools grouped in three labelled sections:</p>' +
+      '<ul>' +
+      '<li><strong>Polygons</strong>: ' + btn(ICO.draw, 'Draw') + ' · ' + btn(ICO.edit, 'Edit') + ' · ' + btn(ICO.del, 'Delete') + ' · ' + btn(ICO.hole, 'Hole', true) + '</li>' +
+      '<li><strong>Points</strong>: Add Points · Remove Points</li>' +
+      '<li><strong>Utilities</strong>: ' + btn(ICO.sv, 'Street View') + ' · ' + btn(ICO.unlock, 'Unlock') + '</li>' +
+      '</ul>' +
       '<div class="guide-warning"><strong>Important:</strong> While the cell is locked, no other user can edit it. Remember to unlock when you\'re done!</div>') +
 
     step(6, 'Draw the polygons', '<p>Locate <strong>leucaena clusters</strong> in the satellite imagery (areas where two or more leucaena trees grow together) and use the button:</p>' +
@@ -1048,7 +1087,12 @@ window.LeucenaI18n = (function () {
       '<div class="guide-warning"><strong>Note:</strong> You can only delete polygons that <strong>you</strong> drew.</div>') +
 
     step(10, 'Use Street View', '<p>Not sure if the vegetation is leucaena? Use:</p>' +
-      '<p>' + btn(ICO.sv, 'Street View') + ': Click the button in the bottom toolbar, then click anywhere on the map. A Google Street View window will open at that location, allowing you to visually confirm the species. Look for: bipinnate leaves, white spherical flowers, and seed pods.</p>') +
+      '<p>' + btn(ICO.sv, 'Street View') + ': Click the button (in the floating panel or in the bottom toolbar — shortcut <strong>Shift+S</strong>), then click anywhere on the map covered by the blue line. A Google Street View window will open at that location, allowing you to visually confirm the species. Look for: bipinnate leaves, white spherical flowers, and seed pods.</p>' +
+      '<ul>' +
+      '<li><strong>Resize the pane</strong>: drag the divider between the map and the Street View pane up or down (the size is remembered in your browser).</li>' +
+      '<li><strong>Viewing direction</strong>: a small green dot appears on the map showing your position and the direction you are looking at in the panorama.</li>' +
+      '<li><strong>Editing paused</strong>: while Street View is active, the polygon and point tools are temporarily disabled so you can click the blue coverage lines. Tool icons also become compact to free up screen space.</li>' +
+      '</ul>') +
 
     step(11, 'Unlock the cell', '<p>When you\'re done working on the cell, click:</p>' +
       '<p>' + btn(ICO.unlock, 'Unlock') + ' in the bottom toolbar. A modal will appear with two options:</p>' +
@@ -1070,9 +1114,11 @@ window.LeucenaI18n = (function () {
     '<li>Switch between <strong>Satellite</strong> and <strong>Map</strong> views for better tree canopy visualization.</li>' +
     '<li>Use <strong>Ctrl+Z</strong> to undo the last action (when adding or removing points).</li>' +
     '<li>Use <strong>zoom</strong> to see canopy details: leucaena has rounded canopies with a light-green tone.</li>' +
-    '<li><strong>Coordinates</strong> (lat, long) are shown in the bottom bar as you move the mouse over the map.</li>' +
+    '<li><strong>Coordinates</strong> (lat, long) are shown in the bottom bar as you move the mouse over the map. <strong>Hold the right mouse button for 2 seconds</strong> anywhere on the map (including over polygons or while editing a cell) to copy lat,long to the clipboard.</li>' +
+    '<li>The bottom-left toolbar now groups <strong>Legend</strong>, <strong>Satellite/Map</strong>, <strong>Labels</strong>, <strong>Language</strong> and <strong>Export</strong>. Their menus open upward so they\'re never clipped by the screen edge.</li>' +
     '<li>The <strong>online users</strong> button at the top-right of the map shows how many contributors are mapping; click to open the list.</li>' +
     '<li>Track your <strong>ranking</strong> in the sidebar to see your position among contributors.</li>' +
+    '<li>To quickly fix occurrence points inside a locked cell, use <strong>Add Points</strong> / <strong>Remove Points</strong> in the floating panel. Each action can be undone with <strong>Ctrl+Z</strong>.</li>' +
     '</ul></div>';
   }
 
@@ -1104,13 +1150,19 @@ window.LeucenaI18n = (function () {
 
     step(4, 'Explore la barra lateral', '<p>La barra lateral (accesible mediante el botón ☰ en la esquina superior izquierda) contiene:</p>' +
       '<ul>' +
-      '<li><strong>Información de la celda</strong>: estado, quién está editando, polígonos existentes</li>' +
+      '<li><strong>Información de la celda</strong>: al hacer clic en cualquier celda, esta tarjeta aparece destacada <em>en la parte superior de la barra lateral</em>, mostrando el estado, quién está editando y los polígonos existentes</li>' +
       '<li><strong>Barra de progreso</strong>: porcentaje de finalización del mapeo general</li>' +
       '<li><strong>Filtros</strong>: haga clic en el ▾ para expandir/colapsar. Filtre por estado de las celdas, fuentes de puntos de ocurrencia (Crowdmapping, iNaturalist, GBIF, Instituto Horus, SpeciesLink) y polígonos de leucaena</li>' +
       '<li><strong>Ranking</strong>: su posición entre los colaboradores basada en la cantidad de polígonos creados</li>' +
+      '<li><strong>Búsqueda por ID</strong>: la búsqueda es flexible — escribir "kx330" ya encuentra "KX-330-1"</li>' +
       '</ul>') +
 
-    step(5, 'Bloquee la celda', '<p>Haga clic en el botón ' + btn(ICO.lock, 'Bloquear y Editar') + ' en la barra lateral. La celda quedará reservada para usted y las herramientas de edición aparecerán.</p>' +
+    step(5, 'Bloquee la celda', '<p>Haga clic en el botón ' + btn(ICO.lock, 'Bloquear y Editar') + ' en la barra lateral. La celda quedará reservada para usted y aparecerá el <strong>panel flotante de edición</strong> en el mapa, con las herramientas en tres grupos rotulados:</p>' +
+      '<ul>' +
+      '<li><strong>Polígonos</strong>: ' + btn(ICO.draw, 'Dibujar') + ' · ' + btn(ICO.edit, 'Editar') + ' · ' + btn(ICO.del, 'Eliminar') + ' · ' + btn(ICO.hole, 'Agujero', true) + '</li>' +
+      '<li><strong>Puntos</strong>: Agregar Puntos · Quitar Puntos</li>' +
+      '<li><strong>Utilidades</strong>: ' + btn(ICO.sv, 'Street View') + ' · ' + btn(ICO.unlock, 'Desbloquear') + '</li>' +
+      '</ul>' +
       '<div class="guide-warning"><strong>Importante:</strong> Mientras la celda esté bloqueada, ningún otro usuario puede editarla. ¡Recuerde desbloquear cuando termine!</div>') +
 
     step(6, 'Dibuje los polígonos', '<p>Localice los <strong>aglomerados de leucaena</strong> en la imagen satelital (áreas donde hay dos o más leucaenas juntas) y use el botón:</p>' +
@@ -1137,7 +1189,12 @@ window.LeucenaI18n = (function () {
       '<div class="guide-warning"><strong>Nota:</strong> Solo puede eliminar polígonos que <strong>usted mismo</strong> dibujó.</div>') +
 
     step(10, 'Use Street View', '<p>¿No está seguro si la vegetación es leucaena? Use:</p>' +
-      '<p>' + btn(ICO.sv, 'Street View') + ': Haga clic en el botón en la barra inferior y luego haga clic en cualquier punto del mapa. Se abrirá una ventana de Google Street View en esa ubicación, permitiéndole confirmar visualmente la especie. Busque: hojas bipinnadas, flores blancas esféricas y vainas.</p>') +
+      '<p>' + btn(ICO.sv, 'Street View') + ': Haga clic en el botón (en el panel flotante o en la barra inferior — atajo <strong>Shift+S</strong>) y luego haga clic en cualquier punto del mapa cubierto por la línea azul. Se abrirá una ventana de Google Street View en esa ubicación, permitiéndole confirmar visualmente la especie. Busque: hojas bipinnadas, flores blancas esféricas y vainas.</p>' +
+      '<ul>' +
+      '<li><strong>Redimensione el panel</strong>: arrastre el divisor entre el mapa y el panel de Street View hacia arriba o abajo (el tamaño se guarda en su navegador).</li>' +
+      '<li><strong>Dirección de visión</strong>: aparece un puntito verde en el mapa que muestra su posición y la dirección hacia la que está mirando en el panorama.</li>' +
+      '<li><strong>Edición pausada</strong>: mientras Street View está activo, las herramientas de polígonos y puntos quedan temporalmente desactivadas para que pueda hacer clic en las líneas azules de cobertura. Los iconos también se vuelven compactos para liberar espacio.</li>' +
+      '</ul>') +
 
     step(11, 'Desbloquee la celda', '<p>Cuando termine el trabajo en la celda, haga clic en:</p>' +
       '<p>' + btn(ICO.unlock, 'Desbloquear') + ' en la barra inferior. Aparecerá un modal con dos opciones:</p>' +
@@ -1159,9 +1216,11 @@ window.LeucenaI18n = (function () {
     '<li>Alterne entre <strong>Satélite</strong> y <strong>Mapa</strong> para mejor visualización de las copas.</li>' +
     '<li>Use <strong>Ctrl+Z</strong> para deshacer la última acción (al agregar o eliminar puntos).</li>' +
     '<li>Use el <strong>zoom</strong> para ver detalles de las copas: la leucaena tiene copas redondeadas con tono verde claro.</li>' +
-    '<li>Las <strong>coordenadas</strong> (lat, long) se muestran en la barra inferior mientras mueve el mouse sobre el mapa.</li>' +
+    '<li>Las <strong>coordenadas</strong> (lat, long) se muestran en la barra inferior mientras mueve el mouse sobre el mapa. <strong>Mantenga el botón derecho presionado durante 2 segundos</strong> en cualquier punto del mapa (incluso sobre polígonos o mientras edita una celda) para copiar lat,long al portapapeles.</li>' +
+    '<li>La barra inferior izquierda agrupa ahora <strong>Leyenda</strong>, <strong>Satélite/Mapa</strong>, <strong>Etiquetas</strong>, <strong>Idioma</strong> y <strong>Exportar</strong>. Sus menús se abren hacia arriba para que nunca queden cortados por el borde de la pantalla.</li>' +
     '<li>El botón de <strong>usuarios en línea</strong> arriba a la derecha del mapa muestra cuántos colaboradores están mapeando; haga clic para ver la lista.</li>' +
     '<li>Siga su <strong>ranking</strong> en la barra lateral para ver su posición entre los colaboradores.</li>' +
+    '<li>Para corregir puntos rápidamente en una celda bloqueada, use <strong>Agregar Puntos</strong> / <strong>Quitar Puntos</strong> en el panel flotante. Cada acción se puede deshacer con <strong>Ctrl+Z</strong>.</li>' +
     '</ul></div>';
   }
 

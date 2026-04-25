@@ -2123,19 +2123,30 @@ window.LeucenaApp = (function () {
   // ── Onboarding Controller ──
   // Guided tour: dim overlay + spotlight on target + tooltip positioned within the viewport.
   const WELCOME_VERSION = 'v1_howto_video';
-  const TOUR_VERSION = 'v4';
+  // Bumped to v5 so users that already saw v4 get the new steps for the
+  // refreshed toolbar (legend / lang / export grouped on the left), the
+  // floating edit panel, the right-click-to-copy-coords gesture and the
+  // Street View improvements (resizable pane + viewing-direction marker).
+  const TOUR_VERSION = 'v5';
   let _tourStartedFrom = null;
   let _tourStep = 0;
   let _tourSpotlight = null;
 
+  // Steps whose target may not be in the DOM at tour time (e.g. the floating
+  // edit panel is only visible after locking a cell) are auto-skipped by
+  // `_renderStep` when `el.offsetParent === null` — so it's safe to list them.
   const TOUR_STEPS = [
-    { target: '#region-chip',     text: 'tour.stepRegion' },
-    { target: '#guide-btn',       text: 'tour.step1' },
-    { target: '#user-badge',      text: 'tour.step2' },
-    { target: '#sidebar-toggle',  text: 'tour.step3' },
-    { target: '#toolbar',          text: 'tour.step4' },
-    { target: '#btn-my-location', text: 'tour.step5' },
-    { target: '#map',             text: 'tour.step6' },
+    { target: '#region-chip',            text: 'tour.stepRegion' },
+    { target: '#guide-btn',              text: 'tour.step1' },
+    { target: '#user-badge',             text: 'tour.step2' },
+    { target: '#sidebar-toggle',         text: 'tour.step3' },
+    { target: '#toolbar',                 text: 'tour.step4' },
+    { target: '#legend-toggle-toolbar',  text: 'tour.stepLegend' },
+    { target: '#edit-tools-panel',       text: 'tour.stepEditPanel' },
+    { target: '#tool-streetview-wrap',   text: 'tour.stepStreetView' },
+    { target: '#coords-display',         text: 'tour.stepCoords' },
+    { target: '#btn-my-location',        text: 'tour.step5' },
+    { target: '#map',                    text: 'tour.step6' },
   ];
 
   const Onboarding = {
