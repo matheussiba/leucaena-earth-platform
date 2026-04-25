@@ -1180,6 +1180,9 @@
             <div class="legend-item hidden" id="legend-mask-contributor"><span class="legend-color legend-hollow legend-mask" style="border-color:#f97316;"></span> <span data-i18n="sidebar.masksContributor">Colaboradores</span></div>
           </div>
         </div>
+        <!-- Drag-to-resize handle that sits between the map and the Street View
+             pane on laptop+. Mobile/portrait reverts to a fixed size (see CSS). -->
+        <div id="streetview-resizer" class="hidden" role="separator" aria-orientation="horizontal" aria-label="Redimensionar Street View" tabindex="0"></div>
         <div id="streetview-container" class="hidden">
           <div id="streetview-header">
             <span>Street View</span>
@@ -1205,6 +1208,13 @@
           </button>
         </span>
         <div class="toolbar-separator hidden" id="streetview-sep"></div>
+        <!-- Desktop-only legend toggle: shares state with the floating
+             #map-legend overlay (which is hidden on desktop and shown on
+             mobile). Clicking either keeps the same legend body in sync. -->
+        <button class="tool-btn legend-toggle-toolbar" id="legend-toggle-toolbar" data-i18n-title="legend.toggleTooltip" title="Mostrar/ocultar legenda" aria-pressed="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          <span data-i18n="legend.title">Legenda</span>
+        </button>
         <span id="tool-maptools">
           <button class="tool-btn" id="tool-maptype" title="Alternar Satélite / Mapa">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
@@ -1215,19 +1225,9 @@
             <span data-i18n="tool.labels">Rótulos</span>
           </label>
         </span>
-        <div class="toolbar-separator hidden" id="insertion-sep"></div>
-        <label class="toolbar-btn toolbar-btn-add hidden" id="insertion-toggle" data-i18n-title="tool.addPoints">
-          <input type="checkbox" id="tool-insertion" class="sr-only">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="15" y1="18" x2="15" y2="24"/><line x1="12" y1="21" x2="18" y2="21"/></svg>
-          <span data-i18n="tool.addPoints">Add Pontos</span>
-        </label>
-        <label class="toolbar-btn toolbar-btn-del hidden" id="deletion-toggle" data-i18n-title="tool.delPoints">
-          <input type="checkbox" id="tool-deletion" class="sr-only">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
-          <span data-i18n="tool.delPoints">Remover Pontos</span>
-        </label>
-      </div>
-      <div class="toolbar-group toolbar-right">
+        <!-- Lang + Export sit next to map-tools on desktop instead of being
+             pushed all the way to the right (their dropdowns kept getting
+             clipped by the viewport edge before). -->
         <div class="dropdown toolbar-dropdown" id="lang-dropdown">
           <button class="tool-btn" id="lang-btn" title="Idioma / Language">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
@@ -1252,6 +1252,19 @@
             <div id="export-contributor-disclaimer" class="export-disclaimer hidden" data-i18n="export.masksDisclaimer">Os pontos de ocorrência e os polígonos de leucena ainda estão em fase de validação e não estão disponíveis para download no momento.</div>
           </div>
         </div>
+        <div class="toolbar-separator hidden" id="insertion-sep"></div>
+        <label class="toolbar-btn toolbar-btn-add hidden" id="insertion-toggle" data-i18n-title="tool.addPoints">
+          <input type="checkbox" id="tool-insertion" class="sr-only">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="15" y1="18" x2="15" y2="24"/><line x1="12" y1="21" x2="18" y2="21"/></svg>
+          <span data-i18n="tool.addPoints">Add Pontos</span>
+        </label>
+        <label class="toolbar-btn toolbar-btn-del hidden" id="deletion-toggle" data-i18n-title="tool.delPoints">
+          <input type="checkbox" id="tool-deletion" class="sr-only">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
+          <span data-i18n="tool.delPoints">Remover Pontos</span>
+        </label>
+      </div>
+      <div class="toolbar-group toolbar-right">
         <div class="coords-container">
           <span class="coords-label">lat, long:</span>
           <span id="coords-display" class="coords">--</span>

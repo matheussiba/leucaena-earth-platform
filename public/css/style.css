@@ -1929,8 +1929,12 @@ a.docs-logo-card:hover {
   position: absolute;
   top: auto;
   bottom: calc(100% + 6px);
-  right: 0;
-  left: auto;
+  /* Anchor the menu's left edge to the button so it opens rightward into
+     empty space. The dropdowns now sit in the middle of the left toolbar
+     group, so right-anchoring would push the menu off-screen on narrow
+     viewports; left-anchoring keeps it within the toolbar regardless. */
+  left: 0;
+  right: auto;
   min-width: 180px;
   max-height: min(320px, calc(100vh - 80px));
   overflow-x: hidden;
@@ -2777,11 +2781,17 @@ a.docs-logo-card:hover {
 
 /* ── Street View ── */
 #streetview-container {
-  height: 280px;
+  /* On laptop+ we default to a bigger pane so the user actually sees enough
+     of the panorama to navigate. The user can still resize by dragging the
+     handle above (#streetview-resizer) — their preference is persisted in
+     localStorage and re-applied via streetview.js on activation. */
+  height: 360px;
   border-top: 2px solid var(--accent);
   display: flex;
   flex-direction: column;
   position: relative;
+  /* min-height guards against the persisted value being absurdly small. */
+  min-height: 160px;
 }
 
 #streetview-header {
@@ -2797,6 +2807,75 @@ a.docs-logo-card:hover {
 
 #streetview-pano {
   flex: 1;
+}
+
+/* Drag handle that sits between #map and #streetview-container. Hidden when
+   the panel itself is hidden (toggled by streetview.js). */
+#streetview-resizer {
+  height: 8px;
+  background: linear-gradient(180deg, rgba(15,23,42,0.0) 0%, var(--accent) 50%, rgba(15,23,42,0.0) 100%);
+  cursor: ns-resize;
+  position: relative;
+  z-index: 5;
+  user-select: none;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+#streetview-resizer::after {
+  /* Visual grip dots so the user discovers the affordance. */
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.65);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+}
+#streetview-resizer:hover,
+#streetview-resizer:focus-visible {
+  background: linear-gradient(180deg, rgba(15,23,42,0.0) 0%, #fbbf24 50%, rgba(15,23,42,0.0) 100%);
+  outline: none;
+}
+/* While dragging, freeze pointer-cursor to ns-resize globally so the cursor
+   doesn't flicker as we move over different children. */
+body.sv-resizing,
+body.sv-resizing * {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}
+
+/* ── Compact edit-tools when Street View is active ──
+   The user wants to maximise screen real estate while looking at the
+   panorama, so we shrink the floating edit panel to icon-only buttons and
+   hide the section labels (Polígonos / Pontos / Utilitários). Toggling is
+   driven by `body.sv-active` which streetview.js sets on activate/deactivate. */
+body.sv-active .edit-tools-label {
+  display: none;
+}
+body.sv-active .edit-tool-btn-labeled span {
+  display: none;
+}
+body.sv-active .edit-tool-btn-labeled {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+body.sv-active .edit-tools-panel {
+  padding: 5px;
+  gap: 5px;
+}
+body.sv-active .edit-tools-section + .edit-tools-section {
+  padding-left: 5px;
+}
+body.sv-active .edit-tools-row {
+  gap: 3px;
 }
 
 /* ── Toolbar (transparent overlay) ── */
@@ -3230,6 +3309,33 @@ a.docs-logo-card:hover {
   max-height: 0;
   opacity: 0;
   padding-bottom: 0;
+}
+
+/* ── Desktop: legend toggle lives in the footer toolbar ──
+ *
+ * On desktop we hide the inline header toggle inside #map-legend so the
+ * legend body floats cleanly above the toolbar without a visible "title" row.
+ * The new #legend-toggle-toolbar button (in the footer) drives the same
+ * `collapsed` class via toggleLegend(). Mobile keeps the original UI.
+ */
+.legend-toggle-toolbar { display: inline-flex; align-items: center; gap: 6px; }
+.legend-toggle-toolbar.active {
+  background: rgba(34, 197, 94, 0.18);
+  color: var(--accent);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+@media (min-width: 721px) {
+  /* Hide the floating header toggle; the toolbar button is the only entry point. */
+  #map-legend > #legend-toggle { display: none; }
+  /* Bring the floating body a bit lower since there's no header anymore. */
+  #map-legend { padding-top: 6px; }
+  /* If user keeps it collapsed, the panel becomes invisible (no header to show). */
+  #map-legend.collapsed { opacity: 0; pointer-events: none; }
+}
+@media (max-width: 720px) {
+  /* On mobile we keep the original floating legend with its inline toggle,
+     and the toolbar mirror disappears so the footer doesn't get cramped. */
+  #legend-toggle-toolbar { display: none !important; }
 }
 
 .legend-category {
@@ -5127,6 +5233,11 @@ a.docs-logo-card:hover {
 
   #streetview-container {
     height: 200px;
+  }
+  /* On phones the divider is fiddly to drag and the screen is too small to
+     justify a resizable pane — keep the fixed 200px we had before. */
+  #streetview-resizer {
+    display: none;
   }
 
   .modal-card {

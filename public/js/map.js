@@ -534,6 +534,12 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   let rightHoldTimer = null;
+  // Set by Google Maps' own `rightclick` event (which fires reliably whether
+  // the cursor is over the map background, a polygon, a marker, or an editable
+  // cell), so the 2-second copy-coords gesture works in all those scenarios.
+  // Without this we relied on `lastCoords` from mousemove, which was stale or
+  // empty over polygons/edit handles whose SVG layers swallow mousemove.
+  let _lastRightClickLatLng = null;
 
   function copyCoordinates(coordsText) {
     navigator.clipboard.writeText(coordsText).then(() => {
@@ -571,25 +577,87 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
   function setupRightClickCopy() {
     const mapDiv = document.getElementById('map');
+    if (!mapDiv) return;
+
+    // Listen to Google Maps' `rightclick` event — it fires for the map *and*
+    // for clicks on polygons/markers, giving us a reliable latLng that doesn't
+    // depend on the live mousemove coords (which can be stale over polygon
+    // SVGs that intercept mousemove before our DOM listener sees it).
+    if (map) {
+      map.addListener('rightclick', (e) => {
+        if (e && e.latLng) _lastRightClickLatLng = e.latLng;
+      });
+    }
+
+    // Block the native context menu over the map container at capture phase
+    // so polygon/SVG layers can't bubble up the browser menu (which would
+    // then steal the pointer and prevent our hold timer from firing).
     mapDiv.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-    });
-    mapDiv.addEventListener('mousedown', (e) => {
-      if (e.button === 2) {
-        clearTimeout(rightHoldTimer);
-        rightHoldTimer = setTimeout(() => {
-          if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'draw') return;
-          if (!lastCoords) return;
-          copyCoordinates(lastCoords);
-          rightHoldTimer = null;
-        }, 2000);
-      }
-    });
-    mapDiv.addEventListener('mouseup', (e) => {
+    }, true);
+
+    const isInsideMapContainer = (target) => {
+      if (!target) return false;
+      // Reject right-clicks that happened inside floating UI on top of the
+      // map (toolbar, legend, edit-tools panel, sidebar, modals), so the
+      // gesture only triggers when the user is really pointing at the map.
+      const ui = target.closest && target.closest(
+        '#edit-tools-panel, #map-legend, #toolbar, #top-bar, #sidebar, ' +
+        '.modal-overlay, .map-controls-right, .btn-my-location, ' +
+        '#streetview-container, #toggle-users-btn'
+      );
+      if (ui) return false;
+      return target === mapDiv || mapDiv.contains(target);
+    };
+
+    // Document-level capture-phase listeners so the gesture isn't intercepted
+    // by Google Maps' polygon SVG / edit-vertex handles, which can stop
+    // propagation on the underlying DOM mousedown when a cell is being edited
+    // or the cursor is hovering a polygon.
+    document.addEventListener('mousedown', (e) => {
+      if (e.button !== 2) return;
+      if (!isInsideMapContainer(e.target)) return;
+      // Reset the captured latLng so an old click doesn't bleed into this
+      // hold; `map.rightclick` will fire (or already fired) for the same
+      // pointer event and refresh it.
+      // NOTE: we do NOT clear it unconditionally — Google may fire
+      // `rightclick` slightly after our mousedown on some browsers.
+      clearTimeout(rightHoldTimer);
+      rightHoldTimer = setTimeout(() => {
+        rightHoldTimer = null;
+        const mode = (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode)
+          ? LeucenaDrawing.getActiveMode() : null;
+        // In draw/hole modes the right-click is repurposed (finish polygon /
+        // finish hole), so suppressing the copy avoids fighting the user.
+        if (mode === 'draw' || mode === 'hole') return;
+        let coordsText = null;
+        if (_lastRightClickLatLng) {
+          coordsText = `${_lastRightClickLatLng.lat().toFixed(6)}, ${_lastRightClickLatLng.lng().toFixed(6)}`;
+        } else if (lastCoords) {
+          coordsText = lastCoords;
+        }
+        if (coordsText) {
+          copyCoordinates(coordsText);
+          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+            LeucenaApp.logEvent('coords_copy_hold', LeucenaApp.getSelectedCellId ? LeucenaApp.getSelectedCellId() : null, null, { coords: coordsText, mode: mode });
+          }
+        }
+      }, 2000);
+    }, true);
+
+    document.addEventListener('mouseup', (e) => {
       if (e.button === 2 && rightHoldTimer) {
         clearTimeout(rightHoldTimer);
         rightHoldTimer = null;
       }
+    }, true);
+
+    // Cancel the timer if the user drags away or the window loses focus mid-hold.
+    document.addEventListener('mouseleave', () => {
+      if (rightHoldTimer) { clearTimeout(rightHoldTimer); rightHoldTimer = null; }
+    }, true);
+    window.addEventListener('blur', () => {
+      if (rightHoldTimer) { clearTimeout(rightHoldTimer); rightHoldTimer = null; }
     });
   }
 
@@ -1940,6 +2008,15 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
   function getMap() { return map; }
 
+  // Notify Google Maps that its container size changed (used by Street View
+  // resizer so tiles re-render at the correct dimensions instead of leaving
+  // a stretched bitmap behind).
+  function triggerResize() {
+    if (map && typeof google !== 'undefined' && google.maps && google.maps.event) {
+      google.maps.event.trigger(map, 'resize');
+    }
+  }
+
   function getCellBounds(cellId) {
     return gridCellBounds[cellId] || null;
   }
@@ -2189,6 +2266,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   return {
     init,
     getMap,
+    triggerResize,
     updateCellAppearance,
     onCellLocked,
     onCellUnlocked,
