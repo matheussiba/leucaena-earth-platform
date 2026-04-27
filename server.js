@@ -1095,12 +1095,15 @@ app.post('/api/auth/resend-verification-by-email', registerLimiter, async (req, 
 });
 
 app.post('/api/auth/register', registerLimiter, async (req, res) => {
-  let { username, password, email, full_name, referral_source, referral_detail } = req.body;
+  let { username, password, email, full_name, referral_source, referral_detail, terms_accepted_at } = req.body;
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'E-mail válido é obrigatório' });
   if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
   if (password.length < 3) return res.status(400).json({ error: 'A senha deve ter pelo menos 3 caracteres' });
   const cleanFullName = (full_name && typeof full_name === 'string') ? full_name.trim().substring(0, 100) : '';
   if (!cleanFullName) return res.status(400).json({ error: 'Nome completo é obrigatório' });
+  // Phase 4: require terms acceptance. Use server time — more trustworthy than client clock.
+  if (!terms_accepted_at) return res.status(400).json({ error: 'É necessário aceitar os Termos de Uso para criar uma conta.' });
+  const cleanTermsAt = new Date().toISOString();
 
   const existingEmail = queryOne('SELECT id FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
   if (existingEmail) return res.status(409).json({ error: 'Este e-mail já está em uso por outra conta' });
@@ -1130,11 +1133,11 @@ app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const cleanRefSource = (referral_source && typeof referral_source === 'string') ? referral_source.trim().substring(0, 50) : null;
   const cleanRefDetail = (referral_detail && typeof referral_detail === 'string') ? referral_detail.trim().substring(0, 200) : null;
   runSQL(
-    `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires, full_name, referral_source, referral_detail)
-     VALUES (?, ?, ?, ?, 'local', 0, ?, ?, ?, ?, ?)`,
-    [username, hash, now, email, verifyToken, verifyExpires, cleanFullName, cleanRefSource, cleanRefDetail]
+    `INSERT INTO users (username, password_hash, created_at, email, auth_provider, email_verified, verification_token, verification_expires, full_name, referral_source, referral_detail, terms_accepted_at)
+     VALUES (?, ?, ?, ?, 'local', 0, ?, ?, ?, ?, ?, ?)`,
+    [username, hash, now, email, verifyToken, verifyExpires, cleanFullName, cleanRefSource, cleanRefDetail, cleanTermsAt]
   );
-  logActivity(username, 'register', null, null, { email, full_name: cleanFullName, referral_source: cleanRefSource }, null, req);
+  logActivity(username, 'register', null, null, { email, full_name: cleanFullName, referral_source: cleanRefSource, terms_accepted_at: cleanTermsAt }, null, req);
   persist();
 
   let emailSent = false;
@@ -1235,7 +1238,7 @@ app.get('/api/auth/me', (req, res) => {
   if (isSessionExpired(req)) return res.status(401).json({ error: 'Sessão expirada', code: 'SESSION_EXPIRED' });
   const username = getUsernameFromToken(req);
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
-  const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, role, tester_mode, email, auth_provider, email_verified, google_id, login_count FROM users WHERE username = ?', [username]);
+  const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, role, tester_mode, email, auth_provider, email_verified, google_id, login_count, terms_accepted_at FROM users WHERE username = ?', [username]);
   const showMigrationBanner = user && !user.google_id && (user.auth_provider || 'local') !== 'google';
   const maskRow = queryOne('SELECT COUNT(*) as cnt FROM polygons WHERE created_by = ? AND deleted_at IS NULL', [username]);
   res.json({
@@ -1245,8 +1248,21 @@ app.get('/api/auth/me', (req, res) => {
     auth_provider: user?.auth_provider || 'local', email_verified: !!(user?.email_verified),
     has_google: !!(user?.google_id), show_migration_banner: showMigrationBanner,
     login_count: user?.login_count || 0, mask_count: maskRow ? maskRow.cnt : 0,
+    terms_accepted_at: user?.terms_accepted_at || null,
     is_local: !process.env.DATA_PATH
   });
+});
+
+// Phase 4: idempotent terms acceptance (used by Google OAuth users on first login).
+app.post('/api/auth/accept-terms', requireAuth, (req, res) => {
+  const user = queryOne('SELECT id, terms_accepted_at FROM users WHERE username = ?', [req.username]);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+  if (user.terms_accepted_at) return res.json({ success: true, terms_accepted_at: user.terms_accepted_at, already: true });
+  const now = new Date().toISOString();
+  runSQL('UPDATE users SET terms_accepted_at = ? WHERE id = ?', [now, user.id]);
+  logActivity(req.username, 'terms_accept', null, null, { provider: 'google' }, null, req);
+  persist();
+  res.json({ success: true, terms_accepted_at: now, already: false });
 });
 
 // ── Profile (for Quem Somos) ──
@@ -1397,7 +1413,7 @@ app.get('/api/quem-somos', (req, res) => {
 app.get('/api/ranking', (req, res) => {
   const allContribs = queryAll(
     "SELECT u.username, u.full_name, COUNT(p.id) as mask_count, COALESCE(SUM(p.area_ha), 0) as area_ha " +
-    "FROM users u LEFT JOIN polygons p ON p.created_by = u.username " +
+    "FROM users u LEFT JOIN polygons p ON p.created_by = u.username AND p.deleted_at IS NULL " +
     "WHERE u.role = 'contributor' AND u.is_active = 1 " +
     "GROUP BY u.username ORDER BY mask_count DESC, area_ha DESC"
   );
@@ -1413,7 +1429,7 @@ app.get('/api/my-ranking', requireAuth, (req, res) => {
   const excludeUsers = ['deleted', 'teste'];
   const allContribs = queryAll(
     "SELECT u.username, u.full_name, COUNT(p.id) as mask_count, COALESCE(SUM(p.area_ha), 0) as area_ha " +
-    "FROM users u LEFT JOIN polygons p ON p.created_by = u.username " +
+    "FROM users u LEFT JOIN polygons p ON p.created_by = u.username AND p.deleted_at IS NULL " +
     "WHERE u.role = 'contributor' AND u.username NOT IN ('" + excludeUsers.join("','") + "') " +
     "GROUP BY u.username ORDER BY mask_count DESC, area_ha DESC"
   );

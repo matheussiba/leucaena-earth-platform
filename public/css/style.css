@@ -387,6 +387,25 @@ html, body {
   color: var(--text-muted);
   margin: 4px 0 6px 0;
 }
+.auth-terms-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 8px 0 4px 0;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.auth-terms-label input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--accent, #2d6a4f);
+}
+.auth-terms-label a {
+  color: var(--accent, #2d6a4f);
+  text-decoration: underline;
+}
 
 .auth-select,
 .profile-select {

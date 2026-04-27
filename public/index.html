@@ -83,6 +83,12 @@
           </select>
           <input type="text" id="auth-referral-detail" class="hidden" maxlength="200" data-i18n-placeholder="referral.detailPlaceholder" placeholder="Especifique (ex.: nome da universidade, perfil, etc.)">
         </div>
+        <div id="register-terms-group" class="hidden">
+          <label class="auth-terms-label">
+            <input type="checkbox" id="auth-terms-check">
+            <span data-i18n="auth.termsAccept">Li e concordo com os </span><a href="/termos" target="_blank" rel="noopener" data-i18n="auth.termsLink">Termos de Uso e Política de Privacidade</a>
+          </label>
+        </div>
         <button type="submit" id="auth-submit-btn" data-i18n="auth.login">Entrar</button>
       </form>
       <p class="auth-switch">
@@ -352,6 +358,21 @@
       <div class="welcome-actions">
         <button class="btn btn-link" id="welcome-dismiss-forever" data-i18n="welcome.dontShowAgain">Não mostrar novamente</button>
         <button class="btn btn-primary" id="welcome-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de boas-vindas para usuários Google OAuth (aceite implícito de termos) -->
+  <div id="google-welcome-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-small welcome-card">
+      <h2 data-i18n="googleWelcome.title">Bem-vindo(a) ao leucaena.earth!</h2>
+      <p class="welcome-text" data-i18n="googleWelcome.body">Sua conta foi criada com sucesso usando o Google.</p>
+      <p class="welcome-text welcome-text-secondary">
+        <span data-i18n="googleWelcome.consent">Ao continuar, você confirma que leu e concorda com nossos </span>
+        <a href="/termos" target="_blank" rel="noopener" data-i18n="auth.termsLink">Termos de Uso e Política de Privacidade</a>.
+      </p>
+      <div class="welcome-actions">
+        <button class="btn btn-primary" id="google-welcome-ok" data-i18n="googleWelcome.continue">Concordar e continuar</button>
       </div>
     </div>
   </div>

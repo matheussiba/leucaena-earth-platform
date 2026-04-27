@@ -1115,6 +1115,10 @@ window.LeucenaApp = (function () {
       if (googleLabel) googleLabel.textContent = t('auth.googleSignIn');
       const regRefGroup = document.getElementById('register-referral-group');
       if (regRefGroup) regRefGroup.classList.add('hidden');
+      const regTermsGroup = document.getElementById('register-terms-group');
+      if (regTermsGroup) regTermsGroup.classList.add('hidden');
+      const termsCheck = document.getElementById('auth-terms-check');
+      if (termsCheck) termsCheck.checked = false;
       usernameInput.focus();
     } else {
       document.getElementById('auth-modal-title').textContent = t('auth.register');
@@ -1135,6 +1139,8 @@ window.LeucenaApp = (function () {
       if (googleLabel) googleLabel.textContent = t('auth.googleSignUp');
       const regRefGroup2 = document.getElementById('register-referral-group');
       if (regRefGroup2) regRefGroup2.classList.remove('hidden');
+      const regTermsGroup2 = document.getElementById('register-terms-group');
+      if (regTermsGroup2) regTermsGroup2.classList.remove('hidden');
       const refSrc = document.getElementById('auth-referral-source');
       if (refSrc) refSrc.value = '';
       const refDet = document.getElementById('auth-referral-detail');
@@ -1232,8 +1238,14 @@ window.LeucenaApp = (function () {
         errorEl.classList.remove('hidden');
         return;
       }
+      const termsChecked = (document.getElementById('auth-terms-check') || {}).checked;
+      if (!termsChecked) {
+        errorEl.textContent = LeucenaI18n.t('auth.termsRequired');
+        errorEl.classList.remove('hidden');
+        return;
+      }
       endpoint = '/api/auth/register';
-      payload = { email, password: pass, full_name: fullName.trim() };
+      payload = { email, password: pass, full_name: fullName.trim(), terms_accepted_at: new Date().toISOString() };
       const refSrc = (document.getElementById('auth-referral-source') || {}).value || '';
       const refDet = (document.getElementById('auth-referral-detail') || {}).value || '';
       if (refSrc) payload.referral_source = refSrc;
@@ -2319,6 +2331,9 @@ window.LeucenaApp = (function () {
         showVerificationBannerIfNeeded();
         loadRankingWidget();
         syncUserBadgeProfileHint();
+        if (data.auth_provider === 'google' && !data.terms_accepted_at) {
+          showGoogleWelcomeForTerms();
+        }
       }
       const profRes = await fetch('/api/profile', fetchOpts);
       if (profRes.ok) {
@@ -2326,6 +2341,30 @@ window.LeucenaApp = (function () {
         applyProfileToUI(profile);
       }
     } catch (e) { /* ignore */ }
+  }
+
+  // Phase 4 (LGPD): Google OAuth users land here without terms_accepted_at because they
+  // never went through /api/auth/register. We show a welcome dialog whose only action
+  // closes it AND records consent server-side. Idempotent — no-op if already accepted.
+  function showGoogleWelcomeForTerms() {
+    const modal = document.getElementById('google-welcome-modal');
+    if (!modal) return;
+    LeucenaI18n.translatePage();
+    modal.classList.remove('hidden');
+    const okBtn = document.getElementById('google-welcome-ok');
+    const handler = async () => {
+      okBtn.disabled = true;
+      try {
+        await fetch('/api/auth/accept-terms', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+      } catch (e) { /* offline? user can re-trigger on next login */ }
+      modal.classList.add('hidden');
+      okBtn.disabled = false;
+      okBtn.removeEventListener('click', handler);
+    };
+    okBtn.addEventListener('click', handler);
   }
 
   let profilePhotoDataUrl = null;
@@ -3656,8 +3695,8 @@ window.LeucenaApp = (function () {
     document.getElementById('addpoints-yes').addEventListener('click', () => {
       closeAddPointsModal();
       _guardAbandonDraw(() => {
-        setDeletionMode(false);
-        setInsertionMode(true);
+      setDeletionMode(false);
+      setInsertionMode(true);
       });
     });
     document.getElementById('addpoints-cancel').addEventListener('click', () => {
@@ -3878,7 +3917,7 @@ window.LeucenaApp = (function () {
   
   function hideAdminTools() {
     if (userRole !== 'tester') {
-      document.getElementById('admin-users-btn').classList.add('hidden');
+    document.getElementById('admin-users-btn').classList.add('hidden');
     }
     document.getElementById('cell-search-section').classList.add('hidden');
     document.getElementById('view-counter').classList.add('hidden');
@@ -3910,8 +3949,8 @@ window.LeucenaApp = (function () {
     // start failing and the user can no longer reach the role-switch UI nor
     // the team panel.
     if (userRole !== 'tester') {
-      userRole = 'contributor';
-      testerMode = 'contributor';
+    userRole = 'contributor';
+    testerMode = 'contributor';
     }
   }
 

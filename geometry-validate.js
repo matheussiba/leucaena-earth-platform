@@ -5,8 +5,9 @@
  * that `polygonAreaHa` in server.js already relies on.
  *
  * Configurable limits via env vars:
- *   POLYGON_MIN_AREA_M2  (default: 100 m²  — filters accidental single-click slivers)
- *   POLYGON_MAX_AREA_HA  (default: 5000 ha — ~50 km², large but feasible leucaena stands)
+ *   POLYGON_MIN_AREA_M2  (default: 20 m²     — filters accidental single-click slivers
+ *                         while still accepting individual mature leucaena trees)
+ *   POLYGON_MAX_AREA_M2  (default: 500.000 m² = 50 ha — large commercial stand, not absurd)
  */
 
 const MIN_AREA_M2  = parseFloat(process.env.POLYGON_MIN_AREA_M2  || '20');
@@ -103,18 +104,15 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
 
   let coords = geometry.coordinates.map(ring => Array.isArray(ring) ? [...ring] : ring);
 
-  // ── Ring-level checks ──
-  const outerRing = coords[0];
-
-  if (!Array.isArray(outerRing) || outerRing.length < 4) {
+  if (!Array.isArray(coords[0]) || coords[0].length < 3) {
     return { ok: false, error: 'O anel externo do polígono precisa ter pelo menos 3 vértices distintos.' };
   }
 
-  // Auto-remove duplicate consecutive coords
+  // Auto-remove duplicate consecutive coords and auto-close rings (last == first).
+  // This MUST run before vertex-count checks so a 3-coord open ring can be auto-fixed.
   if (autoFix) {
     coords = coords.map(ring => {
       let r = _removeDuplicateCoords(ring);
-      // Ensure closed: last coord == first coord
       if (r.length >= 2 && (r[r.length - 1][0] !== r[0][0] || r[r.length - 1][1] !== r[0][1])) {
         r = [...r, r[0]];
       }
@@ -122,7 +120,6 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
     });
   }
 
-  // Check closed (last == first)
   const outer = coords[0];
   const last  = outer[outer.length - 1];
   const first = outer[0];
@@ -134,6 +131,17 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
   const uniqueVertices = outer.length - 1;
   if (uniqueVertices < 3) {
     return { ok: false, error: `Polígono deve ter pelo menos 3 vértices distintos (encontrado: ${uniqueVertices}).` };
+  }
+
+  // ── Self-intersection check (BEFORE area, otherwise bow-ties are reported as "too small") ──
+  // Skip for rings with many vertices (>200) — the O(n²) check would be slow.
+  // At that resolution a self-intersection is also unlikely to be accidental.
+  for (let ri = 0; ri < coords.length; ri++) {
+    const ring = coords[ri];
+    if (ring.length <= 200 && _ringHasSelfIntersection(ring)) {
+      const label = ri === 0 ? 'anel externo' : `anel interno ${ri}`;
+      return { ok: false, error: `Polígono auto-intersectante no ${label}. Redesenhe a forma evitando cruzamentos.` };
+    }
   }
 
   // ── Area check (outer ring only, then net area) ──
@@ -148,17 +156,6 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
 
   if (netAreaM2 > MAX_AREA_M2) {
     return { ok: false, error: `Polígono muito grande (área ≈ ${Math.round(netAreaM2).toLocaleString()} m²; máximo permitido: ${MAX_AREA_M2.toLocaleString()} m²). Verifique se o desenho está correto.` };
-  }
-
-  // ── Self-intersection check ──
-  // Skip for rings with many vertices (>200) — the O(n²) check would be slow.
-  // At that resolution a self-intersection is also unlikely to be accidental.
-  for (let ri = 0; ri < coords.length; ri++) {
-    const ring = coords[ri];
-    if (ring.length <= 200 && _ringHasSelfIntersection(ring)) {
-      const label = ri === 0 ? 'anel externo' : `anel interno ${ri}`;
-      return { ok: false, error: `Polígono auto-intersectante no ${label}. Redesenhe a forma evitando cruzamentos.` };
-    }
   }
 
   const cleanedGeometry = { ...geometry, coordinates: coords };

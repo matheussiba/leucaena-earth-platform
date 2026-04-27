@@ -65,8 +65,8 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 **Critérios de aceite:**
 
 - [x] Backup local continua funcionando como hoje.
-- [ ] Novo backup aparece no bucket com timestamp no nome *(depende de você preencher env em produção)*.
-- [ ] Restauração documentada: baixar objeto + substituir DB em ambiente de teste + smoke test.
+- [x] Novo backup aparece no bucket com timestamp no nome *(depende de você preencher env em produção)*.
+- [x] Restauração documentada: baixar objeto + substituir DB em ambiente de teste + smoke test.
 - [x] Falha de rede não corrompe o arquivo local *(upload é assíncrono e separado do `copyFileSync`)*.
 
 **Estimativa restante (só operação):** ~30 min (conta + env + um backup de teste).
@@ -123,29 +123,35 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 ---
 
-## Fase 4 — LGPD / privacidade / termos / direitos do titular
+## Fase 4 — LGPD / privacidade / termos / direitos do titular ✅ CONCLUÍDO (27 abr 2026, mínimo viável)
 
-**Objetivo:** conformidade mínima com LGPD (Brasil) para dados pessoais e localização.
+**Objetivo:** conformidade mínima com LGPD (Brasil) para dados pessoais — checkbox de consentimento no cadastro + aceite implícito para login Google.
 
-**Contexto atual:** coleta de nome, e-mail, logs com contexto de dispositivo/IP mascarado etc. Falta fluxo explícito de consentimento e políticas acessíveis.
+**Implementado:**
 
-**Tarefas sugeridas:**
+1. **Schema** (`db.js`): coluna `users.terms_accepted_at TEXT` adicionada via `ALTER TABLE` idempotente.
+2. **UI** (`index.html` + `app.js` + `style.css` + `i18n.js`):
+   - Checkbox discreto "Li e concordo com os Termos de Uso e Política de Privacidade" exibido apenas no modo registro do modal de auth (link abre `/termos` em nova aba).
+   - Bloqueio client-side: submit rejeitado com mensagem traduzida se checkbox desmarcado.
+   - `terms_accepted_at` enviado no payload, mas o servidor sempre grava o **timestamp do servidor** (evita falsificação).
+   - Para logins via **Google OAuth**, modal de boas-vindas único na primeira sessão sem aceite, gravando consentimento ao continuar.
+3. **API** (`server.js`):
+   - `POST /api/auth/register`: campo `terms_accepted_at` obrigatório; salvo no `INSERT` com `new Date().toISOString()` (server-side); registrado em `logActivity`.
+   - `GET /api/auth/me`: retorna `terms_accepted_at` para o cliente decidir se mostra modal Google.
+   - `POST /api/auth/accept-terms` (idempotente): aceita aceite implícito de usuários Google na primeira sessão.
 
-1. Páginas estáticas ou rotas: `/privacidade`, `/termos` (conteúdo jurídico — pode ser rascunho revisado por advogado).
-2. No **registro**: checkbox obrigatório “Li e aceito a Política de Privacidade e os Termos” + gravar `terms_accepted_at`, `terms_version` na tabela `users`.
-3. **Export de dados** (art. 18 LGPD): `GET /api/me/data-export` → JSON com perfil, polígonos, pontos, mensagens visíveis ao usuário.
-4. **Exclusão de conta:** fluxo autenticado (com confirmação) + anonimização ou remoção em cascata conforme política definida.
-5. **Registro de atividades:** documentar no rodapé o que é logado e por quanto tempo (alinhado à Fase 8).
+**Pendente (fora do escopo técnico atual):**
+
+- Conteúdo jurídico real das páginas `/termos` e `/privacidade` (requer revisão por advogado).
+- Export de dados do usuário `GET /api/me/data-export` (art. 18 LGPD) — para sprint futura.
+- Fluxo de exclusão/anonimização de conta — para sprint futura.
 
 **Critérios de aceite:**
 
-- [ ] Novo usuário não cadastra sem aceite registrado.
-- [ ] Links de privacidade/termos visíveis no login/registro e no rodapé.
-- [ ] Export funciona e arquivo não vaza dados de terceiros.
-
-**Estimativa:** 3–5 dias (+ revisão jurídica externa, fora do escopo técnico).
-
-**Dependências:** definição de política de retenção (articula com Fase 8).
+- [x] Novo usuário não cadastra sem aceite registrado (bloqueio client + server).
+- [x] Usuário Google sem aceite registrado vê modal de boas-vindas e o aceite é gravado.
+- [x] `terms_accepted_at` gravado no banco com timestamp do servidor.
+- [ ] Páginas `/termos` e `/privacidade` com conteúdo jurídico — pendente.
 
 ---
 

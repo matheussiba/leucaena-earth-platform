@@ -170,6 +170,8 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN referral_detail TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN last_location_state TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN last_edited_state TEXT'); } catch (e) { /* already exists */ }
+  // Phase 4: LGPD — record when user accepted terms/privacy policy.
+  try { db.run('ALTER TABLE users ADD COLUMN terms_accepted_at TEXT'); } catch (e) { /* already exists */ }
 
   try { db.run('ALTER TABLE activity_logs ADD COLUMN role TEXT'); } catch (e) { /* already exists */ }
   // Device telemetry per logged event so we can debug "this user could not
