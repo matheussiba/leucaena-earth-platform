@@ -30,6 +30,7 @@ const io = new Server(server);
 const BUILD_ID = Date.now().toString();
 
 const fs = require('fs');
+const backupRemote = require('./backup-remote');
 
 const { Resend } = require('resend');
 
@@ -186,7 +187,7 @@ function isMaintenanceModeEnabled() {
 const MAP_HOSTS = ['map.leucaena.earth', 'localhost', '127.0.0.1'];
 
 function isMapHost(req) {
-  const host = (req.hostname || req.headers.host || '').split(':')[0];
+    const host = (req.hostname || req.headers.host || '').split(':')[0];
   return MAP_HOSTS.some(h => host === h) || host.endsWith('.onrender.com');
 }
 
@@ -2823,6 +2824,8 @@ function createBackup() {
     for (let i = MAX_BACKUPS; i < files.length; i++) {
       fs.unlinkSync(path.join(BACKUP_DIR, files[i]));
     }
+    // Phase 1: optional copy to S3-compatible object storage (Cloudflare R2 recommended — free tier).
+    backupRemote.queueRemoteBackup(dest);
     return dest;
   } catch (e) {
     console.error('Backup failed:', e.message);
@@ -2861,10 +2864,16 @@ app.post('/api/admin/backup', requireAuth, (req, res) => {
   const dest = createBackup();
   if (dest) {
     logActivity(req.username, 'db_backup_manual', null, null, null, null, req);
-    res.json({ success: true, file: path.basename(dest) });
+    res.json({ success: true, file: path.basename(dest), remote: backupRemote.getRemoteBackupStatus() });
   } else {
     res.status(500).json({ error: 'Backup failed' });
   }
+});
+
+// Off-site backup status (R2 / S3-compatible). Does not expose secrets.
+app.get('/api/admin/backup-remote/status', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  res.json(backupRemote.getRemoteBackupStatus());
 });
 
 // ── REST API ──

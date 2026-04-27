@@ -30,27 +30,48 @@ Ordem sugerida: **risco primeiro** (dados e legal), depois **qualidade científi
 
 **Contexto atual:** `createBackup()` em `server.js` copia o DB para `BACKUP_DIR` (sob `DATA_PATH` ou `data/`), com rotação (`MAX_BACKUPS = 10`) e intervalo de 6h. Isso **não** protege contra falha do disco ou exclusão da instância.
 
-**Tarefas sugeridas:**
+### Status do código (Fase 1 — barato / grátis)
 
-1. Escolher destino: **Cloudflare R2**, **Backblaze B2** ou **AWS S3** (compatível com SDK S3).
-2. Adicionar variáveis de ambiente (exemplos, nomes ajustáveis):
-   - `BACKUP_REMOTE_ENABLED=1`
-   - `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`, `BACKUP_S3_PREFIX=leucaena-db/`
-3. Após `fs.copyFileSync` bem-sucedido em `createBackup()`, enviar o mesmo arquivo para o bucket (multipart se > 5MB).
-4. Política de lifecycle no bucket: retenção N dias (ex.: 90) + opcionalmente Glacier para arquivo mensal.
-5. Alerta: se upload falhar 3x seguidas, log + email opcional ao super admin (ou webhook Slack/Discord).
-6. Documentar em `README.md` ou `.env.example` apenas os **nomes** das variáveis (sem valores).
+Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível com S3**), via `@aws-sdk/client-s3`.
+
+| Artefato | Descrição |
+|----------|-----------|
+| `backup-remote.js` | Upload assíncrono após snapshot local; fila serial para não sobrecarregar; opcional poda remota por contagem. |
+| `server.js` | Chama `backupRemote.queueRemoteBackup(dest)` ao final de `createBackup()`; `GET /api/admin/backup-remote/status` (super admin). |
+| `package.json` | Dependência `@aws-sdk/client-s3`. |
+| `.env.example` | Variáveis documentadas (`BACKUP_S3_*`, `BACKUP_REMOTE_MAX_OBJECTS`, etc.). |
+
+**Por que R2 (custo):** free tier generoso para o tamanho típico de um `.db` deste projeto; sem cobrança de **egress** típica ao **subir** backups a partir do Render; você pode complementar com **Lifecycle** no painel R2 (ex.: apagar objetos com +90 dias) **sem código** — deixe `BACKUP_REMOTE_MAX_OBJECTS=0` e use só a regra no bucket.
+
+**Configuração manual (sua conta — grátis):**
+
+1. Cloudflare Dashboard → **R2** → criar **bucket** (ex.: `leucaena-backups`).
+2. **Manage R2 API Tokens** → criar token com permissão de leitura/escrita nesse bucket.
+3. Anotar **S3 API** endpoint: `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+4. No Render (ou `.env` local), definir:
+   - `BACKUP_S3_ENDPOINT=https://....r2.cloudflarestorage.com`
+   - `BACKUP_S3_BUCKET=nome-do-bucket`
+   - `BACKUP_S3_ACCESS_KEY` / `BACKUP_S3_SECRET_KEY` do token
+   - Opcional: `BACKUP_S3_PREFIX=leucaena-db`, `BACKUP_S3_REGION=auto`
+   - Opcional: `BACKUP_REMOTE_MAX_OBJECTS=45` (mantém só os N mais recentes no prefixo; `0` = não apaga remotamente)
+5. Deploy / restart. Disparar **POST** `/api/admin/backup` como super admin ou esperar o intervalo de 6h.
+6. Conferir objeto no bucket; chamar `GET /api/admin/backup-remote/status` → `lastUploadAt`, `lastKey`, `lastError`.
+
+**Itens ainda opcionais (não bloqueiam a Fase 1):**
+
+- Alerta se `lastError` repetir (e-mail / webhook) — pode vir numa melhoria posterior.
+- Multipart explícito para DBs gigantes — o SDK já lida bem com streams para a maioria dos casos.
 
 **Critérios de aceite:**
 
-- [ ] Backup local continua funcionando como hoje.
-- [ ] Novo backup aparece no bucket com timestamp no nome.
+- [x] Backup local continua funcionando como hoje.
+- [ ] Novo backup aparece no bucket com timestamp no nome *(depende de você preencher env em produção)*.
 - [ ] Restauração documentada: baixar objeto + substituir DB em ambiente de teste + smoke test.
-- [ ] Falha de rede não corrompe o arquivo local.
+- [x] Falha de rede não corrompe o arquivo local *(upload é assíncrono e separado do `copyFileSync`)*.
 
-**Estimativa:** 1–2 dias (inclui configuração de conta e testes).
+**Estimativa restante (só operação):** ~30 min (conta + env + um backup de teste).
 
-**Dependências:** conta cloud + credenciais.
+**Dependências:** conta Cloudflare (grátis) + bucket R2 (grátis dentro do tier).
 
 ---
 
