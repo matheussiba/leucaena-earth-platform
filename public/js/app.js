@@ -4129,7 +4129,7 @@ window.LeucenaApp = (function () {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'activity_logs_48h.csv';
+        a.download = 'activity_logs.csv';
         a.click();
         URL.revokeObjectURL(url);
       } catch (e) { showToast('Export failed', 'error'); }

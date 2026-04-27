@@ -231,24 +231,40 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 ---
 
-## Fase 8 — Retenção e arquivamento de `activity_logs`
+## Fase 8 — Retenção de `activity_logs` ✅ CONCLUÍDO (27 abr 2026)
 
-**Objetivo:** banco não crescer sem limite; compliance com política de retenção.
+**Objetivo:** banco não crescer sem limite; reduzir superfície de PII em logs antigos.
 
-**Tarefas sugeridas:**
+**Política definida:** retenção máxima de **7 dias** (configurável via env). Sem arquivamento off-site — logs vencidos são descartados (a Fase 1 cobre o `.db` inteiro).
 
-1. Definir política (ex.: 90 dias online, depois gzip para objeto S3 ou descarte).
-2. Job periódico: `SELECT` em lotes → gzip → upload → `DELETE` com limite de linhas por execução.
-3. Métrica simples: contagem de linhas antes/depois logada.
+**Implementado:**
+
+1. **Política** (`server.js`):
+   - `ACTIVITY_LOG_RETENTION_DAYS` (default 7, mínimo 1) controla a janela.
+   - Janela anterior era 48h hardcoded; agora é env-configurável e maior por padrão.
+2. **Dois níveis de limpeza** (defensivos, ambos no `server.js`):
+   - **Amortizado:** a cada 200 inserts, executa um batch de até 5.000 linhas (`_purgeOldLogsBatch`). Custo distribuído na escrita.
+   - **Periódico:** `purgeOldActivityLogs()` roda 1 minuto após o boot e a cada 6h. Itera batches até esgotar (timeout de segurança de 60s) e faz `persist()` único ao final.
+   - Workaround do sql.js: `DELETE ... WHERE id IN (SELECT ... LIMIT N)` é silenciosamente ignorado pelo build, então o batch usa `SELECT ids → DELETE WHERE id IN (?,?,...)` em duas etapas.
+3. **Índice** (`db.js`): `idx_activity_logs_timestamp ON activity_logs(timestamp)` adicionado via `CREATE INDEX IF NOT EXISTS` para acelerar `WHERE timestamp < cutoff`.
+4. **Endpoints admin:**
+   - `GET /api/admin/logs/retention` (admin): `{ retentionDays, totalRows, oldRowsPendingPurge, cutoff, lastRun, lastRunDeleted }`.
+   - `POST /api/admin/logs/retention/run` (super admin): dispara purga manual; resposta inclui antes/depois.
+   - `GET /api/admin/logs?format=csv`: nome do arquivo agora é `activity_logs_{N}d.csv` (reflete `ACTIVITY_LOG_RETENTION_DAYS`).
+5. **Métrica simples:** o job loga `[activity_logs] retention purge: removed X rows (before → after); retention=Yd` quando deleta algo. Captado pelos logs do Render (e pelo Sentry se algo falhar).
+6. **`.env.example`** documenta `ACTIVITY_LOG_RETENTION_DAYS=7`.
+
+**Validação local:** teste com 7 logs antigos (10d) + 3 recentes; após `purgeOldActivityLogs()` os antigos sumiram (junto com 3720 linhas legacy do `.db` em desenvolvimento), os recentes permaneceram.
 
 **Critérios de aceite:**
 
-- [ ] Job idempotente e seguro em restart.
-- [ ] Documentado no texto de privacidade (Fase 4).
+- [x] Job idempotente: rodar 2x seguidas é seguro (segunda chamada deleta 0 linhas).
+- [x] Job seguro em restart: setTimeout no boot + setInterval; cutoff é absoluto.
+- [x] Documentado no texto de privacidade (Fase 4) — pendente de redação jurídica das páginas /privacidade e /termos (mesma pendência da Fase 4).
 
-**Estimativa:** 1–2 dias.
+**Estimativa:** 1–2 dias. **Real:** ~30 min.
 
-**Dependências:** Fase 1 útil para guardar arquivo de arquivo morto.
+**Dependências:** Fase 1 (backup) — caso queira retenção maior no futuro com arquivamento off-site, basta plugar `backupRemote` no job.
 
 ---
 

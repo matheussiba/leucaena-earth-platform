@@ -514,9 +514,20 @@ function needsRehash(storedHash) {
   return !(storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$'));
 }
 
+// ── Phase 8 — Activity log retention ──
+// Default: 7 days. Configurable via env ACTIVITY_LOG_RETENTION_DAYS.
+// We keep two layers of cleanup so the table can never grow unbounded:
+//   (a) opportunistic purge every N inserts (amortized cost on hot path)
+//   (b) explicit periodic job in batches (covers idle servers and large purges)
+const ACTIVITY_LOG_RETENTION_DAYS = Math.max(1, parseInt(process.env.ACTIVITY_LOG_RETENTION_DAYS || '7', 10) || 7);
+const ACTIVITY_LOG_RETENTION_MS = ACTIVITY_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const ACTIVITY_LOG_PURGE_BATCH = 5000;
+const ACTIVITY_LOG_AMORTIZED_EVERY = 200;
+
 let _logCleanupCounter = 0;
-// Amortized retention: every 50 inserts, purge activity_logs older than 48h.
-//
+let _lastRetentionRun = null;
+let _lastRetentionDeleted = 0;
+
 // Backwards compatible signature: (username, action, cellId, objectId, details, role).
 // The new optional 7th arg `ctx` accepts either an Express `req` (we'll
 // extract device info from it) or an object like `{ device_type, os, browser,
@@ -542,13 +553,73 @@ function logActivity(username, action, cellId, objectId, details, role, ctx) {
         dev.device_type || null, dev.os || null, dev.browser || null,
         dev.user_agent ? String(dev.user_agent).slice(0, 500) : null, dev.ip || null]
     );
-    if (++_logCleanupCounter >= 50) {
+    if (++_logCleanupCounter >= ACTIVITY_LOG_AMORTIZED_EVERY) {
       _logCleanupCounter = 0;
-      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-      runSQL('DELETE FROM activity_logs WHERE timestamp < ?', [cutoff]);
+      // Single small batch on the hot path; the periodic job catches the rest.
+      _purgeOldLogsBatch(ACTIVITY_LOG_PURGE_BATCH);
     }
   } catch (e) { /* ignore logging errors */ }
 }
+
+/**
+ * Internal: delete up to `batchSize` activity_logs rows whose timestamp is older
+ * than the retention cutoff. Two-step (SELECT ids → DELETE WHERE id IN (...))
+ * because sql.js does not honor `DELETE ... WHERE id IN (SELECT ... LIMIT ?)`.
+ * Returns the number of rows actually deleted in this batch.
+ */
+function _purgeOldLogsBatch(batchSize) {
+  const cutoff = new Date(Date.now() - ACTIVITY_LOG_RETENTION_MS).toISOString();
+  const rows = queryAll('SELECT id FROM activity_logs WHERE timestamp < ? LIMIT ?', [cutoff, batchSize]);
+  if (rows.length === 0) return 0;
+  const placeholders = rows.map(() => '?').join(',');
+  runSQL(`DELETE FROM activity_logs WHERE id IN (${placeholders})`, rows.map(r => r.id));
+  return rows.length;
+}
+
+/**
+ * Phase 8 — periodic activity_logs retention job.
+ * Idempotent and safe to interrupt: deletes in batches of ACTIVITY_LOG_PURGE_BATCH
+ * until everything older than the cutoff is gone, then persists once.
+ * Returns { deleted, before, after, cutoff }.
+ */
+function purgeOldActivityLogs() {
+  const startedAt = Date.now();
+  const cutoff = new Date(Date.now() - ACTIVITY_LOG_RETENTION_MS).toISOString();
+  let totalDeleted = 0;
+  let beforeCount = null;
+  try {
+    const beforeRow = queryOne('SELECT COUNT(*) AS cnt FROM activity_logs');
+    beforeCount = beforeRow ? beforeRow.cnt : null;
+    while (true) {
+      const deletedThisBatch = _purgeOldLogsBatch(ACTIVITY_LOG_PURGE_BATCH);
+      if (deletedThisBatch === 0) break;
+      totalDeleted += deletedThisBatch;
+      // Safety: avoid unbounded loop if something goes wrong
+      if (Date.now() - startedAt > 60_000) {
+        console.warn('[activity_logs] purge job exceeded 60s, stopping early');
+        break;
+      }
+    }
+    let afterCount = beforeCount;
+    if (totalDeleted > 0) {
+      try { persist(); } catch (_) { /* swallow */ }
+      const afterRow = queryOne('SELECT COUNT(*) AS cnt FROM activity_logs');
+      afterCount = afterRow ? afterRow.cnt : null;
+      console.log(`[activity_logs] retention purge: removed ${totalDeleted} rows (${beforeCount} → ${afterCount}); retention=${ACTIVITY_LOG_RETENTION_DAYS}d`);
+    }
+    _lastRetentionRun = new Date().toISOString();
+    _lastRetentionDeleted = totalDeleted;
+    return { deleted: totalDeleted, before: beforeCount, after: afterCount, cutoff };
+  } catch (e) {
+    console.warn('[activity_logs] retention purge failed:', e && e.message);
+    return { deleted: totalDeleted, before: beforeCount, after: null, cutoff, error: e && e.message };
+  }
+}
+
+// Run once shortly after boot (covers servers that were idle while old logs piled up),
+// then every 6h. setInterval drift here is fine — we use absolute cutoff timestamps.
+setTimeout(purgeOldActivityLogs, 60 * 1000);
+setInterval(purgeOldActivityLogs, 6 * 60 * 60 * 1000);
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -2815,10 +2886,34 @@ app.get('/api/admin/logs', requireAuth, (req, res) => {
       `${l.id},${l.timestamp},${l.username || ''},${l.role || ''},${l.action},${l.cell_id || ''},${l.object_id || ''},"${(l.details || '').replace(/"/g, '""')}"`
     ).join('\n');
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=activity_logs.csv');
+    res.setHeader('Content-Disposition', `attachment; filename=activity_logs_${ACTIVITY_LOG_RETENTION_DAYS}d.csv`);
     return res.send(header + rows);
   }
   res.json(logs);
+});
+
+// Phase 8 — retention status + on-demand trigger (super admin).
+// Returns counts + last run; POST runs the purge synchronously and returns the result.
+app.get('/api/admin/logs/retention', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const totalRow = queryOne('SELECT COUNT(*) AS cnt FROM activity_logs');
+  const cutoff = new Date(Date.now() - ACTIVITY_LOG_RETENTION_MS).toISOString();
+  const oldRow = queryOne('SELECT COUNT(*) AS cnt FROM activity_logs WHERE timestamp < ?', [cutoff]);
+  res.json({
+    retentionDays: ACTIVITY_LOG_RETENTION_DAYS,
+    totalRows: totalRow ? totalRow.cnt : 0,
+    oldRowsPendingPurge: oldRow ? oldRow.cnt : 0,
+    cutoff,
+    lastRun: _lastRetentionRun,
+    lastRunDeleted: _lastRetentionDeleted
+  });
+});
+
+app.post('/api/admin/logs/retention/run', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const result = purgeOldActivityLogs();
+  logActivity(req.username, 'admin_logs_retention_run', null, null, { deleted: result.deleted }, null, req);
+  res.json({ retentionDays: ACTIVITY_LOG_RETENTION_DAYS, ...result });
 });
 
 app.post('/api/log', requireAuth, (req, res) => {

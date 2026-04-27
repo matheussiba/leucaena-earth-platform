@@ -186,6 +186,8 @@ async function initDB() {
   try { db.run('ALTER TABLE activity_logs ADD COLUMN ip TEXT'); } catch (e) { /* already exists */ }
   try { db.run('CREATE INDEX IF NOT EXISTS idx_activity_logs_username_ts ON activity_logs(username, timestamp DESC)'); } catch (e) { /* ignore */ }
   try { db.run('CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action)'); } catch (e) { /* ignore */ }
+  // Phase 8: speeds up the periodic retention purge (WHERE timestamp < cutoff).
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp)'); } catch (e) { /* ignore */ }
 
   // Sessions: persisted so users stay logged in across server redeploys.
   // The in-memory Map in server.js stays as the hot cache; this table is the source of truth on boot.
