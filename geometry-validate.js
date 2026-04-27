@@ -9,8 +9,8 @@
  *   POLYGON_MAX_AREA_HA  (default: 5000 ha — ~50 km², large but feasible leucaena stands)
  */
 
-const MIN_AREA_M2  = parseFloat(process.env.POLYGON_MIN_AREA_M2  || '100');
-const MAX_AREA_HA  = parseFloat(process.env.POLYGON_MAX_AREA_HA  || '5000');
+const MIN_AREA_M2  = parseFloat(process.env.POLYGON_MIN_AREA_M2  || '20');
+const MAX_AREA_M2  = parseFloat(process.env.POLYGON_MAX_AREA_M2  || '500000'); // 500.000 m² = 50 ha
 
 // ── Shoelace area (spherical approximation, matches polygonAreaHa in server.js) ──
 
@@ -145,10 +145,9 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
   let netAreaM2 = areaM2;
   for (let i = 1; i < coords.length; i++) netAreaM2 -= ringAreaM2(coords[i]);
   netAreaM2 = Math.max(0, netAreaM2);
-  const netAreaHa = netAreaM2 / 10000;
 
-  if (netAreaHa > MAX_AREA_HA) {
-    return { ok: false, error: `Polígono muito grande (área ≈ ${netAreaHa.toFixed(1)} ha; máximo permitido: ${MAX_AREA_HA} ha). Verifique se o desenho está correto.` };
+  if (netAreaM2 > MAX_AREA_M2) {
+    return { ok: false, error: `Polígono muito grande (área ≈ ${Math.round(netAreaM2).toLocaleString()} m²; máximo permitido: ${MAX_AREA_M2.toLocaleString()} m²). Verifique se o desenho está correto.` };
   }
 
   // ── Self-intersection check ──
@@ -163,7 +162,7 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
   }
 
   const cleanedGeometry = { ...geometry, coordinates: coords };
-  return { ok: true, geometry: cleanedGeometry, area_ha: netAreaHa };
+  return { ok: true, geometry: cleanedGeometry, area_ha: netAreaM2 / 10000 };
 }
 
 module.exports = { validatePolygonGeometry };
