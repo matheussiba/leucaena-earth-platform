@@ -218,6 +218,22 @@ async function initDB() {
   try { db.run('ALTER TABLE messages ADD COLUMN reply_to INTEGER'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE messages ADD COLUMN allow_reply INTEGER DEFAULT 1'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE messages ADD COLUMN images TEXT'); } catch (e) { /* already exists */ }
+  // is_system: hides bulk auto-generated messages (e.g. welcome) from the sender's inbox.
+  // Only the actual recipient (target) sees a system message. Super admin's "see-all"
+  // visibility rule deliberately ignores them so the inbox doesn't drown in auto-msgs.
+  try { db.run('ALTER TABLE messages ADD COLUMN is_system INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
+  // recipients_meta: JSON-encoded array of recipient usernames for batch sends so the
+  // sender can see who actually received the message (queue rows are per-recipient
+  // for email scheduling but we want a single inbox row).
+  try { db.run('ALTER TABLE messages ADD COLUMN recipients_meta TEXT'); } catch (e) { /* already exists */ }
+  // Backfill: any existing welcome / news auto-message gets is_system = 1 so it
+  // disappears from the admin's flooded inbox without losing the recipient's copy.
+  try {
+    db.run(`UPDATE messages SET is_system = 1
+            WHERE (is_system IS NULL OR is_system = 0)
+              AND (subject LIKE '%Bem-vindo%leucaena%'
+                   OR subject LIKE '%Novidades: Vídeo tutorial%')`);
+  } catch (e) { /* ignore */ }
 
   // ── Message email queue ──
   // Resend (and similar providers) cap us at ~100 emails/day on the free tier.

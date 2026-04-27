@@ -748,7 +748,18 @@ window.LeucenaI18n = (function () {
     'inbox.batchDeleteConfirm': { pt: 'Apagar {0} mensagem(ns) permanentemente?', en: 'Delete {0} message(s) permanently?', es: '¿Eliminar {0} mensaje(s) permanentemente?' },
     'inbox.batchDeleteSuccess': { pt: '{0} mensagem(ns) apagada(s)', en: '{0} message(s) deleted', es: '{0} mensaje(s) eliminado(s)' },
     'inbox.batchReadSuccess': { pt: 'Marcado como lido', en: 'Marked as read', es: 'Marcado como leído' },
-    'inbox.batchUnreadSuccess': { pt: 'Marcado como não lido', en: 'Marked as unread', es: 'Marcado como no leído' }
+    'inbox.batchUnreadSuccess': { pt: 'Marcado como não lido', en: 'Marked as unread', es: 'Marcado como no leído' },
+    'inbox.draftSaved': { pt: 'Rascunho salvo', en: 'Draft saved', es: 'Borrador guardado' },
+    'inbox.draftRestored': { pt: 'Rascunho restaurado', en: 'Draft restored', es: 'Borrador restaurado' },
+    'inbox.recipients': { pt: 'Destinatários', en: 'Recipients', es: 'Destinatarios' },
+    'inbox.recipientsCount': { pt: '{0} destinatários', en: '{0} recipients', es: '{0} destinatarios' },
+    'inbox.recipientsAllCollab': { pt: 'Todos os colaboradores ({0})', en: 'All contributors ({0})', es: 'Todos los colaboradores ({0})' },
+    'inbox.recipientsLoading': { pt: 'Carregando destinatários…', en: 'Loading recipients…', es: 'Cargando destinatarios…' },
+    'inbox.recipientStatus.sent': { pt: 'enviado', en: 'sent', es: 'enviado' },
+    'inbox.recipientStatus.pending': { pt: 'pendente', en: 'pending', es: 'pendiente' },
+    'inbox.recipientStatus.failed': { pt: 'falhou', en: 'failed', es: 'falló' },
+    'inbox.toRecipients': { pt: 'Para: {0}', en: 'To: {0}', es: 'Para: {0}' },
+    'inbox.threadCount': { pt: '{0} mensagens', en: '{0} messages', es: '{0} mensajes' }
   };
 
   function t(key, ...args) {

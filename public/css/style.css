@@ -6369,14 +6369,26 @@ body.sv-active .edit-tools-row {
 }
 
 .inbox-thread-count {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-muted);
-  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.08);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1px 6px;
+  border-radius: 11px;
+  padding: 1px 7px;
+  min-width: 18px;
+  text-align: center;
   flex-shrink: 0;
+}
+.inbox-thread-count-multi {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 1px 4px rgba(124,58,237,0.25);
+}
+.inbox-thread:not(.inbox-thread-unread):not(.inbox-thread-expanded) .inbox-thread-count-multi {
+  background: rgba(124,58,237,0.7);
+  border-color: rgba(124,58,237,0.6);
 }
 
 .inbox-thread-chevron {
@@ -6824,6 +6836,114 @@ body.sv-active .edit-tools-row {
   font-style: italic;
 }
 
+/* ── Batch recipients panel ── */
+.inbox-recipients-panel {
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.04);
+  overflow: hidden;
+}
+.inbox-recipients-panel[open] {
+  background: rgba(124, 58, 237, 0.06);
+}
+.inbox-recipients-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  list-style: none;
+  user-select: none;
+}
+.inbox-recipients-summary::-webkit-details-marker {
+  display: none;
+}
+.inbox-recipients-summary:hover {
+  background: rgba(124, 58, 237, 0.08);
+}
+.inbox-recipients-label {
+  flex: 1;
+  min-width: 0;
+}
+.inbox-recipients-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+.inbox-recipients-panel[open] .inbox-recipients-chevron {
+  transform: rotate(180deg);
+}
+.inbox-recipients-list {
+  padding: 4px 12px 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.inbox-recipients-loading,
+.inbox-recipients-empty {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin: 4px 0;
+}
+.inbox-recipients-ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.inbox-recipient-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.03);
+}
+.inbox-recipient-item:hover {
+  background: rgba(255,255,255,0.06);
+}
+.inbox-recipient-name {
+  color: var(--text-primary);
+  font-weight: 500;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inbox-recipient-username {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.inbox-recipient-status {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.inbox-recipient-status-sent {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+.inbox-recipient-status-pending {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+}
+.inbox-recipient-status-failed {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 /* ── Inbox Confirm Send Modal ── */
 .inbox-confirm-overlay {
   z-index: 10001;
@@ -6927,13 +7047,28 @@ body.sv-active .edit-tools-row {
 /* ── Compose: char counter ── */
 .compose-body-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   padding: 4px 8px;
 }
 
 .compose-char-counter {
   font-size: 11px;
   color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.compose-draft-status {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin-right: auto;
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
+.compose-draft-status:empty {
+  opacity: 0;
 }
 
 .compose-char-warn {

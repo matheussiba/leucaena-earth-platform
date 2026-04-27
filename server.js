@@ -61,7 +61,10 @@ function sendWelcomeInboxMessage(targetUsername) {
     'Uma coisa bacana: só de mapear 1 polígono de leucena (desenhar o contorno de um aglomerado), você já passa a aparecer na seção de colaboradores do site!\n\n' +
     'Qualquer dúvida, sugestão ou ideia, pode responder esta mensagem. Vou ficar muito feliz em ajudar!\n\n' +
     'Um forte abraço!';
-  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, created_at) VALUES (?, ?, ?, ?, 1, ?)',
+  // is_system = 1 keeps these auto-messages from flooding the super admin's inbox.
+  // Only the actual recipient (target) sees them; the visibility query treats
+  // them as targeted-only regardless of the requester's role.
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, is_system, created_at) VALUES (?, ?, ?, ?, 1, 1, ?)',
     [sender, subject, body, targetUsername, now]);
 
   const nowPlus1 = new Date(Date.now() + 1000).toISOString();
@@ -72,7 +75,7 @@ function sendWelcomeInboxMessage(targetUsername) {
     'O vídeo explica como fazer isso passo a passo!\n\n' +
     '🎬 Assista ao vídeo: https://www.youtube.com/watch?v=S7NCnasL1oQ\n\n' +
     'Ou acesse a seção "Como Mapear" no menu superior (ícone 📖).';
-  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, created_at) VALUES (?, ?, ?, ?, 0, ?)',
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, is_system, created_at) VALUES (?, ?, ?, ?, 0, 1, ?)',
     [sender, newsSubject, newsBody, targetUsername, nowPlus1]);
 
   console.log(`[inbox] Welcome + news messages created for ${targetUsername} from ${sender}`);
@@ -2248,12 +2251,22 @@ async function sendInboxEmails(senderUsername, subject, body, recipients) {
 }
 
 function inboxVisibilityCondition() {
+  // Visibility tiers:
+  //   1) regular reach (target=all to contributors, direct target,
+  //      admins-target, sender-of-non-system, or superadmin sees-all-non-system)
+  //   2) is_system messages (welcome / news templates) bypass both the sender
+  //      view and the superadmin "see-all" rule — only the explicit target
+  //      sees them, so the admin's inbox doesn't drown in auto-generated copies
+  //   3) gating: stop leaking inbox history older than the requester's account
   return `(
     (m.target = 'all' AND ? IN (SELECT username FROM users WHERE role = 'contributor'))
     OR m.target = ?
     OR (m.target = 'admins' AND ? IN (SELECT username FROM users WHERE role = 'superadmin'))
-    OR m.sender = ?
-    OR ? IN (SELECT username FROM users WHERE role = 'superadmin')
+    OR (m.sender = ? AND COALESCE(m.is_system, 0) = 0)
+    OR (
+      ? IN (SELECT username FROM users WHERE role = 'superadmin')
+      AND COALESCE(m.is_system, 0) = 0
+    )
   )
   AND (
     m.sender = ?
@@ -2491,8 +2504,20 @@ app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, r
   // can still see/read it via inbox visibility (target='all') even though we
   // email them in waves.
   const batchTarget = target_kind === 'all_collaborators' ? 'all' : 'all';
-  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, images, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [req.username, subject.trim(), sanitizeMessageHtml(body.trim()), batchTarget, allowReply, imagesJson, now]);
+  // recipients_meta lets the sender's inbox show the actual recipient list as a
+  // single thread instead of replicating per-user. We persist sender-visible
+  // metadata: usernames, full names, and whether this was an "all collaborators"
+  // broadcast so the UI can render "Todos os colaboradores (N)" instead of an
+  // exhaustive list when appropriate.
+  const recipientsMeta = {
+    kind: target_kind === 'all_collaborators' ? 'all_collaborators' : 'list',
+    total: recipients.length,
+    usernames: recipients.map(r => r.username),
+    names: recipients.reduce((acc, r) => { acc[r.username] = r.full_name || null; return acc; }, {})
+  };
+  const recipientsMetaJson = JSON.stringify(recipientsMeta);
+  runSQL('INSERT INTO messages (sender, subject, body, target, allow_reply, images, recipients_meta, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [req.username, subject.trim(), sanitizeMessageHtml(body.trim()), batchTarget, allowReply, imagesJson, recipientsMetaJson, now]);
   const msg = queryOne('SELECT * FROM messages WHERE sender = ? AND created_at = ? ORDER BY id DESC LIMIT 1', [req.username, now]);
   if (!msg) return res.status(500).json({ error: 'Failed to persist message' });
 
@@ -2532,6 +2557,27 @@ app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, r
     dailyLimit: EMAIL_DAILY_LIMIT,
     remainingBudgetToday: _remainingEmailBudgetToday()
   });
+});
+
+app.get('/api/admin/messages/:id/recipients', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const msgId = Number(req.params.id);
+  const msg = queryOne('SELECT id, sender, recipients_meta FROM messages WHERE id = ?', [msgId]);
+  if (!msg) return res.status(404).json({ error: 'Message not found' });
+  // Pull live delivery status from message_queue (covers batch sends). The
+  // client merges this with recipients_meta to show "delivered/pending/failed"
+  // chips next to each recipient.
+  const queueRows = queryAll(
+    `SELECT recipient_username AS username, recipient_full_name AS full_name,
+            recipient_email AS email, status, scheduled_for, sent_at, attempts, last_error
+     FROM message_queue WHERE message_id = ? ORDER BY scheduled_for ASC, priority DESC, id ASC`,
+    [msgId]
+  );
+  let meta = null;
+  if (msg.recipients_meta) {
+    try { meta = JSON.parse(msg.recipients_meta); } catch (e) { meta = null; }
+  }
+  res.json({ id: msg.id, meta, queue: queueRows });
 });
 
 app.get('/api/admin/messages/queue/status', requireAuth, (req, res) => {

@@ -323,14 +323,15 @@ window.LeucenaApp = (function () {
 
     document.getElementById('inbox-bell-btn').addEventListener('click', openInboxModal);
     document.getElementById('inbox-modal-close').addEventListener('click', closeInboxModal);
-    document.getElementById('inbox-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeInboxModal();
-    });
+    // Track where mousedown started so a drag that ends outside the modal-card
+    // (e.g. user is selecting text and releases on the overlay) doesn't close
+    // the modal. Native click events fire on the lowest common ancestor of
+    // mousedown+mouseup, which would close the modal here even though the user
+    // started the gesture inside its content.
+    _attachOverlayClickGuard('inbox-modal', closeInboxModal);
     document.getElementById('inbox-compose-close').addEventListener('click', closeComposeModal);
     document.getElementById('inbox-compose-cancel').addEventListener('click', closeComposeModal);
-    document.getElementById('inbox-compose-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeComposeModal();
-    });
+    _attachOverlayClickGuard('inbox-compose-modal', closeComposeModal);
     document.getElementById('inbox-compose-form').addEventListener('submit', handleComposeSend);
 
     document.querySelectorAll('.fmt-btn[data-fmt]').forEach(btn => {
@@ -385,6 +386,7 @@ window.LeucenaApp = (function () {
       _charCounter.textContent = len + ' / 2000';
       _charCounter.classList.toggle('compose-char-warn', len > 1800);
       _charCounter.classList.toggle('compose-char-over', len > 2000);
+      _scheduleDraftSave();
     });
 
     _composeBody.addEventListener('paste', (e) => {
@@ -392,6 +394,11 @@ window.LeucenaApp = (function () {
       const text = (e.clipboardData || window.clipboardData).getData('text/plain');
       document.execCommand('insertText', false, text);
     });
+
+    // Hook up draft auto-save on subject, target, allow_reply changes too.
+    document.getElementById('inbox-compose-subject').addEventListener('input', _scheduleDraftSave);
+    document.getElementById('inbox-compose-target').addEventListener('change', _scheduleDraftSave);
+    document.getElementById('inbox-compose-allow-reply').addEventListener('change', _scheduleDraftSave);
 
     const _imgInput = document.getElementById('compose-img-input');
     document.getElementById('fmt-img-btn').addEventListener('click', () => {
@@ -415,6 +422,7 @@ window.LeucenaApp = (function () {
           const dataUrl = await compressMessageImage(file);
           _composeImages.push(dataUrl);
           _renderComposeImagePreviews();
+          _scheduleDraftSave();
         } catch (e) { showToast('Erro ao processar imagem', 'error'); }
       }
     });
@@ -2533,6 +2541,7 @@ window.LeucenaApp = (function () {
       btn.addEventListener('click', () => {
         _composeImages.splice(Number(btn.dataset.idx), 1);
         _renderComposeImagePreviews();
+        if (typeof _scheduleDraftSave === 'function') _scheduleDraftSave();
       });
     });
   }
@@ -4227,7 +4236,9 @@ window.LeucenaApp = (function () {
         const collabMasks = collabs.reduce((s, u) => s + (u.mask_count || 0), 0);
         const memberArea = members.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
         const collabArea = collabs.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
-        const fmtAreaHa = v => Math.floor(Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+        // 1 decimal place: balance between "looks tidy" and "doesn't lose tiny
+        // contributions" when individual collaborators only have 0.1 ha each.
+        const fmtAreaHa = v => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
         metricsEl.innerHTML = `
           <div class="admin-metric">
@@ -4415,7 +4426,7 @@ window.LeucenaApp = (function () {
       const collabMasks = collabs.reduce((s, u) => s + (u.mask_count || 0), 0);
       const memberArea = members.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
       const collabArea = collabs.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
-      const fmtAreaHa = v => Math.floor(Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+      const fmtAreaHa = v => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
       const metricsEl = document.getElementById('admin-global-metrics');
       metricsEl.innerHTML = `
@@ -5695,6 +5706,24 @@ window.LeucenaApp = (function () {
     if (_inboxBadgeInterval) { clearInterval(_inboxBadgeInterval); _inboxBadgeInterval = null; }
   }
 
+  // Overlay click guard: only close when both the mousedown AND the click
+  // target are the overlay itself. Drag-selecting text inside the modal that
+  // ends on the overlay must NOT close (otherwise users lose drafts).
+  function _attachOverlayClickGuard(overlayId, closeFn) {
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return;
+    let mouseDownOnOverlay = false;
+    overlay.addEventListener('mousedown', (e) => {
+      mouseDownOnOverlay = (e.target === overlay);
+    });
+    overlay.addEventListener('mouseup', (e) => {
+      if (e.target === overlay && mouseDownOnOverlay) {
+        closeFn();
+      }
+      mouseDownOnOverlay = false;
+    });
+  }
+
   async function openInboxModal() {
     logEvent('inbox_open');
     const t = LeucenaI18n.t;
@@ -5728,6 +5757,21 @@ window.LeucenaApp = (function () {
 
   function _targetLabel(msg) {
     const t = LeucenaI18n.t;
+    // Batch sends store recipients_meta on the messages row so we can render
+    // an accurate "Para: 12 colaboradores" instead of a generic "Todos".
+    if (msg.recipients_meta) {
+      try {
+        const meta = typeof msg.recipients_meta === 'string'
+          ? JSON.parse(msg.recipients_meta)
+          : msg.recipients_meta;
+        if (meta && typeof meta.total === 'number') {
+          if (meta.kind === 'all_collaborators') {
+            return 'Para: ' + t('inbox.recipientsAllCollab', meta.total);
+          }
+          return 'Para: ' + t('inbox.recipientsCount', meta.total);
+        }
+      } catch (e) { /* fall through */ }
+    }
     if (msg.target === 'all') return t('inbox.toAll');
     if (msg.target === 'admins') return t('inbox.toAdmins');
     return t('inbox.toUser', msg.target);
@@ -5861,8 +5905,17 @@ window.LeucenaApp = (function () {
     const isMine = msg.sender === username;
     const isUnread = !msg.read_at && !isMine;
 
+    // Reply button visibility:
+    //   - For non-superadmins: show only when the last bubble isn't theirs
+    //     (so they can reply to the other party).
+    //   - For superadmins: ALWAYS show the reply button on the last bubble,
+    //     even if THEY were the last to write — this matches modern email
+    //     UX where you can keep messaging the same thread.
+    //   - We do NOT render the reply button on bubbles authored by the
+    //     other party that we already replied to in the thread (only `isLast`).
     let replyHtml = '';
-    if (isLast && msg.allow_reply && !isMine) {
+    const canReplyHere = isLast && msg.allow_reply && (!isMine || isSuperAdmin());
+    if (canReplyHere) {
       replyHtml = '<button class="btn btn-secondary inbox-reply-btn" data-msg-id="' + msg.id + '">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg>' +
         t('inbox.reply') + '</button>';
@@ -5927,6 +5980,93 @@ window.LeucenaApp = (function () {
       });
     }
     return bubble;
+  }
+
+  // ── Batch recipients panel ──
+  // Renders a compact list of who received a batch message, with delivery
+  // status pulled from /api/admin/messages/:id/recipients. We lazy-load the
+  // queue rows only when the user expands the panel so we don't spam the
+  // server when scrolling through the inbox.
+  function _renderBatchRecipientsPanel(rootMsg) {
+    const t = LeucenaI18n.t;
+    let meta;
+    try {
+      meta = typeof rootMsg.recipients_meta === 'string'
+        ? JSON.parse(rootMsg.recipients_meta)
+        : rootMsg.recipients_meta;
+    } catch (e) { return null; }
+    if (!meta || typeof meta.total !== 'number') return null;
+
+    const wrap = document.createElement('details');
+    wrap.className = 'inbox-recipients-panel';
+    const summary = document.createElement('summary');
+    summary.className = 'inbox-recipients-summary';
+    const labelText = meta.kind === 'all_collaborators'
+      ? t('inbox.recipientsAllCollab', meta.total)
+      : t('inbox.recipientsCount', meta.total);
+    summary.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>' +
+      '<span class="inbox-recipients-label">' + escapeHtml(t('inbox.recipients')) + ': ' + escapeHtml(labelText) + '</span>' +
+      '<span class="inbox-recipients-chevron">&#9662;</span>';
+    wrap.appendChild(summary);
+
+    const listEl = document.createElement('div');
+    listEl.className = 'inbox-recipients-list';
+    listEl.innerHTML = '<p class="inbox-recipients-loading">' + escapeHtml(t('inbox.recipientsLoading')) + '</p>';
+    wrap.appendChild(listEl);
+
+    let loaded = false;
+    wrap.addEventListener('toggle', async () => {
+      if (!wrap.open || loaded) return;
+      loaded = true;
+      try {
+        const r = await fetch('/api/admin/messages/' + rootMsg.id + '/recipients', { headers: authHeaders() });
+        if (!r.ok) {
+          listEl.innerHTML = _renderRecipientsFromMeta(meta);
+          return;
+        }
+        const data = await r.json();
+        listEl.innerHTML = _renderRecipientsFromQueue(data, meta);
+      } catch (e) {
+        listEl.innerHTML = _renderRecipientsFromMeta(meta);
+      }
+    });
+    return wrap;
+  }
+
+  function _renderRecipientsFromMeta(meta) {
+    if (!meta || !Array.isArray(meta.usernames) || meta.usernames.length === 0) {
+      return '<p class="inbox-recipients-empty">—</p>';
+    }
+    const items = meta.usernames.map(u => {
+      const name = (meta.names && meta.names[u]) || u;
+      return '<li class="inbox-recipient-item">' +
+        '<span class="inbox-recipient-name">' + escapeHtml(name) + '</span>' +
+        '<span class="inbox-recipient-username">@' + escapeHtml(u) + '</span>' +
+        '</li>';
+    }).join('');
+    return '<ul class="inbox-recipients-ul">' + items + '</ul>';
+  }
+
+  function _renderRecipientsFromQueue(data, meta) {
+    const t = LeucenaI18n.t;
+    const queue = Array.isArray(data && data.queue) ? data.queue : [];
+    if (queue.length === 0) return _renderRecipientsFromMeta((data && data.meta) || meta);
+    const statusLabel = s => {
+      if (s === 'sent') return t('inbox.recipientStatus.sent');
+      if (s === 'failed') return t('inbox.recipientStatus.failed');
+      return t('inbox.recipientStatus.pending');
+    };
+    const items = queue.map(row => {
+      const name = row.full_name || row.username;
+      const cls = row.status === 'sent' ? 'sent' : (row.status === 'failed' ? 'failed' : 'pending');
+      return '<li class="inbox-recipient-item">' +
+        '<span class="inbox-recipient-name">' + escapeHtml(name) + '</span>' +
+        '<span class="inbox-recipient-username">@' + escapeHtml(row.username) + '</span>' +
+        '<span class="inbox-recipient-status inbox-recipient-status-' + cls + '">' + escapeHtml(statusLabel(row.status)) + '</span>' +
+        '</li>';
+    }).join('');
+    return '<ul class="inbox-recipients-ul">' + items + '</ul>';
   }
 
   let _inboxBatchSelected = new Set();
@@ -6068,10 +6208,15 @@ window.LeucenaApp = (function () {
 
       const headerEl = document.createElement('div');
       headerEl.className = 'inbox-thread-header';
+      // Always render the count when there's at least one message (so the
+      // sender immediately sees if a 1-message thread vs a multi-message
+      // conversation). The count badge sits before the chevron and is
+      // styled accent-color when > 1, neutral when = 1, per UX request.
+      const countClass = allMsgs.length > 1 ? 'inbox-thread-count inbox-thread-count-multi' : 'inbox-thread-count';
       headerEl.innerHTML =
         (threadUnread > 0 ? '<span class="inbox-item-unread-dot"></span>' : '') +
         '<span class="inbox-item-subject">' + escapeHtml(root.subject) + '</span>' +
-        (hasReplies ? '<span class="inbox-thread-count">' + allMsgs.length + '</span>' : '') +
+        '<span class="' + countClass + '" title="' + escapeHtml(LeucenaI18n.t('inbox.threadCount', allMsgs.length)) + '">' + allMsgs.length + '</span>' +
         '<span class="inbox-thread-chevron">&#9662;</span>' +
         '<span class="inbox-item-date">' + _fmtDate(lastMsg.created_at) + '</span>';
 
@@ -6091,6 +6236,14 @@ window.LeucenaApp = (function () {
 
       const bodyEl = document.createElement('div');
       bodyEl.className = 'inbox-thread-body';
+
+      // Batch recipient panel — only the sender or any admin sees it. Lets
+      // us collapse the per-recipient noise of "100 colaboradores" into a
+      // single thread while still letting the admin see WHO got the message.
+      if (root.recipients_meta && (root.sender === username || isAdminUser())) {
+        const panel = _renderBatchRecipientsPanel(root);
+        if (panel) bodyEl.appendChild(panel);
+      }
 
       for (let i = 0; i < allMsgs.length; i++) {
         bodyEl.appendChild(_renderMsgBubble(allMsgs[i], i === allMsgs.length - 1));
@@ -6164,6 +6317,115 @@ window.LeucenaApp = (function () {
   let _composeMode = 'admin';
   let _composeReplyTo = null;
 
+  // ── Draft persistence ──
+  // Drafts are saved per (user, mode, target/parent/batch-set) so the same
+  // person composing two different replies doesn't overwrite either. We use
+  // localStorage so refreshing the page doesn't lose work, and drop the slot
+  // on a successful send. Drafts are user-scoped so multiple accounts on the
+  // same browser don't see each other's WIP.
+  const _DRAFT_PREFIX = 'leucaena.inboxDraft:';
+  let _draftSaveTimer = null;
+  let _currentDraftKey = null;
+
+  function _composeDraftKey(mode, opts) {
+    const u = (typeof username === 'string' && username) ? username : '_anon';
+    if (mode === 'reply' && opts && opts.replyMsg) return `${_DRAFT_PREFIX}${u}:reply:${opts.replyMsg.id}`;
+    if (mode === 'user') return `${_DRAFT_PREFIX}${u}:user`;
+    if (mode === 'batch' && Array.isArray(opts && opts.usernames)) {
+      const sig = [...opts.usernames].sort().join(',');
+      return `${_DRAFT_PREFIX}${u}:batch:${sig}`;
+    }
+    if (mode === 'admin') return `${_DRAFT_PREFIX}${u}:admin:${(opts && opts.target) || 'all'}`;
+    return `${_DRAFT_PREFIX}${u}:${mode || 'admin'}`;
+  }
+
+  function _readDraft(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== 'object') return null;
+      return data;
+    } catch (e) { return null; }
+  }
+
+  function _writeDraft(key, data) {
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { /* quota / disabled */ }
+  }
+
+  function _clearDraft(key) {
+    if (!key) return;
+    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+  }
+
+  function _scheduleDraftSave() {
+    if (!_currentDraftKey) return;
+    if (_draftSaveTimer) clearTimeout(_draftSaveTimer);
+    _draftSaveTimer = setTimeout(() => {
+      _saveCurrentDraft();
+      _draftSaveTimer = null;
+    }, 350);
+  }
+
+  function _saveCurrentDraft() {
+    if (!_currentDraftKey) return;
+    const subject = (document.getElementById('inbox-compose-subject').value || '').trim();
+    const editorEl = document.getElementById('inbox-compose-body');
+    const bodyHtml = editorEl ? editorEl.innerHTML : '';
+    const bodyText = editorEl ? (editorEl.textContent || '').trim() : '';
+    const allowReplyEl = document.getElementById('inbox-compose-allow-reply');
+    const allowReply = allowReplyEl ? !!allowReplyEl.checked : true;
+    const targetEl = document.getElementById('inbox-compose-target');
+    const target = targetEl ? targetEl.value : null;
+
+    if (!subject && !bodyText && (!_composeImages || _composeImages.length === 0)) {
+      _clearDraft(_currentDraftKey);
+      _setDraftIndicator('');
+      return;
+    }
+    _writeDraft(_currentDraftKey, {
+      subject,
+      bodyHtml,
+      allowReply,
+      target,
+      images: Array.isArray(_composeImages) ? [..._composeImages] : [],
+      savedAt: new Date().toISOString()
+    });
+    _setDraftIndicator(LeucenaI18n.t('inbox.draftSaved'));
+  }
+
+  function _setDraftIndicator(text) {
+    const el = document.getElementById('inbox-compose-draft-status');
+    if (el) el.textContent = text || '';
+  }
+
+  function _restoreDraft(key) {
+    const draft = _readDraft(key);
+    if (!draft) { _setDraftIndicator(''); return false; }
+    const subjectEl = document.getElementById('inbox-compose-subject');
+    const editorEl = document.getElementById('inbox-compose-body');
+    const allowReplyEl = document.getElementById('inbox-compose-allow-reply');
+    const targetEl = document.getElementById('inbox-compose-target');
+    if (subjectEl && draft.subject) subjectEl.value = draft.subject;
+    if (editorEl && draft.bodyHtml) editorEl.innerHTML = draft.bodyHtml;
+    if (allowReplyEl && typeof draft.allowReply === 'boolean') allowReplyEl.checked = draft.allowReply;
+    if (targetEl && draft.target) {
+      const opt = [...targetEl.options].find(o => o.value === draft.target);
+      if (opt) targetEl.value = draft.target;
+    }
+    if (Array.isArray(draft.images) && draft.images.length > 0) {
+      _composeImages = [...draft.images];
+      _renderComposeImagePreviews();
+    }
+    if (editorEl) {
+      const len = (editorEl.textContent || '').length;
+      const counter = document.getElementById('compose-char-counter');
+      if (counter) counter.textContent = len + ' / 2000';
+    }
+    _setDraftIndicator(LeucenaI18n.t('inbox.draftRestored'));
+    return true;
+  }
+
   async function openComposeModal(mode, replyMsg) {
     logEvent('inbox_compose_open', null, null, { mode: mode || 'admin', reply: !!replyMsg });
     const t = LeucenaI18n.t;
@@ -6180,7 +6442,11 @@ window.LeucenaApp = (function () {
     const targetField = select.closest('.compose-field');
 
     errEl.classList.add('hidden');
-    bodyEl.value = '';
+    subjectEl.value = '';
+    bodyEl.innerHTML = '';
+    _composeImages = [];
+    _renderComposeImagePreviews();
+    _setDraftIndicator('');
 
     const existingReplyInfo = modal.querySelector('.compose-reply-info');
     if (existingReplyInfo) existingReplyInfo.remove();
@@ -6194,11 +6460,9 @@ window.LeucenaApp = (function () {
       info.textContent = t('inbox.replyTo', _composeReplyTo.sender + ' — ' + _composeReplyTo.subject);
       errEl.parentElement.insertBefore(info, errEl.nextSibling);
     } else if (_composeMode === 'user') {
-      subjectEl.value = '';
       targetField.classList.add('hidden');
       allowReplyWrap.classList.add('hidden');
     } else {
-      subjectEl.value = '';
       targetField.classList.remove('hidden');
       allowReplyWrap.classList.remove('hidden');
       allowReplyCb.checked = true;
@@ -6218,6 +6482,16 @@ window.LeucenaApp = (function () {
       } catch (e) { /* ignore */ }
     }
     modal.classList.remove('hidden');
+
+    // Resolve the draft key AFTER the form has been populated with default
+    // structure (target options, allow_reply checked, etc.), then restore.
+    _currentDraftKey = _composeDraftKey(_composeMode, {
+      replyMsg: _composeReplyTo,
+      target: select.value,
+      usernames: null
+    });
+    _restoreDraft(_currentDraftKey);
+    setTimeout(() => bodyEl && bodyEl.focus(), 50);
   }
 
   function openReplyModal(msg) {
@@ -6230,6 +6504,14 @@ window.LeucenaApp = (function () {
     if (select) {
       for (const opt of select.options) {
         if (opt.value === targetUsername) { select.value = targetUsername; break; }
+      }
+      // The compose modal initially used the default target ('all') for its
+      // draft key. Switching to a specific user means we should re-key the
+      // draft to that recipient and try restoring any existing draft for them.
+      const newKey = _composeDraftKey('admin', { target: targetUsername });
+      if (newKey !== _currentDraftKey) {
+        _currentDraftKey = newKey;
+        _restoreDraft(_currentDraftKey);
       }
     }
   }
@@ -6262,6 +6544,9 @@ window.LeucenaApp = (function () {
     targetField.classList.add('hidden');
     allowReplyWrap.classList.remove('hidden');
     allowReplyCb.checked = true;
+    _composeImages = [];
+    _renderComposeImagePreviews();
+    _setDraftIndicator('');
 
     const info = document.createElement('div');
     info.className = 'compose-reply-info';
@@ -6269,17 +6554,30 @@ window.LeucenaApp = (function () {
     errEl.parentElement.insertBefore(info, errEl.nextSibling);
 
     modal.classList.remove('hidden');
+
+    _currentDraftKey = _composeDraftKey('batch', { usernames: _batchTargetUsernames });
+    _restoreDraft(_currentDraftKey);
+    setTimeout(() => bodyEl && bodyEl.focus(), 50);
   }
 
   function closeComposeModal() {
+    // Flush a pending draft save synchronously so the user doesn't lose the
+    // last keystroke between input event and the debounce timer firing.
+    if (_draftSaveTimer) {
+      clearTimeout(_draftSaveTimer);
+      _draftSaveTimer = null;
+      _saveCurrentDraft();
+    }
     closeSendConfirm();
     document.getElementById('inbox-compose-modal').classList.add('hidden');
     _composeReplyTo = null;
     _composeMode = 'admin';
     _batchTargetUsernames = null;
     _composeImages = [];
+    _currentDraftKey = null;
     _renderComposeImagePreviews();
     document.getElementById('inbox-compose-body').innerHTML = '';
+    _setDraftIndicator('');
     const counter = document.getElementById('compose-char-counter');
     if (counter) { counter.textContent = '0 / 2000'; counter.className = 'compose-char-counter'; }
   }
@@ -6385,6 +6683,7 @@ window.LeucenaApp = (function () {
         if (!r.ok) {
           throw new Error(j.error || ('HTTP ' + r.status));
         }
+        if (_currentDraftKey) { _clearDraft(_currentDraftKey); _currentDraftKey = null; }
         closeComposeModal();
         logEvent('inbox_batch_send', null, null, {
           total: j.total, sentToday: j.sentToday, plan: j.plan, dailyLimit: j.dailyLimit
@@ -6441,6 +6740,7 @@ window.LeucenaApp = (function () {
         body: JSON.stringify(payload)
       });
       if (r.ok) {
+        if (_currentDraftKey) { _clearDraft(_currentDraftKey); _currentDraftKey = null; }
         closeComposeModal();
         showToast(t('inbox.sentSuccess'), 'success');
         logEvent('inbox_send', null, null, { mode: _composeMode, target: payload.target || null });
