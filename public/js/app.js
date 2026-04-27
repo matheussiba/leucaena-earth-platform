@@ -3352,12 +3352,21 @@ window.LeucenaApp = (function () {
       LeucenaMap.updateCellAppearance(cellId, selectedCellData || {});
       LeucenaMap.setEditingCell(null);
       LeucenaMap.releasePanRestriction();
-      // After unlock the viewport itself doesn't move, so no map 'idle' will
-      // fire. We still need to re-add every state point that was hidden by the
-      // edit-scope filter back into the clusterer; otherwise only points from
-      // the just-unlocked cell remain visible until the user pans.
+      // Re-add every state point that was hidden by the edit-scope filter back
+      // into the clusterer; otherwise only points from the just-unlocked cell
+      // remain visible until the user pans.
       if (LeucenaMap.refreshPointVisibility) LeucenaMap.refreshPointVisibility();
       document.getElementById('main-content').classList.remove('editing-cell');
+      // Reframe the cell one zoom level wider than the edit lock view
+      // (zoomToCell = fitBounds +1; here we use fitBounds only) so neighbours
+      // stay visible after unlock once layout has settled.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (typeof LeucenaMap.zoomToCellAfterUnlock === 'function') {
+            LeucenaMap.zoomToCellAfterUnlock(cellId);
+          }
+        });
+      });
       LeucenaCollab.notifyEditingCell(null);
       LeucenaCollab.notifyActivity(null);
 

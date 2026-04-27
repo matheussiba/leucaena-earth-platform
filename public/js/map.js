@@ -1626,6 +1626,29 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
   }
 
+  /** After unlock: same fit as zoomToCell but without the +1 zoom-in, so the
+   *  cell stays fully visible with a bit more surrounding context than
+   *  during editing (zoomToCell = fitBounds then +1). */
+  function zoomToCellAfterUnlock(cellId) {
+    const bounds = getCellBounds(cellId);
+    if (!bounds) return;
+
+    map.setOptions({ restriction: null });
+
+    const container = document.getElementById('map');
+    const padH = Math.round(container.offsetWidth * 0.20);
+    const padV = Math.round(container.offsetHeight * 0.20);
+    map.fitBounds(bounds, { top: padV, right: padH, bottom: padV, left: padH });
+
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      map.setCenter(bounds.getCenter());
+      if (restrictionBounds) {
+        map.setOptions({ restriction: { latLngBounds: restrictionBounds, strictBounds: false } });
+      }
+      try { triggerResize(); } catch (e) { /* noop */ }
+    });
+  }
+
   function zoomToCellViewOnly(cellId) {
     const bounds = getCellBounds(cellId);
     if (!bounds) return;
@@ -2276,6 +2299,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     getShowPolygons,
     showStreetViewCoverage,
     zoomToCell,
+    zoomToCellAfterUnlock,
     zoomToCellViewOnly,
     zoomToCells,
     findCellsByGridId,
