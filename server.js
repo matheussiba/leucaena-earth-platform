@@ -32,6 +32,10 @@ const BUILD_ID = Date.now().toString();
 const fs = require('fs');
 const backupRemote = require('./backup-remote');
 const { validatePolygonGeometry } = require('./geometry-validate');
+const monitoring = require('./monitoring');
+
+monitoring.init();
+monitoring.installGlobalHandlers();
 
 const { Resend } = require('resend');
 
@@ -252,6 +256,7 @@ app.use(cors({
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
+app.use(monitoring.expressRequestHandler());
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -730,14 +735,33 @@ function determineCellStatusOnUnlock(cellId, cellGeometry) {
 function releaseExpiredLocks() {
   const cutoff = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
   const now = new Date().toISOString();
-  const expired = queryAll('SELECT id, locked_by, geometry, grid_id, fid FROM grid_cells WHERE locked_at IS NOT NULL AND locked_at < ?', [cutoff]);
+  const expired = queryAll('SELECT id, locked_by, locked_at, geometry, grid_id, fid FROM grid_cells WHERE locked_at IS NOT NULL AND locked_at < ?', [cutoff]);
+  if (expired.length === 0) return;
   for (const cell of expired) {
     const newStatus = determineCellStatusOnUnlock(cell.id, cell.geometry);
+    const cellName = cell.grid_id || String(cell.fid);
     runSQL('UPDATE grid_cells SET locked_by = NULL, locked_at = NULL, grid_status = ?, updated_at = ? WHERE id = ?',
       [newStatus, now, cell.id]);
-    io.emit('cell:unlocked', { cellId: cell.id, previousUser: cell.locked_by, cellName: cell.grid_id || String(cell.fid) });
+    io.emit('cell:unlocked', {
+      cellId: cell.id,
+      previousUser: cell.locked_by,
+      cellName,
+      expired: true,
+      lockedAt: cell.locked_at,
+      timeoutMs: LOCK_TIMEOUT_MS
+    });
     io.emit('cell:statusChanged', { cellId: cell.id, status: newStatus, username: cell.locked_by });
+    try {
+      logActivity(cell.locked_by || null, 'cell_lock_expired', cell.id, null, {
+        newStatus,
+        lockedAt: cell.locked_at,
+        timeoutMinutes: Math.round(LOCK_TIMEOUT_MS / 60000)
+      }, null, null);
+    } catch (e) {
+      console.warn('[locks] logActivity(cell_lock_expired) failed:', e && e.message);
+    }
   }
+  try { persist(); } catch (_) { /* swallow — best-effort flush */ }
 }
 
 setInterval(releaseExpiredLocks, 30000);
@@ -3934,6 +3958,37 @@ app.get('/api/export/points', requireAuth, (req, res) => {
 
 app.get('/api/users', (req, res) => {
   res.json(getUniqueUsers());
+});
+
+// ── Phase 5: client-side error reporter ──
+// Lightweight endpoint for window.onerror / unhandledrejection from the browser.
+// We log + forward to Sentry (if enabled) but never let bad payloads crash the server.
+app.post('/api/log/client-error', rateLimit('client-error', 30, 60000), (req, res) => {
+  try {
+    const b = req.body || {};
+    const msg = String(b.message || 'client error').slice(0, 500);
+    const err = new Error(msg);
+    err.name = 'ClientError';
+    monitoring.captureException(err, {
+      kind: 'client',
+      url: String(b.url || '').slice(0, 500),
+      stack: String(b.stack || '').slice(0, 4000),
+      ua: String(req.headers['user-agent'] || '').slice(0, 200),
+      buildId: String(b.buildId || '').slice(0, 50),
+      username: req.username || null
+    });
+    res.status(204).end();
+  } catch (_) {
+    res.status(204).end();
+  }
+});
+
+// ── Phase 5: Sentry / monitoring error handler (must come AFTER routes) ──
+app.use(monitoring.expressErrorHandler());
+app.use((err, req, res, _next) => {
+  console.error('[express] unhandled error:', err && err.stack || err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: 'Erro interno do servidor.' });
 });
 
 // ── Socket.IO ──

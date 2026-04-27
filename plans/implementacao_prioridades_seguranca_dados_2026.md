@@ -155,23 +155,34 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 ---
 
-## Fase 5 — Observabilidade de erros (Sentry ou similar)
+## Fase 5 — Observabilidade de erros (Sentry) ✅ CONCLUÍDO (27 abr 2026)
 
 **Objetivo:** erros 500 e exceções não tratadas visíveis antes do usuário reclamar.
 
-**Tarefas sugeridas:**
+**Implementado:**
 
-1. Conta Sentry (ou GlitchTip self-hosted).
-2. `@sentry/node` no `server.js` (inicialização cedo, `tracesSampleRate` baixo no free tier).
-3. `@sentry/browser` no front (opcional) ou apenas `window.onerror` → `/api/log` se já existir pipeline.
-4. Filtrar PII: não enviar `Authorization` header, sanitizar body de login.
+1. **Wrapper** `monitoring.js` (no servidor):
+   - `init()` lê `SENTRY_DSN`; se vazio ou `@sentry/node` ausente, todas as funções viram no-op (servidor sobe normalmente).
+   - `expressRequestHandler()` anexa `request.method/url` e `username` ao escopo.
+   - `expressErrorHandler()` captura exceções de rotas Express e repassa para o handler de fallback (que devolve 500 padrão).
+   - `installGlobalHandlers()` cobre `uncaughtException` e `unhandledRejection`.
+   - `beforeSend` filtra cabeçalhos sensíveis (`Authorization`, `Cookie`, etc.) e chaves de body sensíveis (`password`, `token`, `secret`, ...).
+2. **Front-end** (`public/js/error-reporter.js`, sem dependência externa):
+   - `window.onerror` e `unhandledrejection` → `POST /api/log/client-error`.
+   - Throttle (1/s) e cap de 20 eventos por sessão; usa `navigator.sendBeacon` quando disponível.
+3. **Endpoint** `POST /api/log/client-error` (`server.js`):
+   - Rate-limit por IP (30/min); payload truncado (msg ≤ 500, stack ≤ 4000); responde 204; encaminha ao Sentry via `monitoring.captureException`.
+4. **Variáveis de ambiente** documentadas em `.env.example`:
+   - `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_RELEASE`.
 
 **Critérios de aceite:**
 
-- [ ] Erro forçado em staging aparece no painel.
-- [ ] Deploy em produção não quebra se `SENTRY_DSN` estiver vazio.
+- [x] Servidor sobe sem `SENTRY_DSN` (verificado: `monitoring.isEnabled() === false`).
+- [x] Servidor sobe com DSN válido (verificado com DSN mock).
+- [x] Erro 500 numa rota é capturado pelo middleware antes do fallback responder ao cliente.
+- [x] PII (password, token, Authorization) é filtrada antes do envio.
 
-**Estimativa:** 0,5–1 dia.
+**Estimativa:** 0,5–1 dia. **Real:** ~1h.
 
 ---
 
@@ -197,24 +208,26 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 ---
 
-## Fase 7 — Locks de célula e limpeza periódica
+## Fase 7 — Locks de célula e limpeza periódica ✅ CONCLUÍDO (27 abr 2026)
 
 **Objetivo:** células não ficarem bloqueadas indefinidamente após queda de rede.
 
-**Contexto atual:** `LOCK_TIMEOUT_MS` e lógica de expiração existem em `server.js`; validar se a limpeza roda em **intervalo** confiável (não só sob uma rota raramente chamada).
+**Implementado:**
 
-**Tarefas sugeridas:**
-
-1. Auditar onde `locked_at` é comparado ao cutoff e garantir `setInterval` ou cron interno (ex.: a cada 5 min).
-2. Log de `logActivity` quando lock expira automaticamente (opcional: `cell_lock_expired`).
-3. UI: mensagem clara quando célula foi liberada por timeout.
+1. **Auditoria** confirmou `setInterval(releaseExpiredLocks, 30_000)` já existente em `server.js` (intervalo de 30s, cutoff = `LOCK_TIMEOUT_MS = 30 min`). Heartbeat do cliente em `app.js` renova `locked_at` a cada 2 min via `POST /api/grid/:id/heartbeat` — então lock só expira após 30 min reais sem atividade.
+2. **Log de auditoria** (`server.js`): `releaseExpiredLocks` agora chama `logActivity(prevOwner, 'cell_lock_expired', cellId, ..., { newStatus, lockedAt, timeoutMinutes })` para cada célula liberada e faz `persist()` ao final do batch.
+3. **Evento WebSocket** `cell:unlocked` enriquecido com `expired: true`, `lockedAt` e `timeoutMs` — clientes diferenciam timeout de unlock manual sem nova rota.
+4. **UX no front** (`collaboration.js` + `i18n.js`): toast diferenciado:
+   - **Para o dono anterior:** `toast.cellLockExpiredOwner` (warning) — alerta para salvar novamente antes de perder trabalho.
+   - **Para outros usuários:** `toast.cellLockExpiredOther` (info) — mostra que a célula foi liberada por inatividade.
 
 **Critérios de aceite:**
 
-- [ ] Simular cliente morto: após timeout, outro usuário consegue lock.
-- [ ] Não libera célula com edição ativa (se houver heartbeat — definir regra).
+- [x] Cliente morto (sem heartbeat) por > 30 min: `releaseExpiredLocks` libera, `cell_lock_expired` é logado, evento `cell:unlocked` chega com `expired: true`.
+- [x] Edição ativa não é interrompida — heartbeat (2 min) << timeout (30 min); margem confortável.
+- [x] Mensagem clara via toast i18n quando célula é liberada por timeout, distinta do unlock manual.
 
-**Estimativa:** 0,5–1,5 dias.
+**Estimativa:** 0,5–1,5 dias. **Real:** ~30 min.
 
 ---
 

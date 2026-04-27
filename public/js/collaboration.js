@@ -162,9 +162,18 @@ window.LeucenaCollab = (function () {
 
     socket.on('cell:unlocked', (data) => {
       const who = data.username || data.previousUser;
-      if (who !== username) {
-        const gd = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getGridData(data.cellId) : null;
-        const displayId = data.cellName || (gd && gd.grid_id) || data.cellId;
+      const gd = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getGridData(data.cellId) : null;
+      const displayId = data.cellName || (gd && gd.grid_id) || data.cellId;
+      if (data.expired) {
+        // Phase 7 — release by inactivity timeout. Tell the previous owner explicitly,
+        // and tell other peers the cell is free again (different message tone).
+        if (who === username) {
+          const minutes = data.timeoutMs ? Math.round(data.timeoutMs / 60000) : 30;
+          LeucenaApp.showToast(LeucenaI18n.t('toast.cellLockExpiredOwner', displayId, minutes), 'warning');
+        } else if (who) {
+          LeucenaApp.showToast(LeucenaI18n.t('toast.cellLockExpiredOther', who, displayId), 'info');
+        }
+      } else if (who !== username) {
         LeucenaApp.showToast(LeucenaI18n.t('toast.userFinishedEditing', who, displayId), 'info');
       }
       if (typeof LeucenaMap !== 'undefined') {

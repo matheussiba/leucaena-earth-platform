@@ -665,6 +665,16 @@ window.LeucenaI18n = (function () {
     'toast.reconnecting': { pt: 'Desconectado do servidor. Reconectando...', en: 'Disconnected from server. Reconnecting...', es: 'Desconectado del servidor. Reconectando...' },
     'toast.userStartedEditing': { pt: '{0} começou a editar Célula #{1}', en: '{0} started editing Cell #{1}', es: '{0} comenzó a editar Celda #{1}' },
     'toast.userFinishedEditing': { pt: '{0} terminou de editar Célula #{1}', en: '{0} finished editing Cell #{1}', es: '{0} terminó de editar Celda #{1}' },
+    'toast.cellLockExpiredOwner': {
+      pt: 'Célula #{0} foi liberada por inatividade ({1} min sem ações). Salve novamente para não perder seu trabalho.',
+      en: 'Cell #{0} was released for inactivity ({1} min without actions). Save again to avoid losing your work.',
+      es: 'Celda #{0} se liberó por inactividad ({1} min sin acciones). Guarda de nuevo para no perder tu trabajo.'
+    },
+    'toast.cellLockExpiredOther': {
+      pt: '{0} ficou inativo e a Célula #{1} foi liberada automaticamente.',
+      en: '{0} went inactive and Cell #{1} was released automatically.',
+      es: '{0} quedó inactivo y la Celda #{1} se liberó automáticamente.'
+    },
     'collab.noUsersOnline': { pt: 'Nenhum usuário online no momento', en: 'No users online at the moment', es: 'Ningún usuario en línea en este momento' },
     'collab.sendMessage': { pt: 'Enviar mensagem', en: 'Send message', es: 'Enviar mensaje' },
     'collab.idle': { pt: 'Ocioso', en: 'Idle', es: 'Inactivo' },
