@@ -4227,7 +4227,7 @@ window.LeucenaApp = (function () {
         const collabMasks = collabs.reduce((s, u) => s + (u.mask_count || 0), 0);
         const memberArea = members.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
         const collabArea = collabs.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
-        const fmtArea = v => v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const fmtAreaHa = v => Math.floor(Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
         metricsEl.innerHTML = `
           <div class="admin-metric">
@@ -4243,10 +4243,10 @@ window.LeucenaApp = (function () {
             <span class="admin-metric-sub">${collabMasks.toLocaleString()} ${t('admin.collaborators')}</span>
           </div>
           <div class="admin-metric">
-            <span class="admin-metric-value">${fmtArea(data.globalAreaHa)} ha</span>
+            <span class="admin-metric-value">${fmtAreaHa(data.globalAreaHa)} ha</span>
             <span class="admin-metric-label">${t('admin.totalArea')}</span>
-            <span class="admin-metric-sub">${fmtArea(memberArea)} ha ${t('admin.members')}</span>
-            <span class="admin-metric-sub">${fmtArea(collabArea)} ha ${t('admin.collaborators')}</span>
+            <span class="admin-metric-sub">${fmtAreaHa(memberArea)} ha ${t('admin.members')}</span>
+            <span class="admin-metric-sub">${fmtAreaHa(collabArea)} ha ${t('admin.collaborators')}</span>
           </div>`;
 
         const listEl = document.getElementById('admin-users-list');
@@ -4415,7 +4415,7 @@ window.LeucenaApp = (function () {
       const collabMasks = collabs.reduce((s, u) => s + (u.mask_count || 0), 0);
       const memberArea = members.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
       const collabArea = collabs.reduce((s, u) => s + (u.mask_area_ha || 0), 0);
-      const fmtArea = v => v.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      const fmtAreaHa = v => Math.floor(Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
       const metricsEl = document.getElementById('admin-global-metrics');
       metricsEl.innerHTML = `
@@ -4432,10 +4432,10 @@ window.LeucenaApp = (function () {
           <span class="admin-metric-sub">${collabMasks.toLocaleString()} ${t('admin.collaborators')}</span>
         </div>
         <div class="admin-metric">
-          <span class="admin-metric-value">${fmtArea(data.globalAreaHa)} ha</span>
+          <span class="admin-metric-value">${fmtAreaHa(data.globalAreaHa)} ha</span>
           <span class="admin-metric-label">${t('admin.totalArea')}</span>
-          <span class="admin-metric-sub">${fmtArea(memberArea)} ha ${t('admin.members')}</span>
-          <span class="admin-metric-sub">${fmtArea(collabArea)} ha ${t('admin.collaborators')}</span>
+          <span class="admin-metric-sub">${fmtAreaHa(memberArea)} ha ${t('admin.members')}</span>
+          <span class="admin-metric-sub">${fmtAreaHa(collabArea)} ha ${t('admin.collaborators')}</span>
         </div>`;
 
       // Superadmin can toggle to see the panel as a regular admin would
@@ -6369,7 +6369,7 @@ window.LeucenaApp = (function () {
       btn.disabled = true;
       try {
         // Server queues the recipients and drains today's slice immediately.
-        // The daily cap (default 95) lives on the server so we don't have to
+        // The daily cap (default 80) lives on the server so we don't have to
         // duplicate the limit logic on the client.
         const r = await fetch('/api/admin/messages/batch', {
           method: 'POST',

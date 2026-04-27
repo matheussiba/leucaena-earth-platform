@@ -2305,12 +2305,13 @@ app.post('/api/admin/messages', requireAuth, messageLimiter, async (req, res) =>
 
 // ── Email queue (daily batch sender) ──
 //
-// Resend's free tier caps us at ~100 outbound emails per day. When an admin
-// broadcasts to >100 collaborators we cannot deliver in a single shot, so we
-// store the per-recipient envelopes in `message_queue` and drain at most
-// EMAIL_DAILY_LIMIT entries per day. Recipients are sorted by polygon count
+// Resend's free tier caps outbound email per day. When an admin broadcasts to
+// many collaborators we cannot deliver in a single shot, so we store the
+// per-recipient envelopes in `message_queue` and drain at most
+// EMAIL_DAILY_LIMIT entries per day (default 80; override with env). Recipients
+// are sorted by polygon count
 // descending, so the most active mappers always hear from us first.
-const EMAIL_DAILY_LIMIT = parseInt(process.env.EMAIL_DAILY_LIMIT || '95', 10);
+const EMAIL_DAILY_LIMIT = parseInt(process.env.EMAIL_DAILY_LIMIT || '80', 10);
 const EMAIL_QUEUE_TICK_MS = 5 * 60 * 1000; // 5 min — cheap and self-correcting.
 
 function _todayUtcDateStr() {
