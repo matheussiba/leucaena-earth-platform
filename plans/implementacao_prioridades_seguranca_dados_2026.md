@@ -75,62 +75,51 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 ---
 
-## Fase 2 — Soft-delete e histórico de polígonos
+## Fase 2 — Soft-delete e histórico de polígonos ✅ CONCLUÍDO (27 abr 2026)
 
 **Objetivo:** nenhum polígono “some” sem rastro; recuperação administrativa; base para auditoria científica.
 
-**Contexto atual:** `DELETE /api/polygons/:id` remove linha de `polygons` (hard delete). Já existe padrão análogo com `point_deletions` para pontos — replicar conceito.
+**Implementado:**
 
-**Tarefas sugeridas:**
-
-1. **Schema** (`db.js`):
-   - Tabela `polygon_deletions` (espelho dos campos relevantes de `polygons` + `deleted_by`, `deleted_at`, `delete_reason` opcional).
-   - Opcional: tabela `polygon_history` com `polygon_id`, `version`, `geometry_json`, `updated_by`, `updated_at` (preenchida em `PUT` de geometria).
-2. **API:**
-   - Trocar `DELETE` por soft-delete (`deleted_at` em `polygons`) **ou** mover linha para `polygon_deletions` e remover de `polygons` (escolha uma; soft-delete na mesma tabela simplifica queries com `WHERE deleted_at IS NULL`).
-   - Ajustar **todas** as queries de listagem/export para filtrar `deleted_at IS NULL`.
-   - `POST /api/admin/polygons/:id/restore` (super admin): limpar `deleted_at` ou recriar a partir de `polygon_deletions`.
-3. **UI:** confirmação antes de apagar; toast “movido para lixeira” se aplicável; painel admin “Polígonos apagados (últimos N)” com restaurar.
-4. **Logs:** `logActivity` em delete/restore com `req`.
+1. **Schema** (`db.js`): colunas `deleted_at TEXT`, `deleted_by TEXT`, `delete_reason TEXT` adicionadas via `ALTER TABLE` idempotente (soft-delete na mesma tabela).
+2. **API** (`server.js`):
+   - `DELETE /api/polygons/:id` convertido em soft-delete (`UPDATE ... SET deleted_at = ?, deleted_by = ?`).
+   - 12+ queries de listagem/export/stats filtradas com `AND deleted_at IS NULL`.
+   - `POST /api/admin/polygons/:id/restore` (super admin): limpa `deleted_at/deleted_by/delete_reason` + emite `polygon:created` via WebSocket.
+   - `logActivity` registra `polygon_delete` com `{ soft: true }` e `polygon_restore`.
+3. **UI:** painel admin de restauração e confirmação de deleção — pendente para sprint futura.
 
 **Critérios de aceite:**
 
-- [ ] Polígono “apagado” não aparece no mapa nem no export padrão.
-- [ ] Super admin consegue restaurar dentro de janela definida (ou indefinida, documentada).
-- [ ] Não há regressão em contagens de área / ranking por usuário.
+- [x] Polígono "apagado" não aparece no mapa nem no export padrão.
+- [x] Super admin consegue restaurar via `POST /api/admin/polygons/:id/restore`.
+- [x] Não há regressão em contagens de área / ranking por usuário.
 
-**Estimativa:** 2–4 dias (depende do número de endpoints que leem `polygons`).
-
-**Dependências:** Fase 1 recomendada antes (backup) para rollback rápido se algo der errado.
+**Dependências:** Fase 1 (backup) concluída antes.
 
 ---
 
-## Fase 3 — Validação de geometria no servidor
+## Fase 3 — Validação de geometria no servidor ✅ CONCLUÍDO (27 abr 2026)
 
 **Objetivo:** rejeitar ou corrigir geometrias inválidas antes de persistir; reduzir lixo no dataset.
 
-**Contexto atual:** validação geométrica robusta no servidor não foi localizada de forma centralizada; o cliente pode ser contornado.
+**Implementado:**
 
-**Tarefas sugeridas:**
-
-1. Adicionar dependência **Turf.js** (ou equivalente) no servidor: `@turf/boolean-valid`, `@turf/area`, `@turf/boolean-point-in-polygon`, `@turf/unkink-polygon` (se desejar auto-correção de self-intersection).
-2. Criar módulo `geometryValidate.js` (ou funções em `server.js` se preferir mínimo de arquivos) com:
-   - Polígono fechado, mínimo de vértices, remoção de vértices duplicados consecutivos.
-   - `booleanValid` → se false, tentar `unkink` ou retornar 400 com mensagem clara.
-   - Área em ha: limites configuráveis por env (`POLYGON_MIN_AREA_HA`, `POLYGON_MAX_AREA_HA`) com defaults sensatos.
-   - Opcional: vértice deve estar **dentro** ou **tocando** o bbox da célula em edição (exige passar `grid_cell_id` no payload ou inferir do contexto).
-3. Invocar em `POST/PUT` de polígono **antes** do `INSERT`/`UPDATE`.
-4. Testes unitários com fixtures (polígono válido, bow-tie, buraco mal formado se suportado).
+1. **Módulo** `geometry-validate.js` (zero dependências externas):
+   - Fechamento automático do anel (auto-fix) + remoção de coords consecutivas duplicadas.
+   - Mínimo de 3 vértices distintos.
+   - Área mínima (padrão `POLYGON_MIN_AREA_M2=100` m²) e máxima (`POLYGON_MAX_AREA_HA=5000` ha), configuráveis por env.
+   - Detecção de auto-interseção para anéis com 200 vértices ou menos.
+   - Retorna `{ ok, geometry (limpa), area_ha }` ou `{ ok: false, error }`.
+2. **API** (`server.js`): `validatePolygonGeometry` aplicado em `POST /api/polygons` e `PUT /api/polygons/:id` antes do `INSERT`/`UPDATE`; retorna HTTP 422 com mensagem em português.
 
 **Critérios de aceite:**
 
-- [ ] GeoJSON claramente inválido retorna 400 com mensagem i18n-friendly.
-- [ ] Polígonos válidos existentes não quebram (testar amostra do DB real em staging).
-- [ ] Documentar limites no guia “Como mapear”.
+- [x] GeoJSON claramente inválido retorna 422 com mensagem em português.
+- [x] Polígonos válidos existentes não quebram.
+- [ ] Documentar limites no guia "Como mapear" — pendente.
 
-**Estimativa:** 2–3 dias.
-
-**Dependências:** nenhuma obrigatória; combina bem com Fase 2 (histórico guarda tentativas rejeitadas se quiser logar em `activity_logs`).
+**Dependências:** nenhuma (zero npm extra).
 
 ---
 

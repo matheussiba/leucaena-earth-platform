@@ -31,6 +31,7 @@ const BUILD_ID = Date.now().toString();
 
 const fs = require('fs');
 const backupRemote = require('./backup-remote');
+const { validatePolygonGeometry } = require('./geometry-validate');
 
 const { Resend } = require('resend');
 
@@ -708,7 +709,7 @@ function requireVerified(req, res, next) {
 }
 
 function determineCellStatusOnUnlock(cellId, cellGeometry) {
-  const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [cellId]);
+  const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? AND deleted_at IS NULL LIMIT 1', [cellId]);
   if (masks.length > 0) return 'mapping';
   try {
     const cellGeom = typeof cellGeometry === 'string' ? JSON.parse(cellGeometry) : cellGeometry;
@@ -797,7 +798,7 @@ function polygonAreaHa(geometry) {
 /** Per-cell polygon stats: count, summed area (ha), comma-separated distinct authors (excludes deleted). */
 function getCellMaskSummary(gridCellId) {
   const polys = queryAll(
-    'SELECT geometry, area_ha, created_by FROM polygons WHERE grid_cell_id = ?',
+    'SELECT geometry, area_ha, created_by FROM polygons WHERE grid_cell_id = ? AND deleted_at IS NULL',
     [Number(gridCellId)]
   );
   const authors = new Set();
@@ -871,7 +872,7 @@ function validateFinished(cellId) {
 
   if (validPointsInCell.length === 0) return { valid: true };
 
-  const polys = queryAll('SELECT * FROM polygons WHERE grid_cell_id = ?', [cellId]);
+  const polys = queryAll('SELECT * FROM polygons WHERE grid_cell_id = ? AND deleted_at IS NULL', [cellId]);
 
   const TOLERANCE_DEG = 0.00005; // ~5.5 meters at equator
 
@@ -1035,8 +1036,8 @@ app.get('/api/stats/platform', (req, res) => {
   const saUsers = getSuperAdminUsernames();
   const placeholders = saUsers.map(() => '?').join(',');
   const totalMasks = saUsers.length > 0
-    ? queryOne(`SELECT COUNT(*) as cnt FROM polygons WHERE created_by NOT IN (${placeholders})`, saUsers)
-    : queryOne('SELECT COUNT(*) as cnt FROM polygons');
+    ? queryOne(`SELECT COUNT(*) as cnt FROM polygons WHERE deleted_at IS NULL AND created_by NOT IN (${placeholders})`, saUsers)
+    : queryOne('SELECT COUNT(*) as cnt FROM polygons WHERE deleted_at IS NULL');
   res.json({
     views:          { total: stat('view_count'), desktop: stat('view_count_desktop'), mobile: stat('view_count_mobile') },
     logins:         { desktop: stat('login_count_desktop'), mobile: stat('login_count_mobile') },
@@ -1236,7 +1237,7 @@ app.get('/api/auth/me', (req, res) => {
   if (!username) return res.status(401).json({ error: 'Não autenticado' });
   const user = queryOne('SELECT username, full_name, occupation, description, photo, linkedin, scholar, role, tester_mode, email, auth_provider, email_verified, google_id, login_count FROM users WHERE username = ?', [username]);
   const showMigrationBanner = user && !user.google_id && (user.auth_provider || 'local') !== 'google';
-  const maskRow = queryOne('SELECT COUNT(*) as cnt FROM polygons WHERE created_by = ?', [username]);
+  const maskRow = queryOne('SELECT COUNT(*) as cnt FROM polygons WHERE created_by = ? AND deleted_at IS NULL', [username]);
   res.json({
     username, role: user?.role || 'contributor', tester_mode: user?.tester_mode || 'contributor',
     full_name: user?.full_name || null, occupation: user?.occupation || null, description: user?.description || null, photo: user?.photo || null,
@@ -1342,8 +1343,8 @@ app.get('/api/landing-stats', (req, res) => {
     const ph = saUsers.map(() => '?').join(',');
     const cells = queryOne('SELECT COUNT(*) as cnt FROM grid_cells');
     const masks = saUsers.length > 0
-      ? queryOne(`SELECT COUNT(*) as cnt FROM polygons WHERE created_by NOT IN (${ph})`, saUsers)
-      : queryOne('SELECT COUNT(*) as cnt FROM polygons');
+      ? queryOne(`SELECT COUNT(*) as cnt FROM polygons WHERE deleted_at IS NULL AND created_by NOT IN (${ph})`, saUsers)
+      : queryOne('SELECT COUNT(*) as cnt FROM polygons WHERE deleted_at IS NULL');
     const points = queryOne('SELECT COUNT(*) as cnt FROM occurrence_points');
     const collabs = saUsers.length > 0
       ? queryOne(`SELECT COUNT(DISTINCT username) as cnt FROM users WHERE is_active = 1 AND role != 'superadmin'`)
@@ -1365,7 +1366,7 @@ app.get('/api/landing-stats', (req, res) => {
 
 app.get('/api/quem-somos', (req, res) => {
   const polygonStats = queryAll(
-    "SELECT created_by AS username, COUNT(*) AS cnt, COALESCE(SUM(area_ha), 0) AS total_area FROM polygons WHERE created_by IS NOT NULL AND created_by != 'deleted' GROUP BY created_by"
+    "SELECT created_by AS username, COUNT(*) AS cnt, COALESCE(SUM(area_ha), 0) AS total_area FROM polygons WHERE deleted_at IS NULL AND created_by IS NOT NULL AND created_by != 'deleted' GROUP BY created_by"
   );
   const countByUser = {};
   const areaByUser = {};
@@ -1844,7 +1845,7 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
   const users = callerIsAdminOrAbove
     ? queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, email, last_active, auth_provider, email_verified, google_id, is_active, referral_source, referral_detail, last_location_state, last_edited_state FROM users WHERE username != 'deleted'")
     : queryAll("SELECT id, username, created_at, full_name, occupation, description, photo, linkedin, scholar, login_count, total_time_ms, role, tester_mode, is_founder, NULL as email, last_active, auth_provider, email_verified, google_id, is_active, NULL as referral_source, NULL as referral_detail, last_location_state, last_edited_state FROM users WHERE username != 'deleted'");
-  const allPolys = queryAll('SELECT created_by, geometry FROM polygons');
+  const allPolys = queryAll('SELECT created_by, geometry FROM polygons WHERE deleted_at IS NULL');
   const maskMap = {};
   const areaMap = {};
   let globalMasks = 0;
@@ -1870,7 +1871,7 @@ app.get('/api/admin/users', requireAuth, (req, res) => {
 app.get('/api/admin/users/export-csv', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const users = queryAll("SELECT id, username, created_at, full_name, description, email, login_count, total_time_ms, referral_source, referral_detail FROM users WHERE is_active = 1");
-  const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons GROUP BY created_by');
+  const maskCounts = queryAll('SELECT created_by, COUNT(*) as mask_count FROM polygons WHERE deleted_at IS NULL GROUP BY created_by');
   const maskMap = {};
   for (const m of maskCounts) maskMap[m.created_by] = m.mask_count;
 
@@ -2468,7 +2469,7 @@ app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, r
   if (target_kind === 'all_collaborators') {
     recipients = queryAll(`
       SELECT u.username, u.email, u.full_name,
-             COALESCE((SELECT COUNT(*) FROM polygons p WHERE p.created_by = u.username), 0) AS mask_count
+             COALESCE((SELECT COUNT(*) FROM polygons p WHERE p.created_by = u.username AND p.deleted_at IS NULL), 0) AS mask_count
       FROM users u
       WHERE u.is_active = 1 AND u.role = 'contributor'
         AND u.email IS NOT NULL AND TRIM(u.email) != ''
@@ -2483,7 +2484,7 @@ app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, r
     const placeholders = cleanList.map(() => '?').join(',');
     recipients = queryAll(`
       SELECT u.username, u.email, u.full_name,
-             COALESCE((SELECT COUNT(*) FROM polygons p WHERE p.created_by = u.username), 0) AS mask_count
+             COALESCE((SELECT COUNT(*) FROM polygons p WHERE p.created_by = u.username AND p.deleted_at IS NULL), 0) AS mask_count
       FROM users u
       WHERE u.username IN (${placeholders})
         AND u.is_active = 1
@@ -2909,7 +2910,7 @@ app.get('/api/states/:uf/stats', (req, res) => {
   const byStatus = {};
   let totalCells = 0;
   for (const r of statusRows) { byStatus[r.grid_status] = r.cnt; totalCells += r.cnt; }
-  const maskRow = queryOne(`SELECT COUNT(*) as cnt, COALESCE(SUM(area_ha), 0) as area FROM polygons WHERE grid_cell_id IN (${ph})`, ids);
+  const maskRow = queryOne(`SELECT COUNT(*) as cnt, COALESCE(SUM(area_ha), 0) as area FROM polygons WHERE deleted_at IS NULL AND grid_cell_id IN (${ph})`, ids);
   const cells = queryAll(`SELECT geometry FROM grid_cells WHERE id IN (${ph})`, ids);
   let pointCount = 0;
   if (cells.length > 0) {
@@ -2959,7 +2960,7 @@ app.get('/api/grid', (req, res) => {
     stateMap[r.grid_cell_id].push(r.state);
   }
   const maskStats = {};
-  const polyRows = queryAll('SELECT grid_cell_id, COALESCE(area_ha,0) as area_ha, geometry, created_by FROM polygons');
+  const polyRows = queryAll('SELECT grid_cell_id, COALESCE(area_ha,0) as area_ha, geometry, created_by FROM polygons WHERE deleted_at IS NULL');
   for (const p of polyRows) {
     const cid = p.grid_cell_id;
     if (!maskStats[cid]) maskStats[cid] = { cnt: 0, ha: 0, authors: new Set() };
@@ -3109,7 +3110,7 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
   }
 
   if (newStatus === 'finished') {
-    const masksForFinish = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [Number(id)]);
+    const masksForFinish = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? AND deleted_at IS NULL LIMIT 1', [Number(id)]);
     if (masksForFinish.length === 0) {
       const cellGeomFin = JSON.parse(cell.geometry);
       const cellRingsFin = cellGeomFin.type === 'MultiPolygon'
@@ -3137,7 +3138,7 @@ app.post('/api/grid/:id/unlock', requireAuth, requireVerified, (req, res) => {
   }
 
   if (newStatus === 'not_yet_finished') {
-    const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? LIMIT 1', [Number(id)]);
+    const masks = queryAll('SELECT id FROM polygons WHERE grid_cell_id = ? AND deleted_at IS NULL LIMIT 1', [Number(id)]);
     if (masks.length > 0) {
       newStatus = 'mapping';
     } else {
@@ -3194,9 +3195,9 @@ app.get('/api/polygons', (req, res) => {
   const { grid_cell_id } = req.query;
   let polys;
   if (grid_cell_id) {
-    polys = queryAll('SELECT * FROM polygons WHERE grid_cell_id = ?', [Number(grid_cell_id)]);
+    polys = queryAll('SELECT * FROM polygons WHERE grid_cell_id = ? AND deleted_at IS NULL', [Number(grid_cell_id)]);
   } else {
-    polys = queryAll('SELECT * FROM polygons');
+    polys = queryAll('SELECT * FROM polygons WHERE deleted_at IS NULL');
   }
   const roleCache = {};
   function creatorRole(username) {
@@ -3226,17 +3227,16 @@ app.get('/api/polygons', (req, res) => {
 });
 
 app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
-  const { grid_cell_id, geometry } = req.body;
+  const { grid_cell_id, geometry: rawGeometry } = req.body;
   const username = req.username;
-  if (!geometry || !grid_cell_id) {
+  if (!rawGeometry || !grid_cell_id) {
     return res.status(400).json({ error: 'geometry e grid_cell_id obrigatórios' });
   }
 
-  const coords = geometry.coordinates && geometry.coordinates[0];
-  const vertexCount = coords ? coords.length - 1 : 0;
-  if (vertexCount < 3) {
-    return res.status(400).json({ error: 'Polígono deve ter pelo menos 3 vértices' });
-  }
+  // Phase 3: server-side geometry validation (area, closure, self-intersection)
+  const validResult = validatePolygonGeometry(rawGeometry);
+  if (!validResult.ok) return res.status(422).json({ error: validResult.error });
+  const geometry = validResult.geometry; // auto-cleaned version
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [Number(grid_cell_id)]);
   if (!cell) return res.status(404).json({ error: 'Célula do grid não encontrada' });
@@ -3246,7 +3246,7 @@ app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
 
   const id = uuidv4();
   const now = new Date().toISOString();
-  const areaHa = Math.round(polygonAreaHa(geometry) * 100000) / 100000;
+  const areaHa = Math.round(validResult.area_ha * 100000) / 100000;
   runSQL(
     'INSERT INTO polygons (id, grid_cell_id, geometry, created_by, created_at, updated_at, area_ha) VALUES (?, ?, ?, ?, ?, ?, ?)',
     [id, Number(grid_cell_id), JSON.stringify(geometry), username || 'anonymous', now, now, areaHa]
@@ -3270,10 +3270,10 @@ app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
 
 app.put('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
-  const { geometry } = req.body;
+  const { geometry: rawGeometry } = req.body;
   const username = req.username;
 
-  const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
+  const poly = queryOne('SELECT * FROM polygons WHERE id = ? AND deleted_at IS NULL', [id]);
   if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
 
   if (poly.created_by !== username && !isAdmin(username)) {
@@ -3285,8 +3285,13 @@ app.put('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
     return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
+  // Phase 3: server-side geometry validation
+  const validResult = validatePolygonGeometry(rawGeometry);
+  if (!validResult.ok) return res.status(422).json({ error: validResult.error });
+  const geometry = validResult.geometry;
+
   const now = new Date().toISOString();
-  const areaHa = Math.round(polygonAreaHa(geometry) * 100000) / 100000;
+  const areaHa = Math.round(validResult.area_ha * 100000) / 100000;
   runSQL('UPDATE polygons SET geometry = ?, updated_at = ?, area_ha = ? WHERE id = ?', [JSON.stringify(geometry), now, areaHa, id]);
 
   io.emit('polygon:updated', { id, geometry, updated_at: now, area_ha: areaHa });
@@ -3299,7 +3304,7 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   const { id } = req.params;
   const username = req.username;
 
-  const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
+  const poly = queryOne('SELECT * FROM polygons WHERE id = ? AND deleted_at IS NULL', [id]);
   if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
 
   if (!canDeleteMask(username, poly.created_by)) {
@@ -3311,7 +3316,9 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
     return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
-  runSQL('DELETE FROM polygons WHERE id = ?', [id]);
+  // Phase 2: soft-delete — keep the row for audit / restore; hide via deleted_at IS NULL filters.
+  const deletedAt = new Date().toISOString();
+  runSQL('UPDATE polygons SET deleted_at = ?, deleted_by = ? WHERE id = ?', [deletedAt, username, id]);
   const afterSummary = getCellMaskSummary(poly.grid_cell_id);
   io.emit('polygon:deleted', {
     id,
@@ -3320,10 +3327,10 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
     cell_mask_area_ha: afterSummary.mask_area_ha,
     cell_mapped_by: afterSummary.mapped_by
   });
-  logActivity(username, 'polygon_delete', poly.grid_cell_id, id, null, null, req);
+  logActivity(username, 'polygon_delete', poly.grid_cell_id, id, { soft: true }, null, req);
 
   if (cell) {
-    const remaining = queryAll('SELECT id, geometry FROM polygons WHERE grid_cell_id = ?', [poly.grid_cell_id]);
+    const remaining = queryAll('SELECT id, geometry FROM polygons WHERE grid_cell_id = ? AND deleted_at IS NULL', [poly.grid_cell_id]);
     if (remaining.length === 0) {
       if (cell.grid_status === 'finished' || cell.grid_status === 'mapping') {
         const cellGeom = JSON.parse(cell.geometry);
@@ -3358,6 +3365,35 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
 
   persist();
   res.json({ success: true, cell_summary: afterSummary });
+});
+
+// ── Restore a soft-deleted polygon (Super Admin) ──
+
+app.post('/api/admin/polygons/:id/restore', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+  const { id } = req.params;
+  const poly = queryOne('SELECT * FROM polygons WHERE id = ?', [id]);
+  if (!poly) return res.status(404).json({ error: 'Polígono não encontrado.' });
+  if (!poly.deleted_at) return res.status(400).json({ error: 'Polígono não está excluído.' });
+
+  runSQL('UPDATE polygons SET deleted_at = NULL, deleted_by = NULL, delete_reason = NULL WHERE id = ?', [id]);
+  const summary = getCellMaskSummary(poly.grid_cell_id);
+  const geometry = JSON.parse(poly.geometry);
+  io.emit('polygon:created', {
+    id: poly.id,
+    grid_cell_id: poly.grid_cell_id,
+    geometry,
+    created_by: poly.created_by,
+    created_at: poly.created_at,
+    updated_at: poly.updated_at,
+    area_ha: poly.area_ha || 0,
+    cell_mask_count: summary.mask_count,
+    cell_mask_area_ha: summary.mask_area_ha,
+    cell_mapped_by: summary.mapped_by
+  });
+  logActivity(req.username, 'polygon_restore', poly.grid_cell_id, id, null, null, req);
+  persist();
+  res.json({ success: true, cell_summary: summary });
 });
 
 // ── Import GeoJSON points (Super Admin) ──
@@ -3549,7 +3585,7 @@ function _findCoveredContributorPoints() {
   const collabPoints = queryAll(
     "SELECT id, fid, geometry, layer, status, not_valid, added_by, added_by_role, added_at FROM occurrence_points WHERE added_by_role = 'contributor' AND layer = 'crowdmapping' ORDER BY id ASC"
   );
-  const polys = queryAll('SELECT id, geometry FROM polygons');
+  const polys = queryAll('SELECT id, geometry FROM polygons WHERE deleted_at IS NULL');
   const parsedPolys = polys.map(p => ({ id: p.id, geom: JSON.parse(p.geometry) }));
 
   const covered = [];
@@ -3805,7 +3841,7 @@ app.get('/api/export/geojson', requireAuth, (req, res) => {
   if (!isTeamOrAbove(req.username)) {
     return res.status(403).json({ error: 'Exportação de máscaras disponível a partir do segundo semestre de 2026' });
   }
-  const polys = queryAll('SELECT * FROM polygons');
+  const polys = queryAll('SELECT * FROM polygons WHERE deleted_at IS NULL');
   const fc = {
     type: 'FeatureCollection',
     features: polys.map(p => ({
@@ -4006,7 +4042,7 @@ async function start() {
   _hydrateSessionsFromDisk();
 
   // Startup backfill: legacy polygons missing area_ha get polygonAreaHa() before API traffic relies on it.
-  const emptyArea = queryAll('SELECT id, geometry FROM polygons WHERE area_ha IS NULL OR area_ha = 0');
+  const emptyArea = queryAll('SELECT id, geometry FROM polygons WHERE deleted_at IS NULL AND (area_ha IS NULL OR area_ha = 0)');
   if (emptyArea.length > 0) {
     for (const p of emptyArea) {
       try {

@@ -149,6 +149,10 @@ async function initDB() {
   try { db.run('ALTER TABLE users ADD COLUMN scholar TEXT'); } catch (e) { /* already exists */ }
   try { db.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'contributor'"); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE polygons ADD COLUMN area_ha REAL DEFAULT 0'); } catch (e) { /* already exists */ }
+  // Phase 2: soft-delete — records are never hard-deleted; deleted_at IS NULL means "active".
+  try { db.run('ALTER TABLE polygons ADD COLUMN deleted_at TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE polygons ADD COLUMN deleted_by TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE polygons ADD COLUMN delete_reason TEXT'); } catch (e) { /* already exists */ }
   try { db.run("ALTER TABLE users ADD COLUMN tester_mode TEXT DEFAULT 'contributor'"); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN is_founder INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN email TEXT'); } catch (e) { /* already exists */ }
