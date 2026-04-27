@@ -5359,6 +5359,67 @@ body.sv-active .edit-tools-row {
   }
 }
 
+/* ── Phase 10 — Mobile UX hardening ──
+   Apple HIG and Material Design both recommend a minimum hit target of 44x44 CSS px
+   on touch devices. The block below bumps the existing controls that fall under this
+   threshold; we keep desktop sizes untouched. Grouped here (not inline above) so a
+   future revert is a single deletion. */
+@media (hover: none) and (pointer: coarse), (max-width: 768px) {
+  /* Floating edit panel ─ labeled buttons (Desenhar, Editar, Excluir, Buraco, etc.) */
+  .edit-tool-btn-labeled {
+    min-height: 44px;
+    min-width: 56px;
+    padding: 6px 10px;
+  }
+
+  /* Map controls right (zoom + home) — were 40x40 inside @media 768px, raise to 44x44. */
+  .map-ctrl-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Top toolbar buttons — were 36x36; raise so they're tappable without zooming. */
+  .tool-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* My-location and online-users floating buttons — explicit min size. */
+  .btn-my-location,
+  .btn-users-online {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Top-right area buttons (notifications, inbox, language picker, etc.) */
+  .top-bar-right .btn,
+  .user-badge,
+  .guide-start-btn {
+    min-height: 44px;
+  }
+
+  /* Legend toggle and finish-drawing accent button — same rule. */
+  .legend-toggle,
+  #tool-finish-draw {
+    min-height: 44px;
+  }
+
+  /* "Desfazer último vértice" — extra visibility while drawing.
+     The button itself is hidden until vertices exist (drawing.js _syncToolbarExtras),
+     so styling it bright here only affects the active drawing state. */
+  #tool-undo {
+    background: rgba(245, 158, 11, 0.30);
+    border-color: rgba(245, 158, 11, 0.55);
+    color: #fde68a;
+    font-weight: 600;
+  }
+  #tool-undo:hover,
+  #tool-undo:active {
+    background: rgba(245, 158, 11, 0.50);
+    color: #fff;
+  }
+}
+
 @media (max-width: 480px) {
   :root {
     --sidebar-width: 100vw;

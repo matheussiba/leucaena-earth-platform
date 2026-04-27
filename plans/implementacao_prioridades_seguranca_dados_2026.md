@@ -287,7 +287,7 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 ---
 
-## Fase 10 — UX mobile do mapeamento
+## Fase 10 — UX mobile do mapeamento ✅ CONCLUÍDO (27 abr 2026)
 
 **Objetivo:** reduzir erro e frustração em telas pequenas.
 
@@ -299,10 +299,30 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 **Critérios de aceite:**
 
-- [ ] Checklist de smoke test mobile documentado.
-- [ ] Nenhuma regressão no desktop.
+- [x] Checklist de smoke test mobile documentado.
+- [x] Nenhuma regressão no desktop.
 
 **Estimativa:** 2–4 dias (iterativo).
+
+**Implementação (27 abr 2026):**
+
+- Auditoria do CSS revelou que vários controles ficavam abaixo do mínimo recomendado (44 × 44 CSS px) na media query existente `@media (max-width: 768px)`:
+  - `.map-ctrl-btn`: 40 × 40 → **44 × 44**.
+  - `.tool-btn` (toolbar superior): 36 × 36 → **44 × 44**.
+  - `.edit-tool-btn-labeled` (Desenhar / Editar / Excluir / Buraco / Add Pontos / Remover Pontos / Street View / Desbloquear): altura derivada de padding (~ 30 px) → **`min-height: 44px` + `min-width: 56px`**.
+  - `.btn-my-location` e `.btn-users-online`: garantido `min-width/min-height: 44px`.
+  - `.top-bar-right .btn`, `.user-badge`, `.guide-start-btn`, `.legend-toggle`, `#tool-finish-draw`: `min-height: 44px`.
+- Botão **“Desfazer último vértice”** (`#tool-undo`) ganhou destaque amarelo distintivo no mobile (background `rgba(245, 158, 11, 0.30)`, borda e texto âmbar) para que o usuário note imediatamente que pode corrigir um vértice errado durante o desenho. A visibilidade lógica continua controlada por `drawing.js _syncToolbarExtras()` (aparece quando há ≥ 1 vértice).
+- Todas as alterações foram agrupadas em um bloco dedicado **“Phase 10 — Mobile UX hardening”** dentro de `public/css/style.css` (após o `@media (max-width: 768px)` original), envolto por `@media (hover: none) and (pointer: coarse), (max-width: 768px)`. Isso:
+  - Cobre tablets touch e laptops com tela touch (que ficam fora do max-width 768).
+  - Não afeta laptops/desktops com mouse.
+  - Permite reverter em uma única deleção, sem caçar mudanças espalhadas.
+- Documentado checklist de smoke test em `plans/mobile_smoke_test.md` com:
+  - Dispositivos de referência (Android Chrome, iOS Safari, iPad).
+  - Lista de hit targets a conferir com Inspector.
+  - Fluxos de desenhar / editar / criar buraco / pontos individuais.
+  - Verificações rápidas de acessibilidade (zoom de fonte, modo escuro).
+- Sem mudanças em JS de `drawing.js` (lógica do undo já estava correta) e nenhuma regressão no desktop (mudanças vivem dentro de media queries específicas para touch/mobile).
 
 ---
 
