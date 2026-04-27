@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Termos de Uso e Política de Privacidade — Leucaena Earth</title>
+  <meta name="description" content="Termos de Uso e Política de Privacidade da plataforma Leucaena Earth, projeto de mapeamento colaborativo de Leucaena leucocephala da ESALQ/USP.">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+  <link rel="apple-touch-icon" href="/img/leucaena-earth-logo.png">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #22c55e;
+      --accent-hover: #16a34a;
+      --border: rgba(148, 163, 184, 0.2);
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --warning-border: rgba(245, 158, 11, 0.4);
+      --warning-text: #fbbf24;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    .topbar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .topbar img {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+    }
+
+    .topbar-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text);
+    }
+
+    .topbar-link {
+      margin-left: auto;
+      font-size: 14px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      transition: background 0.15s;
+    }
+    .topbar-link:hover {
+      background: rgba(255, 255, 255, 0.05);
+      text-decoration: none;
+    }
+
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 36px 22px 80px;
+    }
+
+    h1 {
+      font-size: 30px;
+      margin: 0 0 6px;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    h2 {
+      font-size: 22px;
+      margin: 38px 0 12px;
+      color: #fff;
+      letter-spacing: -0.01em;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    h2:first-of-type { border-top: none; padding-top: 0; }
+    h3 {
+      font-size: 17px;
+      margin: 24px 0 8px;
+      color: #fff;
+    }
+    p, ul, ol { margin: 10px 0 14px; }
+    li { margin: 6px 0; }
+
+    .meta {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+
+    .toc {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 18px 0 28px;
+      font-size: 14.5px;
+    }
+    .toc strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .toc ul { margin: 0; padding-left: 20px; }
+    .toc li { margin: 3px 0; }
+
+    .notice {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      border-left: 4px solid var(--warning-text);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 18px 0 28px;
+      color: var(--text);
+      font-size: 14.5px;
+    }
+    .notice strong { color: var(--warning-text); }
+
+    .section-anchor {
+      scroll-margin-top: 80px;
+    }
+
+    code {
+      background: rgba(148, 163, 184, 0.15);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+
+    footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      text-align: center;
+    }
+    footer a { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <img src="/img/leucaena-earth-logo.png" alt="Leucaena Earth">
+    <span class="topbar-title">Leucaena Earth</span>
+    <a class="topbar-link" href="/">Voltar ao mapa</a>
+  </header>
+
+  <main>
+    <h1>Termos de Uso e Política de Privacidade</h1>
+    <p class="meta">
+      Última atualização: 27 de abril de 2026 &middot; Versão 1.0
+    </p>
+
+    <div class="notice">
+      <strong>Aviso:</strong> Esta é uma versão preliminar elaborada para
+      transparência básica do projeto de pesquisa. O texto está pendente de
+      revisão jurídica formal e poderá ser atualizado para refletir
+      requisitos legais ou institucionais futuros. Continuar usando a
+      plataforma após uma atualização significa aceitar a versão mais
+      recente. Em caso de dúvidas, entre em contato pelo e-mail abaixo.
+    </div>
+
+    <div class="toc">
+      <strong>Sumário</strong>
+      <ul>
+        <li><a href="#sobre">1. Sobre o projeto</a></li>
+        <li><a href="#aceitacao">2. Aceitação destes termos</a></li>
+        <li><a href="#conta">3. Conta de usuário</a></li>
+        <li><a href="#uso">4. Uso aceitável</a></li>
+        <li><a href="#conteudo">5. Conteúdo enviado pelo colaborador</a></li>
+        <li><a href="#dados-pesquisa">6. Uso dos dados para pesquisa</a></li>
+        <li><a href="#disponibilidade">7. Disponibilidade e isenção de garantias</a></li>
+        <li><a href="#privacidade">8. Política de Privacidade (LGPD)</a></li>
+        <li><a href="#cookies">9. Cookies e tecnologias similares</a></li>
+        <li><a href="#direitos">10. Direitos do titular dos dados</a></li>
+        <li><a href="#alteracoes">11. Alterações destes termos</a></li>
+        <li><a href="#contato">12. Contato</a></li>
+      </ul>
+    </div>
+
+    <h2 id="sobre" class="section-anchor">1. Sobre o projeto</h2>
+    <p>
+      A <strong>Leucaena Earth</strong> é uma plataforma colaborativa de
+      mapeamento da espécie invasora <em>Leucaena leucocephala</em>,
+      desenvolvida no contexto de pesquisa de doutorado da
+      <strong>ESALQ/USP</strong> (Escola Superior de Agricultura "Luiz de
+      Queiroz", Universidade de São Paulo), com financiamento da FAPESP.
+      Os dados coletados são utilizados para fins acadêmicos e de apoio a
+      iniciativas de manejo, conservação e restauração ambiental.
+    </p>
+    <p>
+      O acesso à plataforma é gratuito e voluntário. Não há finalidade
+      comercial.
+    </p>
+
+    <h2 id="aceitacao" class="section-anchor">2. Aceitação destes termos</h2>
+    <p>
+      Ao criar uma conta ou utilizar a plataforma, você declara ter lido,
+      compreendido e aceito integralmente estes Termos de Uso e a Política
+      de Privacidade descrita abaixo. Se você não concorda com qualquer
+      ponto, por favor, não utilize a plataforma.
+    </p>
+    <p>
+      Para usuários menores de 18 anos, o uso depende de consentimento de
+      pais ou responsáveis.
+    </p>
+
+    <h2 id="conta" class="section-anchor">3. Conta de usuário</h2>
+    <ul>
+      <li>
+        Você é responsável por manter a confidencialidade da sua senha e
+        por todas as atividades realizadas na sua conta.
+      </li>
+      <li>
+        Você se compromete a fornecer informações verdadeiras no cadastro
+        (nome, e-mail, organização, quando aplicável).
+      </li>
+      <li>
+        Você pode encerrar sua conta a qualquer momento solicitando por
+        e-mail (ver seção 12).
+      </li>
+      <li>
+        Reservamo-nos o direito de suspender contas que violem estes
+        termos, especialmente em casos de spam, sabotagem do dataset ou
+        abuso técnico (ataques, scraping massivo etc.).
+      </li>
+    </ul>
+
+    <h2 id="uso" class="section-anchor">4. Uso aceitável</h2>
+    <p>Você concorda em <strong>não</strong>:</p>
+    <ul>
+      <li>
+        Inserir polígonos ou pontos deliberadamente incorretos com
+        intenção de poluir o dataset;
+      </li>
+      <li>
+        Tentar acessar áreas restritas (admin, banco de dados, contas de
+        terceiros);
+      </li>
+      <li>
+        Realizar scraping automatizado em volume incompatível com uso
+        humano normal;
+      </li>
+      <li>
+        Utilizar a plataforma para fins ilícitos ou que violem direitos
+        de terceiros.
+      </li>
+    </ul>
+
+    <h2 id="conteudo" class="section-anchor">5. Conteúdo enviado pelo colaborador</h2>
+    <p>
+      Os polígonos, pontos e anotações que você envia ("Contribuições")
+      são incorporados ao dataset científico da pesquisa. Ao enviar uma
+      Contribuição, você:
+    </p>
+    <ul>
+      <li>
+        Confirma que tem o direito de fazê-lo (não está copiando dataset
+        proprietário de terceiros sem permissão);
+      </li>
+      <li>
+        Concede à equipe de pesquisa uma licença não exclusiva, mundial e
+        gratuita para usar, reproduzir, agregar e publicar suas
+        Contribuições, em formato anonimizado ou agregado, em
+        publicações científicas, relatórios técnicos e bases de dados
+        abertas;
+      </li>
+      <li>
+        Reconhece que a autoria individual de polígonos pode aparecer no
+        ranking interno da plataforma, mas não em publicações externas
+        (onde os dados são apresentados de forma agregada).
+      </li>
+    </ul>
+    <p>
+      Suas Contribuições podem ser revisadas por moderadores e marcadas
+      como excluídas (<em>soft-delete</em>) caso sejam consideradas
+      inválidas; o registro permanece no banco para fins de auditoria
+      científica.
+    </p>
+
+    <h2 id="dados-pesquisa" class="section-anchor">6. Uso dos dados para pesquisa</h2>
+    <p>
+      A finalidade primária da plataforma é apoiar pesquisa científica
+      sobre a invasão biológica de <em>Leucaena leucocephala</em> no
+      Brasil. Resultados poderão ser publicados em artigos
+      científicos, teses, dissertações, relatórios técnicos e datasets
+      abertos. Sempre que possível, os dados serão disponibilizados de
+      forma agregada e anônima.
+    </p>
+
+    <h2 id="disponibilidade" class="section-anchor">7. Disponibilidade e isenção de garantias</h2>
+    <p>
+      A plataforma é fornecida "como está", sem garantias de
+      disponibilidade contínua, ausência de bugs ou adequação a uma
+      finalidade específica. Eventuais janelas de manutenção,
+      indisponibilidades ou perdas de dados podem ocorrer.
+    </p>
+    <p>
+      Realizamos backups periódicos (locais e remotos cifrados) como
+      melhor esforço, mas não nos responsabilizamos por perdas
+      decorrentes de falhas de infraestrutura, terceiros ou força maior.
+    </p>
+
+    <h2 id="privacidade" class="section-anchor">8. Política de Privacidade (LGPD)</h2>
+    <p>
+      Esta seção descreve como tratamos seus dados pessoais nos termos
+      da <strong>Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD)</strong>.
+    </p>
+
+    <h3>8.1 Controlador dos dados</h3>
+    <p>
+      O controlador dos dados pessoais coletados pela plataforma é o
+      pesquisador responsável, vinculado à ESALQ/USP. Para contato, veja
+      a seção 12.
+    </p>
+
+    <h3>8.2 Dados que coletamos</h3>
+    <ul>
+      <li>
+        <strong>Cadastro:</strong> nome (ou apelido), e-mail, instituição
+        ou organização (opcional), origem de referência (opcional, ex.:
+        "Instagram", "Google", "Evento") e senha (armazenada com hash
+        seguro — nunca em texto plano).
+      </li>
+      <li>
+        <strong>Login social:</strong> ao usar Google OAuth, recebemos
+        nome, e-mail e identificador único do Google, conforme suas
+        permissões.
+      </li>
+      <li>
+        <strong>Atividade na plataforma:</strong> polígonos e pontos
+        digitalizados, células de grade trabalhadas, timestamps de ações,
+        IP de origem e identificador de sessão (necessários para
+        auditoria e segurança).
+      </li>
+      <li>
+        <strong>Logs técnicos:</strong> erros do navegador (mensagem,
+        URL, linha, stack), endereço IP truncado e dados não pessoais do
+        agente de usuário (User-Agent), com finalidade de detectar e
+        corrigir defeitos.
+      </li>
+    </ul>
+
+    <h3>8.3 Finalidades e bases legais</h3>
+    <ul>
+      <li>
+        <strong>Execução de contrato e legítimo interesse:</strong>
+        manter sua conta funcional, autenticar acessos e prevenir abuso.
+      </li>
+      <li>
+        <strong>Consentimento:</strong> ao aceitar estes termos, você
+        consente que suas Contribuições e metadados associados sejam
+        utilizados para a pesquisa científica descrita.
+      </li>
+      <li>
+        <strong>Cumprimento de obrigação legal/regulatória:</strong>
+        atendimento a solicitações de autoridades competentes, quando
+        aplicável.
+      </li>
+    </ul>
+
+    <h3>8.4 Compartilhamento</h3>
+    <p>
+      Não vendemos nem alugamos seus dados. Podemos compartilhar dados
+      <strong>agregados ou anonimizados</strong> com a comunidade
+      científica e com parceiros institucionais. Dados pessoais
+      identificáveis só são compartilhados:
+    </p>
+    <ul>
+      <li>com você próprio, mediante solicitação;</li>
+      <li>
+        com prestadores de serviço técnicos estritamente necessários
+        (ex.: hospedagem, e-mail transacional, armazenamento de backup
+        cifrado) e sob obrigação contratual de confidencialidade;
+      </li>
+      <li>quando exigido por lei ou ordem judicial.</li>
+    </ul>
+
+    <h3>8.5 Retenção</h3>
+    <ul>
+      <li>
+        <strong>Dados de cadastro:</strong> mantidos enquanto sua conta
+        existir.
+      </li>
+      <li>
+        <strong>Polígonos e pontos:</strong> mantidos indefinidamente
+        para integridade do dataset científico, mesmo após exclusão da
+        conta (de forma desvinculada do seu identificador, quando
+        viável).
+      </li>
+      <li>
+        <strong>Logs de atividade:</strong> retidos por até 7 dias
+        rolantes para fins operacionais e de auditoria, sendo
+        automaticamente expurgados em janelas amortizadas e periódicas
+        (job a cada 6 horas). Logs específicos exportados por
+        administradores podem ser arquivados conforme necessidade
+        institucional.
+      </li>
+      <li>
+        <strong>Backups:</strong> backups remotos cifrados são mantidos
+        por aproximadamente 30 dias, com rotação automática.
+      </li>
+    </ul>
+
+    <h3>8.6 Segurança</h3>
+    <p>
+      Adotamos medidas técnicas e organizacionais razoáveis: senhas
+      armazenadas com hash bcrypt, transmissão protegida via HTTPS,
+      cabeçalhos de segurança HTTP, validação server-side de geometria
+      enviada, controle de acesso por papéis (usuário/admin/superadmin) e
+      monitoramento opcional de erros via Sentry com filtragem
+      automática de informações sensíveis (senhas, tokens, cookies). Em
+      caso de incidente de segurança relevante, notificaremos a Autoridade
+      Nacional de Proteção de Dados (ANPD) e os titulares afetados,
+      conforme previsto na LGPD.
+    </p>
+
+    <h2 id="cookies" class="section-anchor">9. Cookies e tecnologias similares</h2>
+    <p>
+      Usamos cookies e armazenamento local do navegador apenas para:
+    </p>
+    <ul>
+      <li>
+        Manter sua sessão autenticada (cookies de sessão essenciais);
+      </li>
+      <li>
+        Lembrar preferências de idioma, tema e estado da interface
+        (armazenamento local — não transmitido ao servidor);
+      </li>
+      <li>
+        Eventualmente, métricas agregadas de uso (Google Analytics, se
+        habilitado), sem cruzamento com dados pessoais.
+      </li>
+    </ul>
+    <p>
+      Você pode bloquear cookies pelo navegador, mas isso pode afetar a
+      autenticação e o funcionamento da plataforma.
+    </p>
+
+    <h2 id="direitos" class="section-anchor">10. Direitos do titular dos dados</h2>
+    <p>Nos termos da LGPD, você tem direito a:</p>
+    <ul>
+      <li>
+        Confirmar a existência de tratamento dos seus dados;
+      </li>
+      <li>
+        Acessar os dados pessoais que mantemos sobre você;
+      </li>
+      <li>
+        Solicitar correção de dados incompletos, inexatos ou
+        desatualizados;
+      </li>
+      <li>
+        Solicitar anonimização, bloqueio ou eliminação de dados
+        desnecessários ou tratados em desconformidade com a LGPD;
+      </li>
+      <li>
+        Solicitar a portabilidade dos seus dados a outro fornecedor de
+        serviço;
+      </li>
+      <li>
+        Revogar o consentimento a qualquer momento;
+      </li>
+      <li>
+        Apresentar reclamação à Autoridade Nacional de Proteção de Dados
+        (ANPD).
+      </li>
+    </ul>
+    <p>
+      Para exercer qualquer um desses direitos, envie um e-mail para o
+      contato indicado na seção 12 informando seu pedido. Responderemos
+      em prazo razoável, observados os limites legais aplicáveis a
+      pesquisa científica.
+    </p>
+
+    <h2 id="alteracoes" class="section-anchor">11. Alterações destes termos</h2>
+    <p>
+      Podemos atualizar estes Termos e a Política de Privacidade
+      periodicamente. Mudanças relevantes serão sinalizadas na própria
+      plataforma. A continuidade do uso após a atualização constitui
+      aceitação da nova versão.
+    </p>
+
+    <h2 id="contato" class="section-anchor">12. Contato</h2>
+    <p>
+      Pesquisador responsável: <strong>Matheus Siqueira Barros</strong>
+      (Doutorando ESALQ/USP).
+    </p>
+    <p>
+      E-mail para questões de privacidade, exclusão de conta ou
+      exercício de direitos LGPD:
+      <a href="mailto:ms.barros@usp.br">ms.barros@usp.br</a>.
+    </p>
+    <p>
+      Endereço institucional: ESALQ/USP — Av. Pádua Dias, 11, Piracicaba/SP,
+      Brasil.
+    </p>
+
+    <footer>
+      &copy; 2026 Leucaena Earth — Pesquisa ESALQ/USP. &middot;
+      <a href="/">Voltar ao mapa</a>
+    </footer>
+  </main>
+</body>
+</html>

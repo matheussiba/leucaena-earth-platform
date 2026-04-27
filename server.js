@@ -286,6 +286,13 @@ app.get('/landing', (req, res) => {
   res.send(html.replace(/__MAP_URL__/g, mapUrl).replace('__GA_SCRIPT__', GA_SCRIPT));
 });
 
+// Phase 4 (LGPD): Termos de Uso + Política de Privacidade. Both /termos and
+// /privacidade serve the same combined document so the link from the auth modal
+// works in PT/EN/ES without 404. Static file lives at public/termos.html.
+app.get(['/termos', '/privacidade', '/terms', '/privacy'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'termos.html'));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Rate limiter (in-memory, per IP) ──
