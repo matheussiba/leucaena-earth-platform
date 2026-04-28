@@ -1332,10 +1332,9 @@ a.docs-logo-card:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 20px 24px;
+  padding: 24px 20px 18px;
   text-align: center;
-  gap: 14px;
-  flex: 1;
+  gap: 12px;
 }
 .brazil-prompt-icon {
   opacity: 0.7;
@@ -1351,6 +1350,152 @@ a.docs-logo-card:hover {
   padding: 8px 20px;
   font-size: 13px;
   font-weight: 600;
+}
+
+/* ── Brazil Stats Overview (per-state list) ── */
+.sidebar-brazil-stats {
+  padding: 14px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sidebar-brazil-stats h3 {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: rgba(255,255,255,0.55);
+  font-weight: 600;
+}
+.brazil-stats-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+}
+.brazil-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.brazil-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(255,255,255,0.45);
+  font-weight: 600;
+}
+.brazil-stat-value {
+  font-size: 13px;
+  color: #e2e8f0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brazil-state-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* Cap and scroll so very tall sidebars don't push the rest of the panel
+     off-screen. We still keep enough rows visible to scan the top states. */
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.brazil-state-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+}
+.brazil-state-row:hover,
+.brazil-state-row:focus-visible {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.35);
+  outline: none;
+}
+.brazil-state-uf {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--accent);
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.brazil-state-name {
+  font-size: 12px;
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brazil-state-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.brazil-state-meta .brazil-state-area {
+  color: var(--accent);
+  font-weight: 600;
+}
+.brazil-state-progress {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.brazil-state-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #84cc16);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.brazil-stats-empty {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  font-style: italic;
+  text-align: center;
+  padding: 12px 0;
+}
+.brazil-stats-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+}
+.brazil-stats-sort select {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  font-size: 11px;
+  cursor: pointer;
 }
 
 /* ── Cell Search ── */

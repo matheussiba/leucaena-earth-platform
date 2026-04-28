@@ -3034,7 +3034,61 @@ app.get('/api/states', (req, res) => {
     GROUP BY gcs.state
     ORDER BY gcs.state
   `);
-  res.json(rows);
+  // Polygon aggregates per state. Joined separately so the cell counts above
+  // stay correct (a cell can contain multiple polygons; SUMming them in the
+  // same query would multiply the cell rows). Soft-deleted polygons are
+  // excluded via `deleted_at IS NULL` to match the rest of the platform.
+  const polyRows = queryAll(`
+    SELECT gcs.state,
+           COUNT(p.id) AS polygon_count,
+           COALESCE(SUM(p.area_ha), 0) AS polygon_area_ha
+    FROM grid_cell_states gcs
+    JOIN polygons p ON p.grid_cell_id = gcs.grid_cell_id
+    WHERE p.deleted_at IS NULL
+    GROUP BY gcs.state
+  `);
+  const polyByState = {};
+  for (const r of polyRows) {
+    polyByState[r.state] = {
+      polygon_count: r.polygon_count || 0,
+      polygon_area_ha: Math.round((r.polygon_area_ha || 0) * 100) / 100
+    };
+  }
+  for (const r of rows) {
+    const p = polyByState[r.state] || { polygon_count: 0, polygon_area_ha: 0 };
+    r.polygon_count = p.polygon_count;
+    r.polygon_area_ha = p.polygon_area_ha;
+  }
+  // True Brazil-wide aggregates: cells/polygons that span two states would
+  // otherwise be double-counted if the client summed `rows`. Compute them
+  // here from DISTINCT primary keys so the sidebar overview shows a faithful
+  // single-truth total at the top.
+  const totalsRow = queryOne(`
+    SELECT COUNT(DISTINCT gc.id) AS cell_count,
+           SUM(CASE WHEN gc.grid_status = 'finished' THEN 1 ELSE 0 END) AS finished_count,
+           SUM(CASE WHEN gc.grid_status IN ('mapping', 'in_use') THEN 1 ELSE 0 END) AS mapping_count,
+           SUM(CASE WHEN gc.grid_status = 'not_yet_finished' THEN 1 ELSE 0 END) AS tomap_count,
+           COALESCE(SUM(gc.numpoints), 0) AS points_registered
+    FROM grid_cells gc
+  `);
+  const polyTotals = queryOne(`
+    SELECT COUNT(*) AS polygon_count,
+           COALESCE(SUM(area_ha), 0) AS polygon_area_ha
+    FROM polygons
+    WHERE deleted_at IS NULL
+  `);
+  res.json({
+    states: rows,
+    totals: {
+      cell_count: totalsRow ? totalsRow.cell_count || 0 : 0,
+      finished_count: totalsRow ? totalsRow.finished_count || 0 : 0,
+      mapping_count: totalsRow ? totalsRow.mapping_count || 0 : 0,
+      tomap_count: totalsRow ? totalsRow.tomap_count || 0 : 0,
+      points_registered: totalsRow ? totalsRow.points_registered || 0 : 0,
+      polygon_count: polyTotals ? polyTotals.polygon_count || 0 : 0,
+      polygon_area_ha: polyTotals ? Math.round((polyTotals.polygon_area_ha || 0) * 100) / 100 : 0
+    }
+  });
 });
 
 app.get('/api/states/:uf/stats', (req, res) => {

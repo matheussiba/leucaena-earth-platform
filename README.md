@@ -434,7 +434,7 @@ The server exposes RESTful endpoints organized by domain:
 - `POST /api/auth/forgot-password` / `POST /api/auth/reset-password` — password reset
 
 ### States & Grid
-- `GET /api/states` — list states with cell counts, finished/mapping/tomap breakdowns
+- `GET /api/states` — `{ states: [...], totals: {...} }` — per-state cell counts, finished/mapping/tomap breakdown, polygon count + area, plus de-duplicated Brazil-wide totals (border cells/polygons aren't double-counted)
 - `GET /api/grid` — all cells (or `?state=UF` for a single state)
 
 ### Polygons (Masks)

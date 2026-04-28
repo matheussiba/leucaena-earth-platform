@@ -901,6 +901,42 @@
           <button type="button" class="btn btn-primary brazil-prompt-btn" id="sidebar-choose-state-btn" data-i18n="sidebar.chooseStateBtn">Selecionar região</button>
         </div>
 
+        <!-- Per-state stats overview when Brazil view is active -->
+        <div class="sidebar-section sidebar-brazil-stats" id="sidebar-brazil-stats" style="display:none">
+          <h3 data-i18n="sidebar.brazilOverviewTitle">Visão geral por estado</h3>
+          <div class="brazil-stats-summary" id="brazil-stats-summary">
+            <div class="brazil-stat">
+              <span class="brazil-stat-label" data-i18n="sidebar.brazilTotalArea">Área total</span>
+              <span class="brazil-stat-value" id="brazil-total-area">--</span>
+            </div>
+            <div class="brazil-stat">
+              <span class="brazil-stat-label" data-i18n="sidebar.brazilTotalPolys">Polígonos</span>
+              <span class="brazil-stat-value" id="brazil-total-polys">--</span>
+            </div>
+            <div class="brazil-stat">
+              <span class="brazil-stat-label" data-i18n="sidebar.brazilTotalCells">Células</span>
+              <span class="brazil-stat-value" id="brazil-total-cells">--</span>
+            </div>
+            <div class="brazil-stat">
+              <span class="brazil-stat-label" data-i18n="sidebar.brazilTotalFinished">Finalizadas</span>
+              <span class="brazil-stat-value" id="brazil-total-finished">--</span>
+            </div>
+          </div>
+          <div class="brazil-stats-sort">
+            <label for="brazil-stats-sort-by" data-i18n="sidebar.brazilSortBy">Ordenar:</label>
+            <select id="brazil-stats-sort-by">
+              <option value="area" data-i18n="sidebar.brazilSortArea">Área mapeada</option>
+              <option value="polys" data-i18n="sidebar.brazilSortPolys">Polígonos</option>
+              <option value="pct" data-i18n="sidebar.brazilSortPct">% Finalizado</option>
+              <option value="points" data-i18n="sidebar.brazilSortPoints">Pontos</option>
+              <option value="name" data-i18n="sidebar.brazilSortName">Nome</option>
+            </select>
+          </div>
+          <div class="brazil-state-list" id="brazil-state-list" role="list">
+            <div class="brazil-stats-empty" data-i18n="sidebar.brazilLoading">Carregando estatísticas…</div>
+          </div>
+        </div>
+
         <!-- Informações da Célula (dinâmica: aparece somente quando uma célula é selecionada).
              Fica no topo do scroll para ficar mais visível em cima do progresso/filtros estáticos. -->
         <div class="sidebar-section sidebar-section-dynamic hidden" id="cell-actions">

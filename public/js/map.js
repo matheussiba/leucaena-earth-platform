@@ -836,10 +836,12 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     var progress = document.getElementById('mapping-progress');
     var filters = document.getElementById('sidebar-filters');
     var prompt = document.getElementById('sidebar-brazil-prompt');
+    var brazilStats = document.getElementById('sidebar-brazil-stats');
     var cellSearch = document.getElementById('cell-search-section');
     if (progress) progress.style.display = isBrazil ? 'none' : '';
     if (filters) filters.style.display = isBrazil ? 'none' : '';
     if (prompt) prompt.style.display = isBrazil ? '' : 'none';
+    if (brazilStats) brazilStats.style.display = isBrazil ? '' : 'none';
     if (cellSearch) cellSearch.style.display = isBrazil ? 'none' : '';
   }
 

@@ -1842,6 +1842,147 @@ window.LeucenaApp = (function () {
   var _stateCounts = {};
   var _selectedUF = null;
   var _pendingMapInit = null;
+  var _brazilStats = {};
+  var _brazilTotals = null;
+  var _brazilStatsSort = 'area';
+
+  function _formatArea(ha) {
+    var n = Number(ha) || 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(2) + ' Mha';
+    if (n >= 10000) return (n / 1000).toFixed(1) + ' kha';
+    if (n >= 100) return Math.round(n).toLocaleString('pt-BR') + ' ha';
+    if (n > 0) return n.toFixed(1) + ' ha';
+    return '0 ha';
+  }
+
+  function _formatCount(n) {
+    n = Number(n) || 0;
+    if (n >= 1000) return (n / 1000).toFixed(1).replace('.0', '') + 'k';
+    return String(n);
+  }
+
+  /**
+   * Render the Brazil overview sidebar section. Builds:
+   *  - Aggregate totals (area, polygons, cells, finished cells) across all states
+   *  - A sorted, clickable list of states (sort key chosen by the dropdown)
+   * Re-renders every time `_brazilStats` is refreshed or the sort changes.
+   * Safe no-op if DOM nodes aren't present (e.g. before init or in tests).
+   */
+  function _renderBrazilStats() {
+    var section = document.getElementById('sidebar-brazil-stats');
+    var listEl = document.getElementById('brazil-state-list');
+    if (!section || !listEl) return;
+
+    var stats = _brazilStats || {};
+    var entries = Object.keys(stats).map(function (uf) {
+      var s = stats[uf] || {};
+      return {
+        uf: uf,
+        name: (UF_META[uf] && UF_META[uf].name) || uf,
+        area: s.polygonAreaHa || 0,
+        polys: s.polygonCount || 0,
+        cells: s.cells || 0,
+        finished: s.finished || 0,
+        mapping: s.mapping || 0,
+        points: s.pointsRegistered || 0,
+        pct: s.pct || 0,
+        pctFinished: s.pctFinished || 0
+      };
+    });
+
+    // Prefer server-side de-duplicated totals (cells/polygons spanning two
+    // states aren't double-counted). Fall back to summing per-state numbers
+    // for older server builds that don't return `totals`.
+    var totals;
+    if (_brazilTotals) {
+      totals = {
+        area: Number(_brazilTotals.polygon_area_ha) || 0,
+        polys: Number(_brazilTotals.polygon_count) || 0,
+        cells: Number(_brazilTotals.cell_count) || 0,
+        finished: Number(_brazilTotals.finished_count) || 0,
+        points: Number(_brazilTotals.points_registered) || 0
+      };
+    } else {
+      totals = entries.reduce(function (acc, e) {
+        acc.area += e.area;
+        acc.polys += e.polys;
+        acc.cells += e.cells;
+        acc.finished += e.finished;
+        acc.points += e.points;
+        return acc;
+      }, { area: 0, polys: 0, cells: 0, finished: 0, points: 0 });
+    }
+
+    var areaEl = document.getElementById('brazil-total-area');
+    var polysEl = document.getElementById('brazil-total-polys');
+    var cellsEl = document.getElementById('brazil-total-cells');
+    var finishedEl = document.getElementById('brazil-total-finished');
+    if (areaEl) areaEl.textContent = _formatArea(totals.area);
+    if (polysEl) polysEl.textContent = totals.polys.toLocaleString('pt-BR');
+    if (cellsEl) cellsEl.textContent = totals.cells.toLocaleString('pt-BR');
+    if (finishedEl) {
+      var pct = totals.cells > 0 ? Math.round((totals.finished / totals.cells) * 100) : 0;
+      finishedEl.textContent = totals.finished.toLocaleString('pt-BR') + ' (' + pct + '%)';
+    }
+
+    // Sort: keep states with zero data at the bottom unless sorting by name.
+    var key = _brazilStatsSort;
+    entries.sort(function (a, b) {
+      if (key === 'name') return a.name.localeCompare(b.name);
+      var av, bv;
+      if (key === 'polys') { av = a.polys; bv = b.polys; }
+      else if (key === 'pct') { av = a.pctFinished; bv = b.pctFinished; }
+      else if (key === 'points') { av = a.points; bv = b.points; }
+      else { av = a.area; bv = b.area; }
+      if (bv === av) return a.name.localeCompare(b.name);
+      return bv - av;
+    });
+
+    if (entries.length === 0) {
+      listEl.innerHTML = '<div class="brazil-stats-empty">'
+        + (typeof LeucenaI18n !== 'undefined' ? LeucenaI18n.t('sidebar.brazilNoData') : 'Sem dados')
+        + '</div>';
+      return;
+    }
+
+    var t = (typeof LeucenaI18n !== 'undefined') ? LeucenaI18n.t : function (k) { return k; };
+    var html = entries.map(function (e) {
+      var pctClamped = Math.max(0, Math.min(100, Math.round(e.pctFinished)));
+      var areaTxt = _formatArea(e.area);
+      var polysTxt = _formatCount(e.polys) + ' ' + (e.polys === 1 ? 'polígono' : 'polígonos');
+      var title = t('sidebar.brazilStateRowTitle').replace('{name}', e.name);
+      return '<button type="button" class="brazil-state-row" data-uf="' + e.uf + '" '
+        + 'role="listitem" title="' + title + '" aria-label="' + title + '">'
+        + '<span class="brazil-state-uf">' + e.uf + '</span>'
+        + '<span class="brazil-state-name">' + e.name + '</span>'
+        + '<span class="brazil-state-meta">'
+          + '<span class="brazil-state-area">' + areaTxt + '</span>'
+          + '<span class="brazil-state-polys">' + polysTxt + '</span>'
+        + '</span>'
+        + '<div class="brazil-state-progress" aria-label="' + pctClamped + '% finalizado">'
+          + '<div class="brazil-state-progress-fill" style="width:' + pctClamped + '%"></div>'
+        + '</div>'
+        + '</button>';
+    }).join('');
+    listEl.innerHTML = html;
+
+    listEl.querySelectorAll('.brazil-state-row').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var uf = btn.getAttribute('data-uf');
+        if (uf && UF_META[uf]) selectState(uf);
+      });
+    });
+  }
+
+  function _wireBrazilStatsSort() {
+    var sel = document.getElementById('brazil-stats-sort-by');
+    if (!sel || sel._wired) return;
+    sel._wired = true;
+    sel.addEventListener('change', function () {
+      _brazilStatsSort = sel.value || 'area';
+      _renderBrazilStats();
+    });
+  }
 
   function showRegionPicker() {
     var modal = document.getElementById('region-picker-modal');
@@ -2052,7 +2193,12 @@ window.LeucenaApp = (function () {
 
     try {
       var res = await fetch('/api/states');
-      var rows = await res.json();
+      var payload = await res.json();
+      // Backwards-compat: older builds returned a bare array; current builds
+      // return { states: [...], totals: {...} } so the sidebar can show a
+      // de-duplicated Brazil-wide total without summing border cells twice.
+      var rows = Array.isArray(payload) ? payload : (payload && payload.states) || [];
+      _brazilTotals = (payload && payload.totals) || null;
       var mapStats = {};
       rows.forEach(function (r) {
         _stateCounts[r.state] = r.cell_count;
@@ -2069,6 +2215,8 @@ window.LeucenaApp = (function () {
           mapping: mapping,
           tomap: tomap,
           pointsRegistered: r.points_registered != null ? Number(r.points_registered) : 0,
+          polygonCount: r.polygon_count != null ? Number(r.polygon_count) : 0,
+          polygonAreaHa: r.polygon_area_ha != null ? Number(r.polygon_area_ha) : 0,
           pctFinished: relevant > 0 ? (finished / denom) * 100 : 0,
           pctMapping: relevant > 0 ? (mapping / denom) * 100 : 0,
           pctTomap: relevant > 0 ? (tomap / denom) * 100 : 0,
@@ -2078,6 +2226,8 @@ window.LeucenaApp = (function () {
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.setStateStats) {
         LeucenaMap.setStateStats(mapStats);
       }
+      _brazilStats = mapStats;
+      _renderBrazilStats();
     } catch (e) {
       for (var uf in UF_META) _stateCounts[uf] = 0;
     }
@@ -2114,6 +2264,8 @@ window.LeucenaApp = (function () {
     if (sidebarChooseBtn) {
       sidebarChooseBtn.addEventListener('click', showRegionPicker);
     }
+
+    _wireBrazilStatsSort();
 
     _regionPickerReady = true;
   }
