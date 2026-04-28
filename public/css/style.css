@@ -5205,6 +5205,23 @@ body.sv-active .edit-tools-row {
     display: none;
   }
 
+  /* The toolbar's overflow-x: auto silently forces overflow-y: hidden, which
+     clips any dropdown that opens upward. Pin the lang/export menus with
+     position: fixed so they escape the clip and span the bottom of the
+     viewport just above the toolbar. */
+  .toolbar-dropdown .dropdown-menu {
+    position: fixed;
+    bottom: calc(var(--toolbar-height) + 6px);
+    left: 8px;
+    right: 8px;
+    top: auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
   .toolbar-group {
     flex-shrink: 0;
   }
