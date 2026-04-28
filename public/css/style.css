@@ -5244,6 +5244,38 @@ body.sv-active .edit-tools-row {
     pointer-events: none;
   }
 
+  /* Same idea for the footer #toolbar: too many controls (idioma, exportar,
+     map type, legenda, ...) cluttering the bottom while the user is mapping a
+     locked cell. The floating edit panel already has the relevant tools. */
+  #app:has(#main-content.editing-cell) #toolbar {
+    display: none;
+  }
+  /* Drop the floating panel into the freed-up space so it doesn't sit floating
+     mid-air with a gap below. */
+  #main-content.editing-cell .edit-tools-panel {
+    bottom: 8px;
+  }
+
+  /* Compact the labeled buttons inside the edit panel a touch on mobile while
+     editing — the user reported the panel feeling oversized. We keep ≥40px hit
+     target (still touch-friendly per Apple HIG, just below the 44px ideal). */
+  #main-content.editing-cell .edit-tool-btn-labeled {
+    min-width: 50px;
+    min-height: 40px;
+    padding: 4px 7px 3px;
+    font-size: 9px;
+  }
+  #main-content.editing-cell .edit-tool-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  #main-content.editing-cell .edit-tools-label {
+    font-size: 8px;
+  }
+  #main-content.editing-cell .edit-tools-row {
+    gap: 3px;
+  }
+
   .btn-my-location {
     bottom: 48px;
     right: 8px;
