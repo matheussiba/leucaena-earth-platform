@@ -5337,20 +5337,67 @@ body.sv-active .edit-tools-row {
      even more — the panorama already eats half the screen. The general
      body.sv-active rules above turn buttons into 36x36 icon-only squares; here
      we just tighten gaps/paddings further for portrait phones. */
+  /* Single-row layout when Street View is active during cell editing on
+     mobile: collapse the 2-column grid (defined globally above) into one
+     horizontal flex row so every tool fits side-by-side. The icon-only
+     square buttons (32x32) keep the row compact enough to live in the few
+     pixels left between the panorama and the toolbar. Section titles are
+     hidden too — there's no room for them and the icons + tooltips already
+     communicate the function. */
   body.sv-active #main-content.editing-cell .edit-tools-panel {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
     padding: 4px;
-    gap: 3px;
+    gap: 4px;
+    /* Clamp width to viewport so the row never overflows the screen. */
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
   }
-  body.sv-active #main-content.editing-cell .edit-tool-btn-labeled {
+  body.sv-active #main-content.editing-cell .edit-tools-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    /* Reset the grid placement so flex order is the visual order. */
+    grid-column: auto !important;
+    grid-row: auto !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  body.sv-active #main-content.editing-cell .edit-tools-label {
+    display: none;
+  }
+  body.sv-active #main-content.editing-cell .edit-tools-row {
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 4px;
+  }
+  body.sv-active #main-content.editing-cell .edit-tool-btn-labeled,
+  body.sv-active #main-content.editing-cell #edit-section-utils .edit-tool-btn-labeled {
     width: 32px;
     height: 32px;
     min-width: 32px;
     min-height: 32px;
     padding: 0;
+    /* Hide the text labels too — only the icon shows in this compact row. */
+  }
+  body.sv-active #main-content.editing-cell .edit-tool-btn-labeled span {
+    display: none;
   }
   body.sv-active #main-content.editing-cell .edit-tool-btn svg {
     width: 14px;
     height: 14px;
+  }
+  /* Soft visual divider between the three sections (poly / points / utils)
+     so the user can still tell them apart without the text labels. */
+  body.sv-active #main-content.editing-cell .edit-tools-section + .edit-tools-section {
+    margin-left: 4px;
+    padding-left: 4px !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.18) !important;
   }
 
   /* Hide non-essential Google Maps overlay controls (zoom, fullscreen, pegman)
