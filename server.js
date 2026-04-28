@@ -268,11 +268,26 @@ app.use((req, res, next) => {
   next();
 });
 
+/**
+ * Append ?v=BUILD_ID to all locally-served <script src="/js/..."> and
+ * <link href="/css/..."> tags so a deploy invalidates the browser cache
+ * for the JS/CSS bundles (we already announce BUILD_ID over the socket,
+ * but stale .js could still be served from the disk cache after the user
+ * dismisses the update banner without doing a hard reload, which is what
+ * happened when the hole-tool diagnostic logs failed to appear in
+ * production after a fresh push).
+ */
+function _stampLocalAssets(html) {
+  return html
+    .replace(/(<script\s+src=")(\/js\/[^"?]+)(")/g, `$1$2?v=${BUILD_ID}$3`)
+    .replace(/(<link\s+rel="stylesheet"\s+href=")(\/css\/[^"?]+)(")/g, `$1$2?v=${BUILD_ID}$3`);
+}
+
 app.get('/', (req, res) => {
   if (isMapHost(req)) {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
     const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry&callback=initGoogleMapsCallback`;
-    res.send(html.replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl).replace('__GA_SCRIPT__', GA_SCRIPT));
+    res.send(_stampLocalAssets(html).replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl).replace('__GA_SCRIPT__', GA_SCRIPT));
   } else {
     const mapUrl = `https://map.leucaena.earth`;
     const html = fs.readFileSync(path.join(__dirname, 'public', 'landing.html'), 'utf8');

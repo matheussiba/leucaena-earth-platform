@@ -1,4 +1,7 @@
 // IIFE module: polygon draw/edit/delete tools and a central mode state machine.
+// Loaded version marker: bump when shipping hole-tool diagnostics so we can
+// confirm a fresh bundle reached the browser (look for it in DevTools console).
+console.info('[leucena/drawing] build with hole-click-safety + diagnostics v2');
 window.LeucenaDrawing = (function () {
   // Ray-casting point-in-ring test (matches server-side pointInPolygon)
   function pointInRing(lng, lat, ring) {
