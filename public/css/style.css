@@ -389,35 +389,35 @@ html, body {
 }
 .auth-terms-label {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
-  margin: 0;
+  margin: 6px 0 8px 0;
   cursor: pointer;
-  line-height: 1.4;
-  /* Keep the checkbox + text inside the auth modal on narrow widths. */
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  line-height: 1.45;
   text-align: left;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: rgba(148, 163, 184, 0.06);
 }
 .auth-terms-label input[type="checkbox"] {
-  margin-top: 2px;
+  /* Override .modal-card input { width: 100%; } so the checkbox stays a
+     16x16 box on the same line as the label text. */
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  margin: 0;
+  padding: 0;
   flex-shrink: 0;
   accent-color: var(--accent, #2d6a4f);
+  cursor: pointer;
 }
-.auth-terms-label span,
-.auth-terms-label a {
+.auth-terms-label .auth-terms-text {
+  flex: 1 1 auto;
   min-width: 0;
 }
 .auth-terms-label a {
   color: var(--accent, #2d6a4f);
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .auth-select,
