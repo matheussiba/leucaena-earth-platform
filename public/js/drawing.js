@@ -1655,6 +1655,13 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('polygon_delete', cellId, id, { created_by: backup.created_by });
       }
+      // Auto-exit delete mode after a successful deletion to avoid accidental
+      // chain-deletes (user reported deleting a second polygon by mistake on
+      // the next map click). The user must re-arm the Delete tool explicitly
+      // to remove another polygon.
+      if (activeMode === 'delete') {
+        setMode('select');
+      }
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleteFail'), 'error');
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {

@@ -2906,6 +2906,10 @@ body.sv-active .edit-tool-btn-labeled {
 body.sv-active .edit-tools-panel {
   padding: 5px;
   gap: 5px;
+  /* Drop the panel to the very bottom of the map so the Street View pane has
+     more vertical room. The default 56px (48px on mobile) leaves a footer-sized
+     gap above the toolbar that we don't need while the panorama is open. */
+  bottom: 4px;
 }
 body.sv-active .edit-tools-section + .edit-tools-section {
   padding-left: 5px;
