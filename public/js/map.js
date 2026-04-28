@@ -221,7 +221,19 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       }
       if (typeof LeucenaDrawing !== 'undefined') {
         const dm = LeucenaDrawing.getActiveMode();
-        if (dm === 'draw' || dm === 'hole' || dm === 'delete') return;
+        if (dm === 'draw' || dm === 'hole') return;
+        // For delete mode: a tap inside the locked cell tile (a Data feature)
+        // is intercepted here and never reaches map.click, so the auto-exit
+        // wired up in the map.click handler doesn't fire on mobile when the
+        // user taps the cell area to disarm the tool. Mirror the same logic
+        // here: if there's no pending confirmation, exit delete mode.
+        if (dm === 'delete') {
+          if (LeucenaDrawing.hasPendingDelete && LeucenaDrawing.hasPendingDelete()) {
+            return; // overlay's Cancel/Esc owns the back-out path
+          }
+          LeucenaDrawing.exitDeleteMode();
+          return;
+        }
       }
       clickedOnFeature = true;
       deselectPoint();
