@@ -1655,13 +1655,6 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('polygon_delete', cellId, id, { created_by: backup.created_by });
       }
-      // Auto-exit delete mode after a successful deletion to avoid accidental
-      // chain-deletes (user reported deleting a second polygon by mistake on
-      // the next map click). The user must re-arm the Delete tool explicitly
-      // to remove another polygon.
-      if (activeMode === 'delete') {
-        setMode('select');
-      }
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyDeleteFail'), 'error');
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
@@ -1866,6 +1859,13 @@ window.LeucenaDrawing = (function () {
     confirmAbandonDraw,
     updateMouseLatLng(latLng) { _lastMouseLatLng = latLng; },
     isEditModified() { return _editModified; },
-    exitEditMode() { if (activeMode === 'edit') { setMode('select'); } }
+    exitEditMode() { if (activeMode === 'edit') { setMode('select'); } },
+    /* Called from map.js when the user clicks empty map while delete mode is
+       armed. Polygon clicks don't reach the map listener (intercepted by the
+       polygon's own listener that toggles selectForDelete), so this only fires
+       on truly empty clicks — which is exactly when we want to disarm the tool
+       to avoid further accidental deletions. */
+    exitDeleteMode() { if (activeMode === 'delete') { setMode('select'); } },
+    hasPendingDelete() { return !!_pendingDeleteId; }
   };
 })();

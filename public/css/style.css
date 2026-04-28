@@ -2907,9 +2907,17 @@ body.sv-active .edit-tools-panel {
   padding: 5px;
   gap: 5px;
   /* Drop the panel to the very bottom of the map so the Street View pane has
-     more vertical room. The default 56px (48px on mobile) leaves a footer-sized
-     gap above the toolbar that we don't need while the panorama is open. */
+     more vertical room. We also hide #toolbar below to free that footer slot
+     entirely (its tools live elsewhere or are not needed inside SV). */
   bottom: 4px;
+}
+
+/* Hide the bottom toolbar (coords + map-type/labels/legend/etc.) while Street
+   View is active so the floating edit panel has the whole bottom strip and is
+   not painted under the toolbar (z-index 200 vs 160 on the panel). The toolbar
+   reappears as soon as `body.sv-active` is removed by streetview.js. */
+body.sv-active #toolbar {
+  display: none;
 }
 body.sv-active .edit-tools-section + .edit-tools-section {
   padding-left: 5px;

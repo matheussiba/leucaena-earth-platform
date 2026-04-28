@@ -148,6 +148,17 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         LeucenaDrawing.exitEditMode();
         return;
       }
+      // Same idea for delete mode: clicking on a polygon stays armed and selects
+      // it for confirmation; clicking on empty map disarms the tool so we don't
+      // accidentally delete the next polygon the user clicks. Skip while a
+      // pending delete confirmation is showing — the overlay's Cancel button
+      // (or Esc) is the right way to back out at that point.
+      if (typeof LeucenaDrawing !== 'undefined'
+          && LeucenaDrawing.getActiveMode() === 'delete'
+          && !(LeucenaDrawing.hasPendingDelete && LeucenaDrawing.hasPendingDelete())) {
+        LeucenaDrawing.exitDeleteMode();
+        return;
+      }
       deselectPoint();
       if (LeucenaStreetView.isActive()) {
         const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
