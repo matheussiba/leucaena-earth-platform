@@ -11,10 +11,10 @@
  * Set env vars below; if any required var is missing, remote upload is skipped (local backup unchanged).
  *
  * How many `.db` objects to keep under the prefix (after each upload, oldest are deleted):
- *   BACKUP_CLOUDFLARE_MAX_FILES (preferred name for R2)
- *   BACKUP_R2_MAX_FILES         (alias)
- *   BACKUP_REMOTE_MAX_OBJECTS   (legacy alias — same meaning)
- * Use `0` on all unset / zero to disable code-side pruning (R2 Lifecycle only).
+ *   BACKUP_REMOTE_MAX_OBJECTS     (preferred — generic for any S3-compatible endpoint)
+ *   BACKUP_CLOUDFLARE_MAX_FILES   (alias)
+ *   BACKUP_R2_MAX_FILES           (alias)
+ * Use `0` on all unset / zero to disable code-side pruning (bucket Lifecycle only).
  */
 
 const fs = require('fs');
@@ -76,9 +76,9 @@ function _prefix() {
 
 function _maxRemoteObjectsMeta() {
   const candidates = [
+    ['BACKUP_REMOTE_MAX_OBJECTS', process.env.BACKUP_REMOTE_MAX_OBJECTS],
     ['BACKUP_CLOUDFLARE_MAX_FILES', process.env.BACKUP_CLOUDFLARE_MAX_FILES],
-    ['BACKUP_R2_MAX_FILES', process.env.BACKUP_R2_MAX_FILES],
-    ['BACKUP_REMOTE_MAX_OBJECTS', process.env.BACKUP_REMOTE_MAX_OBJECTS]
+    ['BACKUP_R2_MAX_FILES', process.env.BACKUP_R2_MAX_FILES]
   ];
   for (const [envKey, raw] of candidates) {
     if (raw == null || String(raw).trim() === '') continue;

@@ -1060,6 +1060,15 @@ window.LeucenaDrawing = (function () {
 
     const dblClickListener = map.addListener('dblclick', () => {
       if (activeMode !== 'hole' || !manualHoleState) return;
+      // While fewer than 3 vertices, ignore dblclick: the second physical click is
+      // often delivered as dblclick (no second map "click"), which used to pop the
+      // last vertex and call completeManualHole — aborting QC hole draw after one point.
+      if (vertices.length < 3) {
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hole_dblclick_ignored', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length });
+        }
+        return;
+      }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('hole_finish_dblclick', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length, mouseMoves: _holeMouseMoveCount });
       }
