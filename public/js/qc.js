@@ -229,9 +229,53 @@ window.LeucenaQC = (function () {
       LeucenaApp.logEvent('qc_review_open', cellId, null, { count: polys.length, status: statusFilter });
     }
 
+    // Make the grid hollow so the admin can see through cells and inspect
+    // satellite imagery beneath the polygons being reviewed.
+    if (LeucenaMap.setGridsHollow) LeucenaMap.setGridsHollow(true);
+
+    // Pre-render every polygon in this cell so the admin sees the full
+    // context (not just the focused one floating in space). Without this,
+    // when the admin enters from a state different than the cell's, only
+    // the focused polygon is on-map and the surrounding ones pop in one-by-one
+    // as they navigate — disorienting.
+    polys.forEach((p) => {
+      const exists = LeucenaDrawing.getPolyEntry && LeucenaDrawing.getPolyEntry(p.id);
+      if (!exists && LeucenaDrawing.addRemotePolygon) {
+        LeucenaDrawing.addRemotePolygon({
+          id: p.id,
+          grid_cell_id: p.grid_cell_id,
+          geometry: p.geometry,
+          created_by: p.created_by,
+          created_by_role: p.created_by_role,
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+          area_ha: p.area_ha,
+          qc_status: p.qc_status,
+          qc_by: p.qc_by,
+          qc_at: p.qc_at
+        });
+      }
+    });
+
     document.body.classList.add('qc-review-active');
     _showPanel();
-    _gotoIndex(0);
+
+    // Defer the first focus until the panel has been laid out: fitBounds()
+    // computes the visible viewport using the map div's current pixel size,
+    // and if we run it before the bottom panel has reserved its space, the
+    // camera lands on a point that ignores the panel padding (visually
+    // looks like a "random" location, off-center). Two RAFs guarantee a
+    // post-layout, post-paint frame.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (LeucenaMap.triggerResize) LeucenaMap.triggerResize();
+        // Fresh entry: clear idx so _gotoIndex always runs the focus path
+        // even when targeting index 0 (it normally short-circuits when
+        // state.idx already matches).
+        if (state) state.idx = -1;
+        _gotoIndex(0);
+      });
+    });
   }
 
   function _gotoIndex(idx) {
@@ -541,6 +585,8 @@ window.LeucenaQC = (function () {
     state = null;
     document.body.classList.remove('qc-review-active');
     _hidePanel();
+    // Restore the grid fill (was made transparent on entry).
+    if (LeucenaMap.setGridsHollow) LeucenaMap.setGridsHollow(false);
     if (_previousMapView && LeucenaMap.getMap) {
       const map = LeucenaMap.getMap();
       if (map && _previousMapView.center) map.setCenter(_previousMapView.center);

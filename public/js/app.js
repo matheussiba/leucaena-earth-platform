@@ -1951,6 +1951,17 @@ window.LeucenaApp = (function () {
       var areaTxt = _formatArea(e.area);
       var polysTxt = _formatCount(e.polys) + ' ' + (e.polys === 1 ? 'polígono' : 'polígonos');
       var title = t('sidebar.brazilStateRowTitle').replace('{name}', e.name);
+      // Only paint the progress bar when there's actual mapping work
+      // (polygons drawn). The cell-level pctFinished can be > 0 even when
+      // every "finished" cell was reviewed without finding leucena, which
+      // misleads viewers into thinking there are mapped polygons here.
+      var progressHtml = '';
+      if (e.polys > 0) {
+        progressHtml = '<div class="brazil-state-progress" aria-label="'
+          + pctClamped + '% finalizado">'
+          + '<div class="brazil-state-progress-fill" style="width:' + pctClamped + '%"></div>'
+          + '</div>';
+      }
       return '<button type="button" class="brazil-state-row" data-uf="' + e.uf + '" '
         + 'role="listitem" title="' + title + '" aria-label="' + title + '">'
         + '<span class="brazil-state-uf">' + e.uf + '</span>'
@@ -1959,9 +1970,7 @@ window.LeucenaApp = (function () {
           + '<span class="brazil-state-area">' + areaTxt + '</span>'
           + '<span class="brazil-state-polys">' + polysTxt + '</span>'
         + '</span>'
-        + '<div class="brazil-state-progress" aria-label="' + pctClamped + '% finalizado">'
-          + '<div class="brazil-state-progress-fill" style="width:' + pctClamped + '%"></div>'
-        + '</div>'
+        + progressHtml
         + '</button>';
     }).join('');
     listEl.innerHTML = html;
