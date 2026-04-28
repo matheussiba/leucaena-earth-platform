@@ -6632,20 +6632,24 @@ body.sv-active .edit-tools-row {
 }
 
 /* ── Inbox bell button ── */
+/* Match the visual weight of the other top-bar action buttons (e.g.
+   #admin-users-btn / .btn-secondary) so the bell doesn't disappear when
+   not hovered — it was nearly invisible against the dark header. */
 .inbox-bell-btn {
   position: relative !important;
   overflow: visible !important;
-  background: none;
-  border: none;
+  background: var(--bar-btn-bg);
+  border: 1px solid rgba(255,255,255,0.12);
   cursor: pointer;
   color: var(--text-secondary);
   padding: 4px 6px;
   border-radius: var(--radius-sm);
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 .inbox-bell-btn:hover {
   color: var(--primary);
-  background: rgba(124,58,237,0.08);
+  background: rgba(124,58,237,0.18);
+  border-color: rgba(124,58,237,0.45);
 }
 
 #inbox-badge {

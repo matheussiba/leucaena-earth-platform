@@ -3392,12 +3392,11 @@ window.LeucenaApp = (function () {
   }
 
   /**
-   * Mostra/esconde o botão "Modo Revisão" no painel da célula. Apenas
-   * admins veem; o botão fica visível só quando há ao menos 1 polígono
-   * pendente (qc_status='unreviewed') já carregado para a célula. Se a
-   * contagem ainda é 0 mas pode haver polígonos não carregados, mantemos
-   * escondido — o admin pode usar o botão da topbar para abrir o picker
-   * geral. Evita falso positivo em células totalmente revisadas.
+   * Mostra o botão "Modo Revisão" no painel da célula para admins. Sempre
+   * visível em qualquer célula selecionada — o admin pode entrar para
+   * inspecionar mesmo que não haja polígonos pendentes (LeucenaQC.enterCell
+   * mostra um toast amigável se a célula está vazia). Quando há pendentes
+   * carregados no cliente, exibe a contagem como badge.
    */
   function _refreshQcReviewCellButton(cellId) {
     const btn = document.getElementById('qc-review-cell-btn');
@@ -3411,15 +3410,10 @@ window.LeucenaApp = (function () {
     if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.countPolygonsByQcStatus) {
       pending = LeucenaDrawing.countPolygonsByQcStatus(cellId, 'unreviewed');
     }
-    if (pending <= 0) {
-      btn.classList.add('hidden');
-      btn.onclick = null;
-      return;
-    }
     btn.classList.remove('hidden');
     btn.disabled = false;
     const baseLabel = LeucenaI18n.t('sidebar.qcReviewCell');
-    btn.textContent = baseLabel + ' (' + pending + ')';
+    btn.textContent = pending > 0 ? (baseLabel + ' (' + pending + ')') : baseLabel;
     btn.onclick = () => {
       if (typeof LeucenaQC !== 'undefined' && LeucenaQC.enterCell) {
         LeucenaQC.enterCell(cellId, 'unreviewed');
