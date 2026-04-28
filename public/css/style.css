@@ -2845,6 +2845,34 @@ a.docs-logo-card:hover {
   flex: 1;
 }
 
+/* ── Google Maps attribution / logo — discreet styling ──
+   The Google Maps Platform Terms of Service (Section 3.2.3 "Display of
+   Branding") REQUIRE the Google logo and the copyright/attribution text
+   (`.gm-style-cc`) to remain visible on every map and panorama. Hiding them
+   risks API-key suspension. We just dim them down a bit so they don't compete
+   visually with our own UI, while still being clearly readable on hover and
+   meeting the TOS legibility requirement. */
+#map img[alt="Google"],
+#streetview-pano img[alt="Google"] {
+  opacity: 0.55;
+  transform: scale(0.85);
+  transform-origin: bottom left;
+  transition: opacity 0.15s ease;
+}
+#map img[alt="Google"]:hover,
+#streetview-pano img[alt="Google"]:hover {
+  opacity: 1;
+}
+#map .gm-style-cc,
+#streetview-pano .gm-style-cc {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+#map .gm-style-cc:hover,
+#streetview-pano .gm-style-cc:hover {
+  opacity: 1;
+}
+
 /* Drag handle that sits between #map and #streetview-container. Hidden when
    the panel itself is hidden (toggled by streetview.js). */
 #streetview-resizer {
