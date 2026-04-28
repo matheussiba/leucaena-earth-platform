@@ -1141,13 +1141,18 @@ window.LeucenaDrawing = (function () {
 
     const dblClickListener = map.addListener('dblclick', () => {
       if (activeMode !== 'hole' || !manualHoleState) return;
-      // While fewer than 3 vertices, ignore dblclick: the second physical click is
-      // often delivered as dblclick (no second map "click"), which used to pop the
-      // last vertex and call completeManualHole — aborting QC hole draw after one point.
-      if (vertices.length < 3) {
+      // dblclick = "I'm done". The 2nd physical click of the dblclick already
+      // fired our 'click' listener and added a duplicate vertex, so we must pop
+      // it before completing. Therefore we can ONLY auto-finish when popping
+      // still leaves >=3 unique vertices — i.e. vertices.length >= 4.
+      // Earlier versions used `< 3`, which still aborted the draw at exactly 3
+      // vertices (pop → 2 → completeManualHole fails → tool falls back to
+      // 'select'), making the hole tool look "broken" after 3 quick clicks
+      // both in cell editing and in QC review.
+      if (vertices.length < 4) {
         if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
           LeucenaApp.logEvent('hole_dblclick_ignored', LeucenaApp.getSelectedCellId(), targetId, {
-            vertices: vertices.length,
+            vertices: vertices.length, reason: 'need_>=4_to_pop_and_complete',
             ..._cellLogCtx()
           });
         }
@@ -1159,7 +1164,7 @@ window.LeucenaDrawing = (function () {
           ..._cellLogCtx()
         });
       }
-      if (vertices.length > 0) removeLastVertex();
+      removeLastVertex();
       completeManualHole();
     });
 

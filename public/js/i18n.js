@@ -707,7 +707,7 @@ window.LeucenaI18n = (function () {
     'deleteWarn.ok': { pt: 'Entendi, continuar', en: 'I understand, continue', es: 'Entendido, continuar' },
     'deleteWarn.cancel': { pt: 'Cancelar', en: 'Cancel', es: 'Cancelar' },
     'toast.holeSelectMask': { pt: 'Clique em um polígono para criar um buraco', en: 'Click a polygon to create a hole', es: 'Haga clic en un polígono para crear un agujero' },
-    'toast.holeDrawNow': { pt: 'Desenhe o buraco dentro do polígono selecionado', en: 'Draw the hole inside the selected polygon', es: 'Dibuje el agujero dentro del polígono seleccionado' },
+    'toast.holeDrawNow': { pt: 'Clique para os vértices · clique direito ou Enter finaliza (mín. 3)', en: 'Click to add vertices · right-click or Enter to finish (min 3)', es: 'Clic para añadir vértices · clic derecho o Enter para finalizar (mín. 3)' },
     'toast.holeCreated': { pt: 'Buraco criado no polígono', en: 'Hole created in polygon', es: 'Agujero creado en el polígono' },
     'toast.holeOutsidePoly': { pt: 'O buraco deve estar dentro do polígono', en: 'Hole must be inside the polygon', es: 'El agujero debe estar dentro del polígono' },
     'toast.holeInsideHole': { pt: 'Não é possível criar um buraco dentro de outro buraco', en: 'Cannot create a hole inside another hole', es: 'No se puede crear un agujero dentro de otro agujero' },
