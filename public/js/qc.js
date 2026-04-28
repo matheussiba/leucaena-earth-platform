@@ -490,6 +490,9 @@ window.LeucenaQC = (function () {
     const poly = state.polygons[state.idx];
     if (!poly) return;
     if (_holeToolActive) {
+      if (LeucenaApp && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('qc_hole_btn_off', state.cellId, poly.id, null);
+      }
       LeucenaDrawing.qcExitHoleMode && LeucenaDrawing.qcExitHoleMode();
       _holeToolActive = false;
       _setToolBtnActive('qc-panel-hole', false);
@@ -497,6 +500,9 @@ window.LeucenaQC = (function () {
     }
     // Mutually exclusive with the vertex-remove tool.
     if (_vertexRemoveActive) toggleRemoveVertexTool();
+    if (LeucenaApp && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('qc_hole_btn_on', state.cellId, poly.id, null);
+    }
     const ok = LeucenaDrawing.qcEnterHoleMode && LeucenaDrawing.qcEnterHoleMode(poly.id, () => {
       // Hole drawing finished (success, escape, or external cancel).
       _holeToolActive = false;
@@ -514,16 +520,29 @@ window.LeucenaQC = (function () {
     const poly = state.polygons[state.idx];
     if (!poly) return;
     if (_vertexRemoveActive) {
+      // User clicking the button toggles off — explicit exit.
+      if (LeucenaApp && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('qc_vertex_remove_btn_off', state.cellId, poly.id, null);
+      }
       LeucenaDrawing.qcExitRemoveVertexMode && LeucenaDrawing.qcExitRemoveVertexMode();
       _vertexRemoveActive = false;
       _setToolBtnActive('qc-panel-remove-vertex', false);
       return;
     }
     if (_holeToolActive) toggleHoleTool();
-    if (LeucenaDrawing.qcEnterRemoveVertexMode && LeucenaDrawing.qcEnterRemoveVertexMode(poly.id)) {
+    if (LeucenaApp && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('qc_vertex_remove_btn_on', state.cellId, poly.id, null);
+    }
+    // Pass an onExit callback so we can sync button state when drawing.js
+    // auto-exits (user clicked outside a vertex, on the map, etc.).
+    const ok = LeucenaDrawing.qcEnterRemoveVertexMode && LeucenaDrawing.qcEnterRemoveVertexMode(poly.id, () => {
+      _vertexRemoveActive = false;
+      _setToolBtnActive('qc-panel-remove-vertex', false);
+    });
+    if (ok) {
       _vertexRemoveActive = true;
       _setToolBtnActive('qc-panel-remove-vertex', true);
-      LeucenaApp.showToast(_t('qc.vertexRemoveHint', 'Clique em qualquer vértice para removê-lo. Clique de novo no botão para sair.'), 'info');
+      LeucenaApp.showToast(_t('qc.vertexRemoveHint', 'Clique em qualquer vértice para removê-lo. Clique fora dele (ou de novo no botão) para sair.'), 'info');
     }
   }
 

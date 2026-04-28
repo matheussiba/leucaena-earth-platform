@@ -227,7 +227,7 @@ window.LeucenaI18n = (function () {
     'qc.removeVertexBtn': { pt: 'Remover vértice', en: 'Remove vertex', es: 'Eliminar vértice' },
     'qc.vertexClickHint': { pt: 'Clique exatamente em cima de um vértice (alça) do polígono.', en: 'Click directly on a polygon vertex handle.', es: 'Haz clic justo sobre un vértice (asa) del polígono.' },
     'qc.vertexMin3': { pt: 'O polígono precisa de ao menos 3 vértices.', en: 'Polygon needs at least 3 vertices.', es: 'El polígono necesita al menos 3 vértices.' },
-    'qc.vertexRemoveHint': { pt: 'Clique em qualquer vértice para removê-lo. Clique de novo no botão para sair.', en: 'Click any vertex to remove it. Click the button again to exit.', es: 'Haz clic en cualquier vértice para eliminarlo. Haz clic en el botón de nuevo para salir.' },
+    'qc.vertexRemoveHint': { pt: 'Clique em qualquer vértice para removê-lo. Clique fora dele (ou de novo no botão) para sair.', en: 'Click any vertex to remove it. Click outside (or the button again) to exit.', es: 'Haz clic en cualquier vértice para eliminarlo. Haz clic afuera (o el botón de nuevo) para salir.' },
     'qc.notesLabel': { pt: 'Notas:', en: 'Notes:', es: 'Notas:' },
     'qc.notesPlaceholder': { pt: 'Anotações opcionais sobre esta revisão', en: 'Optional notes about this review', es: 'Notas opcionales sobre esta revisión' },
     'qc.approved': { pt: 'Polígono aprovado.', en: 'Polygon approved.', es: 'Polígono aprobado.' },

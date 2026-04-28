@@ -372,6 +372,11 @@ window.LeucenaDrawing = (function () {
 
       if (e.key === 'Escape' && activeMode === 'hole' && manualHoleState) {
         e.preventDefault();
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hole_finish_escape', LeucenaApp.getSelectedCellId(), holeTargetId, {
+            vertices: manualHoleState.vertices.length
+          });
+        }
         cleanupManualHole();
         clearHoleTarget();
         setMode('select');
@@ -480,6 +485,15 @@ window.LeucenaDrawing = (function () {
       } else if (activeMode === 'edit') {
         toggleEditPolygon(id);
       } else if (activeMode === 'hole') {
+        // Diagnostic log: in QC hole mode the focused polygon should be
+        // non-editable + non-clickable, so this branch should not fire.
+        // If it does, we want to know.
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('poly_click_in_hole_mode', LeucenaApp.getSelectedCellId(), id, {
+            holeTargetId, clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getClickable(),
+            editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable()
+          });
+        }
         selectHoleTarget(id);
       }
     });
@@ -877,6 +891,11 @@ window.LeucenaDrawing = (function () {
     const selectedCell = LeucenaApp.getSelectedCellId();
     const cellData = LeucenaApp.getSelectedCellData();
     if (cellId !== selectedCell || !cellData || cellData.locked_by !== LeucenaApp.getUsername()) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_target_blocked_lock', selectedCell, id, {
+          polyCellId: cellId, holdsLock: !!(cellData && cellData.locked_by === LeucenaApp.getUsername())
+        });
+      }
       LeucenaApp.showToast(LeucenaI18n.t('toast.lockCellToEdit'), 'warning');
       return;
     }
@@ -1920,18 +1939,29 @@ window.LeucenaDrawing = (function () {
    * Aceita um callback `onComplete` que é chamado quando o modo hole
    * termina (sucesso, cancelamento ou Esc). Permite que qc.js sincronize
    * o estado visual do seu botão "Buraco".
+   *
+   * IMPORTANTE: o polígono em foco no QC está editável (handles de vértice
+   * visíveis). Esses handles capturam cliques e impedem que o
+   * map.click do hole drawing receba os cliques (ou pior: redisparam o
+   * polygon.click handler nativo). Por isso desativamos editable enquanto
+   * o hole está sendo desenhado e restauramos no onComplete.
    */
   let _qcHoleOnComplete = null;
+  let _qcHoleWasEditable = false;
   function qcEnterHoleMode(polyId, onComplete) {
     const entry = drawnPolygons[polyId];
     if (!entry) return false;
     clearHoleTarget();
     holeTargetId = polyId;
+    _qcHoleWasEditable = !!entry.gmapsPoly.getEditable();
+    if (_qcHoleWasEditable) entry.gmapsPoly.setEditable(false);
     entry.gmapsPoly.setOptions(HOLE_HIGHLIGHT);
     activeMode = 'hole';
     _qcHoleOnComplete = typeof onComplete === 'function' ? onComplete : null;
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-      LeucenaApp.logEvent('qc_hole_start', entry.data.grid_cell_id, polyId, null);
+      LeucenaApp.logEvent('qc_hole_start', entry.data.grid_cell_id, polyId, {
+        wasEditable: _qcHoleWasEditable
+      });
     }
     LeucenaApp.showToast(LeucenaI18n.t('toast.holeDrawNow'), 'info');
     startHoleDrawing(polyId);
@@ -1943,6 +1973,18 @@ window.LeucenaDrawing = (function () {
     const interval = setInterval(() => {
       if (!manualHoleState && activeMode !== 'hole') {
         clearInterval(interval);
+        // Restore the focused polygon's editability so the admin can keep
+        // dragging vertices after the hole is done (or aborted).
+        const e2 = drawnPolygons[polyId];
+        if (e2 && _qcHoleWasEditable) {
+          e2.gmapsPoly.setEditable(true);
+          // Re-attach path listeners so auto-save resumes for vertex drags.
+          attachPathListeners(polyId, e2.gmapsPoly);
+        }
+        _qcHoleWasEditable = false;
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('qc_hole_end', e2 ? e2.data.grid_cell_id : null, polyId, null);
+        }
         if (_qcHoleOnComplete) {
           try { _qcHoleOnComplete(); } catch (_) { /* noop */ }
           _qcHoleOnComplete = null;
@@ -1957,25 +1999,49 @@ window.LeucenaDrawing = (function () {
     cleanupManualHole();
     clearHoleTarget();
     activeMode = 'select';
+    // Polling in qcEnterHoleMode will pick up the state change next tick
+    // and restore editability + fire onComplete.
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('qc_hole_exit_user', LeucenaApp.getSelectedCellId(), holeTargetId, null);
+    }
   }
 
   /**
-   * Modo "remover vértice" para QC: anexa um click listener ao polígono;
-   * cliques em handles de vértice (e.vertex !== undefined) removem o
-   * vértice e o auto-save persiste via remove_at listener. Retorna uma
-   * função de teardown para sair do modo.
+   * Modo "remover vértice" para QC: anexa um listener no polígono e no
+   * map. Clicar num vértice remove ele (auto-save via remove_at). Clicar
+   * em qualquer outro lugar (corpo do polígono, mapa) sai do modo e
+   * volta ao estado de edição normal — UX requested pelo usuário pra
+   * evitar ficar preso no modo após terminar.
+   *
+   * Retorna a função de teardown ou null se falhou.
    */
   let _qcVertexRemoveTeardown = null;
-  function qcEnterRemoveVertexMode(polyId) {
+  let _qcVertexRemoveOnExit = null;
+  function qcEnterRemoveVertexMode(polyId, onExit) {
     qcExitRemoveVertexMode();
     const entry = drawnPolygons[polyId];
     if (!entry) return null;
     const poly = entry.gmapsPoly;
+    _qcVertexRemoveOnExit = typeof onExit === 'function' ? onExit : null;
     // Recolor briefly so admin sees the mode is on.
     poly.setOptions({ strokeColor: '#f87171', strokeWeight: 4 });
-    const handler = google.maps.event.addListener(poly, 'click', (e) => {
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('qc_vertex_remove_enter', entry.data.grid_cell_id, polyId, null);
+    }
+
+    const polyClickHandler = google.maps.event.addListener(poly, 'click', (e) => {
+      // Log every poly click so the admin can audit what's happening.
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('qc_vertex_remove_polyclick', entry.data.grid_cell_id, polyId, {
+          vertex: e.vertex == null ? null : e.vertex,
+          edge: e.edge == null ? null : e.edge,
+          path: e.path == null ? null : e.path
+        });
+      }
       if (e.vertex == null) {
-        LeucenaApp.showToast(LeucenaI18n.t('qc.vertexClickHint', 'Clique em um vértice para removê-lo.'), 'info');
+        // Click was on the polygon body, not on a vertex handle. User wants
+        // to exit the tool (per their request). Auto-exit + return to edit.
+        qcExitRemoveVertexMode();
         return;
       }
       const path = poly.getPaths().getAt(e.path || 0);
@@ -1983,6 +2049,9 @@ window.LeucenaDrawing = (function () {
       // Refuse to delete below the 3-vertex floor (would invalidate ring).
       if (path.getLength() <= 3) {
         LeucenaApp.showToast(LeucenaI18n.t('qc.vertexMin3', 'Polígono precisa de ao menos 3 vértices.'), 'warning');
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('qc_vertex_remove_blocked_min3', entry.data.grid_cell_id, polyId, null);
+        }
         return;
       }
       path.removeAt(e.vertex);
@@ -1990,12 +2059,34 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('qc_vertex_remove', entry.data.grid_cell_id, polyId, { vertex: e.vertex });
       }
+      // Stay active so the admin can remove multiple vertices in a row.
     });
+
+    // Map click handler: catches clicks that miss the polygon entirely.
+    // Per user request: clicking the map should also exit the tool and
+    // return to plain edit mode.
+    const map = LeucenaMap.getMap();
+    const mapClickHandler = map.addListener('click', () => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('qc_vertex_remove_mapclick', entry.data.grid_cell_id, polyId, null);
+      }
+      qcExitRemoveVertexMode();
+    });
+
     _qcVertexRemoveTeardown = () => {
-      google.maps.event.removeListener(handler);
+      google.maps.event.removeListener(polyClickHandler);
+      google.maps.event.removeListener(mapClickHandler);
       // Restore focus highlight (we're still in QC focus).
       const e = drawnPolygons[polyId];
       if (e && e._qcFocused) e.gmapsPoly.setOptions(POLY_STYLE_QC_FOCUS);
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('qc_vertex_remove_exit', e ? e.data.grid_cell_id : null, polyId, null);
+      }
+      // Notify caller (qc.js) so it can reset button visual state.
+      if (_qcVertexRemoveOnExit) {
+        try { _qcVertexRemoveOnExit(); } catch (_) { /* noop */ }
+        _qcVertexRemoveOnExit = null;
+      }
     };
     return _qcVertexRemoveTeardown;
   }
