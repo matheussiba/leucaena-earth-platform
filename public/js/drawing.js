@@ -28,6 +28,22 @@ window.LeucenaDrawing = (function () {
     return { selectedCellId: sel, qcReviewCellId: qc };
   }
 
+  /**
+   * Snapshot of how many polygons are currently clickable / non-clickable.
+   * Used by hole_mode_ready / poly_click_in_hole_mode logs so we can spot
+   * cases where setClickable(false) leaked from a previous flow and the
+   * Buraco tool just sits there ignoring polygon clicks.
+   */
+  function _polygonsClickableSnapshot() {
+    const all = Object.values(drawnPolygons);
+    let clickable = 0, nonClickable = 0, nullPoly = 0;
+    for (const e of all) {
+      if (!e || !e.gmapsPoly) { nullPoly++; continue; }
+      if (e.gmapsPoly.getClickable()) clickable++; else nonClickable++;
+    }
+    return { total: all.length, clickable, nonClickable, nullPoly };
+  }
+
   const deleteUndoStack = [];
   const editUndoStack = [];
   let manualDrawState = null;
@@ -544,6 +560,22 @@ window.LeucenaDrawing = (function () {
           lat: e.latLng.lat(), lng: e.latLng.lng()
         });
       }
+      // Always-on, low-volume diagnostic: the user reported clicks on a polygon
+      // in 'hole' mode that produced no log at all (suggesting clickable=false).
+      // This fires *only* in modes that route through the polygon overlay, so
+      // it stays quiet during normal navigation/QC-only flows.
+      if (activeMode === 'hole' || activeMode === 'edit' || activeMode === 'delete') {
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('polygon_click_received', LeucenaApp.getSelectedCellId(), id, {
+            activeMode,
+            holeTargetId,
+            hasManualHole: !!manualHoleState,
+            clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getClickable(),
+            editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
+            ..._cellLogCtx()
+          });
+        }
+      }
       if (activeMode === 'delete') {
         selectForDeletion(id);
       } else if (activeMode === 'edit') {
@@ -942,6 +974,15 @@ window.LeucenaDrawing = (function () {
     clearHoleTarget();
     makeAllNonEditable();
 
+    // Safety net: a previous flow (e.g. completeManualDraw → auto-startDrawing
+    // → setClickable(false)) can leave polygons non-clickable. cleanupManualDraw
+    // only restores clickable when manualDrawState is non-null, so quick
+    // tool-switch sequences (draw→hole→select→hole) could keep the freshly
+    // saved polygon mute. We always re-enable polygon clicks for any mode that
+    // *needs* the user to click on a mask (hole/edit/delete/select), and only
+    // disable them inside startDrawing/startHoleDrawing where it matters.
+    if (mode !== 'draw') setClickable(true);
+
     const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
     if (mode === 'draw') {
       startDrawing();
@@ -953,6 +994,12 @@ window.LeucenaDrawing = (function () {
       } else if (mode === 'hole') {
         LeucenaMap.setGridClickable(false);
         LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('hole_mode_ready', LeucenaApp.getSelectedCellId(), null, {
+            polygonsClickable: _polygonsClickableSnapshot(),
+            ..._cellLogCtx()
+          });
+        }
       }
     }
     if (mode !== 'draw' && mode !== 'hole' && mode !== 'delete') {
@@ -981,9 +1028,19 @@ window.LeucenaDrawing = (function () {
 
   function selectHoleTarget(id) {
     const entry = drawnPolygons[id];
-    if (!entry) return;
+    if (!entry) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_target_missing', LeucenaApp.getSelectedCellId(), id, _cellLogCtx());
+      }
+      return;
+    }
 
     if (!canEditPolygon(entry)) {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('hole_target_blocked_owner', LeucenaApp.getSelectedCellId(), id, {
+          createdBy: entry.data.created_by, ..._cellLogCtx()
+        });
+      }
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyBelongs', entry.data.created_by), 'warning');
       return;
     }
@@ -994,7 +1051,8 @@ window.LeucenaDrawing = (function () {
     if (cellId !== selectedCell || !cellData || cellData.locked_by !== LeucenaApp.getUsername()) {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('hole_target_blocked_lock', selectedCell, id, {
-          polyCellId: cellId, holdsLock: !!(cellData && cellData.locked_by === LeucenaApp.getUsername())
+          polyCellId: cellId, holdsLock: !!(cellData && cellData.locked_by === LeucenaApp.getUsername()),
+          ..._cellLogCtx()
         });
       }
       LeucenaApp.showToast(LeucenaI18n.t('toast.lockCellToEdit'), 'warning');
