@@ -50,6 +50,30 @@ window.LeucenaDrawing = (function () {
     fillOpacity: 0.10
   };
 
+  // Phase 6 — QC review. Contributor polygons that an admin has approved
+  // switch from orange to violet for admin/team viewers so it's obvious at
+  // a glance which work has already been curated. Contributors don't see
+  // this distinction (they always see the masked green style anyway).
+  const POLY_STYLE_CONTRIBUTOR_APPROVED = {
+    strokeColor: '#a855f7',
+    strokeOpacity: 0.95,
+    strokeWeight: 2.5,
+    fillColor: '#a855f7',
+    fillOpacity: 0.12
+  };
+
+  // Polygon currently focused inside the QC review carousel — cyan border
+  // mirrors the "selected cell" highlight used by the grid layer so the
+  // visual language is consistent across the platform.
+  const POLY_STYLE_QC_FOCUS = {
+    strokeColor: '#00FFFF',
+    strokeOpacity: 1,
+    strokeWeight: 4,
+    fillColor: '#00FFFF',
+    fillOpacity: 0.08,
+    zIndex: 25
+  };
+
   // Client-side geodesic area (mirrors server) for labels and consistency checks.
   function ringAreaM2(ring) {
     const toRad = Math.PI / 180, R = 6371000;
@@ -167,10 +191,14 @@ window.LeucenaDrawing = (function () {
     return role === 'admin' || role === 'team';
   }
 
-  function getPolyStyle(creatorRole) {
+  function getPolyStyle(creatorRole, qcStatus) {
     const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getEffectiveRole() : null;
     if (!viewerRole || viewerRole === 'contributor') return POLY_STYLE_MEMBER;
-    return isMemberRole(creatorRole) ? POLY_STYLE_MEMBER : POLY_STYLE_CONTRIBUTOR;
+    if (isMemberRole(creatorRole)) return POLY_STYLE_MEMBER;
+    // Contributor-made polygon viewed by admin/team: violet once approved,
+    // orange while still in the review queue.
+    if (qcStatus === 'approved') return POLY_STYLE_CONTRIBUTOR_APPROVED;
+    return POLY_STYLE_CONTRIBUTOR;
   }
 
   function shouldShowPoly(creatorRole) {
@@ -430,7 +458,8 @@ window.LeucenaDrawing = (function () {
     const map = LeucenaMap.getMap();
     const paths = geojsonRingsToPaths(geometry.coordinates);
     const creatorRole = props.created_by_role || 'contributor';
-    const style = getPolyStyle(creatorRole);
+    const qcStatus = props.qc_status || 'unreviewed';
+    const style = getPolyStyle(creatorRole, qcStatus);
     const currentState = typeof LeucenaMap.getCurrentState === 'function' ? LeucenaMap.getCurrentState() : null;
     const visible = currentState && LeucenaMap.getShowPolygons() && shouldShowPoly(creatorRole);
 
@@ -1728,10 +1757,77 @@ window.LeucenaDrawing = (function () {
   function refreshPolyStyles() {
     for (const entry of Object.values(drawnPolygons)) {
       const crole = entry.data.created_by_role || 'contributor';
-      const style = getPolyStyle(crole);
+      const qcStatus = entry.data.qc_status || 'unreviewed';
+      // QC review focus overrides everything else so the user always knows
+      // which polygon is in the carousel.
+      if (entry._qcFocused) {
+        entry.gmapsPoly.setOptions(POLY_STYLE_QC_FOCUS);
+        continue;
+      }
+      const style = getPolyStyle(crole, qcStatus);
       entry.gmapsPoly.setOptions(style);
     }
     refreshPolyVisibility();
+  }
+
+  // ── Phase 6 — QC review helpers (consumed by qc.js) ──
+  // Lookup, focus highlight, single-polygon editable toggle. Kept inside
+  // drawing.js so all polygon state mutations stay funneled through one
+  // module (avoids the QC code reaching into private maps).
+
+  function getPolyEntry(id) {
+    return drawnPolygons[id] || null;
+  }
+
+  function setQcFocus(id, focused) {
+    const entry = drawnPolygons[id];
+    if (!entry) return;
+    entry._qcFocused = !!focused;
+    if (focused) {
+      entry.gmapsPoly.setOptions(POLY_STYLE_QC_FOCUS);
+      // Force the polygon visible regardless of the current state filter so
+      // QC works even when the admin opened the picker from Brazil view or
+      // from a state different than the polygon's home cell.
+      const map = typeof LeucenaMap !== 'undefined' ? LeucenaMap.getMap() : null;
+      if (map) entry.gmapsPoly.setMap(map);
+    } else {
+      const crole = entry.data.created_by_role || 'contributor';
+      const qcStatus = entry.data.qc_status || 'unreviewed';
+      entry.gmapsPoly.setOptions(getPolyStyle(crole, qcStatus));
+      // Re-evaluate visibility through the standard pipeline so the polygon
+      // hides itself if the admin was in a different state when reviewing.
+      refreshPolyVisibility();
+    }
+  }
+
+  function setPolyEditableSingle(id, editable) {
+    const entry = drawnPolygons[id];
+    if (!entry) return;
+    entry.gmapsPoly.setEditable(!!editable);
+    if (editable) {
+      const coords = pathsToGeoJSONCoords(entry.gmapsPoly);
+      entry._lastGeometry = { type: 'Polygon', coordinates: JSON.parse(JSON.stringify(coords)) };
+      attachPathListeners(id, entry.gmapsPoly);
+    } else {
+      detachPathListeners(id);
+    }
+  }
+
+  function getPolyCurrentGeometry(id) {
+    const entry = drawnPolygons[id];
+    if (!entry) return null;
+    return { type: 'Polygon', coordinates: pathsToGeoJSONCoords(entry.gmapsPoly) };
+  }
+
+  function setPolyQcStatus(id, qcStatus, qcBy, qcAt) {
+    const entry = drawnPolygons[id];
+    if (!entry) return;
+    entry.data.qc_status = qcStatus;
+    entry.data.qc_by = qcBy || null;
+    entry.data.qc_at = qcAt || null;
+    if (entry._qcFocused) return; // focus style stays until QC mode unfocuses
+    const crole = entry.data.created_by_role || 'contributor';
+    entry.gmapsPoly.setOptions(getPolyStyle(crole, qcStatus));
   }
 
   function polygonCountsInLoadedState() {
@@ -1867,6 +1963,12 @@ window.LeucenaDrawing = (function () {
        on truly empty clicks — which is exactly when we want to disarm the tool
        to avoid further accidental deletions. */
     exitDeleteMode() { if (activeMode === 'delete') { setMode('select'); } },
-    hasPendingDelete() { return !!_pendingDeleteId; }
+    hasPendingDelete() { return !!_pendingDeleteId; },
+    // Phase 6 — QC review hooks (used by qc.js)
+    getPolyEntry,
+    setQcFocus,
+    setPolyEditableSingle,
+    getPolyCurrentGeometry,
+    setPolyQcStatus
   };
 })();

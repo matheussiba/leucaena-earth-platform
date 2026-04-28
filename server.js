@@ -3415,7 +3415,12 @@ app.get('/api/polygons', (req, res) => {
       created_by_role: creatorRole(p.created_by),
       created_at: p.created_at,
       updated_at: p.updated_at,
-      area_ha: p.area_ha || 0
+      area_ha: p.area_ha || 0,
+      // Phase 6 — QC review state. Defaults to 'unreviewed' for legacy rows
+      // that pre-date the migration (also handled by db.js backfill).
+      qc_status: p.qc_status || 'unreviewed',
+      qc_by: p.qc_by || null,
+      qc_at: p.qc_at || null
     },
     geometry: JSON.parse(p.geometry)
   }));
@@ -3443,14 +3448,21 @@ app.post('/api/polygons', requireAuth, requireVerified, (req, res) => {
   const id = uuidv4();
   const now = new Date().toISOString();
   const areaHa = Math.round(validResult.area_ha * 100000) / 100000;
+  // Phase 6 — auto-approve when the author is admin/team. They're the same
+  // people who would do QC, so forcing their own work through the queue would
+  // just waste their time. Contributor work always lands as 'unreviewed'.
+  const effRole = getEffectiveRole(username);
+  const autoApprove = effRole === 'admin' || effRole === 'superadmin' || effRole === 'team';
+  const qcStatus = autoApprove ? 'approved' : 'unreviewed';
+  const qcBy = autoApprove ? username : null;
+  const qcAt = autoApprove ? now : null;
   runSQL(
-    'INSERT INTO polygons (id, grid_cell_id, geometry, created_by, created_at, updated_at, area_ha) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [id, Number(grid_cell_id), JSON.stringify(geometry), username || 'anonymous', now, now, areaHa]
+    'INSERT INTO polygons (id, grid_cell_id, geometry, created_by, created_at, updated_at, area_ha, qc_status, qc_by, qc_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, Number(grid_cell_id), JSON.stringify(geometry), username || 'anonymous', now, now, areaHa, qcStatus, qcBy, qcAt]
   );
 
-  const effRole = getEffectiveRole(username);
   const polyRole = effRole === 'superadmin' ? 'admin' : effRole;
-  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: polyRole, created_at: now, updated_at: now, area_ha: areaHa };
+  const polygon = { id, grid_cell_id: Number(grid_cell_id), geometry, created_by: username, created_by_role: polyRole, created_at: now, updated_at: now, area_ha: areaHa, qc_status: qcStatus, qc_by: qcBy, qc_at: qcAt };
   const cellSummary = getCellMaskSummary(Number(grid_cell_id));
   io.emit('polygon:created', {
     ...polygon,
@@ -3477,7 +3489,11 @@ app.put('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [poly.grid_cell_id]);
-  if (cell && cell.locked_by && cell.locked_by !== username) {
+  // Admins bypass the cell-lock check because Phase 6 QC review needs to be
+  // able to refine polygons without taking a lock (and possibly without
+  // disturbing whoever else is editing the cell). Regular users still need
+  // to hold the lock.
+  if (cell && cell.locked_by && cell.locked_by !== username && !isAdmin(username)) {
     return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
@@ -3590,6 +3606,146 @@ app.post('/api/admin/polygons/:id/restore', requireAuth, (req, res) => {
   logActivity(req.username, 'polygon_restore', poly.grid_cell_id, id, null, null, req);
   persist();
   res.json({ success: true, cell_summary: summary });
+});
+
+// ── Phase 6: QC review workflow (Admin) ──
+//
+// All endpoints below require an admin (or superadmin). Team members are NOT
+// admins — they can see flagged content but they don't curate the QC queue.
+
+const QC_STATUSES = new Set(['unreviewed', 'approved', 'flagged', 'rejected']);
+
+// Cells that still have polygons needing review. The list is sorted by the
+// volume of pending work so the admin can attack the busiest cells first.
+// Used by the "Modo Revisão" picker on the client.
+app.get('/api/admin/qc/cells', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const status = String(req.query.status || 'unreviewed').toLowerCase();
+  const filterStatus = QC_STATUSES.has(status) ? status : 'unreviewed';
+  // Aggregate per cell: pending count, oldest pending polygon, sample creators.
+  const rows = queryAll(`
+    SELECT p.grid_cell_id AS cell_id,
+           gc.grid_id     AS cell_grid_id,
+           gc.numpoints   AS cell_points,
+           gc.grid_status AS cell_status,
+           COUNT(*)       AS pending_count,
+           MIN(p.created_at) AS oldest_at,
+           MAX(p.updated_at) AS newest_at
+      FROM polygons p
+      LEFT JOIN grid_cells gc ON gc.id = p.grid_cell_id
+     WHERE p.deleted_at IS NULL
+       AND p.qc_status = ?
+     GROUP BY p.grid_cell_id, gc.grid_id, gc.numpoints, gc.grid_status
+     ORDER BY pending_count DESC, oldest_at ASC
+  `, [filterStatus]);
+  res.json({ status: filterStatus, cells: rows });
+});
+
+// Polygons in a cell that match a given QC status. Returns full geometry so
+// the client can navigate prev/next without an extra round-trip per item.
+app.get('/api/admin/qc/cells/:id/polygons', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const cellId = Number(req.params.id);
+  if (!Number.isFinite(cellId)) return res.status(400).json({ error: 'cell id inválido' });
+  const status = String(req.query.status || 'unreviewed').toLowerCase();
+  const filterStatus = QC_STATUSES.has(status) ? status : 'unreviewed';
+  const polys = queryAll(`
+    SELECT id, grid_cell_id, geometry, created_by, created_at, updated_at,
+           area_ha, qc_status, qc_by, qc_at, qc_notes
+      FROM polygons
+     WHERE deleted_at IS NULL
+       AND grid_cell_id = ?
+       AND qc_status = ?
+     ORDER BY created_at ASC, id ASC
+  `, [cellId, filterStatus]);
+  // Pull creator roles in one shot to avoid N+1.
+  const usernames = [...new Set(polys.map(p => p.created_by).filter(Boolean))];
+  const roleMap = {};
+  if (usernames.length > 0) {
+    const ph = usernames.map(() => '?').join(',');
+    const userRows = queryAll(`SELECT username, role, tester_mode FROM users WHERE username IN (${ph})`, usernames);
+    for (const u of userRows) {
+      let r = u.role || 'contributor';
+      if (r === 'superadmin') r = 'admin';
+      if (r === 'tester') r = u.tester_mode || 'contributor';
+      roleMap[u.username] = r;
+    }
+  }
+  res.json({
+    cell_id: cellId,
+    status: filterStatus,
+    polygons: polys.map(p => ({
+      id: p.id,
+      grid_cell_id: p.grid_cell_id,
+      geometry: JSON.parse(p.geometry),
+      created_by: p.created_by,
+      created_by_role: roleMap[p.created_by] || 'contributor',
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+      area_ha: p.area_ha || 0,
+      qc_status: p.qc_status || 'unreviewed',
+      qc_by: p.qc_by || null,
+      qc_at: p.qc_at || null,
+      qc_notes: p.qc_notes || null
+    }))
+  });
+});
+
+// Set the QC status of a polygon. Body: { qc_status, qc_notes? }.
+// Broadcasts a `polygon:qc` socket event so other admins viewing the same
+// cell see the update in real time.
+app.put('/api/admin/qc/polygons/:id', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const { id } = req.params;
+  const newStatus = String((req.body && req.body.qc_status) || '').toLowerCase();
+  if (!QC_STATUSES.has(newStatus)) {
+    return res.status(400).json({ error: 'qc_status inválido (use unreviewed|approved|flagged|rejected)' });
+  }
+  const notesRaw = req.body && req.body.qc_notes;
+  const notes = notesRaw == null ? null : String(notesRaw).slice(0, 1000);
+
+  const poly = queryOne('SELECT * FROM polygons WHERE id = ? AND deleted_at IS NULL', [id]);
+  if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
+
+  const now = new Date().toISOString();
+  // 'unreviewed' resets the audit trail (e.g. admin re-queues a previously
+  // approved polygon to take a second look). Every other transition stamps
+  // who made the call and when.
+  const qcBy = newStatus === 'unreviewed' ? null : req.username;
+  const qcAt = newStatus === 'unreviewed' ? null : now;
+  runSQL(
+    'UPDATE polygons SET qc_status = ?, qc_by = ?, qc_at = ?, qc_notes = ? WHERE id = ?',
+    [newStatus, qcBy, qcAt, notes, id]
+  );
+
+  io.emit('polygon:qc', {
+    id,
+    grid_cell_id: poly.grid_cell_id,
+    qc_status: newStatus,
+    qc_by: qcBy,
+    qc_at: qcAt,
+    qc_notes: notes
+  });
+  logActivity(req.username, 'polygon_qc', poly.grid_cell_id, id, null, JSON.stringify({ status: newStatus, prev: poly.qc_status }), req);
+  persist();
+  res.json({ success: true, qc_status: newStatus, qc_by: qcBy, qc_at: qcAt, qc_notes: notes });
+});
+
+// Lightweight queue summary (counts per status across the whole DB) — used to
+// surface a badge / counter in the admin UI without paging through all cells.
+app.get('/api/admin/qc/summary', requireAuth, (req, res) => {
+  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  const rows = queryAll(`
+    SELECT qc_status AS status, COUNT(*) AS count
+      FROM polygons
+     WHERE deleted_at IS NULL
+     GROUP BY qc_status
+  `);
+  const summary = { unreviewed: 0, approved: 0, flagged: 0, rejected: 0 };
+  for (const r of rows) {
+    if (summary.hasOwnProperty(r.status)) summary[r.status] = r.count;
+  }
+  res.json(summary);
 });
 
 // ── Import GeoJSON points (Super Admin) ──

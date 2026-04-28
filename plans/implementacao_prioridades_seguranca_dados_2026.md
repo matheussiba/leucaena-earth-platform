@@ -186,25 +186,57 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 
 ---
 
-## Fase 6 — QC de polígonos (workflow científico)
+## Fase 6 — QC de polígonos (workflow científico) ✅ CONCLUÍDO (28 abr 2026)
 
-**Objetivo:** separar “mapeado” de “aprovado para análise/publicação”.
+**Objetivo:** separar "mapeado" de "aprovado para análise/publicação".
 
-**Tarefas sugeridas:**
+**Tarefas concluídas:**
 
-1. Coluna `qc_status` em `polygons`: `unreviewed | approved | flagged | rejected` (+ `qc_notes`, `qc_by`, `qc_at` opcionais).
-2. Painel admin: fila por prioridade (área extrema, autor novo, densidade temporal).
-3. Export: parâmetro `?qc=approved` (default documentado).
-4. Opcional: colaborador vê badge “em revisão” no próprio polígono.
+1. ✅ Coluna `qc_status` em `polygons` (`unreviewed | approved | flagged | rejected`) + `qc_notes`, `qc_by`, `qc_at`. Migration aditiva em `db.js` com índice `idx_polygons_qc_status`. Backfill one-shot: polígonos de admin/team viram `approved`, contributors ficam `unreviewed`.
+2. ✅ Modo Revisão admin (botão na topbar com badge de pendentes). Picker modal lista células com polígonos pendentes (ordenado por volume), filtrável por status (unreviewed/flagged/approved/rejected).
+3. ✅ Carrossel de revisão: navegação prev/next (← →), zoom + fit no polígono selecionado, polígono em destaque com cor cyan (#00FFFF) e vértices editáveis. Painel flutuante com:
+   - Contador `n / N`, cell label, autor + role badge, área, status pill.
+   - Ações: Pular · Marcar (F) · Rejeitar (R) · Salvar geometria (S) · Aprovar (A) · Salvar + Aprovar · Devolver à fila.
+   - Notas opcionais (até 1000 chars).
+   - Auto-next após Aprovar/Marcar/Rejeitar.
+   - Revert automático de edições não salvas ao navegar/sair (com toast).
+4. ✅ Render por cor: aprovados de contributors viram **violeta** (`#a855f7`) para admin/team — antes ficavam laranja. Membros (auto-aprovados) seguem verdes. Para contributors, tudo continua verde como antes (atribuição mantida).
+5. ✅ Endpoints admin (com `isAdmin`):
+   - `GET /api/admin/qc/summary` → contagem por status.
+   - `GET /api/admin/qc/cells?status=` → células com pendentes (sorted by `pending_count DESC, oldest_at ASC`).
+   - `GET /api/admin/qc/cells/:id/polygons?status=` → polígonos da célula com geometria + meta.
+   - `PUT /api/admin/qc/polygons/:id` (body: `qc_status`, `qc_notes`) → salva revisão e emite socket `polygon:qc` (sync entre admins).
+6. ✅ Bypass de cell-lock para admin em `PUT /api/polygons/:id` — admins refinam geometrias sem precisar travar a célula.
+7. ✅ Auto-aprovação na criação: novos polígonos de admin/team já entram como `approved`. Contributors entram como `unreviewed`.
+8. ✅ Realtime sync via `polygon:qc` socket event (LeucenaCollab.getSocket exposto).
+9. ✅ Atalhos teclado no painel: ← → navegação, A aprovar, F marcar, R rejeitar, S salvar, Esc sair.
+10. ✅ Mobile-friendly: painel adapta padding/font, esconde labels secundários, mantém actions principais.
+11. ✅ i18n PT/EN/ES completo para todo o fluxo (`qc.*` keys).
+
+**Pendente (escopo futuro):**
+
+- ⏳ Export `?qc=approved` no `/api/export/*` (mudança simples, ainda não aplicada — fluxo atual exporta tudo).
+- ⏳ Badge "em revisão" visível para o próprio colaborador (decidi não mostrar pra não criar ansiedade — colaborador não vê diferença).
 
 **Critérios de aceite:**
 
-- [ ] Export do paper usa apenas aprovados.
-- [ ] Polígonos antigos migrados para `unreviewed` ou `approved` em massa (script único, documentado).
+- [x] Polígonos antigos migrados para `unreviewed` ou `approved` em massa via backfill no `initDB()`.
+- [x] Admin pode entrar em modo revisão, navegar polígonos um a um, refinar e aprovar.
+- [x] Aprovados ficam visualmente diferentes (violeta) para admin/team.
+- [x] Track de quem criou cada polígono nunca se perde (`created_by` separado de `qc_by`).
+- [ ] Export do paper usa apenas aprovados (futuro — basta adicionar `AND qc_status = 'approved'` nos endpoints de export).
 
-**Estimativa:** 4–7 dias.
+**Arquivos modificados/criados:**
 
-**Dependências:** Fase 3 reduz ruído na fila de QC.
+- `db.js` — migration de colunas QC + índice + backfill.
+- `server.js` — auto-approve na criação, bypass de lock para admin no PUT, 4 endpoints `/api/admin/qc/*`, broadcast `polygon:qc`.
+- `public/js/qc.js` (novo) — orquestração completa do modo revisão.
+- `public/js/drawing.js` — `POLY_STYLE_CONTRIBUTOR_APPROVED` (violeta) e `POLY_STYLE_QC_FOCUS` (cyan), getPolyStyle considera `qc_status`, helpers expostos (`getPolyEntry`, `setQcFocus`, `setPolyEditableSingle`, `getPolyCurrentGeometry`, `setPolyQcStatus`).
+- `public/js/collaboration.js` — `getSocket()` exposto.
+- `public/js/app.js` — chama `LeucenaQC.init()` em `showAdminTools`, esconde botão em `hideAdminTools`.
+- `public/js/i18n.js` — 40+ strings `qc.*` em PT/EN/ES.
+- `public/index.html` — botão `#qc-review-btn` na topbar, modal `#qc-picker-modal`, painel `#qc-review-panel`, script `/js/qc.js`.
+- `public/css/style.css` — bloco completo de estilos QC (~430 linhas) + media query mobile.
 
 ---
 

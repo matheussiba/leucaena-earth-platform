@@ -7753,3 +7753,404 @@ body.sv-active .edit-tools-row {
     height: 56px;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Phase 6 — QC Review (admin only)
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Topbar trigger + pending badge */
+.qc-review-btn {
+  position: relative;
+}
+.qc-review-btn .qc-review-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #a855f7;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.4;
+  box-shadow: 0 0 0 2px var(--bg-primary);
+}
+
+/* ── Picker modal ────────────────────────────────────────────────────────── */
+.qc-picker-card {
+  width: min(560px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.qc-picker-hint {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin: 6px 0 12px;
+}
+.qc-picker-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+.qc-picker-controls select {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.qc-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 56vh;
+  padding-right: 2px;
+}
+.qc-picker-loading,
+.qc-picker-error,
+.qc-picker-empty {
+  text-align: center;
+  padding: 20px 0;
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  font-style: italic;
+}
+.qc-picker-error {
+  color: #ef4444;
+  font-style: normal;
+}
+.qc-picker-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+}
+.qc-picker-row:hover,
+.qc-picker-row:focus-visible {
+  background: rgba(168, 85, 247, 0.10);
+  border-color: rgba(168, 85, 247, 0.45);
+  outline: none;
+}
+.qc-picker-row-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.qc-picker-row-cell {
+  font-weight: 700;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+.qc-picker-row-status {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.qc-picker-row-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+}
+.qc-picker-row-count {
+  color: #a855f7;
+  font-weight: 600;
+}
+
+/* ── Floating review panel ──────────────────────────────────────────────── */
+.qc-review-panel {
+  position: absolute;
+  bottom: calc(var(--toolbar-height) + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 220; /* above #toolbar (200) and edit-tools-panel (210) */
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(168, 85, 247, 0.15);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 540px;
+  max-width: calc(100vw - 24px);
+}
+.qc-review-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.qc-review-title {
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.qc-review-cell {
+  color: #00FFFF;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.qc-review-counter {
+  margin-left: auto;
+  color: rgba(255,255,255,0.85);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+}
+.qc-review-exit {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.qc-review-exit:hover,
+.qc-review-exit:focus-visible {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #fca5a5;
+  outline: none;
+}
+.qc-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+.qc-review-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.qc-review-meta-label {
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+}
+.qc-review-meta-value {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+/* Role badges (member vs contributor) */
+.qc-panel-role {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+.qc-panel-role-admin,
+.qc-panel-role-team {
+  background: rgba(132, 204, 22, 0.18);
+  color: #84cc16;
+  border: 1px solid rgba(132, 204, 22, 0.4);
+}
+.qc-panel-role-contributor {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.4);
+}
+
+/* Status pill */
+.qc-panel-status {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.qc-status-unreviewed { background: rgba(251, 191, 36, 0.15); color: #fde047; border: 1px solid rgba(251, 191, 36, 0.45); }
+.qc-status-approved   { background: rgba(168, 85, 247, 0.18); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.5); }
+.qc-status-flagged    { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.5); }
+.qc-status-rejected   { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
+
+/* Action button row */
+.qc-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.qc-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #e2e8f0;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.qc-action-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.12);
+}
+.qc-action-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.qc-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.qc-action-btn svg {
+  flex-shrink: 0;
+}
+.qc-action-nav {
+  padding: 6px;
+  width: 32px;
+  justify-content: center;
+}
+.qc-action-approve {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.55);
+  color: #d8b4fe;
+}
+.qc-action-approve:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.32);
+  border-color: rgba(168, 85, 247, 0.85);
+}
+.qc-action-save-approve {
+  background: linear-gradient(90deg, rgba(168, 85, 247, 0.25), rgba(132, 204, 22, 0.25));
+  border-color: rgba(168, 85, 247, 0.55);
+  color: #ddd6fe;
+}
+.qc-action-flag {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: #93c5fd;
+}
+.qc-action-reject {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+.qc-action-reject:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+.qc-action-skip {
+  color: rgba(255,255,255,0.6);
+}
+.qc-action-save {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde047;
+}
+.qc-action-unreview {
+  padding: 6px;
+  width: 32px;
+  justify-content: center;
+  color: rgba(255,255,255,0.55);
+}
+
+/* Notes row */
+.qc-review-notes-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
+.qc-review-notes-row label {
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+.qc-review-notes {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  resize: vertical;
+  min-height: 28px;
+  max-height: 80px;
+  outline: none;
+  font-family: inherit;
+}
+.qc-review-notes:focus {
+  border-color: rgba(168, 85, 247, 0.5);
+  background: rgba(255,255,255,0.10);
+}
+
+/* While QC mode is active, dim the floating edit panel and the toolbar
+   dropdowns so the QC panel reads as the primary action surface. */
+body.qc-review-active .edit-tools-panel,
+body.qc-review-active .edit-mode-badge {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .qc-review-panel {
+    min-width: 0;
+    width: calc(100vw - 16px);
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .qc-review-meta {
+    gap: 8px;
+    font-size: 11px;
+  }
+  .qc-action-btn {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .qc-action-btn span {
+    display: none;
+  }
+  .qc-action-skip span,
+  .qc-action-approve span,
+  .qc-action-save-approve span {
+    /* keep the most important actions readable on phones */
+    display: inline;
+  }
+  .qc-review-notes-row {
+    display: none;
+  }
+}

@@ -153,6 +153,33 @@ async function initDB() {
   try { db.run('ALTER TABLE polygons ADD COLUMN deleted_at TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE polygons ADD COLUMN deleted_by TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE polygons ADD COLUMN delete_reason TEXT'); } catch (e) { /* already exists */ }
+  // Phase 6 — QC review workflow. Polygons start as 'unreviewed' and move
+  // through admin curation (approved / flagged / rejected). The science
+  // exports use only 'approved' rows; the platform UI keeps showing every
+  // active polygon (deleted_at IS NULL) regardless of QC state so
+  // contributors don't lose visibility on their work.
+  try { db.run("ALTER TABLE polygons ADD COLUMN qc_status TEXT DEFAULT 'unreviewed'"); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE polygons ADD COLUMN qc_notes TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE polygons ADD COLUMN qc_by TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE polygons ADD COLUMN qc_at TEXT'); } catch (e) { /* already exists */ }
+  // One-shot backfill: anything already in the DB created by an admin or team
+  // member is treated as approved (their own work, no extra review needed).
+  // Everything else stays at the default 'unreviewed' so the QC queue starts
+  // populated with contributor work that wasn't curated before.
+  try {
+    db.run(`UPDATE polygons
+            SET qc_status = 'approved', qc_by = created_by, qc_at = created_at
+            WHERE (qc_status IS NULL OR qc_status = 'unreviewed')
+              AND created_by IN (
+                SELECT username FROM users
+                WHERE role IN ('admin', 'superadmin', 'team')
+              )`);
+    // Make sure any stragglers without a qc_status (default may not back-fill
+    // existing rows on every SQLite version) end up as 'unreviewed'.
+    db.run("UPDATE polygons SET qc_status = 'unreviewed' WHERE qc_status IS NULL");
+  } catch (e) { /* already migrated */ }
+  // Index for the QC queue lookups (find cells with pending polygons).
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_polygons_qc_status ON polygons(qc_status)'); } catch (e) { /* already exists */ }
   try { db.run("ALTER TABLE users ADD COLUMN tester_mode TEXT DEFAULT 'contributor'"); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN is_founder INTEGER DEFAULT 0'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE users ADD COLUMN email TEXT'); } catch (e) { /* already exists */ }

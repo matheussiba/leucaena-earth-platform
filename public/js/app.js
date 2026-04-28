@@ -4064,6 +4064,10 @@ window.LeucenaApp = (function () {
     if (isTeamOrAbove()) {
       loadViewCount();
     }
+    // Phase 6 — show QC review entry point + populate the badge with the
+    // current pending count. `init` is idempotent so it's safe to call on
+    // every showAdminTools (e.g. role switches via tester mode).
+    if (typeof LeucenaQC !== 'undefined' && LeucenaQC.init) LeucenaQC.init();
     applyRoleRestrictions();
   }
   
@@ -4071,6 +4075,9 @@ window.LeucenaApp = (function () {
     if (userRole !== 'tester') {
     document.getElementById('admin-users-btn').classList.add('hidden');
     }
+    // Phase 6 — drop the QC entry point when role drops below admin.
+    var qcBtn = document.getElementById('qc-review-btn');
+    if (qcBtn) qcBtn.classList.add('hidden');
     document.getElementById('cell-search-section').classList.add('hidden');
     document.getElementById('view-counter').classList.add('hidden');
     

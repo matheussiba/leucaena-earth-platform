@@ -368,5 +368,9 @@ window.LeucenaCollab = (function () {
     init, initAnonymous, notifyEditingCell, notifyActivity, notifyLocationState, leave,
     installContinuousStateSaver: _installContinuousStateSaver,
     saveMapStateNow: _saveMapStateForReload,
+    // Phase 6 — exposed so other modules (e.g. qc.js) can subscribe to extra
+    // socket events (`polygon:qc`) without each module having to open its
+    // own connection. Returns null until init() finishes.
+    getSocket() { return socket; }
   };
 })();
