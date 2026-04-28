@@ -5236,6 +5236,14 @@ body.sv-active .edit-tools-row {
     min-width: 150px;
   }
 
+  /* While editing a cell on mobile, hide the legend overlay (it steals space and
+     becomes an easy mis-tap target next to the floating edit panel). */
+  #main-content.editing-cell .map-legend {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   .btn-my-location {
     bottom: 48px;
     right: 8px;
