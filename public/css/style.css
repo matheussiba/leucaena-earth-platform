@@ -7855,16 +7855,41 @@ body.sv-active .edit-tools-row {
   align-items: baseline;
   gap: 12px;
 }
+.qc-picker-row-uf {
+  display: inline-block;
+  min-width: 32px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.18);
+  color: #c4b5fd;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-align: center;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
 .qc-picker-row-cell {
   font-weight: 700;
   color: #e2e8f0;
   font-size: 14px;
+  flex: 1;
 }
 .qc-picker-row-status {
   font-size: 11px;
   color: rgba(255,255,255,0.5);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+.qc-picker-row-main {
+  align-items: center;
+}
+.qc-picker-scope {
+  margin-left: auto;
+  font-size: 11px;
+  color: rgba(196, 181, 253, 0.85);
+  font-style: italic;
+  text-align: right;
 }
 .qc-picker-row-meta {
   display: flex;

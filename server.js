@@ -3622,23 +3622,37 @@ app.get('/api/admin/qc/cells', requireAuth, (req, res) => {
   if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
   const status = String(req.query.status || 'unreviewed').toLowerCase();
   const filterStatus = QC_STATUSES.has(status) ? status : 'unreviewed';
+  // Optional region filter (UF). When omitted, returns cells from every
+  // state (used for the "Brasil" overview). The filter is applied via a
+  // subquery against grid_cell_states so multi-state cells are caught.
+  const stateRaw = req.query.state ? String(req.query.state).toUpperCase() : null;
+  const stateFilter = stateRaw && /^[A-Z]{2}$/.test(stateRaw) ? stateRaw : null;
+  const params = [filterStatus];
+  let stateClause = '';
+  if (stateFilter) {
+    stateClause = ' AND p.grid_cell_id IN (SELECT grid_cell_id FROM grid_cell_states WHERE state = ?)';
+    params.push(stateFilter);
+  }
   // Aggregate per cell: pending count, oldest pending polygon, sample creators.
+  // Includes `cell_state` so the picker UI can show which UF the cell sits
+  // in — useful when reviewing across the whole country.
   const rows = queryAll(`
     SELECT p.grid_cell_id AS cell_id,
            gc.grid_id     AS cell_grid_id,
            gc.numpoints   AS cell_points,
            gc.grid_status AS cell_status,
+           gc.state       AS cell_state,
            COUNT(*)       AS pending_count,
            MIN(p.created_at) AS oldest_at,
            MAX(p.updated_at) AS newest_at
       FROM polygons p
       LEFT JOIN grid_cells gc ON gc.id = p.grid_cell_id
      WHERE p.deleted_at IS NULL
-       AND p.qc_status = ?
-     GROUP BY p.grid_cell_id, gc.grid_id, gc.numpoints, gc.grid_status
+       AND p.qc_status = ?` + stateClause + `
+     GROUP BY p.grid_cell_id, gc.grid_id, gc.numpoints, gc.grid_status, gc.state
      ORDER BY pending_count DESC, oldest_at ASC
-  `, [filterStatus]);
-  res.json({ status: filterStatus, cells: rows });
+  `, params);
+  res.json({ status: filterStatus, state: stateFilter, cells: rows });
 });
 
 // Polygons in a cell that match a given QC status. Returns full geometry so

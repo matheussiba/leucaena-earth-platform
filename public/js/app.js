@@ -3365,6 +3365,7 @@ window.LeucenaApp = (function () {
       lockBtn.onclick = () => openAuthModal('login');
       unlockToolBtn.disabled = true;
       enableTools(false);
+      _refreshQcReviewCellButton(cellId);
       return;
     }
 
@@ -3386,6 +3387,44 @@ window.LeucenaApp = (function () {
       unlockToolBtn.disabled = true;
       enableTools(false);
     }
+
+    _refreshQcReviewCellButton(cellId);
+  }
+
+  /**
+   * Mostra/esconde o botão "Modo Revisão" no painel da célula. Apenas
+   * admins veem; o botão fica visível só quando há ao menos 1 polígono
+   * pendente (qc_status='unreviewed') já carregado para a célula. Se a
+   * contagem ainda é 0 mas pode haver polígonos não carregados, mantemos
+   * escondido — o admin pode usar o botão da topbar para abrir o picker
+   * geral. Evita falso positivo em células totalmente revisadas.
+   */
+  function _refreshQcReviewCellButton(cellId) {
+    const btn = document.getElementById('qc-review-cell-btn');
+    if (!btn) return;
+    if (!isAdminUser()) {
+      btn.classList.add('hidden');
+      btn.onclick = null;
+      return;
+    }
+    let pending = 0;
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.countPolygonsByQcStatus) {
+      pending = LeucenaDrawing.countPolygonsByQcStatus(cellId, 'unreviewed');
+    }
+    if (pending <= 0) {
+      btn.classList.add('hidden');
+      btn.onclick = null;
+      return;
+    }
+    btn.classList.remove('hidden');
+    btn.disabled = false;
+    const baseLabel = LeucenaI18n.t('sidebar.qcReviewCell');
+    btn.textContent = baseLabel + ' (' + pending + ')';
+    btn.onclick = () => {
+      if (typeof LeucenaQC !== 'undefined' && LeucenaQC.enterCell) {
+        LeucenaQC.enterCell(cellId, 'unreviewed');
+      }
+    };
   }
 
   function deselectCell() {
@@ -3414,6 +3453,8 @@ window.LeucenaApp = (function () {
     selectedCellId = null;
     selectedCellData = null;
     document.getElementById('cell-actions').classList.add('hidden');
+    const qcCellBtn = document.getElementById('qc-review-cell-btn');
+    if (qcCellBtn) { qcCellBtn.classList.add('hidden'); qcCellBtn.onclick = null; }
     document.getElementById('selected-cell-info').classList.add('hidden');
     document.getElementById('tool-unlock').disabled = true;
     enableTools(false);
@@ -7024,6 +7065,9 @@ window.LeucenaApp = (function () {
     isSuperAdmin,
     isTeamOrAbove,
     getEffectiveRole,
+    refreshSelectedCellQcButton: function () {
+      if (selectedCellId != null) _refreshQcReviewCellButton(selectedCellId);
+    },
     logEvent,
     flushLogs: _flushLogs,
     onPolygonSaved,

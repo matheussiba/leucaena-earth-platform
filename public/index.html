@@ -331,6 +331,7 @@
           <option value="approved" data-i18n="qc.status.approved">Aprovados</option>
           <option value="rejected" data-i18n="qc.status.rejected">Rejeitados</option>
         </select>
+        <span id="qc-picker-scope" class="qc-picker-scope"></span>
       </div>
       <div id="qc-picker-list" class="qc-picker-list"></div>
       <div id="qc-picker-empty" class="qc-picker-empty hidden" data-i18n="qc.pickerEmpty">Nenhuma célula com polígonos para esse status.</div>
@@ -1035,6 +1036,7 @@
           <h3 data-i18n="sidebar.cellInfo">Informações da Célula</h3>
           <p class="cell-id-label"><span data-i18n="sidebar.cell">Célula</span> #<span id="cell-id-display"></span></p>
           <button class="btn btn-primary btn-full" id="lock-cell-btn" data-i18n="sidebar.lockEdit">Bloquear e Editar</button>
+          <button class="btn btn-secondary btn-full hidden" id="qc-review-cell-btn" data-i18n="sidebar.qcReviewCell">Modo Revisão</button>
           <div class="cell-detail">
             <span class="cell-detail-label" data-i18n="sidebar.status">Status:</span>
             <span id="cell-status-display" class="cell-detail-value">--</span>

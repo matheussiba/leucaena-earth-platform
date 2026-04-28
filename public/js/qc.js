@@ -97,8 +97,26 @@ window.LeucenaQC = (function () {
     const modal = document.getElementById('qc-picker-modal');
     if (!modal) return;
     modal.classList.remove('hidden');
+    _renderScopeHint();
     if (LeucenaApp && LeucenaApp.logEvent) LeucenaApp.logEvent('qc_picker_open');
     await _loadPickerList(_currentStatusFilter());
+  }
+
+  /** Returns the currently active UF (e.g., "SP") or null when on Brasil. */
+  function _currentScopeUF() {
+    if (typeof LeucenaMap === 'undefined' || !LeucenaMap.getCurrentState) return null;
+    const uf = LeucenaMap.getCurrentState();
+    return uf ? String(uf).toUpperCase() : null;
+  }
+
+  /** Update the small scope label inside the picker (shows "Brasil" or UF). */
+  function _renderScopeHint() {
+    const el = document.getElementById('qc-picker-scope');
+    if (!el) return;
+    const uf = _currentScopeUF();
+    el.textContent = uf
+      ? _t('qc.scopeState', 'Mostrando células de {uf}').replace('{uf}', uf)
+      : _t('qc.scopeBrazil', 'Mostrando células do Brasil inteiro');
   }
 
   function _closePicker() {
@@ -117,9 +135,16 @@ window.LeucenaQC = (function () {
     if (list) list.innerHTML = '<div class="qc-picker-loading">' + _t('qc.loading', 'Carregando…') + '</div>';
     if (empty) empty.classList.add('hidden');
 
+    // Filter by current region (UF) when the admin is browsing a specific
+    // state; on Brasil view the request is unscoped so cells from every UF
+    // appear.
+    const uf = _currentScopeUF();
+    let url = '/api/admin/qc/cells?status=' + encodeURIComponent(status);
+    if (uf) url += '&state=' + encodeURIComponent(uf);
+
     let payload;
     try {
-      const res = await fetch('/api/admin/qc/cells?status=' + encodeURIComponent(status), {
+      const res = await fetch(url, {
         headers: LeucenaApp.authHeaders ? LeucenaApp.authHeaders() : {}
       });
       payload = await res.json();
@@ -139,8 +164,13 @@ window.LeucenaQC = (function () {
       const label = c.cell_grid_id || ('#' + c.cell_id);
       const oldest = c.oldest_at ? new Date(c.oldest_at) : null;
       const oldestStr = oldest ? oldest.toLocaleDateString() : '—';
+      const uf = c.cell_state ? String(c.cell_state).toUpperCase() : '';
+      const ufBadge = uf
+        ? '<span class="qc-picker-row-uf" title="' + _t('qc.stateOf', 'Estado') + '">' + uf + '</span>'
+        : '';
       return '<button type="button" class="qc-picker-row" data-cell-id="' + c.cell_id + '">'
         + '<div class="qc-picker-row-main">'
+          + ufBadge
           + '<span class="qc-picker-row-cell">' + label + '</span>'
           + '<span class="qc-picker-row-status">' + (c.cell_status || '—') + '</span>'
         + '</div>'
@@ -507,6 +537,11 @@ window.LeucenaQC = (function () {
       if (LeucenaApp && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('qc_set_status', state.cellId, poly.id, { status: newStatus });
       }
+      // Keep the sidebar's "Modo Revisão (N)" badge in sync with the new
+      // pending count after this approval/rejection/flag.
+      if (LeucenaApp && LeucenaApp.refreshSelectedCellQcButton) {
+        LeucenaApp.refreshSelectedCellQcButton();
+      }
       refreshSummary();
       return true;
     } catch (e) {
@@ -587,6 +622,11 @@ window.LeucenaQC = (function () {
     _hidePanel();
     // Restore the grid fill (was made transparent on entry).
     if (LeucenaMap.setGridsHollow) LeucenaMap.setGridsHollow(false);
+    // Refresh the sidebar's "Modo Revisão" badge so the count reflects any
+    // approvals/rejections that just happened.
+    if (LeucenaApp && LeucenaApp.refreshSelectedCellQcButton) {
+      LeucenaApp.refreshSelectedCellQcButton();
+    }
     if (_previousMapView && LeucenaMap.getMap) {
       const map = LeucenaMap.getMap();
       if (map && _previousMapView.center) map.setCenter(_previousMapView.center);

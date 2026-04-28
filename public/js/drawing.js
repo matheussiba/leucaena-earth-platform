@@ -1905,6 +1905,23 @@ window.LeucenaDrawing = (function () {
     return n;
   }
 
+  /**
+   * Quantos polígonos numa célula têm um dado qc_status (default 'unreviewed').
+   * Usado pela sidebar admin para decidir se mostra o botão "Modo Revisão"
+   * e quantos pendentes existem antes de abrir o carrossel.
+   */
+  function countPolygonsByQcStatus(cellId, qcStatus) {
+    if (cellId == null) return 0;
+    const target = qcStatus || 'unreviewed';
+    let n = 0;
+    for (const entry of Object.values(drawnPolygons)) {
+      if (entry.data.grid_cell_id !== cellId) continue;
+      const s = entry.data.qc_status || 'unreviewed';
+      if (s === target) n++;
+    }
+    return n;
+  }
+
   function getTotalPolygonCount() {
     return Object.keys(drawnPolygons).length;
   }
@@ -1947,6 +1964,7 @@ window.LeucenaDrawing = (function () {
     setClickable,
     getPolygonCount,
     getPolygonCountForCell,
+    countPolygonsByQcStatus,
     getTotalPolygonCount,
     getPolygonCounts,
     clearUndoHistory,
