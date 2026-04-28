@@ -5073,28 +5073,44 @@ body.sv-active .edit-tools-row {
   }
 
   .edit-mode-badge {
+    /* Single row on mobile: pulse · "Editando Célula #LB-330-1" · 🔒
+       The unlock button keeps just its icon (label hidden below) so the badge
+       fits in one line even on 360px-wide phones. */
     font-size: 11px;
-    padding: 6px 10px;
+    padding: 4px 8px 4px 12px;
     gap: 6px;
     max-width: 95vw;
-    flex-direction: column;
-    border-radius: 14px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    border-radius: 18px;
+  }
+
+  #edit-mode-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    max-width: 55vw;
   }
 
   .btn-badge-unlock {
     width: auto;
     height: auto;
-    padding: 6px 14px;
-    gap: 6px;
-    border-radius: 10px;
+    padding: 5px 8px;
+    gap: 0;
+    border-radius: 8px;
     font-size: 11px;
     font-weight: 600;
     background: rgba(239, 68, 68, 0.3);
     border-color: rgba(239, 68, 68, 0.7);
+    flex-shrink: 0;
   }
 
+  /* Drop the verbose label on mobile — the cadeado icon alone is enough,
+     and the badge would otherwise wrap to multiple lines. */
   .btn-badge-unlock .unlock-label {
-    display: inline;
+    display: none;
   }
 
   .tool-hint-text {
@@ -5274,6 +5290,39 @@ body.sv-active .edit-tools-row {
   }
   #main-content.editing-cell .edit-tools-row {
     gap: 3px;
+  }
+
+  /* When Street View is active on top of an editing session, shrink the panel
+     even more — the panorama already eats half the screen. The general
+     body.sv-active rules above turn buttons into 36x36 icon-only squares; here
+     we just tighten gaps/paddings further for portrait phones. */
+  body.sv-active #main-content.editing-cell .edit-tools-panel {
+    padding: 4px;
+    gap: 3px;
+  }
+  body.sv-active #main-content.editing-cell .edit-tool-btn-labeled {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+  body.sv-active #main-content.editing-cell .edit-tool-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Hide non-essential Google Maps overlay controls (zoom, fullscreen, pegman)
+     while editing a cell on mobile so the floating edit panel and the cell
+     content are not visually crowded. The Google logo and copyright/scale
+     elements (`gm-style-cc`) are intentionally NOT hidden — they are required
+     by the Google Maps Platform Terms of Service. The user can re-arm those
+     controls by leaving edit mode. */
+  #app:has(#main-content.editing-cell) #map .gm-bundled-control,
+  #app:has(#main-content.editing-cell) #map .gm-fullscreen-control,
+  #app:has(#main-content.editing-cell) #streetview-container .gm-bundled-control,
+  #app:has(#main-content.editing-cell) #streetview-container .gm-fullscreen-control {
+    display: none !important;
   }
 
   .btn-my-location {
