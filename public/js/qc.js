@@ -2,27 +2,27 @@
  * Phase 6 — QC review carousel (admin only).
  *
  * Workflow:
- *   1. Admin clicks the "Modo Revisão" button in the topbar.
+ *   1. Admin clicks the "Modo Revisão" button in the topbar (or the
+ *      per-cell "Modo Revisão (N)" button in the sidebar).
  *   2. Picker modal lists cells that still have polygons in the chosen
  *      QC status (default: 'unreviewed'), sorted by pending volume.
  *   3. Admin picks a cell → enters review mode: floating carousel at the
  *      bottom of the map, polygons are visited one-by-one, each one
  *      highlighted in cyan + made editable so refinements can be made
  *      in-place before approving.
- *   4. Actions: Aprovar / Rejeitar / Marcar / Pular / Salvar geometria.
- *      "Aprovar" auto-advances to the next polygon — most reviews are
- *      "approve with minor edits" so we optimize for that path.
- *
- * The module never holds a cell lock — admins bypass the lock check in
- * `PUT /api/polygons/:id` (server.js). The on-screen polygon edits are
- * persisted only when the admin clicks "Salvar geometria" or
- * "Salvar e aprovar"; navigating away discards in-flight pixel changes.
+ *   4. Geometry edits auto-save (debounced via attachPathListeners in
+ *      drawing.js). Ctrl+Z and the "Desfazer" button pop the last edit
+ *      snapshot for the focused polygon. Available geometry tools:
+ *      Buraco (hole) and Remover Vértice — both bypass the cell lock
+ *      check, since admin QC never holds a lock.
+ *   5. Actions: Aprovar / Rejeitar / Marcar / Pular / Devolver para a
+ *      fila. "Aprovar" auto-advances to the next polygon — most reviews
+ *      are "approve with minor edits" so we optimize for that path.
  */
 window.LeucenaQC = (function () {
   let state = null; // { cellId, gridCellLabel, polygons: [...], idx, statusFilter }
   let _summaryCache = null;
   let _previousMapView = null; // { zoom, center } so we can restore on exit
-  let _editedSinceLastSave = false;
 
   function _isAdmin() {
     return typeof LeucenaApp !== 'undefined' && LeucenaApp.isAdminUser && LeucenaApp.isAdminUser();
@@ -312,13 +312,9 @@ window.LeucenaQC = (function () {
     if (!state) return;
     if (idx < 0 || idx >= state.polygons.length) return;
     if (state.idx !== idx && state.idx != null) {
-      // Edited but not saved? Revert to the server-side geometry so the
-      // pixel changes don't silently linger after navigation.
-      _revertCurrentIfUnsaved();
       _unfocusCurrent();
     }
     state.idx = idx;
-    _editedSinceLastSave = false;
     const poly = state.polygons[idx];
     if (!poly) return;
 
@@ -326,32 +322,19 @@ window.LeucenaQC = (function () {
     _renderPanel();
   }
 
-  function _revertCurrentIfUnsaved() {
-    if (!_editedSinceLastSave) return;
-    const cur = state && state.polygons[state.idx];
-    if (!cur) return;
-    // Re-render the polygon from its last-known persisted geometry. The
-    // user is informed via toast so they don't think they lost work.
-    LeucenaDrawing.addRemotePolygon({
-      id: cur.id,
-      grid_cell_id: cur.grid_cell_id,
-      geometry: cur.geometry,
-      created_by: cur.created_by,
-      created_by_role: cur.created_by_role,
-      created_at: cur.created_at,
-      updated_at: cur.updated_at,
-      area_ha: cur.area_ha,
-      qc_status: cur.qc_status,
-      qc_by: cur.qc_by,
-      qc_at: cur.qc_at
-    });
-    LeucenaApp.showToast(_t('qc.revertedNoSave', 'Edições não salvas foram descartadas.'), 'info');
-  }
-
   function _unfocusCurrent() {
     if (!state) return;
     const cur = state.polygons[state.idx];
     if (!cur) return;
+    // Flush any in-flight auto-save before tearing down listeners. Without
+    // this, the 150ms debounce in attachPathListeners can swallow an edit
+    // the admin did right before clicking Next/Prev/Esc.
+    if (LeucenaDrawing.flushPendingPolygonSave) {
+      LeucenaDrawing.flushPendingPolygonSave(cur.id);
+    }
+    // Tear down hole / vertex-remove tools so they don't leak across
+    // polygon boundaries.
+    _exitAllGeometryTools();
     if (LeucenaDrawing.setQcFocus) LeucenaDrawing.setQcFocus(cur.id, false);
     if (LeucenaDrawing.setPolyEditableSingle) LeucenaDrawing.setPolyEditableSingle(cur.id, false);
   }
@@ -443,13 +426,23 @@ window.LeucenaQC = (function () {
     if (prevBtn) prevBtn.disabled = state.idx === 0;
     if (nextBtn) nextBtn.disabled = state.idx === total - 1;
 
-    // "Salvar geometria" is dimmed until the admin actually edits.
-    const saveBtn = document.getElementById('qc-panel-save');
-    if (saveBtn) saveBtn.disabled = !_editedSinceLastSave;
+    _refreshUndoButton();
+  }
+
+  /** Habilita o botão "Desfazer" só quando há histórico para o polígono atual. */
+  function _refreshUndoButton() {
+    const btn = document.getElementById('qc-panel-undo');
+    if (!btn || !state) return;
+    const poly = state.polygons[state.idx];
+    if (!poly) { btn.disabled = true; return; }
+    const n = (LeucenaDrawing.getEditUndoCountForPolygon
+      ? LeucenaDrawing.getEditUndoCountForPolygon(poly.id)
+      : 0);
+    btn.disabled = n <= 0;
   }
 
   function _wirePanelButtons() {
-    const map = {
+    const handlers = {
       'qc-panel-prev': prev,
       'qc-panel-next': next,
       'qc-panel-skip': () => { if (state) next(); },
@@ -457,38 +450,100 @@ window.LeucenaQC = (function () {
       'qc-panel-flag': flagCurrent,
       'qc-panel-reject': rejectCurrent,
       'qc-panel-unreview': unreviewCurrent,
-      'qc-panel-save': saveGeometryCurrent,
-      'qc-panel-save-approve': async () => {
-        const ok = await saveGeometryCurrent({ silent: true });
-        if (ok) approveCurrent();
-      },
+      'qc-panel-undo': undoCurrent,
+      'qc-panel-hole': toggleHoleTool,
+      'qc-panel-remove-vertex': toggleRemoveVertexTool,
       'qc-panel-exit': exit
     };
-    Object.keys(map).forEach((id) => {
+    Object.keys(handlers).forEach((id) => {
       const el = document.getElementById(id);
       if (el && !el._wired) {
         el._wired = true;
-        el.addEventListener('click', map[id]);
+        el.addEventListener('click', handlers[id]);
       }
     });
 
-    // Track edits to enable "Salvar geometria"
-    document.addEventListener('mouseup', _markEditedIfActive, true);
-    document.addEventListener('touchend', _markEditedIfActive, true);
+    // Sync the Undo button after each gesture so the admin sees right away
+    // when there's something to undo. We poll on mouseup / touchend because
+    // attachPathListeners (drawing.js) doesn't expose a snapshot event.
+    document.addEventListener('mouseup', _refreshUndoButton, true);
+    document.addEventListener('touchend', _refreshUndoButton, true);
   }
 
-  function _markEditedIfActive() {
+  // ── Edit helpers (auto-save is handled by drawing.js attachPathListeners) ──
+
+  async function undoCurrent() {
     if (!state) return;
     const poly = state.polygons[state.idx];
     if (!poly) return;
-    const live = LeucenaDrawing.getPolyCurrentGeometry && LeucenaDrawing.getPolyCurrentGeometry(poly.id);
-    if (!live) return;
-    const json = JSON.stringify(live);
-    const original = JSON.stringify(poly.geometry);
-    if (json !== original) {
-      _editedSinceLastSave = true;
-      const saveBtn = document.getElementById('qc-panel-save');
-      if (saveBtn) saveBtn.disabled = false;
+    if (!LeucenaDrawing.qcUndoForPolygon) return;
+    const ok = await LeucenaDrawing.qcUndoForPolygon(poly.id);
+    if (ok) {
+      LeucenaApp.showToast(_t('qc.undone', 'Edição desfeita.'), 'success');
+    }
+    _refreshUndoButton();
+  }
+
+  let _holeToolActive = false;
+  function toggleHoleTool() {
+    if (!state) return;
+    const poly = state.polygons[state.idx];
+    if (!poly) return;
+    if (_holeToolActive) {
+      LeucenaDrawing.qcExitHoleMode && LeucenaDrawing.qcExitHoleMode();
+      _holeToolActive = false;
+      _setToolBtnActive('qc-panel-hole', false);
+      return;
+    }
+    // Mutually exclusive with the vertex-remove tool.
+    if (_vertexRemoveActive) toggleRemoveVertexTool();
+    const ok = LeucenaDrawing.qcEnterHoleMode && LeucenaDrawing.qcEnterHoleMode(poly.id, () => {
+      // Hole drawing finished (success, escape, or external cancel).
+      _holeToolActive = false;
+      _setToolBtnActive('qc-panel-hole', false);
+    });
+    if (ok) {
+      _holeToolActive = true;
+      _setToolBtnActive('qc-panel-hole', true);
+    }
+  }
+
+  let _vertexRemoveActive = false;
+  function toggleRemoveVertexTool() {
+    if (!state) return;
+    const poly = state.polygons[state.idx];
+    if (!poly) return;
+    if (_vertexRemoveActive) {
+      LeucenaDrawing.qcExitRemoveVertexMode && LeucenaDrawing.qcExitRemoveVertexMode();
+      _vertexRemoveActive = false;
+      _setToolBtnActive('qc-panel-remove-vertex', false);
+      return;
+    }
+    if (_holeToolActive) toggleHoleTool();
+    if (LeucenaDrawing.qcEnterRemoveVertexMode && LeucenaDrawing.qcEnterRemoveVertexMode(poly.id)) {
+      _vertexRemoveActive = true;
+      _setToolBtnActive('qc-panel-remove-vertex', true);
+      LeucenaApp.showToast(_t('qc.vertexRemoveHint', 'Clique em qualquer vértice para removê-lo. Clique de novo no botão para sair.'), 'info');
+    }
+  }
+
+  function _setToolBtnActive(id, active) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('active', !!active);
+  }
+
+  /** Sai de qualquer ferramenta de edição em andamento (hole / vertex-remove). */
+  function _exitAllGeometryTools() {
+    if (_holeToolActive) {
+      LeucenaDrawing.qcExitHoleMode && LeucenaDrawing.qcExitHoleMode();
+      _holeToolActive = false;
+      _setToolBtnActive('qc-panel-hole', false);
+    }
+    if (_vertexRemoveActive) {
+      LeucenaDrawing.qcExitRemoveVertexMode && LeucenaDrawing.qcExitRemoveVertexMode();
+      _vertexRemoveActive = false;
+      _setToolBtnActive('qc-panel-remove-vertex', false);
     }
   }
 
@@ -579,40 +634,8 @@ window.LeucenaQC = (function () {
     _renderPanel();
   }
 
-  async function saveGeometryCurrent(opts) {
-    opts = opts || {};
-    if (!state) return false;
-    const poly = state.polygons[state.idx];
-    if (!poly) return false;
-    const live = LeucenaDrawing.getPolyCurrentGeometry && LeucenaDrawing.getPolyCurrentGeometry(poly.id);
-    if (!live) return false;
-    try {
-      const res = await fetch('/api/polygons/' + poly.id, {
-        method: 'PUT',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, LeucenaApp.authHeaders ? LeucenaApp.authHeaders() : {}),
-        body: JSON.stringify({ geometry: live })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        LeucenaApp.showToast(err.error || _t('qc.saveError', 'Erro ao salvar geometria.'), 'error');
-        return false;
-      }
-      const data = await res.json();
-      poly.geometry = live;
-      poly.area_ha = data.area_ha;
-      _editedSinceLastSave = false;
-      _renderPanel();
-      if (!opts.silent) LeucenaApp.showToast(_t('qc.geometrySaved', 'Geometria salva.'), 'success');
-      return true;
-    } catch (e) {
-      LeucenaApp.showToast(_t('qc.saveError', 'Erro ao salvar geometria.'), 'error');
-      return false;
-    }
-  }
-
   function exit() {
     if (!state) return;
-    _revertCurrentIfUnsaved();
     _unfocusCurrent();
     if (LeucenaApp && LeucenaApp.logEvent) {
       LeucenaApp.logEvent('qc_review_exit', state.cellId);
@@ -637,7 +660,8 @@ window.LeucenaQC = (function () {
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────
   // Only active while the panel is open. Mirrors common photo-review tools:
-  //   ← → navigate · A approve · F flag · R reject · S save geometry · Esc exit.
+  //   ← →  navigate  ·  A approve  ·  F flag  ·  R reject  ·  Esc exit
+  //   Ctrl/Cmd+Z desfaz a última edição de geometria do polígono atual.
 
   function _bindKeyboard() {
     document.addEventListener('keydown', (e) => {
@@ -645,12 +669,23 @@ window.LeucenaQC = (function () {
       // Ignore typing inside the notes textarea
       const tag = (e.target && e.target.tagName) || '';
       if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+      // Ctrl/Cmd+Z: per-polygon undo. drawing.js owns Ctrl+Z while one of
+      // its modes is active (draw/edit/delete/hole — e.g. removing the last
+      // hole vertex while drawing a hole), so defer to it in those cases
+      // and only act when the admin is in plain QC focus mode.
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
+        const dMode = LeucenaDrawing.getActiveMode && LeucenaDrawing.getActiveMode();
+        if (dMode === 'draw' || dMode === 'edit' || dMode === 'delete' || dMode === 'hole') return;
+        e.preventDefault();
+        e.stopPropagation();
+        undoCurrent();
+        return;
+      }
       if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
       else if (e.key === 'a' || e.key === 'A') { e.preventDefault(); approveCurrent(); }
       else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); flagCurrent(); }
       else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); rejectCurrent(); }
-      else if (e.key === 's' || e.key === 'S') { e.preventDefault(); saveGeometryCurrent(); }
       else if (e.key === 'Escape') { e.preventDefault(); exit(); }
     });
   }

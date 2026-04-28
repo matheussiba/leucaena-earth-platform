@@ -8031,11 +8031,48 @@ body.sv-active .edit-tools-row {
 .qc-status-rejected   { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5); }
 
 /* Action button row */
-.qc-review-actions {
+.qc-review-actions,
+.qc-review-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+}
+.qc-review-tools {
+  /* Sub-row above the actions; visually distinct so the admin understands
+     these are geometry tools (auto-saved on use), not status changes. */
+  padding: 6px 0 6px;
+  border-bottom: 1px dashed rgba(255,255,255,0.10);
+  margin-bottom: 6px;
+}
+.qc-action-undo {
+  background: rgba(96, 165, 250, 0.10);
+  border-color: rgba(96, 165, 250, 0.35);
+  color: #bfdbfe;
+}
+.qc-action-undo:hover:not(:disabled) {
+  background: rgba(96, 165, 250, 0.20);
+  border-color: rgba(96, 165, 250, 0.65);
+}
+.qc-action-hole {
+  background: rgba(245, 158, 11, 0.10);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+}
+.qc-action-hole.active,
+.qc-action-hole:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.65);
+}
+.qc-action-remove-vertex {
+  background: rgba(248, 113, 113, 0.10);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+.qc-action-remove-vertex.active,
+.qc-action-remove-vertex:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.22);
+  border-color: rgba(248, 113, 113, 0.65);
 }
 .qc-action-btn {
   display: inline-flex;

@@ -545,6 +545,10 @@ window.LeucenaDrawing = (function () {
     for (let i = 0; i < paths.getLength(); i++) {
       gmapListeners.push(google.maps.event.addListener(paths.getAt(i), 'set_at', onPathChange));
       gmapListeners.push(google.maps.event.addListener(paths.getAt(i), 'insert_at', onPathChange));
+      // remove_at fires when removeAt() is called programatically (e.g. our
+      // "Remover Vértice" tool) or via Google Maps' native right-click on a
+      // vertex. Without this listener auto-save would miss vertex removals.
+      gmapListeners.push(google.maps.event.addListener(paths.getAt(i), 'remove_at', onPathChange));
     }
     pathListenerMap[id] = { gmapListeners, gestureTimerRef: () => gestureTimer, clearGesture: () => { clearTimeout(gestureTimer); gestureTimer = null; } };
   }
@@ -555,6 +559,28 @@ window.LeucenaDrawing = (function () {
     data.gmapListeners.forEach(l => google.maps.event.removeListener(l));
     data.clearGesture();
     delete pathListenerMap[id];
+  }
+
+  /**
+   * Força o disparo imediato de um auto-save pendente para o polígono dado.
+   * Usado no QC mode antes de mudar de polígono ou sair: a janela de 150ms
+   * do debounce em attachPathListeners pode engolir uma edição feita logo
+   * antes do clique em Next/Esc, e essa função fecha esse buraco.
+   * Retorna true se algo foi salvo.
+   */
+  function flushPendingPolygonSave(id) {
+    const data = pathListenerMap[id];
+    const entry = drawnPolygons[id];
+    if (!entry) return false;
+    const hasPending = !!(data && data.gestureTimerRef && data.gestureTimerRef());
+    const live = pathsToGeoJSONCoords(entry.gmapsPoly);
+    const last = entry._lastGeometry && entry._lastGeometry.coordinates;
+    const changed = !last || JSON.stringify(live) !== JSON.stringify(last);
+    if (!hasPending && !changed) return false;
+    if (data) data.clearGesture();
+    savePolygonGeometry(id, entry.gmapsPoly);
+    entry._lastGeometry = { type: 'Polygon', coordinates: JSON.parse(JSON.stringify(live)) };
+    return true;
   }
 
   function isPolygonInProgress() {
@@ -1819,6 +1845,167 @@ window.LeucenaDrawing = (function () {
     return { type: 'Polygon', coordinates: pathsToGeoJSONCoords(entry.gmapsPoly) };
   }
 
+  // ── Phase 6 — QC mode integration with the regular edit pipeline ──
+  // QC admins don't hold a cell lock, so the standard hole / vertex tools
+  // (which gate on lock ownership) need bypass entry points. These helpers
+  // also leverage the existing editUndoStack/auto-save plumbing so all the
+  // undo + persistence behavior comes "for free".
+
+  /**
+   * Quantos snapshots de undo existem para um polígono específico.
+   * Usado pelo painel QC para habilitar/desabilitar o botão "Desfazer".
+   */
+  function getEditUndoCountForPolygon(polyId) {
+    if (polyId == null) return 0;
+    let n = 0;
+    for (const s of editUndoStack) if (s.id === polyId) n++;
+    return n;
+  }
+
+  /**
+   * Desfaz a última edição do polígono dado, restaurando a geometria e
+   * persistindo no servidor. Retorna true se algo foi desfeito.
+   *
+   * Diferente de undoEditPolygon (que opera no topo do stack global), esta
+   * versão filtra pelo id — necessário no modo QC porque snapshots de
+   * polígonos anteriores podem estar acima na pilha.
+   */
+  async function qcUndoForPolygon(polyId) {
+    if (polyId == null) return false;
+    let foundIdx = -1;
+    for (let i = editUndoStack.length - 1; i >= 0; i--) {
+      if (editUndoStack[i].id === polyId) { foundIdx = i; break; }
+    }
+    if (foundIdx === -1) {
+      LeucenaApp.showToast(LeucenaI18n.t('toast.nothingToUndo'), 'info');
+      return false;
+    }
+    const snapshot = editUndoStack.splice(foundIdx, 1)[0];
+    const entry = drawnPolygons[snapshot.id];
+    if (!entry) return false;
+
+    editUndoGuard = true;
+    detachPathListeners(snapshot.id);
+    const paths = geojsonRingsToPaths(snapshot.geometry.coordinates);
+    entry.gmapsPoly.setPaths(paths);
+    entry.data.geometry = JSON.parse(JSON.stringify(snapshot.geometry));
+    entry._lastGeometry = JSON.parse(JSON.stringify(snapshot.geometry));
+    if (entry.areaLabel) {
+      entry.areaLabel.updateText(formatAreaLabel(calcAreaHa(snapshot.geometry)));
+      entry.areaLabel.updatePosition(polygonCentroid(snapshot.geometry));
+    }
+    editUndoGuard = false;
+    attachPathListeners(snapshot.id, entry.gmapsPoly);
+
+    try {
+      await fetch(`/api/polygons/${snapshot.id}`, {
+        method: 'PUT',
+        headers: LeucenaApp.authHeaders(),
+        body: JSON.stringify({ geometry: snapshot.geometry })
+      });
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('qc_undo_edit', entry.data.grid_cell_id, snapshot.id, null);
+      }
+      return true;
+    } catch (e) {
+      LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
+      return false;
+    }
+  }
+
+  /**
+   * Inicia o modo de desenhar buraco no polígono em revisão, sem checar
+   * cell lock (admin QC). Reaproveita toda a pipeline manual de hole.
+   *
+   * Aceita um callback `onComplete` que é chamado quando o modo hole
+   * termina (sucesso, cancelamento ou Esc). Permite que qc.js sincronize
+   * o estado visual do seu botão "Buraco".
+   */
+  let _qcHoleOnComplete = null;
+  function qcEnterHoleMode(polyId, onComplete) {
+    const entry = drawnPolygons[polyId];
+    if (!entry) return false;
+    clearHoleTarget();
+    holeTargetId = polyId;
+    entry.gmapsPoly.setOptions(HOLE_HIGHLIGHT);
+    activeMode = 'hole';
+    _qcHoleOnComplete = typeof onComplete === 'function' ? onComplete : null;
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('qc_hole_start', entry.data.grid_cell_id, polyId, null);
+    }
+    LeucenaApp.showToast(LeucenaI18n.t('toast.holeDrawNow'), 'info');
+    startHoleDrawing(polyId);
+
+    // Poll the hole-drawing state machine; when manualHoleState clears we
+    // know the hole flow has ended (completed, escaped, or hot-switched).
+    // This lets qc.js reset its button highlight without having to hook
+    // into every internal cleanup path.
+    const interval = setInterval(() => {
+      if (!manualHoleState && activeMode !== 'hole') {
+        clearInterval(interval);
+        if (_qcHoleOnComplete) {
+          try { _qcHoleOnComplete(); } catch (_) { /* noop */ }
+          _qcHoleOnComplete = null;
+        }
+      }
+    }, 250);
+    return true;
+  }
+
+  function qcExitHoleMode() {
+    if (activeMode !== 'hole') return;
+    cleanupManualHole();
+    clearHoleTarget();
+    activeMode = 'select';
+  }
+
+  /**
+   * Modo "remover vértice" para QC: anexa um click listener ao polígono;
+   * cliques em handles de vértice (e.vertex !== undefined) removem o
+   * vértice e o auto-save persiste via remove_at listener. Retorna uma
+   * função de teardown para sair do modo.
+   */
+  let _qcVertexRemoveTeardown = null;
+  function qcEnterRemoveVertexMode(polyId) {
+    qcExitRemoveVertexMode();
+    const entry = drawnPolygons[polyId];
+    if (!entry) return null;
+    const poly = entry.gmapsPoly;
+    // Recolor briefly so admin sees the mode is on.
+    poly.setOptions({ strokeColor: '#f87171', strokeWeight: 4 });
+    const handler = google.maps.event.addListener(poly, 'click', (e) => {
+      if (e.vertex == null) {
+        LeucenaApp.showToast(LeucenaI18n.t('qc.vertexClickHint', 'Clique em um vértice para removê-lo.'), 'info');
+        return;
+      }
+      const path = poly.getPaths().getAt(e.path || 0);
+      if (!path) return;
+      // Refuse to delete below the 3-vertex floor (would invalidate ring).
+      if (path.getLength() <= 3) {
+        LeucenaApp.showToast(LeucenaI18n.t('qc.vertexMin3', 'Polígono precisa de ao menos 3 vértices.'), 'warning');
+        return;
+      }
+      path.removeAt(e.vertex);
+      // Auto-save fires via remove_at listener attached by attachPathListeners.
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+        LeucenaApp.logEvent('qc_vertex_remove', entry.data.grid_cell_id, polyId, { vertex: e.vertex });
+      }
+    });
+    _qcVertexRemoveTeardown = () => {
+      google.maps.event.removeListener(handler);
+      // Restore focus highlight (we're still in QC focus).
+      const e = drawnPolygons[polyId];
+      if (e && e._qcFocused) e.gmapsPoly.setOptions(POLY_STYLE_QC_FOCUS);
+    };
+    return _qcVertexRemoveTeardown;
+  }
+  function qcExitRemoveVertexMode() {
+    if (_qcVertexRemoveTeardown) {
+      try { _qcVertexRemoveTeardown(); } catch (_) { /* ignore */ }
+      _qcVertexRemoveTeardown = null;
+    }
+  }
+
   function setPolyQcStatus(id, qcStatus, qcBy, qcAt) {
     const entry = drawnPolygons[id];
     if (!entry) return;
@@ -1965,6 +2152,13 @@ window.LeucenaDrawing = (function () {
     getPolygonCount,
     getPolygonCountForCell,
     countPolygonsByQcStatus,
+    getEditUndoCountForPolygon,
+    qcUndoForPolygon,
+    qcEnterHoleMode,
+    qcExitHoleMode,
+    qcEnterRemoveVertexMode,
+    qcExitRemoveVertexMode,
+    flushPendingPolygonSave,
     getTotalPolygonCount,
     getPolygonCounts,
     clearUndoHistory,
