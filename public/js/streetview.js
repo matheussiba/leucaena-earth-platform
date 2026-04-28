@@ -35,12 +35,21 @@ window.LeucenaStreetView = (function () {
     return Math.max(SV_HEIGHT_MIN, h - 200);
   }
 
+  // On phones we let the CSS layout (flex:1 inside #map-container) decide the
+  // Street View pane size so it always splits the map area roughly 50/50.
+  // Saved heights from desktop sessions or stale persisted values would
+  // otherwise overwrite that flex sizing with an inline `height: NNNpx`.
+  function _isMobileViewport() {
+    return typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(max-width: 768px)').matches;
+  }
+
   function _applyHeight(px) {
     const sv = document.getElementById('streetview-container');
     if (!sv) return;
+    if (_isMobileViewport()) return;
     const clamped = Math.max(SV_HEIGHT_MIN, Math.min(_maxAllowedHeight(), Math.round(px)));
     sv.style.height = clamped + 'px';
-    // Tell Google Maps the viewport changed so tiles re-render correctly.
     if (typeof LeucenaMap !== 'undefined' && LeucenaMap.triggerResize) {
       LeucenaMap.triggerResize();
     } else if (typeof google !== 'undefined' && google.maps && google.maps.event) {
@@ -50,6 +59,13 @@ window.LeucenaStreetView = (function () {
   }
 
   function _restoreSavedHeight() {
+    if (_isMobileViewport()) {
+      // Drop any inline height the previous session may have left behind so the
+      // mobile flex split (50/50 with #map) takes effect.
+      const sv = document.getElementById('streetview-container');
+      if (sv) sv.style.height = '';
+      return;
+    }
     try {
       const saved = parseInt(localStorage.getItem(SV_HEIGHT_KEY) || '', 10);
       if (saved && saved >= SV_HEIGHT_MIN) _applyHeight(saved);
@@ -277,6 +293,11 @@ window.LeucenaStreetView = (function () {
     container.classList.remove('hidden');
     const resizer = document.getElementById('streetview-resizer');
     if (resizer) resizer.classList.remove('hidden');
+    // On mobile the CSS flex split changes the map's height when SV becomes
+    // visible — tell Maps so it re-renders tiles for the new viewport.
+    if (_isMobileViewport() && typeof LeucenaMap !== 'undefined' && LeucenaMap.triggerResize) {
+      requestAnimationFrame(() => LeucenaMap.triggerResize());
+    }
 
     // Nearest panorama within radius (m); toast when Street View has no coverage there.
     svService.getPanorama({ location: latLng, radius: 100 }, (data, status) => {
@@ -320,6 +341,11 @@ window.LeucenaStreetView = (function () {
     const floatBtn = document.getElementById('tool-streetview-float');
     if (floatBtn) floatBtn.classList.remove('active');
     LeucenaMap.showStreetViewCoverage(false);
+    // Map regains its full height on mobile — re-trigger resize so tiles fill
+    // the freed space without requiring a manual pan/zoom from the user.
+    if (_isMobileViewport() && typeof LeucenaMap !== 'undefined' && LeucenaMap.triggerResize) {
+      requestAnimationFrame(() => LeucenaMap.triggerResize());
+    }
     // Drop the marker so the map isn't littered with a "viewing direction" dot
     // after the user closes Street View. Listeners get unregistered too,
     // otherwise they'd keep firing if the panorama is reused later.

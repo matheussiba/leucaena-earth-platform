@@ -645,8 +645,9 @@ window.LeucenaI18n = (function () {
 
     // ── Tool hint badges ──
     'badge.draw': { pt: 'V = vértice · Clique direito ou Enter = finalizar · Ctrl+Z = desfazer', en: 'V = vertex · Right-click or Enter = finish · Ctrl+Z = undo', es: 'V = vértice · Clic derecho o Enter = finalizar · Ctrl+Z = deshacer' },
-    'badge.drawTouch': { pt: 'Toque no mapa para adicionar vértices', en: 'Tap on the map to add vertices', es: 'Toque en el mapa para añadir vértices' },
+    'badge.drawTouch': { pt: 'Toque no mapa para adicionar vértices · botão Concluir = finalizar', en: 'Tap on the map to add vertices · Finish button = complete', es: 'Toque en el mapa para añadir vértices · botón Finalizar = completar' },
     'badge.delete': { pt: 'Clique em um polígono para selecioná-lo', en: 'Click a polygon to select it', es: 'Haga clic en un polígono para seleccionarlo' },
+    'badge.deleteTouch': { pt: 'Toque em um polígono para selecioná-lo', en: 'Tap a polygon to select it', es: 'Toque un polígono para seleccionarlo' },
     'badge.deleteConfirm': { pt: 'Aperte Delete para excluir · Esc para cancelar · Ctrl+Z = restaurar', en: 'Press Delete to remove · Esc to cancel · Ctrl+Z = restore', es: 'Presione Delete para eliminar · Esc para cancelar · Ctrl+Z = restaurar' },
     'badge.deleteConfirmTouch': { pt: 'Polígono selecionado', en: 'Polygon selected', es: 'Polígono seleccionado' },
     'badge.deleteBtn': { pt: 'Excluir', en: 'Delete', es: 'Eliminar' },

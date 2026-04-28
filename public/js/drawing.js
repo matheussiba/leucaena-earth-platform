@@ -1078,7 +1078,8 @@ window.LeucenaDrawing = (function () {
   function showDrawOverlay() {
     const overlay = document.getElementById('draw-instructions-overlay');
     if (!overlay) return;
-    overlay.textContent = LeucenaI18n.t('badge.draw');
+    const key = _isTouchDevice() ? 'badge.drawTouch' : 'badge.draw';
+    overlay.textContent = LeucenaI18n.t(key);
     overlay.classList.remove('hidden');
   }
 
@@ -1460,7 +1461,7 @@ window.LeucenaDrawing = (function () {
         });
       } else {
         const key = mode === 'draw' ? (touch ? 'badge.drawTouch' : 'badge.draw')
-                  : mode === 'delete' ? 'badge.delete'
+                  : mode === 'delete' ? (touch ? 'badge.deleteTouch' : 'badge.delete')
                   : (touch ? 'badge.editTouch' : 'badge.edit');
         overlay.textContent = t(key);
       }

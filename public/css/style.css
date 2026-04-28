@@ -2587,7 +2587,10 @@ a.docs-logo-card:hover {
   bottom: 56px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 160;
+  /* Stay above #toolbar (z 200) so the panel is fully readable when it sits
+     near or over the bottom toolbar — historically the toolbar was painted on
+     top of the panel which broke contrast in Street View + edit modes. */
+  z-index: 210;
   display: flex;
   flex-direction: row;
   gap: 8px;
@@ -2934,18 +2937,11 @@ body.sv-active .edit-tool-btn-labeled {
 body.sv-active .edit-tools-panel {
   padding: 5px;
   gap: 5px;
-  /* Drop the panel to the very bottom of the map so the Street View pane has
-     more vertical room. We also hide #toolbar below to free that footer slot
-     entirely (its tools live elsewhere or are not needed inside SV). */
-  bottom: 4px;
-}
-
-/* Hide the bottom toolbar (coords + map-type/labels/legend/etc.) while Street
-   View is active so the floating edit panel has the whole bottom strip and is
-   not painted under the toolbar (z-index 200 vs 160 on the panel). The toolbar
-   reappears as soon as `body.sv-active` is removed by streetview.js. */
-body.sv-active #toolbar {
-  display: none;
+  /* Sit just above the toolbar — the panel's z-index (210) keeps it readable
+     above #toolbar so we no longer have to hide the toolbar in SV mode. On
+     mobile keeping the toolbar visible also gives the panel a safe buffer
+     above the system back-gesture strip. */
+  bottom: calc(var(--toolbar-height) + 4px);
 }
 body.sv-active .edit-tools-section + .edit-tools-section {
   padding-left: 5px;
@@ -5305,16 +5301,16 @@ body.sv-active .edit-tools-row {
     pointer-events: none;
   }
 
-  /* Same idea for the footer #toolbar: too many controls (idioma, exportar,
-     map type, legenda, ...) cluttering the bottom while the user is mapping a
-     locked cell. The floating edit panel already has the relevant tools. */
-  #app:has(#main-content.editing-cell) #toolbar {
-    display: none;
-  }
-  /* Drop the floating panel into the freed-up space so it doesn't sit floating
-     mid-air with a gap below. */
+  /* Note: we intentionally KEEP the footer #toolbar visible during editing on
+     mobile. The user's Android back/gesture area sits at the very bottom edge
+     of the screen, so the toolbar acts as a safety buffer that pushes the
+     floating edit panel up to a comfortable thumb zone — without it, the
+     bottom row of edit buttons would collide with the system back gesture. */
+
+  /* Position the floating panel just above the toolbar so it sits in the
+     thumb-friendly zone without overlapping it. */
   #main-content.editing-cell .edit-tools-panel {
-    bottom: 8px;
+    bottom: calc(var(--toolbar-height) + 6px);
   }
 
   /* Compact the labeled buttons inside the edit panel a touch on mobile while
@@ -5431,11 +5427,31 @@ body.sv-active .edit-tools-row {
     height: 18px;
   }
 
+  /* Split the available map area roughly 50/50 between the map and Street
+     View on phones so the panorama actually fills enough of the screen to
+     navigate — using flex:1 lets it share the remaining space with #map
+     instead of being capped at a small fixed height. */
   #streetview-container {
-    height: 200px;
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+  /* Compact header: the title is purely decorative on a tiny screen, so we
+     shrink padding/font and let the close button stay tappable (≥36px). */
+  #streetview-header {
+    padding: 2px 6px 2px 8px;
+    font-size: 11px;
+    min-height: 24px;
+  }
+  #streetview-header .btn-icon {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1;
   }
   /* On phones the divider is fiddly to drag and the screen is too small to
-     justify a resizable pane — keep the fixed 200px we had before. */
+     justify a resizable pane — let CSS own the split. */
   #streetview-resizer {
     display: none;
   }
