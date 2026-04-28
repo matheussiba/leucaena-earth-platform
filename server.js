@@ -284,6 +284,13 @@ function _stampLocalAssets(html) {
 }
 
 app.get('/', (req, res) => {
+  // index.html embeds ?v=BUILD_ID on /js/* and /css/* assets via _stampLocalAssets,
+  // so any cached HTML would keep pointing to stale ?v= values and the user would
+  // never load the new bundles after a deploy. Make the HTML uncacheable so every
+  // navigation/reload re-fetches the fresh ?v= stamps.
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   if (isMapHost(req)) {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
     const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry&callback=initGoogleMapsCallback`;

@@ -33,7 +33,22 @@ window.LeucenaCollab = (function () {
         if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('update_reload_clicked');
         _saveMapStateForReload();
         _autoUnlockBeforeReload();
-        setTimeout(function () { window.location.reload(); }, 120);
+        // window.location.reload() is a "soft" reload — the browser may still
+        // serve cached /js/*.js even though the server bumped BUILD_ID. We
+        // navigate to a unique URL instead so the request bypasses the disk
+        // cache and forces a fresh index.html (which carries the new ?v=
+        // stamps for the JS bundles). Strips any prior _cb so it doesn't
+        // accumulate across reloads.
+        setTimeout(function () {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.delete('_cb');
+            url.searchParams.set('_cb', String(Date.now()));
+            window.location.replace(url.toString());
+          } catch (_) {
+            window.location.reload();
+          }
+        }, 120);
       };
     }
     if (dismiss) {
