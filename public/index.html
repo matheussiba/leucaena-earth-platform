@@ -355,9 +355,12 @@
         <span id="qc-panel-creator" class="qc-review-meta-value">--</span>
         <span id="qc-panel-role" class="qc-panel-role qc-panel-role-contributor">--</span>
       </span>
-      <span class="qc-review-meta-item">
+      <span class="qc-review-meta-item qc-area-stack">
         <span class="qc-review-meta-label" data-i18n="qc.area">Área:</span>
-        <span id="qc-panel-area" class="qc-review-meta-value">--</span>
+        <span class="qc-area-values">
+          <span id="qc-panel-area-live" class="qc-review-meta-value qc-panel-area-live">--</span>
+          <span id="qc-panel-area-saved" class="qc-area-saved-line hidden" aria-hidden="true"></span>
+        </span>
       </span>
       <span class="qc-review-meta-item">
         <span class="qc-review-meta-label" data-i18n="qc.statusLabel">Status:</span>
@@ -384,9 +387,6 @@
     <div class="qc-review-actions">
       <button type="button" id="qc-panel-prev" class="qc-action-btn qc-action-nav" data-i18n-title="qc.prev" title="Anterior (←)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <button type="button" id="qc-panel-skip" class="qc-action-btn qc-action-skip" data-i18n-title="qc.skip" title="Pular sem alterar">
-        <span data-i18n="qc.skipBtn">Pular</span>
       </button>
       <button type="button" id="qc-panel-flag" class="qc-action-btn qc-action-flag" data-i18n-title="qc.flag" title="Marcar para revisão (F)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
@@ -1200,6 +1200,33 @@
                 <span data-i18n="sidebar.masksContributor">Colaboradores</span>
                 <span class="filter-count" id="count-masks-contributor"></span>
               </label>
+              <!-- QC sub-filters: split contributor masks by review status. Visible only for team+ -->
+              <div class="filter-qc-subgroup">
+                <label class="filter-item filter-item-qc">
+                  <input type="checkbox" id="toggle-qc-unreviewed" checked>
+                  <span class="filter-dot" style="background:#f97316"></span>
+                  <span data-i18n="sidebar.qcUnreviewed">Não revisados</span>
+                  <span class="filter-count" id="count-qc-unreviewed"></span>
+                </label>
+                <label class="filter-item filter-item-qc">
+                  <input type="checkbox" id="toggle-qc-flagged" checked>
+                  <span class="filter-dot" style="background:#3b82f6"></span>
+                  <span data-i18n="sidebar.qcFlagged">Marcados</span>
+                  <span class="filter-count" id="count-qc-flagged"></span>
+                </label>
+                <label class="filter-item filter-item-qc">
+                  <input type="checkbox" id="toggle-qc-rejected" checked>
+                  <span class="filter-dot" style="background:#ef4444"></span>
+                  <span data-i18n="sidebar.qcRejected">Rejeitados</span>
+                  <span class="filter-count" id="count-qc-rejected"></span>
+                </label>
+                <label class="filter-item filter-item-qc">
+                  <input type="checkbox" id="toggle-qc-approved" checked>
+                  <span class="filter-dot" style="background:#a855f7"></span>
+                  <span data-i18n="sidebar.qcApproved">Aprovados</span>
+                  <span class="filter-count" id="count-qc-approved"></span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -1343,6 +1370,11 @@
             <div class="legend-item" id="legend-mask-default"><span class="legend-color legend-hollow legend-mask" style="border-color:#84cc16;"></span> <span data-i18n="legend.mappedPolygon">Polígono mapeado</span></div>
             <div class="legend-item hidden" id="legend-mask-member"><span class="legend-color legend-hollow legend-mask" style="border-color:#84cc16;"></span> <span data-i18n="sidebar.masksMember">Membros</span></div>
             <div class="legend-item hidden" id="legend-mask-contributor"><span class="legend-color legend-hollow legend-mask" style="border-color:#f97316;"></span> <span data-i18n="sidebar.masksContributor">Colaboradores</span></div>
+            <!-- QC status legend (team+ only — toggled with the rest of the QC sub-rows in map.js). -->
+            <div class="legend-item hidden legend-qc-row" id="legend-qc-unreviewed"><span class="legend-color legend-hollow legend-mask" style="border-color:#f97316;"></span> <span data-i18n="sidebar.qcUnreviewed">Não revisados</span></div>
+            <div class="legend-item hidden legend-qc-row" id="legend-qc-flagged"><span class="legend-color legend-hollow legend-mask" style="border-color:#3b82f6;"></span> <span data-i18n="sidebar.qcFlagged">Marcados</span></div>
+            <div class="legend-item hidden legend-qc-row" id="legend-qc-rejected"><span class="legend-color legend-hollow legend-mask" style="border-color:#ef4444;"></span> <span data-i18n="sidebar.qcRejected">Rejeitados</span></div>
+            <div class="legend-item hidden legend-qc-row" id="legend-qc-approved"><span class="legend-color legend-hollow legend-mask" style="border-color:#a855f7;"></span> <span data-i18n="sidebar.qcApproved">Aprovados</span></div>
           </div>
         </div>
         <!-- Drag-to-resize handle that sits between the map and the Street View

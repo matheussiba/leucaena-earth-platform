@@ -129,6 +129,11 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     });
 
     map.addListener('click', (e) => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logInputTrace) {
+        LeucenaApp.logInputTrace('gmap_click', {
+          lat: e.latLng.lat(), lng: e.latLng.lng()
+        });
+      }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isDeletionMode && LeucenaApp.isDeletionMode()) {
         LeucenaApp.handleDeletionClick(e.latLng);
         return;
@@ -159,10 +164,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         LeucenaDrawing.exitDeleteMode();
         return;
       }
+      // draw/hole: background clicks add vertices; must not deselect the sidebar cell.
+      // QC review is not isEditing(), so deselectFromMap() was firing and aborting hole draw.
+      if (typeof LeucenaDrawing !== 'undefined') {
+        const dm = LeucenaDrawing.getActiveMode();
+        if (dm === 'draw' || dm === 'hole') return;
+      }
       deselectPoint();
       if (LeucenaStreetView.isActive()) {
         const drawMode = typeof LeucenaDrawing !== 'undefined' ? LeucenaDrawing.getActiveMode() : null;
-        if (drawMode === 'draw') return;
+        if (drawMode === 'draw' || drawMode === 'hole') return;
         LeucenaStreetView.showAt(e.latLng);
         return;
       }
@@ -175,6 +186,17 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         LeucenaApp.logEvent('map_click_left', LeucenaApp.getSelectedCellId(), null, {
           lat: e.latLng.lat(), lng: e.latLng.lng()
         });
+        return;
+      }
+      const qcCell = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && LeucenaQC.getReviewCellId();
+      if (qcCell) {
+        const dm = typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode
+          ? LeucenaDrawing.getActiveMode() : null;
+        LeucenaApp.logEvent('map_click_left_qc', qcCell, null, {
+          lat: e.latLng.lat(), lng: e.latLng.lng(),
+          drawMode: dm,
+          sidebarSelectedCell: LeucenaApp.getSelectedCellId && LeucenaApp.getSelectedCellId()
+        });
       }
     });
     map.addListener('rightclick', (e) => {
@@ -182,13 +204,34 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         LeucenaApp.logEvent('map_click_right', LeucenaApp.getSelectedCellId(), null, {
           lat: e.latLng.lat(), lng: e.latLng.lng()
         });
+        return;
+      }
+      const qcCell = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && LeucenaQC.getReviewCellId();
+      if (qcCell) {
+        const dm = typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode
+          ? LeucenaDrawing.getActiveMode() : null;
+        LeucenaApp.logEvent('map_click_right_qc', qcCell, null, {
+          lat: e.latLng.lat(), lng: e.latLng.lng(),
+          drawMode: dm,
+          sidebarSelectedCell: LeucenaApp.getSelectedCellId && LeucenaApp.getSelectedCellId()
+        });
       }
     });
     map.addListener('dragend', () => {
+      const c = map.getCenter();
       if (LeucenaApp.isEditing && LeucenaApp.isEditing()) {
-        const c = map.getCenter();
         LeucenaApp.logEvent('map_pan', LeucenaApp.getSelectedCellId(), null, {
           lat: c.lat(), lng: c.lng(), zoom: map.getZoom()
+        });
+        return;
+      }
+      const qcCell = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && LeucenaQC.getReviewCellId();
+      if (qcCell) {
+        const dm = typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode
+          ? LeucenaDrawing.getActiveMode() : null;
+        LeucenaApp.logEvent('map_pan_qc', qcCell, null, {
+          lat: c.lat(), lng: c.lng(), zoom: map.getZoom(), drawMode: dm,
+          sidebarSelectedCell: LeucenaApp.getSelectedCellId && LeucenaApp.getSelectedCellId()
         });
       }
     });
@@ -196,6 +239,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (LeucenaApp.isEditing && LeucenaApp.isEditing()) {
         LeucenaApp.logEvent('map_scroll', LeucenaApp.getSelectedCellId(), null, {
           zoom: map.getZoom()
+        });
+        return;
+      }
+      const qcCell = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && LeucenaQC.getReviewCellId();
+      if (qcCell) {
+        const dm = typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode
+          ? LeucenaDrawing.getActiveMode() : null;
+        LeucenaApp.logEvent('map_scroll_qc', qcCell, null, {
+          zoom: map.getZoom(), drawMode: dm,
+          sidebarSelectedCell: LeucenaApp.getSelectedCellId && LeucenaApp.getSelectedCellId()
         });
       }
     }, { passive: true });
@@ -206,6 +259,12 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     gridLayer = new google.maps.Data({ map: map });
     gridLayer.addListener('click', (event) => {
       const cellId = event.feature.getId();
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logInputTrace) {
+        LeucenaApp.logInputTrace('grid_click', {
+          gridFeatureId: cellId,
+          lat: event.latLng.lat(), lng: event.latLng.lng()
+        });
+      }
       if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode() === 'edit' && LeucenaDrawing.isEditModified()) {
         clickedOnFeature = true;
         LeucenaDrawing.exitEditMode();
@@ -587,6 +646,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
 
   function deselectFromMap() {
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.isEditing && LeucenaApp.isEditing()) return;
+    if (typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && LeucenaQC.getReviewCellId()) return;
     const main = document.getElementById('main-content');
     main.classList.remove('sidebar-open');
     const arrow = document.querySelector('.toggle-arrow');
@@ -1902,6 +1962,22 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.setContributorMasksVisible(this.checked);
     });
 
+    // QC sub-filters (team+ only). They split contributor masks by review status
+    // using the same colors as the QC review panel badges.
+    const qcStatuses = ['unreviewed', 'flagged', 'rejected', 'approved'];
+    qcStatuses.forEach(function (s) {
+      const cb = document.getElementById('toggle-qc-' + s);
+      if (!cb) return;
+      cb.addEventListener('change', function () {
+        if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.setQcStatusVisible) {
+          LeucenaDrawing.setQcStatusVisible(s, this.checked);
+        }
+        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+          LeucenaApp.logEvent('filter_qc', null, null, { status: s, visible: this.checked });
+        }
+      });
+    });
+
     if (collabCb) {
       collabCb.addEventListener('change', function () {
         _showCollaboratorPoints = this.checked;
@@ -2013,11 +2089,24 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (defLeg) defLeg.classList.toggle('hidden', showSubs);
       if (memLeg) memLeg.classList.toggle('hidden', !showSubs);
       if (conLeg) conLeg.classList.toggle('hidden', !showSubs);
+      document.querySelectorAll('.legend-qc-row').forEach(function (row) {
+        row.classList.toggle('hidden', !showSubs);
+      });
       if (showSubs && typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getPolygonCounts) {
         const counts = LeucenaDrawing.getPolygonCounts();
         _fcSetText('count-masks-member', '(' + counts.member + ')');
         _fcSetText('count-masks-contributor', '(' + counts.contributor + ')');
+        if (counts.qc) {
+          _fcSetText('count-qc-unreviewed', '(' + counts.qc.unreviewed + ')');
+          _fcSetText('count-qc-flagged', '(' + counts.qc.flagged + ')');
+          _fcSetText('count-qc-rejected', '(' + counts.qc.rejected + ')');
+          _fcSetText('count-qc-approved', '(' + counts.qc.approved + ')');
+        }
       }
+
+      // QC subfilters mirror the contributor visibility — only relevant for team+.
+      const qcGroup = subEl.querySelector('.filter-qc-subgroup');
+      if (qcGroup) qcGroup.classList.toggle('hidden', !showSubs);
     }
   }
 

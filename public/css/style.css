@@ -2152,6 +2152,33 @@ a.docs-logo-card:hover {
   padding: 2px 0;
 }
 
+/* QC sub-filters (status of contributor masks): nested under "Colaboradores",
+   shown only for team+. Slightly smaller + indented so the visual hierarchy
+   reads "all polygons → contributor → review status". */
+.filter-qc-subgroup {
+  margin-left: 18px;
+  padding: 2px 0 2px 6px;
+  border-left: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.filter-item-qc {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.filter-item-qc:hover {
+  color: var(--text-secondary);
+}
+
+/* Hidden when viewer isn't team+ (toggled in map.js updateFilterCounts). */
+.filter-qc-subgroup.hidden {
+  display: none;
+}
+
 .filter-item {
   display: flex;
   align-items: center;
@@ -7997,6 +8024,28 @@ body.sv-active .edit-tools-row {
   color: #e2e8f0;
   font-weight: 600;
 }
+.qc-review-meta-item.qc-area-stack {
+  align-items: flex-start;
+}
+.qc-area-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.qc-panel-area-live {
+  color: #f8fafc;
+  font-weight: 700;
+}
+.qc-area-saved-line {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.48);
+  line-height: 1.25;
+}
+.qc-area-saved-line.hidden {
+  display: none;
+}
 
 /* Role badges (member vs contributor) */
 .qc-panel-role {
@@ -8138,9 +8187,6 @@ body.sv-active .edit-tools-row {
   background: rgba(239, 68, 68, 0.22);
   border-color: rgba(239, 68, 68, 0.7);
 }
-.qc-action-skip {
-  color: rgba(255,255,255,0.6);
-}
 .qc-action-save {
   background: rgba(251, 191, 36, 0.12);
   border-color: rgba(251, 191, 36, 0.4);
@@ -8210,7 +8256,6 @@ body.qc-review-active .edit-mode-badge {
   .qc-action-btn span {
     display: none;
   }
-  .qc-action-skip span,
   .qc-action-approve span,
   .qc-action-save-approve span {
     /* keep the most important actions readable on phones */

@@ -118,6 +118,30 @@ window.LeucenaApp = (function () {
     }
   }
 
+  /**
+   * Extra click/map traces for support. Console: localStorage.setItem('leucena_input_trace','1'); location.reload()
+   * Off: localStorage.removeItem('leucena_input_trace'); location.reload()
+   * Only logs while a cell is edit-locked or QC review is open (avoids noise).
+   */
+  function logInputTrace(action, details) {
+    if (!authToken) return;
+    try {
+      if (localStorage.getItem('leucena_input_trace') !== '1') return;
+    } catch (_) {
+      return;
+    }
+    const qc = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId ? LeucenaQC.getReviewCellId() : null;
+    if (!isEditing() && !qc) return;
+    const cellId = selectedCellId || qc || null;
+    const dm = typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.getActiveMode ? LeucenaDrawing.getActiveMode() : null;
+    logEvent('input_trace_' + action, cellId, null, Object.assign({
+      qcReviewCellId: qc,
+      sidebarSelectedCell: selectedCellId,
+      drawMode: dm,
+      editLocked: isEditing()
+    }, details || {}));
+  }
+
   function _copyRecentLogs(minutes) {
     const cutoff = Date.now() - (minutes || 5) * 60 * 1000;
     const recent = _logRing.filter(e => new Date(e.ts).getTime() >= cutoff);
@@ -3037,6 +3061,14 @@ window.LeucenaApp = (function () {
     clearCellSelection();
   }
 
+  /** Fecha só o painel lateral (setas/legenda), sem limpar célula — usado ao abrir revisão QC. */
+  function collapseSidebarUi() {
+    const main = document.getElementById('main-content');
+    if (main) main.classList.remove('sidebar-open');
+    updateToggleArrow(false);
+    updateLegendVisibility(false);
+  }
+
   function updateToggleArrow(isOpen) {
     const arrow = document.querySelector('.toggle-arrow');
     if (arrow) arrow.textContent = isOpen ? '\u00AB' : '\u00BB';
@@ -3307,12 +3339,19 @@ window.LeucenaApp = (function () {
   }
 
   function selectCell(cellId, cellData) {
+    const qcReviewCell = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && LeucenaQC.getReviewCellId();
+
     if (cellId === selectedCellId && !(username && selectedCellData && selectedCellData.locked_by === username)) {
+      if (qcReviewCell) return;
       clearCellSelection();
       const main = document.getElementById('main-content');
       main.classList.remove('sidebar-open');
       updateToggleArrow(false);
       updateLegendVisibility(false);
+      return;
+    }
+
+    if (qcReviewCell != null && cellId != null && Number(qcReviewCell) !== Number(cellId)) {
       return;
     }
 
@@ -3325,7 +3364,7 @@ window.LeucenaApp = (function () {
     }
 
     const main = document.getElementById('main-content');
-    if (!main.classList.contains('sidebar-open') && !isEditing()) {
+    if (!qcReviewCell && !main.classList.contains('sidebar-open') && !isEditing()) {
       main.classList.add('sidebar-open');
       updateToggleArrow(true);
       updateLegendVisibility(true);
@@ -3401,7 +3440,7 @@ window.LeucenaApp = (function () {
   function _refreshQcReviewCellButton(cellId) {
     const btn = document.getElementById('qc-review-cell-btn');
     if (!btn) return;
-    if (!isAdminUser()) {
+    if (!isTeamOrAbove()) {
       btn.classList.add('hidden');
       btn.onclick = null;
       return;
@@ -3436,6 +3475,9 @@ window.LeucenaApp = (function () {
   }
 
   function clearCellSelection() {
+    if (typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && LeucenaQC.getReviewCellId()) {
+      return;
+    }
     if (selectedCellId) logEvent('cell_deselect', selectedCellId);
     _maskBreakdownSeq++;
     if (lockHeartbeatInterval) { clearInterval(lockHeartbeatInterval); lockHeartbeatInterval = null; }
@@ -7040,6 +7082,7 @@ window.LeucenaApp = (function () {
     getSelectedCellData,
     selectCell,
     deselectCell,
+    collapseSidebarUi,
     onMapsReady,
     showToast,
     formatStatus,
@@ -7063,6 +7106,7 @@ window.LeucenaApp = (function () {
       if (selectedCellId != null) _refreshQcReviewCellButton(selectedCellId);
     },
     logEvent,
+    logInputTrace,
     flushLogs: _flushLogs,
     onPolygonSaved,
     onPolygonDeleted,

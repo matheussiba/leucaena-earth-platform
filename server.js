@@ -3608,10 +3608,11 @@ app.post('/api/admin/polygons/:id/restore', requireAuth, (req, res) => {
   res.json({ success: true, cell_summary: summary });
 });
 
-// ── Phase 6: QC review workflow (Admin) ──
+// ── Phase 6: QC review workflow (Team+) ──
 //
-// All endpoints below require an admin (or superadmin). Team members are NOT
-// admins — they can see flagged content but they don't curate the QC queue.
+// Endpoints below are open to team+ (team, admin, superadmin). The /api/admin/qc/*
+// path is kept for backwards compatibility with existing client code; the gate
+// is now isTeamOrAbove (was isAdmin), to let core team curate the QC queue.
 
 const QC_STATUSES = new Set(['unreviewed', 'approved', 'flagged', 'rejected']);
 
@@ -3619,7 +3620,7 @@ const QC_STATUSES = new Set(['unreviewed', 'approved', 'flagged', 'rejected']);
 // volume of pending work so the admin can attack the busiest cells first.
 // Used by the "Modo Revisão" picker on the client.
 app.get('/api/admin/qc/cells', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Team or admin only' });
   const status = String(req.query.status || 'unreviewed').toLowerCase();
   const filterStatus = QC_STATUSES.has(status) ? status : 'unreviewed';
   // Optional region filter (UF). When omitted, returns cells from every
@@ -3658,7 +3659,7 @@ app.get('/api/admin/qc/cells', requireAuth, (req, res) => {
 // Polygons in a cell that match a given QC status. Returns full geometry so
 // the client can navigate prev/next without an extra round-trip per item.
 app.get('/api/admin/qc/cells/:id/polygons', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Team or admin only' });
   const cellId = Number(req.params.id);
   if (!Number.isFinite(cellId)) return res.status(400).json({ error: 'cell id inválido' });
   const status = String(req.query.status || 'unreviewed').toLowerCase();
@@ -3709,7 +3710,7 @@ app.get('/api/admin/qc/cells/:id/polygons', requireAuth, (req, res) => {
 // Broadcasts a `polygon:qc` socket event so other admins viewing the same
 // cell see the update in real time.
 app.put('/api/admin/qc/polygons/:id', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Team or admin only' });
   const { id } = req.params;
   const newStatus = String((req.body && req.body.qc_status) || '').toLowerCase();
   if (!QC_STATUSES.has(newStatus)) {
@@ -3748,7 +3749,7 @@ app.put('/api/admin/qc/polygons/:id', requireAuth, (req, res) => {
 // Lightweight queue summary (counts per status across the whole DB) — used to
 // surface a badge / counter in the admin UI without paging through all cells.
 app.get('/api/admin/qc/summary', requireAuth, (req, res) => {
-  if (!isAdmin(req.username)) return res.status(403).json({ error: 'Admin only' });
+  if (!isTeamOrAbove(req.username)) return res.status(403).json({ error: 'Team or admin only' });
   const rows = queryAll(`
     SELECT qc_status AS status, COUNT(*) AS count
       FROM polygons

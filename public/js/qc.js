@@ -15,18 +15,27 @@
  *      snapshot for the focused polygon. Available geometry tools:
  *      Buraco (hole) and Remover Vértice — both bypass the cell lock
  *      check, since admin QC never holds a lock.
- *   5. Actions: Aprovar / Rejeitar / Marcar / Pular / Devolver para a
- *      fila. "Aprovar" auto-advances to the next polygon — most reviews
- *      are "approve with minor edits" so we optimize for that path.
+ *   5. Actions: Aprovar / Rejeitar / Marcar / Devolver para a fila. Setas
+ *      ← → só navegam (sem mudar status). Aprovar / rejeitar / marcar avançam
+ *      ao seguinte; a maioria das revisões é "aprovar com pequenos ajustes".
  */
 window.LeucenaQC = (function () {
   let state = null; // { cellId, gridCellLabel, polygons: [...], idx, statusFilter }
   let _summaryCache = null;
   let _previousMapView = null; // { zoom, center } so we can restore on exit
 
-  function _isAdmin() {
-    return typeof LeucenaApp !== 'undefined' && LeucenaApp.isAdminUser && LeucenaApp.isAdminUser();
+  /**
+   * QC review is open to team+ (team, admin, superadmin). Server-side gating
+   * lives in server.js (/api/admin/qc/* uses isTeamOrAbove).
+   * Kept the legacy `_isAdmin` alias to avoid touching every call-site.
+   */
+  function _isReviewer() {
+    if (typeof LeucenaApp === 'undefined') return false;
+    if (LeucenaApp.isTeamOrAbove && LeucenaApp.isTeamOrAbove()) return true;
+    if (LeucenaApp.isAdminUser && LeucenaApp.isAdminUser()) return true;
+    return false;
   }
+  const _isAdmin = _isReviewer;
 
   function _t(key, fallback) {
     if (typeof LeucenaI18n === 'undefined') return fallback || key;
@@ -289,6 +298,7 @@ window.LeucenaQC = (function () {
 
     document.body.classList.add('qc-review-active');
     _showPanel();
+    if (LeucenaApp && LeucenaApp.collapseSidebarUi) LeucenaApp.collapseSidebarUi();
 
     // Defer the first focus until the panel has been laid out: fitBounds()
     // computes the visible viewport using the map div's current pixel size,
@@ -319,6 +329,7 @@ window.LeucenaQC = (function () {
     if (!poly) return;
 
     _focusPolygon(poly);
+    _captureQcAreaBaseline(poly);
     _renderPanel();
   }
 
@@ -374,6 +385,70 @@ window.LeucenaQC = (function () {
     map.fitBounds(bounds, { top: 80, bottom: 220, left: 60, right: 60 });
   }
 
+  function _formatQcArea(ha) {
+    const h = Number(ha) || 0;
+    if (h < 0.1) return Math.round(h * 10000).toLocaleString() + ' m²';
+    return h.toFixed(2) + ' ha';
+  }
+
+  function _captureQcAreaBaseline(poly) {
+    if (!poly) return;
+    let live = null;
+    if (LeucenaDrawing.getLiveAreaHaForPolygon) live = LeucenaDrawing.getLiveAreaHaForPolygon(poly.id);
+    poly._qcSessionBaselineHa = live != null ? live : Number(poly.area_ha) || 0;
+  }
+
+  function _updateQcPanelAreaDisplay(liveHaOpt) {
+    const areaLive = document.getElementById('qc-panel-area-live');
+    const areaSaved = document.getElementById('qc-panel-area-saved');
+    if (!areaLive || !state) return;
+    const poly = state.polygons[state.idx];
+    if (!poly) return;
+    const baseline = poly._qcSessionBaselineHa != null ? poly._qcSessionBaselineHa : Number(poly.area_ha) || 0;
+    let live = liveHaOpt;
+    if (live == null && LeucenaDrawing.getLiveAreaHaForPolygon) {
+      live = LeucenaDrawing.getLiveAreaHaForPolygon(poly.id);
+    }
+    if (live == null) live = baseline;
+    areaLive.textContent = _formatQcArea(live);
+    if (areaSaved) {
+      const diff = Math.abs(Number(live) - Number(baseline)) >= 1e-5;
+      if (diff) {
+        areaSaved.textContent = _t('qc.areaAtFocus', 'Referência ao focar') + ': ' + _formatQcArea(baseline);
+        areaSaved.classList.remove('hidden');
+        areaSaved.setAttribute('aria-hidden', 'false');
+      } else {
+        areaSaved.textContent = '';
+        areaSaved.classList.add('hidden');
+        areaSaved.setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+
+  function refreshPanelLiveArea(polyId, liveHa) {
+    if (!state) return;
+    const cur = state.polygons[state.idx];
+    if (!cur || cur.id !== polyId) return;
+    _updateQcPanelAreaDisplay(liveHa);
+  }
+
+  function syncSavedAreaAfterGeometryPut(polyId, areaHa) {
+    if (!state) return;
+    const ha = Number(areaHa);
+    if (!Number.isFinite(ha)) return;
+    for (let i = 0; i < state.polygons.length; i++) {
+      if (state.polygons[i].id === polyId) {
+        state.polygons[i].area_ha = ha;
+        state.polygons[i]._qcSessionBaselineHa = ha;
+        break;
+      }
+    }
+    const cur = state.polygons[state.idx];
+    if (cur && cur.id === polyId) {
+      _updateQcPanelAreaDisplay(ha);
+    }
+  }
+
   // ── Panel rendering & actions ────────────────────────────────────────────
 
   function _showPanel() {
@@ -396,7 +471,6 @@ window.LeucenaQC = (function () {
     const counterEl = document.getElementById('qc-panel-counter');
     const creatorEl = document.getElementById('qc-panel-creator');
     const roleEl = document.getElementById('qc-panel-role');
-    const areaEl = document.getElementById('qc-panel-area');
     const statusEl = document.getElementById('qc-panel-status');
     const notesEl = document.getElementById('qc-panel-notes');
 
@@ -408,12 +482,10 @@ window.LeucenaQC = (function () {
       roleEl.textContent = role;
       roleEl.className = 'qc-panel-role qc-panel-role-' + role;
     }
-    if (areaEl) {
-      const ha = Number(poly.area_ha) || 0;
-      areaEl.textContent = (ha < 0.1)
-        ? Math.round(ha * 10000).toLocaleString() + ' m²'
-        : ha.toFixed(2) + ' ha';
+    if (poly._qcSessionBaselineHa == null) {
+      _captureQcAreaBaseline(poly);
     }
+    _updateQcPanelAreaDisplay(null);
     if (statusEl) {
       statusEl.textContent = _t('qc.status.' + (poly.qc_status || 'unreviewed'), poly.qc_status || 'unreviewed');
       statusEl.className = 'qc-panel-status qc-status-' + (poly.qc_status || 'unreviewed');
@@ -445,7 +517,6 @@ window.LeucenaQC = (function () {
     const handlers = {
       'qc-panel-prev': prev,
       'qc-panel-next': next,
-      'qc-panel-skip': () => { if (state) next(); },
       'qc-panel-approve': approveCurrent,
       'qc-panel-flag': flagCurrent,
       'qc-panel-reject': rejectCurrent,
@@ -482,6 +553,7 @@ window.LeucenaQC = (function () {
       LeucenaApp.showToast(_t('qc.undone', 'Edição desfeita.'), 'success');
     }
     _refreshUndoButton();
+    _updateQcPanelAreaDisplay(null);
   }
 
   let _holeToolActive = false;
@@ -679,8 +751,8 @@ window.LeucenaQC = (function () {
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────
   // Only active while the panel is open. Mirrors common photo-review tools:
-  //   ← →  navigate  ·  A approve  ·  F flag  ·  R reject  ·  Esc exit
-  //   Ctrl/Cmd+Z desfaz a última edição de geometria do polígono atual.
+  //   ← → navigate (no QC status change) · A approve · F flag · R reject · Esc exit
+  //   Ctrl/Cmd+Z: undo last geometry edit on the current polygon.
 
   function _bindKeyboard() {
     document.addEventListener('keydown', (e) => {
@@ -736,6 +808,23 @@ window.LeucenaQC = (function () {
     });
   }
 
+  /** Numeric grid id of the cell under QC review, or null if the panel is closed. */
+  function getReviewCellId() {
+    return state ? state.cellId : null;
+  }
+
+  /**
+   * After drawing.js setMode (select/edit), polygons were set non-editable globally;
+   * re-apply QC focus + handles on the current carousel polygon.
+   */
+  function refocusCurrentPolygonIfReview() {
+    if (!state || state.idx < 0 || state.idx >= state.polygons.length) return;
+    const poly = state.polygons[state.idx];
+    if (!poly) return;
+    _focusPolygon(poly);
+    _updateQcPanelAreaDisplay(null);
+  }
+
   return {
     init,
     openPicker,
@@ -743,6 +832,10 @@ window.LeucenaQC = (function () {
     exit,
     next,
     prev,
-    refreshSummary
+    refreshSummary,
+    getReviewCellId,
+    refocusCurrentPolygonIfReview,
+    refreshPanelLiveArea,
+    syncSavedAreaAfterGeometryPut
   };
 })();

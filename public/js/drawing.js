@@ -21,6 +21,13 @@ window.LeucenaDrawing = (function () {
   /** Cleared whenever a new QC hole session starts or is aborted — avoids stacked pollers. */
   let _qcHolePoller = null;
 
+  /** Disambiguate QC review cell vs sidebar-selected cell in hole/draw logs. */
+  function _cellLogCtx() {
+    const qc = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId ? LeucenaQC.getReviewCellId() : null;
+    const sel = typeof LeucenaApp !== 'undefined' && LeucenaApp.getSelectedCellId ? LeucenaApp.getSelectedCellId() : null;
+    return { selectedCellId: sel, qcReviewCellId: qc };
+  }
+
   const deleteUndoStack = [];
   const editUndoStack = [];
   let manualDrawState = null;
@@ -52,16 +59,38 @@ window.LeucenaDrawing = (function () {
     fillOpacity: 0.10
   };
 
-  // Phase 6 — QC review. Contributor polygons that an admin has approved
-  // switch from orange to violet for admin/team viewers so it's obvious at
-  // a glance which work has already been curated. Contributors don't see
-  // this distinction (they always see the masked green style anyway).
+  // Phase 6 — QC review.
+  //
+  // Contributor polygons get one color per `qc_status` so admin/team can
+  // see review state at a glance — same hues as the QC status badges in
+  // qc.js / style.css (`.qc-status-*`) so the map and panel stay in sync:
+  //   unreviewed → orange (default contributor color, "in queue")
+  //   flagged    → blue   (#3b82f6, "needs another look later")
+  //   rejected   → red    (#ef4444, "do not use as-is")
+  //   approved   → violet (#a855f7, "curated, OK")
+  // Contributors never see the QC distinction (always green/member style).
   const POLY_STYLE_CONTRIBUTOR_APPROVED = {
     strokeColor: '#a855f7',
     strokeOpacity: 0.95,
     strokeWeight: 2.5,
     fillColor: '#a855f7',
     fillOpacity: 0.12
+  };
+
+  const POLY_STYLE_CONTRIBUTOR_FLAGGED = {
+    strokeColor: '#3b82f6',
+    strokeOpacity: 0.95,
+    strokeWeight: 2.5,
+    fillColor: '#3b82f6',
+    fillOpacity: 0.12
+  };
+
+  const POLY_STYLE_CONTRIBUTOR_REJECTED = {
+    strokeColor: '#ef4444',
+    strokeOpacity: 0.95,
+    strokeWeight: 2.5,
+    fillColor: '#ef4444',
+    fillOpacity: 0.10
   };
 
   // Polygon currently focused inside the QC review carousel — cyan border
@@ -94,6 +123,18 @@ window.LeucenaDrawing = (function () {
     let area = ringAreaM2(coords[0]);
     for (let i = 1; i < coords.length; i++) area -= ringAreaM2(coords[i]);
     return Math.max(0, area) / 10000;
+  }
+
+  /** Área líquida atual (ha) a partir dos paths no mapa — usado pelo painel QC. */
+  function getLiveAreaHaForPolygon(id) {
+    const entry = drawnPolygons[id];
+    if (!entry || !entry.gmapsPoly) return null;
+    try {
+      const coords = pathsToGeoJSONCoords(entry.gmapsPoly);
+      return calcAreaHa({ type: 'Polygon', coordinates: coords });
+    } catch (_) {
+      return null;
+    }
   }
 
   function formatAreaLabel(ha) {
@@ -188,6 +229,11 @@ window.LeucenaDrawing = (function () {
 
   let showMemberMasks = true;
   let showContributorMasks = true;
+  /**
+   * QC status visibility (only meaningful for contributor masks viewed by team+).
+   * Toggled from the sidebar via setQcStatusVisible(). Members ignore these flags.
+   */
+  const _qcVisible = { unreviewed: true, flagged: true, rejected: true, approved: true };
 
   function isMemberRole(role) {
     return role === 'admin' || role === 'team';
@@ -197,16 +243,24 @@ window.LeucenaDrawing = (function () {
     const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getEffectiveRole() : null;
     if (!viewerRole || viewerRole === 'contributor') return POLY_STYLE_MEMBER;
     if (isMemberRole(creatorRole)) return POLY_STYLE_MEMBER;
-    // Contributor-made polygon viewed by admin/team: violet once approved,
-    // orange while still in the review queue.
-    if (qcStatus === 'approved') return POLY_STYLE_CONTRIBUTOR_APPROVED;
-    return POLY_STYLE_CONTRIBUTOR;
+    // Contributor-made polygon viewed by team/admin/superadmin: distinct
+    // colors per QC status (mirrors the status badges in the review panel).
+    switch (qcStatus) {
+      case 'approved': return POLY_STYLE_CONTRIBUTOR_APPROVED;
+      case 'flagged':  return POLY_STYLE_CONTRIBUTOR_FLAGGED;
+      case 'rejected': return POLY_STYLE_CONTRIBUTOR_REJECTED;
+      case 'unreviewed':
+      default:         return POLY_STYLE_CONTRIBUTOR;
+    }
   }
 
-  function shouldShowPoly(creatorRole) {
+  function shouldShowPoly(creatorRole, qcStatus) {
     const viewerRole = typeof LeucenaApp !== 'undefined' ? LeucenaApp.getEffectiveRole() : null;
     if (!viewerRole || viewerRole === 'contributor') return true;
-    return isMemberRole(creatorRole) ? showMemberMasks : showContributorMasks;
+    if (isMemberRole(creatorRole)) return showMemberMasks;
+    if (!showContributorMasks) return false;
+    const s = qcStatus || 'unreviewed';
+    return _qcVisible[s] !== false;
   }
 
   function init() {
@@ -470,7 +524,7 @@ window.LeucenaDrawing = (function () {
     const qcStatus = props.qc_status || 'unreviewed';
     const style = getPolyStyle(creatorRole, qcStatus);
     const currentState = typeof LeucenaMap.getCurrentState === 'function' ? LeucenaMap.getCurrentState() : null;
-    const visible = currentState && LeucenaMap.getShowPolygons() && shouldShowPoly(creatorRole);
+    const visible = currentState && LeucenaMap.getShowPolygons() && shouldShowPoly(creatorRole, qcStatus);
 
     const poly = new google.maps.Polygon({
       paths: paths,
@@ -484,6 +538,12 @@ window.LeucenaDrawing = (function () {
     // Clickable polygons capture mousemove from the map; keep _lastMouseLatLng in sync
     poly.addListener('mousemove', (e) => { _lastMouseLatLng = e.latLng; });
     poly.addListener('click', (e) => {
+      if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logInputTrace) {
+        LeucenaApp.logInputTrace('polygon_click', {
+          polyId: id, activeMode,
+          lat: e.latLng.lat(), lng: e.latLng.lng()
+        });
+      }
       if (activeMode === 'delete') {
         selectForDeletion(id);
       } else if (activeMode === 'edit') {
@@ -501,7 +561,8 @@ window.LeucenaDrawing = (function () {
             LeucenaApp.logEvent('hole_vertex_click_poly', LeucenaApp.getSelectedCellId(), id, {
               lat: e.latLng.lat(), lng: e.latLng.lng(),
               clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getClickable(),
-              editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable()
+              editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
+              ..._cellLogCtx()
             });
           }
           manualHoleState.addVertex(e.latLng);
@@ -512,7 +573,8 @@ window.LeucenaDrawing = (function () {
           LeucenaApp.logEvent('poly_click_in_hole_mode', LeucenaApp.getSelectedCellId(), id, {
             holeTargetId, manualHole: !!(manualHoleState && manualHoleState.targetId),
             clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getClickable(),
-            editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable()
+            editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
+            ..._cellLogCtx()
           });
         }
         selectHoleTarget(id);
@@ -566,10 +628,16 @@ window.LeucenaDrawing = (function () {
         }
       }
       const entry = drawnPolygons[id];
-      if (entry && entry.areaLabel) {
+      if (entry) {
         const geom = { type: 'Polygon', coordinates: pathsToGeoJSONCoords(poly) };
-        entry.areaLabel.updateText(formatAreaLabel(calcAreaHa(geom)));
-        entry.areaLabel.updatePosition(polygonCentroid(geom));
+        const ha = calcAreaHa(geom);
+        if (entry.areaLabel) {
+          entry.areaLabel.updateText(formatAreaLabel(ha));
+          entry.areaLabel.updatePosition(polygonCentroid(geom));
+        }
+        if (entry._qcFocused && typeof LeucenaQC !== 'undefined' && LeucenaQC.refreshPanelLiveArea) {
+          LeucenaQC.refreshPanelLiveArea(id, ha);
+        }
       }
       clearTimeout(gestureTimer);
       gestureTimer = setTimeout(() => {
@@ -887,6 +955,11 @@ window.LeucenaDrawing = (function () {
         LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
       }
     }
+    if (mode !== 'draw' && mode !== 'hole' && mode !== 'delete') {
+      if (typeof LeucenaQC !== 'undefined' && LeucenaQC.refocusCurrentPolygonIfReview) {
+        LeucenaQC.refocusCurrentPolygonIfReview();
+      }
+    }
     _syncToolbarExtras();
   }
 
@@ -953,7 +1026,8 @@ window.LeucenaDrawing = (function () {
     const mouseMoves = s.getMouseMoveCount ? s.getMouseMoveCount() : -1;
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
       LeucenaApp.logEvent('hole_cleanup', LeucenaApp.getSelectedCellId(), s.targetId, {
-        vertices: s.vertices.length, mouseMoves
+        vertices: s.vertices.length, mouseMoves,
+        ..._cellLogCtx()
       });
     }
     s.vertexMarkers.forEach(m => m.setMap(null));
@@ -1001,7 +1075,8 @@ window.LeucenaDrawing = (function () {
 
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
       LeucenaApp.logEvent('hole_draw_start', LeucenaApp.getSelectedCellId(), targetId, {
-        gridClickable: false, polyClickable: false, hasMousePos: !!_lastMouseLatLng
+        gridClickable: false, polyClickable: false, hasMousePos: !!_lastMouseLatLng,
+        ..._cellLogCtx()
       });
     }
 
@@ -1038,7 +1113,10 @@ window.LeucenaDrawing = (function () {
       if (vertexMarkers.length) vertexMarkers.pop().setMap(null);
       updatePreview();
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('hole_vertex_undo', LeucenaApp.getSelectedCellId(), targetId, { remaining: vertices.length });
+        LeucenaApp.logEvent('hole_vertex_undo', LeucenaApp.getSelectedCellId(), targetId, {
+          remaining: vertices.length,
+          ..._cellLogCtx()
+        });
       }
     }
 
@@ -1046,7 +1124,10 @@ window.LeucenaDrawing = (function () {
       if (activeMode !== 'hole' || !manualHoleState) return;
       addVertex(e.latLng);
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('hole_vertex_click', LeucenaApp.getSelectedCellId(), targetId, { lat: e.latLng.lat(), lng: e.latLng.lng(), count: vertices.length });
+        LeucenaApp.logEvent('hole_vertex_click', LeucenaApp.getSelectedCellId(), targetId, {
+          lat: e.latLng.lat(), lng: e.latLng.lng(), count: vertices.length,
+          ..._cellLogCtx()
+        });
       }
       _syncToolbarExtras();
     });
@@ -1065,12 +1146,18 @@ window.LeucenaDrawing = (function () {
       // last vertex and call completeManualHole — aborting QC hole draw after one point.
       if (vertices.length < 3) {
         if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-          LeucenaApp.logEvent('hole_dblclick_ignored', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length });
+          LeucenaApp.logEvent('hole_dblclick_ignored', LeucenaApp.getSelectedCellId(), targetId, {
+            vertices: vertices.length,
+            ..._cellLogCtx()
+          });
         }
         return;
       }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('hole_finish_dblclick', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length, mouseMoves: _holeMouseMoveCount });
+        LeucenaApp.logEvent('hole_finish_dblclick', LeucenaApp.getSelectedCellId(), targetId, {
+          vertices: vertices.length, mouseMoves: _holeMouseMoveCount,
+          ..._cellLogCtx()
+        });
       }
       if (vertices.length > 0) removeLastVertex();
       completeManualHole();
@@ -1079,7 +1166,10 @@ window.LeucenaDrawing = (function () {
     const rightClickListener = map.addListener('rightclick', () => {
       if (activeMode !== 'hole' || !manualHoleState) return;
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('hole_finish_rightclick', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length, mouseMoves: _holeMouseMoveCount });
+        LeucenaApp.logEvent('hole_finish_rightclick', LeucenaApp.getSelectedCellId(), targetId, {
+          vertices: vertices.length, mouseMoves: _holeMouseMoveCount,
+          ..._cellLogCtx()
+        });
       }
       if (vertices.length >= 3) completeManualHole();
     });
@@ -1089,7 +1179,10 @@ window.LeucenaDrawing = (function () {
       if (activeMode !== 'hole' || !manualHoleState) return;
       e.preventDefault();
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-        LeucenaApp.logEvent('hole_finish_contextmenu', LeucenaApp.getSelectedCellId(), targetId, { vertices: vertices.length, mouseMoves: _holeMouseMoveCount });
+        LeucenaApp.logEvent('hole_finish_contextmenu', LeucenaApp.getSelectedCellId(), targetId, {
+          vertices: vertices.length, mouseMoves: _holeMouseMoveCount,
+          ..._cellLogCtx()
+        });
       }
       if (vertices.length >= 3) completeManualHole();
     };
@@ -1111,7 +1204,8 @@ window.LeucenaDrawing = (function () {
 
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
       LeucenaApp.logEvent('hole_complete_start', LeucenaApp.getSelectedCellId(), targetId, {
-        vertices: vertices.length, mouseMoves
+        vertices: vertices.length, mouseMoves,
+        ..._cellLogCtx()
       });
     }
 
@@ -1167,7 +1261,11 @@ window.LeucenaDrawing = (function () {
       }
       const holeResult = await res.json();
       entry.data.geometry = newGeometry;
-      if (holeResult.area_ha != null) entry.data.area_ha = holeResult.area_ha;
+      const haSaved = holeResult.area_ha != null ? Number(holeResult.area_ha) : calcAreaHa(newGeometry);
+      entry.data.area_ha = haSaved;
+      if (typeof LeucenaQC !== 'undefined' && LeucenaQC.syncSavedAreaAfterGeometryPut) {
+        LeucenaQC.syncSavedAreaAfterGeometryPut(targetId, haSaved);
+      }
       renderPolygon(targetId, newGeometry, entry.data, false);
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('hole_create', entry.data.grid_cell_id, targetId, { rings: currentCoords.length });
@@ -1666,6 +1764,13 @@ window.LeucenaDrawing = (function () {
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('polygon_edit_save', entry ? entry.data.grid_cell_id : null, id, { rings: coordinates.length, ok: res.ok });
       }
+      if (res.ok && entry) {
+        const ha = calcAreaHa(geometry);
+        entry.data.area_ha = ha;
+        if (typeof LeucenaQC !== 'undefined' && LeucenaQC.syncSavedAreaAfterGeometryPut) {
+          LeucenaQC.syncSavedAreaAfterGeometryPut(id, ha);
+        }
+      }
     } catch (e) {
       LeucenaApp.showToast(LeucenaI18n.t('toast.polyEditSaveFail'), 'error');
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
@@ -1795,8 +1900,9 @@ window.LeucenaDrawing = (function () {
     const viewport = map ? map.getBounds() : null;
     for (const [id, entry] of Object.entries(drawnPolygons)) {
       const crole = entry.data.created_by_role || 'contributor';
+      const qcStatus = entry.data.qc_status || 'unreviewed';
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
-      const show = visible && shouldShowPoly(crole) && inView;
+      const show = visible && shouldShowPoly(crole, qcStatus) && inView;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
@@ -1809,6 +1915,13 @@ window.LeucenaDrawing = (function () {
 
   function setContributorMasksVisible(visible) {
     showContributorMasks = visible;
+    refreshPolyVisibility();
+  }
+
+  /** Toggle visibility of contributor masks for a specific QC status. */
+  function setQcStatusVisible(qcStatus, visible) {
+    if (!qcStatus || !(qcStatus in _qcVisible)) return;
+    _qcVisible[qcStatus] = !!visible;
     refreshPolyVisibility();
   }
 
@@ -1827,10 +1940,11 @@ window.LeucenaDrawing = (function () {
         continue;
       }
       const crole = entry.data.created_by_role || 'contributor';
+      const qcStatus = entry.data.qc_status || 'unreviewed';
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
       const inState = !currentState || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
       const inEditScope = !hasEditFilter || LeucenaMap.isEditNeighborOrSelf(entry.data.grid_cell_id);
-      const show = globalShow && shouldShowPoly(crole) && inView && inState && inEditScope;
+      const show = globalShow && shouldShowPoly(crole, qcStatus) && inView && inState && inEditScope;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
@@ -1954,13 +2068,20 @@ window.LeucenaDrawing = (function () {
     attachPathListeners(snapshot.id, entry.gmapsPoly);
 
     try {
-      await fetch(`/api/polygons/${snapshot.id}`, {
+      const res = await fetch(`/api/polygons/${snapshot.id}`, {
         method: 'PUT',
         headers: LeucenaApp.authHeaders(),
         body: JSON.stringify({ geometry: snapshot.geometry })
       });
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
         LeucenaApp.logEvent('qc_undo_edit', entry.data.grid_cell_id, snapshot.id, null);
+      }
+      if (res.ok) {
+        const ha = calcAreaHa(snapshot.geometry);
+        entry.data.area_ha = ha;
+        if (typeof LeucenaQC !== 'undefined' && LeucenaQC.syncSavedAreaAfterGeometryPut) {
+          LeucenaQC.syncSavedAreaAfterGeometryPut(snapshot.id, ha);
+        }
       }
       return true;
     } catch (e) {
@@ -2001,7 +2122,8 @@ window.LeucenaDrawing = (function () {
     _qcHoleOnComplete = typeof onComplete === 'function' ? onComplete : null;
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
       LeucenaApp.logEvent('qc_hole_start', entry.data.grid_cell_id, polyId, {
-        wasEditable: _qcHoleWasEditable
+        wasEditable: _qcHoleWasEditable,
+        ..._cellLogCtx()
       });
     }
     LeucenaApp.showToast(LeucenaI18n.t('toast.holeDrawNow'), 'info');
@@ -2199,20 +2321,27 @@ window.LeucenaDrawing = (function () {
   }
 
   function polygonCountsInLoadedState() {
+    const empty = { member: 0, contributor: 0, total: 0, qc: { unreviewed: 0, flagged: 0, rejected: 0, approved: 0 } };
     const stateActive = typeof LeucenaMap !== 'undefined' && LeucenaMap.getCurrentState && LeucenaMap.getCurrentState();
-    if (!stateActive) return { member: 0, contributor: 0, total: 0 };
+    if (!stateActive) return empty;
     const loaded = LeucenaMap.getGridData && LeucenaMap.getGridData();
-    if (!loaded) return { member: 0, contributor: 0, total: 0 };
+    if (!loaded) return empty;
     let member = 0;
     let contributor = 0;
+    const qc = { unreviewed: 0, flagged: 0, rejected: 0, approved: 0 };
     for (const entry of Object.values(drawnPolygons)) {
       const gid = entry.data.grid_cell_id;
       if (!gid || !loaded[gid]) continue;
       const crole = entry.data.created_by_role || 'contributor';
-      if (isMemberRole(crole)) member++;
-      else contributor++;
+      if (isMemberRole(crole)) {
+        member++;
+      } else {
+        contributor++;
+        const s = entry.data.qc_status || 'unreviewed';
+        if (qc[s] !== undefined) qc[s]++;
+      }
     }
-    return { member, contributor, total: member + contributor };
+    return { member, contributor, total: member + contributor, qc };
   }
 
   function getPolygonCounts() {
@@ -2309,9 +2438,10 @@ window.LeucenaDrawing = (function () {
     for (const [id, entry] of Object.entries(drawnPolygons)) {
       if (!entry.areaLabel) continue;
       const crole = entry.data.created_by_role || 'contributor';
+      const qcStatus = entry.data.qc_status || 'unreviewed';
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
       const inState = !stateActive || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
-      const show = visible && globalShow && shouldShowPoly(crole) && inView && inState;
+      const show = visible && globalShow && shouldShowPoly(crole, qcStatus) && inView && inState;
       entry.areaLabel.setMap(show ? map : null);
     }
   }
@@ -2322,6 +2452,7 @@ window.LeucenaDrawing = (function () {
     setVisible,
     setMemberMasksVisible,
     setContributorMasksVisible,
+    setQcStatusVisible,
     refreshPolyStyles,
     addRemotePolygon,
     updateRemotePolygon,
@@ -2360,6 +2491,7 @@ window.LeucenaDrawing = (function () {
     hasPendingDelete() { return !!_pendingDeleteId; },
     // Phase 6 — QC review hooks (used by qc.js)
     getPolyEntry,
+    getLiveAreaHaForPolygon,
     setQcFocus,
     setPolyEditableSingle,
     getPolyCurrentGeometry,
