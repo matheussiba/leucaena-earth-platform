@@ -1,7 +1,7 @@
 // IIFE module: polygon draw/edit/delete tools and a central mode state machine.
 // Loaded version marker: bump when shipping hole-tool diagnostics so we can
 // confirm a fresh bundle reached the browser (look for it in DevTools console).
-console.info('[leucena/drawing] build with hole-click-safety + diagnostics v3 (cache-bypass)');
+console.info('[leucena/drawing] build v4 — fix Polygon.getClickable() crash that killed click handler');
 window.LeucenaDrawing = (function () {
   // Ray-casting point-in-ring test (matches server-side pointInPolygon)
   function pointInRing(lng, lat, ring) {
@@ -38,13 +38,30 @@ window.LeucenaDrawing = (function () {
    * Buraco tool just sits there ignoring polygon clicks.
    */
   function _polygonsClickableSnapshot() {
+    // google.maps.Polygon does NOT expose getClickable() (unlike Marker), so
+    // we read the property via MVCObject.get('clickable'). An earlier version
+    // called getClickable() directly: it threw TypeError, which propagated
+    // through the diagnostic logEvent() argument list and aborted the
+    // surrounding setMode/poly.click handler before selectHoleTarget could
+    // run — that was the actual cause of the "Buraco tool ignores my clicks"
+    // bug, not a stale clickable flag at all.
     const all = Object.values(drawnPolygons);
     let clickable = 0, nonClickable = 0, nullPoly = 0;
     for (const e of all) {
       if (!e || !e.gmapsPoly) { nullPoly++; continue; }
-      if (e.gmapsPoly.getClickable()) clickable++; else nonClickable++;
+      if (e.gmapsPoly.get('clickable') !== false) clickable++; else nonClickable++;
     }
     return { total: all.length, clickable, nonClickable, nullPoly };
+  }
+
+  /** Defensive wrapper so a buggy diagnostic field never aborts a real flow. */
+  function _safeLog(event, cellId, objId, fn) {
+    if (typeof LeucenaApp === 'undefined' || !LeucenaApp.logEvent) return;
+    let payload;
+    try { payload = fn(); } catch (err) {
+      payload = { _diag_error: String((err && err.message) || err) };
+    }
+    try { LeucenaApp.logEvent(event, cellId, objId, payload); } catch (_) { /* never break callers */ }
   }
 
   const deleteUndoStack = [];
@@ -563,21 +580,20 @@ window.LeucenaDrawing = (function () {
           lat: e.latLng.lat(), lng: e.latLng.lng()
         });
       }
-      // Always-on, low-volume diagnostic: the user reported clicks on a polygon
-      // in 'hole' mode that produced no log at all (suggesting clickable=false).
-      // This fires *only* in modes that route through the polygon overlay, so
-      // it stays quiet during normal navigation/QC-only flows.
+      // Always-on, low-volume diagnostic. Wrapped in _safeLog so a buggy
+      // field can't ever abort the rest of the click handler (which is what
+      // happened when the first version called .getClickable(), a method
+      // Marker has but Polygon does NOT — TypeError was killing the flow
+      // before selectHoleTarget could run).
       if (activeMode === 'hole' || activeMode === 'edit' || activeMode === 'delete') {
-        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-          LeucenaApp.logEvent('polygon_click_received', LeucenaApp.getSelectedCellId(), id, {
-            activeMode,
-            holeTargetId,
-            hasManualHole: !!manualHoleState,
-            clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getClickable(),
-            editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
-            ..._cellLogCtx()
-          });
-        }
+        _safeLog('polygon_click_received', LeucenaApp.getSelectedCellId(), id, () => ({
+          activeMode,
+          holeTargetId,
+          hasManualHole: !!manualHoleState,
+          clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.get('clickable') !== false,
+          editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
+          ..._cellLogCtx()
+        }));
       }
       if (activeMode === 'delete') {
         selectForDeletion(id);
@@ -592,26 +608,22 @@ window.LeucenaDrawing = (function () {
         // If we're already in manualHoleState for this mask, add the hole
         // vertex from the polygon click (same as the map click handler).
         if (holeTargetId === id && manualHoleState && manualHoleState.targetId === id && e.latLng) {
-          if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-            LeucenaApp.logEvent('hole_vertex_click_poly', LeucenaApp.getSelectedCellId(), id, {
-              lat: e.latLng.lat(), lng: e.latLng.lng(),
-              clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getClickable(),
-              editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
-              ..._cellLogCtx()
-            });
-          }
+          _safeLog('hole_vertex_click_poly', LeucenaApp.getSelectedCellId(), id, () => ({
+            lat: e.latLng.lat(), lng: e.latLng.lng(),
+            clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.get('clickable') !== false,
+            editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
+            ..._cellLogCtx()
+          }));
           manualHoleState.addVertex(e.latLng);
           _syncToolbarExtras();
           return;
         }
-        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-          LeucenaApp.logEvent('poly_click_in_hole_mode', LeucenaApp.getSelectedCellId(), id, {
-            holeTargetId, manualHole: !!(manualHoleState && manualHoleState.targetId),
-            clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getClickable(),
-            editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
-            ..._cellLogCtx()
-          });
-        }
+        _safeLog('poly_click_in_hole_mode', LeucenaApp.getSelectedCellId(), id, () => ({
+          holeTargetId, manualHole: !!(manualHoleState && manualHoleState.targetId),
+          clickable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.get('clickable') !== false,
+          editable: drawnPolygons[id] && drawnPolygons[id].gmapsPoly.getEditable(),
+          ..._cellLogCtx()
+        }));
         selectHoleTarget(id);
       }
     });
@@ -997,12 +1009,10 @@ window.LeucenaDrawing = (function () {
       } else if (mode === 'hole') {
         LeucenaMap.setGridClickable(false);
         LeucenaApp.showToast(LeucenaI18n.t('toast.holeSelectMask'), 'info');
-        if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-          LeucenaApp.logEvent('hole_mode_ready', LeucenaApp.getSelectedCellId(), null, {
-            polygonsClickable: _polygonsClickableSnapshot(),
-            ..._cellLogCtx()
-          });
-        }
+        _safeLog('hole_mode_ready', LeucenaApp.getSelectedCellId(), null, () => ({
+          polygonsClickable: _polygonsClickableSnapshot(),
+          ..._cellLogCtx()
+        }));
       }
     }
     if (mode !== 'draw' && mode !== 'hole' && mode !== 'delete') {
