@@ -5,13 +5,36 @@
  * that `polygonAreaHa` in server.js already relies on.
  *
  * Configurable limits via env vars:
- *   POLYGON_MIN_AREA_M2  (default: 20 m²     — filters accidental single-click slivers
- *                         while still accepting individual mature leucaena trees)
- *   POLYGON_MAX_AREA_M2  (default: 500.000 m² = 50 ha — large commercial stand, not absurd)
+ *   POLYGON_MIN_AREA_M2  (default: 20 m² — filters accidental single-click slivers)
+ *   POLYGON_MAX_AREA_HA  (default: 80 ha — upper bound for a single mask; 1 ha = 10 000 m²)
+ *   POLYGON_MAX_AREA_M2  (deprecated — used only if POLYGON_MAX_AREA_HA is unset, for old deploys)
  */
 
-const MIN_AREA_M2  = parseFloat(process.env.POLYGON_MIN_AREA_M2  || '20');
-const MAX_AREA_M2  = parseFloat(process.env.POLYGON_MAX_AREA_M2  || '500000'); // 500.000 m² = 50 ha
+const MIN_AREA_M2 = parseFloat(process.env.POLYGON_MIN_AREA_M2 || '20');
+
+const HA_TO_M2 = 10000;
+
+/** Resolve max polygon net area in m²; prefer HA env, fall back to legacy M². */
+function _resolveMaxAreaM2AndHa() {
+  const haRaw = process.env.POLYGON_MAX_AREA_HA;
+  if (haRaw != null && String(haRaw).trim() !== '') {
+    const ha = parseFloat(haRaw);
+    if (Number.isFinite(ha) && ha > 0) {
+      return { maxAreaM2: ha * HA_TO_M2, maxAreaHa: ha };
+    }
+  }
+  const m2Legacy = process.env.POLYGON_MAX_AREA_M2;
+  if (m2Legacy != null && String(m2Legacy).trim() !== '') {
+    const m2 = parseFloat(m2Legacy);
+    if (Number.isFinite(m2) && m2 > 0) {
+      return { maxAreaM2: m2, maxAreaHa: m2 / HA_TO_M2 };
+    }
+  }
+  const defaultHa = 80;
+  return { maxAreaM2: defaultHa * HA_TO_M2, maxAreaHa: defaultHa };
+}
+
+const { maxAreaM2: MAX_AREA_M2, maxAreaHa: MAX_AREA_HA } = _resolveMaxAreaM2AndHa();
 
 // ── Shoelace area (spherical approximation, matches polygonAreaHa in server.js) ──
 
@@ -155,7 +178,12 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
   netAreaM2 = Math.max(0, netAreaM2);
 
   if (netAreaM2 > MAX_AREA_M2) {
-    return { ok: false, error: `Polígono muito grande (área ≈ ${Math.round(netAreaM2).toLocaleString()} m²; máximo permitido: ${MAX_AREA_M2.toLocaleString()} m²). Verifique se o desenho está correto.` };
+    const maxM2Rounded = Math.round(MAX_AREA_M2);
+    const maxHaStr = Number.isInteger(MAX_AREA_HA) ? String(MAX_AREA_HA) : MAX_AREA_HA.toFixed(2).replace(/\.?0+$/, '');
+    return {
+      ok: false,
+      error: `Polígono muito grande (área ≈ ${Math.round(netAreaM2).toLocaleString()} m² ≈ ${(netAreaM2 / HA_TO_M2).toFixed(2)} ha; máximo permitido: ${maxHaStr} ha ≈ ${maxM2Rounded.toLocaleString()} m²). Verifique se o desenho está correto.`
+    };
   }
 
   const cleanedGeometry = { ...geometry, coordinates: coords };

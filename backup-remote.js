@@ -9,6 +9,12 @@
  *   https://<ACCOUNT_ID>.r2.cloudflarestorage.com
  *
  * Set env vars below; if any required var is missing, remote upload is skipped (local backup unchanged).
+ *
+ * How many `.db` objects to keep under the prefix (after each upload, oldest are deleted):
+ *   BACKUP_CLOUDFLARE_MAX_FILES (preferred name for R2)
+ *   BACKUP_R2_MAX_FILES         (alias)
+ *   BACKUP_REMOTE_MAX_OBJECTS   (legacy alias — same meaning)
+ * Use `0` on all unset / zero to disable code-side pruning (R2 Lifecycle only).
  */
 
 const fs = require('fs');
@@ -68,9 +74,22 @@ function _prefix() {
   return p;
 }
 
+function _maxRemoteObjectsMeta() {
+  const candidates = [
+    ['BACKUP_CLOUDFLARE_MAX_FILES', process.env.BACKUP_CLOUDFLARE_MAX_FILES],
+    ['BACKUP_R2_MAX_FILES', process.env.BACKUP_R2_MAX_FILES],
+    ['BACKUP_REMOTE_MAX_OBJECTS', process.env.BACKUP_REMOTE_MAX_OBJECTS]
+  ];
+  for (const [envKey, raw] of candidates) {
+    if (raw == null || String(raw).trim() === '') continue;
+    const n = parseInt(raw, 10);
+    if (Number.isFinite(n) && n > 0) return { n, envKey };
+  }
+  return { n: 0, envKey: null };
+}
+
 function _maxRemoteObjects() {
-  const n = parseInt(process.env.BACKUP_REMOTE_MAX_OBJECTS || '0', 10);
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  return _maxRemoteObjectsMeta().n;
 }
 
 async function _uploadOnce(localPath) {
@@ -136,6 +155,7 @@ function queueRemoteBackup(localFilePath) {
 }
 
 function getRemoteBackupStatus() {
+  const { n, envKey } = _maxRemoteObjectsMeta();
   return {
     configured: isRemoteBackupConfigured(),
     lastUploadAt: status.lastUploadAt,
@@ -143,7 +163,9 @@ function getRemoteBackupStatus() {
     lastError: status.lastError,
     lastSuccessBytes: status.lastSuccessSize,
     prefix: isRemoteBackupConfigured() ? _prefix() : null,
-    maxRemoteObjects: _maxRemoteObjects()
+    maxRemoteObjects: n,
+    /** Which env var supplied `maxRemoteObjects` (null if pruning disabled). */
+    maxRemoteObjectsEnv: envKey
   };
 }
 

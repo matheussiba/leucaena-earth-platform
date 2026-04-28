@@ -39,9 +39,9 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 | `backup-remote.js` | Upload assíncrono após snapshot local; fila serial para não sobrecarregar; opcional poda remota por contagem. |
 | `server.js` | Chama `backupRemote.queueRemoteBackup(dest)` ao final de `createBackup()`; `GET /api/admin/backup-remote/status` (super admin). |
 | `package.json` | Dependência `@aws-sdk/client-s3`. |
-| `.env.example` | Variáveis documentadas (`BACKUP_S3_*`, `BACKUP_REMOTE_MAX_OBJECTS`, etc.). |
+| `.env.example` | Variáveis documentadas (`BACKUP_S3_*`, `BACKUP_CLOUDFLARE_MAX_FILES` / `BACKUP_REMOTE_MAX_OBJECTS`, etc.). |
 
-**Por que R2 (custo):** free tier generoso para o tamanho típico de um `.db` deste projeto; sem cobrança de **egress** típica ao **subir** backups a partir do Render; você pode complementar com **Lifecycle** no painel R2 (ex.: apagar objetos com +90 dias) **sem código** — deixe `BACKUP_REMOTE_MAX_OBJECTS=0` e use só a regra no bucket.
+**Por que R2 (custo):** free tier generoso para o tamanho típico de um `.db` deste projeto; sem cobrança de **egress** típica ao **subir** backups a partir do Render; você pode complementar com **Lifecycle** no painel R2 (ex.: apagar objetos com +90 dias) **sem código** — omita `BACKUP_CLOUDFLARE_MAX_FILES` / `BACKUP_REMOTE_MAX_OBJECTS` ou use `0` e use só a regra no bucket.
 
 **Configuração manual (sua conta — grátis):**
 
@@ -53,7 +53,7 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
    - `BACKUP_S3_BUCKET=nome-do-bucket`
    - `BACKUP_S3_ACCESS_KEY` / `BACKUP_S3_SECRET_KEY` do token
    - Opcional: `BACKUP_S3_PREFIX=leucaena-db`, `BACKUP_S3_REGION=auto`
-   - Opcional: `BACKUP_REMOTE_MAX_OBJECTS=45` (mantém só os N mais recentes no prefixo; `0` = não apaga remotamente)
+   - Opcional: `BACKUP_CLOUDFLARE_MAX_FILES=45` (ou `BACKUP_REMOTE_MAX_OBJECTS` legado — mantém só os N `.db` mais recentes no prefixo; `0` = não apaga remotamente)
 5. Deploy / restart. Disparar **POST** `/api/admin/backup` como super admin ou esperar o intervalo de 6h.
 6. Conferir objeto no bucket; chamar `GET /api/admin/backup-remote/status` → `lastUploadAt`, `lastKey`, `lastError`.
 
@@ -108,7 +108,7 @@ Implementação escolhida: **Cloudflare R2** (ou qualquer storage **compatível 
 1. **Módulo** `geometry-validate.js` (zero dependências externas):
    - Fechamento automático do anel (auto-fix) + remoção de coords consecutivas duplicadas.
    - Mínimo de 3 vértices distintos.
-   - Área mínima (padrão `POLYGON_MIN_AREA_M2=100` m²) e máxima (`POLYGON_MAX_AREA_HA=5000` ha), configuráveis por env.
+   - Área mínima (padrão `POLYGON_MIN_AREA_M2=20` m²) e máxima (`POLYGON_MAX_AREA_HA=80` ha; legado `POLYGON_MAX_AREA_M2` se HA omitido), configuráveis por env.
    - Detecção de auto-interseção para anéis com 200 vértices ou menos.
    - Retorna `{ ok, geometry (limpa), area_ha }` ou `{ ok: false, error }`.
 2. **API** (`server.js`): `validatePolygonGeometry` aplicado em `POST /api/polygons` e `PUT /api/polygons/:id` antes do `INSERT`/`UPDATE`; retorna HTTP 422 com mensagem em português.
