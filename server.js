@@ -499,7 +499,9 @@ function isTeamOrAbove(username) {
   return eff === 'superadmin' || eff === 'admin' || eff === 'team';
 }
 function canDeleteMask(username, maskCreator) {
-  if (isAdmin(username)) return true;
+  // team+ (team, admin, superadmin) podem remover qualquer máscara como
+  // parte do fluxo de curadoria/QC; contributors só removem as próprias.
+  if (isTeamOrAbove(username)) return true;
   return maskCreator === username;
 }
 
@@ -3506,16 +3508,16 @@ app.put('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   const poly = queryOne('SELECT * FROM polygons WHERE id = ? AND deleted_at IS NULL', [id]);
   if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
 
-  if (poly.created_by !== username && !isAdmin(username)) {
+  if (poly.created_by !== username && !isTeamOrAbove(username)) {
     return res.status(403).json({ error: `Este polígono pertence a ${poly.created_by}` });
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [poly.grid_cell_id]);
-  // Admins bypass the cell-lock check because Phase 6 QC review needs to be
-  // able to refine polygons without taking a lock (and possibly without
-  // disturbing whoever else is editing the cell). Regular users still need
-  // to hold the lock.
-  if (cell && cell.locked_by && cell.locked_by !== username && !isAdmin(username)) {
+  // team+ (team, admin, superadmin) bypass the cell-lock check because Phase 6
+  // QC review needs to refine polygons without taking a lock (and possibly
+  // without disturbing whoever else is editing the cell). Regular users still
+  // need to hold the lock.
+  if (cell && cell.locked_by && cell.locked_by !== username && !isTeamOrAbove(username)) {
     return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 
@@ -3542,11 +3544,12 @@ app.delete('/api/polygons/:id', requireAuth, requireVerified, (req, res) => {
   if (!poly) return res.status(404).json({ error: 'Polígono não encontrado' });
 
   if (!canDeleteMask(username, poly.created_by)) {
-    return res.status(403).json({ error: `Este polígono pertence a ${poly.created_by}. Somente o criador ou um administrador pode excluí-lo.` });
+    return res.status(403).json({ error: `Este polígono pertence a ${poly.created_by}. Somente o criador ou um membro da equipe pode excluí-lo.` });
   }
 
   const cell = queryOne('SELECT * FROM grid_cells WHERE id = ?', [poly.grid_cell_id]);
-  if (cell && cell.locked_by && cell.locked_by !== username) {
+  // team+ podem remover durante QC review mesmo em célula bloqueada por outro.
+  if (cell && cell.locked_by && cell.locked_by !== username && !isTeamOrAbove(username)) {
     return res.status(409).json({ error: `Célula bloqueada por ${cell.locked_by}` });
   }
 

@@ -1779,6 +1779,9 @@ window.LeucenaDrawing = (function () {
   function canEditPolygon(entry) {
     const username = LeucenaApp.getUsername();
     if (!username) return false;
+    // team+ (team, admin, superadmin) podem refinar qualquer polígono como
+    // parte do fluxo de QC review (Buraco / Remover Vértice / mover vértice).
+    if (LeucenaApp.isTeamOrAbove && LeucenaApp.isTeamOrAbove()) return true;
     if (LeucenaApp.isAdminUser()) return true;
     return entry.data.created_by === username;
   }
@@ -1786,6 +1789,7 @@ window.LeucenaDrawing = (function () {
   function canDeletePolygon(entry) {
     const username = LeucenaApp.getUsername();
     if (!username) return false;
+    if (LeucenaApp.isTeamOrAbove && LeucenaApp.isTeamOrAbove()) return true;
     if (LeucenaApp.isAdminUser()) return true;
     return entry.data.created_by === username;
   }
