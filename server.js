@@ -293,7 +293,7 @@ app.get('/', (req, res) => {
   res.setHeader('Expires', '0');
   if (isMapHost(req)) {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-    const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry,visualization&callback=initGoogleMapsCallback`;
+    const mapsUrl = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=drawing,geometry&callback=initGoogleMapsCallback`;
     res.send(_stampLocalAssets(html).replace('__GOOGLE_MAPS_SCRIPT_URL__', mapsUrl).replace('__GA_SCRIPT__', GA_SCRIPT));
   } else {
     const mapUrl = `https://map.leucaena.earth`;
