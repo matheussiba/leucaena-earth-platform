@@ -1371,6 +1371,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       function CanvasPointHeatmap() {
         this.points = [];
         this.canvas = null;
+        this.densityCanvas = document.createElement('canvas');
       }
       CanvasPointHeatmap.prototype = new google.maps.OverlayView();
       CanvasPointHeatmap.prototype.onAdd = function () {
@@ -1389,6 +1390,27 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       CanvasPointHeatmap.prototype.setData = function (points) {
         this.points = points || [];
         this.draw();
+      };
+      CanvasPointHeatmap.prototype._rampColor = function (t) {
+        const stops = [
+          { t: 0.00, c: [74, 222, 128] },
+          { t: 0.38, c: [250, 204, 21] },
+          { t: 0.68, c: [249, 115, 22] },
+          { t: 1.00, c: [220, 38, 38] }
+        ];
+        for (let i = 1; i < stops.length; i++) {
+          if (t <= stops[i].t) {
+            const a = stops[i - 1];
+            const b = stops[i];
+            const p = (t - a.t) / (b.t - a.t);
+            return [
+              Math.round(a.c[0] + (b.c[0] - a.c[0]) * p),
+              Math.round(a.c[1] + (b.c[1] - a.c[1]) * p),
+              Math.round(a.c[2] + (b.c[2] - a.c[2]) * p)
+            ];
+          }
+        }
+        return stops[stops.length - 1].c;
       };
       CanvasPointHeatmap.prototype.draw = function () {
         if (!this.canvas || !map) return;
@@ -1410,26 +1432,47 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         this.canvas.style.height = height + 'px';
         this.canvas.width = Math.ceil(width * dpr);
         this.canvas.height = Math.ceil(height * dpr);
+        this.densityCanvas.width = this.canvas.width;
+        this.densityCanvas.height = this.canvas.height;
 
         const ctx = this.canvas.getContext('2d');
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.clearRect(0, 0, width, height);
+        const densityCtx = this.densityCanvas.getContext('2d');
+        densityCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        densityCtx.clearRect(0, 0, width, height);
         const zoom = map.getZoom() || 12;
-        const radius = Math.max(18, Math.min(42, 16 + zoom * 1.2));
+        const radius = Math.max(46, Math.min(86, 92 - zoom * 2.2));
 
         for (const latLng of this.points) {
           const p = projection.fromLatLngToDivPixel(latLng);
           if (!p) continue;
           const x = p.x - left;
           const y = p.y - top;
-          const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-          grad.addColorStop(0.00, 'rgba(255, 64, 0, 0.85)');
-          grad.addColorStop(0.22, 'rgba(255, 192, 0, 0.58)');
-          grad.addColorStop(0.48, 'rgba(132, 204, 22, 0.34)');
-          grad.addColorStop(1.00, 'rgba(132, 204, 22, 0)');
-          ctx.fillStyle = grad;
-          ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+          const grad = densityCtx.createRadialGradient(x, y, 0, x, y, radius);
+          grad.addColorStop(0.00, 'rgba(0, 0, 0, 0.09)');
+          grad.addColorStop(0.45, 'rgba(0, 0, 0, 0.045)');
+          grad.addColorStop(1.00, 'rgba(0, 0, 0, 0)');
+          densityCtx.fillStyle = grad;
+          densityCtx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
         }
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const density = densityCtx.getImageData(0, 0, this.densityCanvas.width, this.densityCanvas.height);
+        const out = ctx.createImageData(density.width, density.height);
+        const low = 10;
+        const high = 150;
+        for (let i = 3; i < density.data.length; i += 4) {
+          const a = density.data[i];
+          if (a < low) continue;
+          const t = Math.max(0, Math.min(1, (a - low) / (high - low)));
+          const eased = Math.pow(t, 0.72);
+          const color = this._rampColor(eased);
+          out.data[i - 3] = color[0];
+          out.data[i - 2] = color[1];
+          out.data[i - 1] = color[2];
+          out.data[i] = Math.round(50 + 175 * eased);
+        }
+        ctx.putImageData(out, 0, 0);
       };
       pointHeatmap = new CanvasPointHeatmap();
     }
