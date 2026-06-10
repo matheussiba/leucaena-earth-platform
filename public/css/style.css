@@ -2199,6 +2199,42 @@ a.docs-logo-card:hover {
   cursor: pointer;
 }
 
+.point-display-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.point-display-toggle:hover,
+.point-display-toggle:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.point-display-toggle .point-mode-icon {
+  display: none;
+  fill: currentColor;
+  opacity: 0.95;
+}
+
+.point-display-toggle[data-mode="cluster"] .point-mode-icon-cluster,
+.point-display-toggle[data-mode="heatmap"] .point-mode-icon-heatmap,
+.point-display-toggle[data-mode="points"] .point-mode-icon-points {
+  display: block;
+}
+
 .filter-chevron {
   margin-left: 4px;
   font-size: 9px;

@@ -1141,6 +1141,22 @@
           <div class="filter-group" data-collapsible>
             <div class="filter-item filter-item-parent">
               <input type="checkbox" id="toggle-points" checked>
+              <button type="button" id="point-display-mode" class="point-display-toggle" data-mode="cluster" title="Cluster / Heatmap / Pontos" aria-label="Alternar exibição dos pontos">
+                <svg class="point-mode-icon point-mode-icon-cluster" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                  <circle cx="6" cy="6" r="3"></circle>
+                  <circle cx="10" cy="7" r="3"></circle>
+                  <circle cx="8" cy="10" r="3"></circle>
+                </svg>
+                <svg class="point-mode-icon point-mode-icon-heatmap" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                  <circle cx="8" cy="8" r="6"></circle>
+                  <circle cx="8" cy="8" r="3"></circle>
+                </svg>
+                <svg class="point-mode-icon point-mode-icon-points" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                  <circle cx="5" cy="5" r="2"></circle>
+                  <circle cx="11" cy="6" r="2"></circle>
+                  <circle cx="8" cy="11" r="2"></circle>
+                </svg>
+              </button>
               <span data-i18n="sidebar.occurrencePoints">Pontos de Ocorrência</span>
               <span class="filter-count" id="count-points-total"></span>
               <span class="filter-chevron" title="Expandir / Recolher">&#9662;</span>
