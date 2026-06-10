@@ -33,6 +33,8 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   let _editZoomEnforced = false;
   let _zoomWarnCount = 0;
   let pointClusterer = null; // MarkerClusterer; lazily created in ensureClusterer()
+  let pointHeatmap = null;
+  let pointDisplayMode = 'cluster';
   let _editingCellId = null;
   let _editNeighborIds = null; // Set of cell IDs adjacent to the editing cell
   let _showCollaboratorPoints = true;
@@ -1364,6 +1366,59 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     }
   }
 
+  function ensurePointHeatmap() {
+    if (!pointHeatmap && map && google.maps.visualization && google.maps.visualization.HeatmapLayer) {
+      pointHeatmap = new google.maps.visualization.HeatmapLayer({
+        data: [],
+        map: null,
+        radius: 22,
+        opacity: 0.72,
+        dissipating: true
+      });
+    }
+    return pointHeatmap;
+  }
+
+  function clearPointHeatmap() {
+    if (!pointHeatmap) return;
+    pointHeatmap.setMap(null);
+    pointHeatmap.setData([]);
+  }
+
+  function clearClusteredPointMarkers() {
+    if (!pointClusterer) return;
+    const allMarkers = Object.values(pointMarkersById).map(e => e.marker);
+    if (allMarkers.length) pointClusterer.removeMarkers(allMarkers, true);
+    pointClusterer.render();
+  }
+
+  function updatePointDisplayModeButton() {
+    const btn = document.getElementById('point-display-mode');
+    if (!btn) return;
+    const labels = { cluster: 'cluster', heatmap: 'heatmap', points: 'pontos' };
+    const next = pointDisplayMode === 'cluster' ? 'heatmap' : (pointDisplayMode === 'heatmap' ? 'points' : 'cluster');
+    const title = 'Exibindo como ' + labels[pointDisplayMode] + '. Clique para ver como ' + labels[next] + '.';
+    btn.dataset.mode = pointDisplayMode;
+    btn.title = title;
+    btn.setAttribute('aria-label', title);
+  }
+
+  function cyclePointDisplayMode() {
+    const previousMode = pointDisplayMode;
+    pointDisplayMode = pointDisplayMode === 'cluster' ? 'heatmap' : (pointDisplayMode === 'heatmap' ? 'points' : 'cluster');
+    if (pointDisplayMode === 'heatmap' && !ensurePointHeatmap()) {
+      pointDisplayMode = 'points';
+    }
+    if (pointDisplayMode === 'cluster' && previousMode !== 'cluster') {
+      _hideAllPointMarkers();
+    }
+    updatePointDisplayModeButton();
+    refreshPointVisibility();
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('point_display_mode', null, null, { mode: pointDisplayMode });
+    }
+  }
+
   async function loadPoints() { // batch-add layer-visible markers to clusterer; idle then syncs to viewport
     try {
       const res = await fetch('/api/points');
@@ -1946,6 +2001,16 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('filter_points_all', null, null, { visible: checked });
     });
 
+    const pointDisplayBtn = document.getElementById('point-display-mode');
+    if (pointDisplayBtn) {
+      updatePointDisplayModeButton();
+      pointDisplayBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        cyclePointDisplayMode();
+      });
+    }
+
     document.getElementById('toggle-polygons').addEventListener('change', function () {
       showPolygons = this.checked;
       if (typeof LeucenaDrawing !== 'undefined') {
@@ -2219,12 +2284,14 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     pointMarkersById[id] = { marker, data: { id, fid, status, layer, not_valid: status } };
 
     ensureClusterer();
-    if (pointClusterer && isPointLayerVisible(layer)) {
+    if (pointDisplayMode === 'cluster' && pointClusterer && isPointLayerVisible(layer)) {
       const viewport = map ? map.getBounds() : null;
       if (!viewport || viewport.contains(marker.getPosition())) {
         pointClusterer.addMarker(marker, true);
         pointClusterer.render();
       }
+    } else {
+      refreshPointVisibility();
     }
 
     updateFilterCounts();
@@ -2280,36 +2347,79 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     return false;
   }
 
+  function _getVisiblePointEntries(viewport, brazilOverview, stateFilter) {
+    if (brazilOverview) return [];
+    const entries = [];
+    for (const entry of Object.values(pointMarkersById)) {
+      const layer = entry.data.layer || 'crowdmapping';
+      const position = entry.marker.getPosition();
+      const inView = !viewport || viewport.contains(position);
+      const inState = !stateFilter || isPointInLoadedGrid(position);
+      const inEditScope = _isPointInEditScope(position);
+      if (_isPointVisible(entry.data, layer) && inView && inState && inEditScope) {
+        entries.push(entry);
+      }
+    }
+    return entries;
+  }
+
+  function _hideAllPointMarkers() {
+    for (const entry of Object.values(pointMarkersById)) {
+      entry.marker.setMap(null);
+    }
+  }
+
   function refreshPointVisibility() {
     const viewport = map ? map.getBounds() : null;
     const brazilOverview = !_currentState;
     const stateFilter = !!_currentState;
     ensureClusterer();
+    const visibleEntries = _getVisiblePointEntries(viewport, brazilOverview, stateFilter);
+
+    if (brazilOverview) {
+      clearClusteredPointMarkers();
+      clearPointHeatmap();
+      _hideAllPointMarkers();
+      return;
+    }
+
+    if (pointDisplayMode === 'heatmap') {
+      const heatmap = ensurePointHeatmap();
+      clearClusteredPointMarkers();
+      _hideAllPointMarkers();
+      if (heatmap) {
+        heatmap.setData(visibleEntries.map(entry => entry.marker.getPosition()));
+        heatmap.setMap(visibleEntries.length ? map : null);
+        return;
+      }
+      pointDisplayMode = 'points';
+      updatePointDisplayModeButton();
+    } else {
+      clearPointHeatmap();
+    }
+
     if (!pointClusterer) {
+      const visibleMarkers = new Set(visibleEntries.map(entry => entry.marker));
       for (const entry of Object.values(pointMarkersById)) {
-        if (brazilOverview) { entry.marker.setMap(null); continue; }
-        const layer = entry.data.layer || 'crowdmapping';
-        const inView = !viewport || viewport.contains(entry.marker.getPosition());
-        const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
-        const inEditScope = _isPointInEditScope(entry.marker.getPosition());
-        entry.marker.setMap(_isPointVisible(entry.data, layer) && inView && inState && inEditScope ? map : null);
+        entry.marker.setMap(visibleMarkers.has(entry.marker) ? map : null);
       }
       return;
     }
-    if (brazilOverview) {
-      const allMarkers = Object.values(pointMarkersById).map(e => e.marker);
-      if (allMarkers.length) pointClusterer.removeMarkers(allMarkers, true);
-      pointClusterer.render();
+
+    if (pointDisplayMode === 'points') {
+      clearClusteredPointMarkers();
+      const visibleMarkers = new Set(visibleEntries.map(entry => entry.marker));
+      for (const entry of Object.values(pointMarkersById)) {
+        entry.marker.setMap(visibleMarkers.has(entry.marker) ? map : null);
+      }
       return;
     }
+
     const toAdd = [];
     const toRemove = [];
+    const visibleMarkers = new Set(visibleEntries.map(entry => entry.marker));
     for (const entry of Object.values(pointMarkersById)) {
-      const layer = entry.data.layer || 'crowdmapping';
-      const inView = !viewport || viewport.contains(entry.marker.getPosition());
-      const inState = !stateFilter || isPointInLoadedGrid(entry.marker.getPosition());
-      const inEditScope = _isPointInEditScope(entry.marker.getPosition());
-      if (_isPointVisible(entry.data, layer) && inView && inState && inEditScope) {
+      if (visibleMarkers.has(entry.marker)) {
         toAdd.push(entry.marker);
       } else {
         toRemove.push(entry.marker);
@@ -2335,6 +2445,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
     }
     entry.marker.setMap(null);
     delete pointMarkersById[pointId];
+    if (pointDisplayMode !== 'cluster') refreshPointVisibility();
     updateFilterCounts();
   }
 
