@@ -1440,7 +1440,7 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
         densityCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         densityCtx.clearRect(0, 0, width, height);
         const zoom = map.getZoom() || 12;
-        const radius = Math.max(28, Math.min(58, 64 - zoom * 1.8));
+        const radius = Math.max(11, Math.min(23, 26 - zoom * 0.72));
 
         for (const latLng of this.points) {
           const p = projection.fromLatLngToDivPixel(latLng);
