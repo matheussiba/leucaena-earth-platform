@@ -1367,14 +1367,71 @@ window.LeucenaMap = (function () { // IIFE: init, grid cells, occurrence points,
   }
 
   function ensurePointHeatmap() {
-    if (!pointHeatmap && map && google.maps.visualization && google.maps.visualization.HeatmapLayer) {
-      pointHeatmap = new google.maps.visualization.HeatmapLayer({
-        data: [],
-        map: null,
-        radius: 22,
-        opacity: 0.72,
-        dissipating: true
-      });
+    if (!pointHeatmap && map && google.maps.OverlayView) {
+      function CanvasPointHeatmap() {
+        this.points = [];
+        this.canvas = null;
+      }
+      CanvasPointHeatmap.prototype = new google.maps.OverlayView();
+      CanvasPointHeatmap.prototype.onAdd = function () {
+        this.canvas = document.createElement('canvas');
+        this.canvas.style.position = 'absolute';
+        this.canvas.style.pointerEvents = 'none';
+        this.canvas.style.opacity = '0.78';
+        this.getPanes().overlayLayer.appendChild(this.canvas);
+      };
+      CanvasPointHeatmap.prototype.onRemove = function () {
+        if (this.canvas && this.canvas.parentNode) {
+          this.canvas.parentNode.removeChild(this.canvas);
+        }
+        this.canvas = null;
+      };
+      CanvasPointHeatmap.prototype.setData = function (points) {
+        this.points = points || [];
+        this.draw();
+      };
+      CanvasPointHeatmap.prototype.draw = function () {
+        if (!this.canvas || !map) return;
+        const bounds = map.getBounds();
+        const projection = this.getProjection();
+        if (!bounds || !projection) return;
+
+        const ne = projection.fromLatLngToDivPixel(bounds.getNorthEast());
+        const sw = projection.fromLatLngToDivPixel(bounds.getSouthWest());
+        const left = sw.x;
+        const top = ne.y;
+        const width = Math.max(1, ne.x - sw.x);
+        const height = Math.max(1, sw.y - ne.y);
+        const dpr = window.devicePixelRatio || 1;
+
+        this.canvas.style.left = left + 'px';
+        this.canvas.style.top = top + 'px';
+        this.canvas.style.width = width + 'px';
+        this.canvas.style.height = height + 'px';
+        this.canvas.width = Math.ceil(width * dpr);
+        this.canvas.height = Math.ceil(height * dpr);
+
+        const ctx = this.canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        const zoom = map.getZoom() || 12;
+        const radius = Math.max(18, Math.min(42, 16 + zoom * 1.2));
+
+        for (const latLng of this.points) {
+          const p = projection.fromLatLngToDivPixel(latLng);
+          if (!p) continue;
+          const x = p.x - left;
+          const y = p.y - top;
+          const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+          grad.addColorStop(0.00, 'rgba(255, 64, 0, 0.85)');
+          grad.addColorStop(0.22, 'rgba(255, 192, 0, 0.58)');
+          grad.addColorStop(0.48, 'rgba(132, 204, 22, 0.34)');
+          grad.addColorStop(1.00, 'rgba(132, 204, 22, 0)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        }
+      };
+      pointHeatmap = new CanvasPointHeatmap();
     }
     return pointHeatmap;
   }
