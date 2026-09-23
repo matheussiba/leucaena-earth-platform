@@ -435,7 +435,11 @@ app.post('/life/api/mentor', cpGuard, async (req, res) => {
 
 const CP_DATA_CSV = path.join(CP_DATA_DIR, 'data.csv');
 const CP_DATA_CSV_SEED = path.join(CP_DIR, 'data.csv');
-const CP_CSV_COLS = ['id', 'date', 'subject', 'category', 'minutes', 'topic', 'timestamp', 'owner'];
+const CP_CSV_COLS = ['id', 'date', 'subject', 'category', 'minutes', 'topic', 'timestamp', 'owner', 'status'];
+const cpLogStatus = (v) => {
+  const s = String(v || '').trim().toLowerCase();
+  return s === 'deleted' || s === 'subject_deleted' ? s : '';
+};
 const cpOwner = (v) => (String(v || '').trim().toLowerCase() === 'gabi' ? 'gabi' : 'matheus');
 const CP_HORIZON = '2029-10-06';
 
@@ -487,6 +491,7 @@ function cpCsvToLogs(text) {
       topic: (o.topic || '').trim() || undefined,
       timestamp: Number(o.timestamp) || Date.now() - i * 1000,
       owner: cpOwner(o.owner),
+      status: cpLogStatus(o.status),
     };
   }).filter((l) => l.minutes > 0 && l.date);
 }
@@ -527,6 +532,7 @@ app.put('/life/api/logs', cpGuard, (req, res) => {
       topic: (o.topic || '').trim() || '',
       timestamp: Number(o.timestamp) || Date.now() - i * 1000,
       owner: cpOwner(o.owner),
+      status: cpLogStatus(o.status),
     })).filter((l) => l.minutes > 0 && l.date);
     cpEnsureDataCsv();
     fs.writeFileSync(CP_DATA_CSV, cpLogsToCsv(clean), 'utf8');

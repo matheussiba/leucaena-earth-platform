@@ -59,35 +59,360 @@
   /* ------------------------------ Constantes ------------------------------ */
   const SUBJECTS_BASE = [
     'Língua Portuguesa',
+    'Língua Inglesa',
+    'Raciocínio Analítico',
+    'Controle Externo',
+    'Administração Pública',
     'Direito Constitucional',
     'Direito Administrativo (e Licitações)',
     'AFO (Administração Financeira e Orçamentária)',
     'Contabilidade (Geral e Pública)',
-    'Auditoria Governamental e Controle Externo',
+    'Auditoria Governamental',
     'Regulação Econômica e Agências',
     'TI e Análise de Dados (Python/R/SQL)',
     'Raciocínio Lógico / Matemática Financeira',
   ];
+  const EDITAL_TOPICS = {
+    'Língua Portuguesa': [
+      '1 Compreensão e interpretação de textos de gêneros variados',
+      '2 Reconhecimento de tipos e gêneros textuais',
+      '3 Domínio da ortografia oficial',
+      '4 Domínio dos mecanismos de coesão textual',
+      '4.1 Emprego de elementos de referenciação, substituição e repetição, de conectores e de outros elementos de sequenciação textual',
+      '4.2 Emprego de tempos e modos verbais',
+      '5 Domínio da estrutura morfossintática do período',
+      '5.1 Emprego das classes de palavras',
+      '5.2 Relações de coordenação entre orações e entre termos da oração',
+      '5.3 Relações de subordinação entre orações e entre termos da oração',
+      '5.4 Emprego dos sinais de pontuação',
+      '5.5 Concordância verbal e nominal',
+      '5.6 Regência verbal e nominal',
+      '5.7 Emprego do sinal indicativo de crase',
+      '5.8 Colocação dos pronomes átonos',
+      '6 Reescrita de frases e parágrafos do texto',
+      '6.1 Significação das palavras',
+      '6.2 Substituição de palavras ou de trechos de texto',
+      '6.3 Reorganização da estrutura de orações e de períodos do texto',
+      '6.4 Reescrita de textos de diferentes gêneros e níveis de formalidade',
+    ],
+    'Língua Inglesa': [
+      '1 Compreensão de textos variados: domínio do vocabulário e da estrutura da língua, ideias principais e secundárias, explícitas e implícitas, relações intratextuais e intertextuais',
+      '2 Itens gramaticais relevantes para compreensão de conteúdos semânticos',
+      '3 Conhecimento e uso das formas contemporâneas da linguagem inglesa',
+    ],
+    'Raciocínio Analítico': [
+      '1 Raciocínio analítico e a argumentação',
+      '1.1 O uso do senso crítico na argumentação',
+      '1.2 Tipos de Argumentos: argumentos falaciosos e apelativos',
+      '1.3 Comunicação eficiente de argumentos',
+    ],
+    'Controle Externo': [
+      '1 Conceito, tipos e formas de controle',
+      '2 Controle interno e externo',
+      '3 Controle parlamentar',
+      '4 Controle pelos tribunais de contas',
+      '5 Controle administrativo',
+      '6 Lei nº 8.429/1992 (Lei de Improbidade Administrativa)',
+      '7 Sistemas de controle jurisdicional da administração pública',
+      '7.1 Contencioso administrativo e sistema da jurisdição una',
+      '8 Controle jurisdicional da administração pública no direito brasileiro',
+      '9 Controle da atividade financeira do Estado: espécies e sistemas',
+      '10 Tribunal de Contas da União (TCU), Tribunais de Contas dos Estados e do Distrito Federal',
+    ],
+    'Administração Pública': [
+      '1 Administração',
+      '1.1 Abordagens clássica, burocrática e sistêmica da administração',
+      '1.2 Evolução da administração pública no Brasil após 1930; reformas administrativas; a nova gestão pública',
+      '2 Processo administrativo',
+      '2.1 Funções da administração: planejamento, organização, direção e controle',
+      '2.2 Estrutura organizacional',
+      '2.3 Cultura organizacional',
+      '3 Gestão de pessoas',
+      '3.1 Equilíbrio organizacional',
+      '3.2 Objetivos, desafios e características da gestão de pessoas',
+      '3.3 Comportamento organizacional: relações indivíduo/organização, motivação, liderança, desempenho',
+      '4 Noções de gestão de processos: técnicas de mapeamento, análise e melhoria de processos',
+      '5 Gestão de projetos',
+      '5.1 Elaboração, análise e avaliação de projetos',
+      '5.2 Principais características dos modelos de gestão de projetos',
+      '5.3 Projetos e suas etapas',
+      '5.4 Metodologia ágil',
+      '6 Administração de recursos materiais',
+      '7 ESG',
+    ],
+    'Direito Constitucional': [
+      '1 Constituição',
+      '1.1 Conceito, objeto, elementos e classificações',
+      '1.2 Supremacia da Constituição',
+      '1.3 Aplicabilidade das normas constitucionais',
+      '1.4 Interpretação das normas constitucionais',
+      '1.5 Mutação constitucional',
+      '2 Poder constituinte',
+      '2.1 Características',
+      '2.2 Poder constituinte originário',
+      '2.3 Poder constituinte derivado',
+      '3 Princípios fundamentais',
+      '4 Direitos e garantias fundamentais',
+      '4.1 Direitos e deveres individuais e coletivos',
+      '4.2 Habeas corpus, mandado de segurança, mandado de injunção e habeas data',
+      '4.3 Direitos sociais',
+      '4.4 Direitos políticos',
+      '4.5 Partidos políticos',
+      '4.6 O ente estatal titular de direitos fundamentais',
+      '5 Organização do Estado',
+      '5.1 Organização político-administrativa',
+      '5.2 Estado federal brasileiro',
+      '5.3 A União',
+      '5.4 Estados federados',
+      '5.5 Municípios',
+      '5.6 O Distrito Federal',
+      '5.7 Territórios',
+      '5.8 Intervenção federal',
+      '5.9 Intervenção dos estados nos municípios',
+      '6 Administração pública',
+      '6.1 Disposições gerais',
+      '6.2 Servidores públicos',
+      '7 Organização dos poderes no Estado',
+      '7.1 Mecanismos de freios e contrapesos',
+      '7.2 Poder Legislativo',
+      '7.3 Poder Executivo',
+      '7.4 Poder Judiciário',
+      '8 Funções essenciais à justiça',
+      '8.1 Ministério Público',
+      '8.2 Advocacia Pública',
+      '8.3 Advocacia e Defensoria Pública',
+      '9 Controle de constitucionalidade',
+      '9.1 Sistemas gerais e sistema brasileiro',
+      '9.2 Controle incidental ou concreto',
+      '9.3 Controle abstrato de constitucionalidade',
+      '9.4 Exame in abstractu da constitucionalidade de proposições legislativas',
+      '9.5 Ação declaratória de constitucionalidade',
+      '9.6 Ação direta de inconstitucionalidade',
+      '9.7 Arguição de descumprimento de preceito fundamental',
+      '9.8 Ação direta de inconstitucionalidade por omissão',
+      '9.9 Ação direta de inconstitucionalidade interventiva',
+      '10 Defesa do Estado e das instituições democráticas',
+      '10.1 Estado de defesa e estado de sítio',
+      '10.2 Forças armadas',
+      '10.3 Segurança pública',
+      '11 Sistema Tributário Nacional',
+      '11.1 Princípios gerais',
+      '11.2 Limitações do poder de tributar',
+      '11.3 Impostos da União, dos estados e dos municípios',
+      '11.4 Repartição das receitas tributárias',
+      '12 Finanças públicas',
+      '12.1 Normas gerais',
+      '12.2 Orçamentos',
+      '13 Ordem econômica e financeira',
+      '13.1 Princípios gerais da atividade econômica',
+      '13.2 Política urbana, agrícola e fundiária e reforma agrária',
+      '14 Sistema Financeiro Nacional',
+      '15 Ordem social',
+      '16 Emenda Constitucional nº 103/2019 (Reforma da Previdência)',
+      '17 Direitos e interesses das populações indígenas',
+      '18 Direitos das Comunidades Remanescentes de Quilombos',
+    ],
+    'Direito Administrativo (e Licitações)': [
+      '1 Estado, governo e administração pública',
+      '1.1 Conceitos',
+      '1.2 Elementos',
+      '2 Direito administrativo',
+      '2.1 Conceito',
+      '2.2 Objeto',
+      '2.3 Fontes',
+      '3 Ato administrativo',
+      '3.1 Conceito, requisitos, atributos, classificação e espécies',
+      '3.2 Extinção do ato administrativo: cassação, anulação, revogação e convalidação',
+      '3.3 Decadência administrativa',
+      '4 Agentes públicos',
+      '4.1 Legislação pertinente',
+      '4.1.1 Lei nº 8.112/1990',
+      '4.1.2 Disposições constitucionais aplicáveis',
+      '4.2 Disposições doutrinárias',
+      '4.2.1 Conceito',
+      '4.2.2 Espécies',
+      '4.2.3 Cargo, emprego e função pública',
+      '4.2.4 Provimento',
+      '4.2.5 Vacância',
+      '4.2.6 Efetividade, estabilidade e vitaliciedade',
+      '4.2.7 Remuneração',
+      '4.2.8 Direitos e deveres',
+      '4.2.9 Responsabilidade',
+      '4.2.10 Processo administrativo disciplinar',
+      '5 Poderes da administração pública',
+      '5.1 Hierárquico, disciplinar, regulamentar e de polícia',
+      '5.2 Uso e abuso do poder',
+      '6 Regime jurídico-administrativo',
+      '6.1 Conceito',
+      '6.2 Princípios expressos e implícitos da administração pública',
+      '7 Responsabilidade civil do Estado',
+      '7.1 Evolução histórica',
+      '7.2 Responsabilidade civil do Estado no direito brasileiro',
+      '7.2.1 Responsabilidade por ato comissivo do Estado',
+      '7.2.2 Responsabilidade por omissão do Estado',
+      '7.3 Requisitos para a demonstração da responsabilidade do Estado',
+      '7.4 Causas excludentes e atenuantes da responsabilidade do Estado',
+      '7.5 Reparação do dano',
+      '7.6 Direito de regresso',
+      '8 Serviços públicos',
+      '8.1 Conceito',
+      '8.2 Elementos constitutivos',
+      '8.3 Formas de prestação e meios de execução',
+      '8.4 Delegação: concessão, permissão e autorização',
+      '8.5 Classificação',
+      '8.6 Princípios',
+      '9 Organização administrativa',
+      '9.1 Centralização, descentralização, concentração e desconcentração',
+      '9.2 Administração direta e indireta',
+      '9.3 Autarquias, fundações, empresas públicas e sociedades de economia mista',
+      '9.4 Entidades paraestatais e terceiro setor: serviços sociais autônomos, entidades de apoio, organizações sociais, organizações da sociedade civil de interesse público',
+      '10 Controle da administração pública',
+      '10.1 Controle exercido pela administração pública',
+      '10.2 Controle judicial',
+      '10.3 Controle legislativo',
+      '10.4 Improbidade administrativa: Lei nº 8.429/1992',
+      '11 Processo administrativo',
+      '11.1 Lei nº 9.784/1999',
+      '12 Licitações e contratos administrativos',
+      '12.1 Legislação pertinente',
+      '12.1.1 Lei nº 14.133/2021',
+      '12.1.2 Decreto nº 11.462/2023',
+      '12.2 Fundamentos constitucionais',
+    ],
+    'Auditoria Governamental': [
+      '1 Conceito, finalidade, objetivo, abrangência e atuação',
+      '1.1 Auditoria interna e externa: papéis',
+      '2 Instrumentos de fiscalização: auditoria, levantamento, monitoramento, acompanhamento e inspeção',
+      '3 Tipos de auditoria',
+      '3.1 Auditoria de conformidade',
+      '3.2 Auditoria operacional',
+      '3.3 Auditoria financeira',
+      '4 Normas de auditoria',
+      '4.1 Normas de Auditoria do TCU',
+      '4.2 Normas da INTOSAI (Organização Internacional das Instituições Superiores de Controle): código de ética e princípios fundamentais de auditoria do setor público (ISSAIs 100, 200, 300 e 400)',
+      '4.3 Normas Brasileiras de Auditoria do Setor Público (NBASP)',
+      '5 Planejamento de auditoria',
+      '5.1 Determinação de escopo',
+      '5.2 Materialidade, risco e relevância',
+      '5.3 Importância da amostragem estatística em auditoria',
+      '5.4 Matriz de planejamento',
+      '6 Execução da auditoria',
+      '6.1 Programas de auditoria',
+      '6.2 Papéis de trabalho',
+      '6.3 Testes de auditoria',
+      '6.4 Técnicas e procedimentos: exame documental, inspeção física, conferência de cálculos, observação, entrevista, circularização, conciliações, análise de contas contábeis, revisão analítica, caracterização de achados de auditoria',
+      '7 Evidências',
+      '7.1 Caracterização de achados de auditoria',
+      '7.2 Matriz de Achados e Matriz de Responsabilização',
+      '8 Comunicação dos resultados: relatórios de auditoria',
+    ],
+  };
+  const EDITAL_ALIASES = {
+    'lingua portuguesa': 'Língua Portuguesa',
+    'língua portuguesa': 'Língua Portuguesa',
+    'lingua inglesa': 'Língua Inglesa',
+    'língua inglesa': 'Língua Inglesa',
+    'ingles': 'Língua Inglesa',
+    'inglês': 'Língua Inglesa',
+    'raciocinio analitico': 'Raciocínio Analítico',
+    'raciocínio analítico': 'Raciocínio Analítico',
+    'controle externo': 'Controle Externo',
+    'administracao publica': 'Administração Pública',
+    'administração pública': 'Administração Pública',
+    'administracao pública': 'Administração Pública',
+    'direito constitucional': 'Direito Constitucional',
+    'direito administrativo': 'Direito Administrativo (e Licitações)',
+    'direito administrativo (e licitações)': 'Direito Administrativo (e Licitações)',
+    'direito administrativo (e licitacoes)': 'Direito Administrativo (e Licitações)',
+    'auditoria governamental': 'Auditoria Governamental',
+    'auditoria governamental e controle externo': 'Auditoria Governamental',
+  };
+  function editalKey(subject) {
+    const raw = String(subject || '').trim();
+    if (EDITAL_TOPICS[raw]) return raw;
+    const alias = EDITAL_ALIASES[raw.toLowerCase()];
+    return alias && EDITAL_TOPICS[alias] ? alias : '';
+  }
+  function editalTopics(subject) {
+    const key = editalKey(subject);
+    return key ? EDITAL_TOPICS[key].slice() : [];
+  }
+  function topicCode(label) {
+    const m = String(label || '').match(/^(\d+(?:\.\d+)*)\b/);
+    return m ? m[1] : '';
+  }
   // Matérias extras (Inglês, por exemplo) ficam no navegador e, uma vez usadas,
   // sobrevivem nos próprios registros do data.csv.
   const EXTRA_KEY = 'concurso_study_tracker_subjects_v1';
   let extraSubjects = [];
   try { const s = localStorage.getItem(EXTRA_KEY); if (s) { const p = JSON.parse(s); if (Array.isArray(p)) extraSubjects = p; } } catch (_) {}
-  function allSubjects() {
+  function persistExtras() { try { localStorage.setItem(EXTRA_KEY, JSON.stringify(extraSubjects)); } catch (_) {} }
+  function logStatus(l) {
+    const s = String((l && l.status) || '').toLowerCase();
+    return s === 'deleted' || s === 'subject_deleted' ? s : '';
+  }
+  function isDeletedLog(l) { return logStatus(l) === 'deleted'; }
+  function isCustomSubject(name) {
+    return !isGabi() && !!name && SUBJECTS_BASE.indexOf(name) < 0;
+  }
+  function pushUnique(list, s) { if (s && list.indexOf(s) < 0) list.push(s); }
+  function catalogSubjects() {
     const out = (isGabi() ? GABI_SUBJECTS : SUBJECTS_BASE).slice();
-    const push = function (s) { if (s && out.indexOf(s) < 0) out.push(s); };
-    if (!isGabi()) extraSubjects.forEach(push);
-    curLogs().forEach(function (l) { push(l.subject); });
+    if (!isGabi()) extraSubjects.forEach(function (s) { pushUnique(out, s); });
+    curLogs().forEach(function (l) {
+      if (logStatus(l) === 'subject_deleted') return;
+      pushUnique(out, l.subject);
+    });
+    return out;
+  }
+  function allSubjects() {
+    const out = catalogSubjects();
+    curLogs().forEach(function (l) { pushUnique(out, l.subject); });
     return out;
   }
   function addSubject(nome) {
     const s = String(nome || '').replace(/\s+/g, ' ').trim();
-    if (!s) return null;
-    if (s.length > 60) return null;
-    if (allSubjects().some(function (x) { return x.toLowerCase() === s.toLowerCase(); })) return s;
+    if (!s || s.length > 60) return null;
+    const hit = catalogSubjects().filter(function (x) { return x.toLowerCase() === s.toLowerCase(); })[0];
+    if (hit) return hit;
     extraSubjects.push(s);
-    try { localStorage.setItem(EXTRA_KEY, JSON.stringify(extraSubjects)); } catch (_) {}
+    persistExtras();
+    const revived = logs.map(function (l) {
+      if (String(l.subject || '').toLowerCase() !== s.toLowerCase() || logStatus(l) !== 'subject_deleted') return l;
+      return Object.assign({}, l, { subject: s, status: '' });
+    });
+    if (revived.some(function (l, i) { return l !== logs[i]; })) {
+      logs = revived;
+      persist();
+      saveLogsToServer(logs);
+    }
     return s;
+  }
+  function renameSubject(from, to) {
+    const next = String(to || '').replace(/\s+/g, ' ').trim();
+    if (!from || !next || next.length > 60) return null;
+    extraSubjects = extraSubjects.map(function (s) { return s === from ? next : s; })
+      .filter(function (s, i, a) { return a.indexOf(s) === i; });
+    extraSubjects = extraSubjects.filter(function (s) { return s !== from; });
+    if (SUBJECTS_BASE.indexOf(next) < 0 && extraSubjects.indexOf(next) < 0) extraSubjects.push(next);
+    persistExtras();
+    if (form.subject === from) form.subject = next;
+    setLogs(logs.map(function (l) {
+      return l.subject === from ? Object.assign({}, l, { subject: next }) : l;
+    }));
+    return next;
+  }
+  function retireSubject(name) {
+    if (!isCustomSubject(name)) return false;
+    extraSubjects = extraSubjects.filter(function (s) { return s !== name; });
+    persistExtras();
+    if (form.subject === name) form.subject = SUBJECTS_BASE[0];
+    ui.confirmSubject = null;
+    setLogs(logs.map(function (l) {
+      if (l.subject !== name || logStatus(l) === 'deleted') return l;
+      return Object.assign({}, l, { status: 'subject_deleted' });
+    }));
+    return true;
   }
   // Abas compactas: concursos do Matheus, reta final da Gabi e a linha do tempo do casal.
   const TABS = [
@@ -156,7 +481,10 @@
   function profileId() { return ui.tab === 'gabi' ? 'gabi' : 'matheus'; }
   function isGabi() { return profileId() === 'gabi'; }
   function logOwner(l) { return l && l.owner === 'gabi' ? 'gabi' : 'matheus'; }
-  function curLogs() { const p = profileId(); return logs.filter(function (l) { return logOwner(l) === p; }); }
+  function curLogs() {
+    const p = profileId();
+    return logs.filter(function (l) { return logOwner(l) === p && !isDeletedLog(l); });
+  }
   function cats() { return isGabi() ? GABI_CATEGORIES : CATEGORIES; }
   function catColor(c) { return (isGabi() ? GABI_CAT_COLOR : CAT_COLOR)[c] || '#64748b'; }
   function catIcon(c) { return (isGabi() ? GABI_CAT_ICON : CAT_ICON)[c] || 'layers'; }
@@ -233,7 +561,7 @@
   // Um insight por dia, por pessoa (matheus / gabi).
   let insightByOwner = loadCachedInsights();
   let milagreDays = loadMilagreDays();
-  const ui = { subjView: 'cards', subjSort: 'hours', expanded: null, search: '', confirmDel: null, mentorLoading: false, topicsOpen: false, historyOpen: false, subjectOpen: false, formOpen: false, addingSubject: false, newSubject: '',
+  const ui = { subjView: 'cards', subjSort: 'hours', expanded: null, search: '', confirmDel: null, mentorLoading: false, topicsOpen: false, historyOpen: false, subjectOpen: false, formOpen: false, addingSubject: false, renamingSubject: false, confirmSubject: null, newSubject: '',
     tab: initialTab(), metaForm: null, confirmMeta: null, portal: null, portalWho: null, milesOpen: false, insightOpen: false, milagreOpen: false,
     gabiProj: 'dout', gabiCap: null }; // gabiCap: null = doutorado geral; 0/1/2 = cap.
 
@@ -308,6 +636,7 @@
     ui.tab = id;
     ui.metaForm = null; ui.confirmMeta = null; ui.formOpen = false; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false;
     ui.expanded = null; ui.search = '';
+    ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null;
     resetFormProfile();
     if (location.hash.replace('#', '') !== id) history.replaceState(null, '', '#' + id);
     render();
@@ -368,8 +697,29 @@
   }
 
   /* ----------------------------- Persistência ----------------------------- */
+  function normalizeLog(o, i) {
+    if (!o) return null;
+    const st = String(o.status || '').toLowerCase();
+    return {
+      id: o.id || ('log_' + Date.now() + '_' + i),
+      date: String(o.date || getToday()).slice(0, 10),
+      subject: o.subject || SUBJECTS_BASE[0],
+      category: o.category || CATEGORIES[0],
+      minutes: Math.max(0, parseInt(o.minutes, 10) || 0),
+      topic: (o.topic || '').trim() || undefined,
+      timestamp: Number(o.timestamp) || Date.now() - i * 1000,
+      owner: String(o.owner || '').toLowerCase() === 'gabi' ? 'gabi' : 'matheus',
+      status: st === 'deleted' || st === 'subject_deleted' ? st : '',
+    };
+  }
   function loadLogs() {
-    try { const s = localStorage.getItem(STORAGE_KEY); if (s) { const p = JSON.parse(s); if (Array.isArray(p)) return p; } } catch (_) {}
+    try {
+      const s = localStorage.getItem(STORAGE_KEY);
+      if (s) {
+        const p = JSON.parse(s);
+        if (Array.isArray(p)) return p.map(normalizeLog).filter(Boolean);
+      }
+    } catch (_) {}
     return [];
   }
   function loadTheme() {
@@ -687,7 +1037,8 @@
     linha({ tipo: 'backup', id: BACKUP_MARK, date: getToday(), notes: BACKUP_MARK, timestamp: Date.now() });
     logs.forEach(function (l) {
       linha({ tipo: 'registro', id: l.id, owner: logOwner(l), date: l.date, subject: l.subject,
-        category: l.category, minutes: l.minutes, topic: l.topic || '', timestamp: l.timestamp });
+        category: l.category, minutes: l.minutes, topic: l.topic || '', timestamp: l.timestamp,
+        status: logStatus(l) });
     });
     metas.forEach(function (m) {
       linha({ tipo: 'meta', id: m.id, owner: m.owner, who: m.who, category: m.category, title: m.title,
@@ -759,18 +1110,8 @@
 
     // Backups antigos não têm a coluna "tipo": tudo ali é registro de horas.
     const novosLogs = (rows || []).filter(function (o) { return String(o.tipo || 'registro') === 'registro'; })
-      .map(function (o, i) {
-        return {
-          id: o.id || ('log_' + Date.now() + '_' + i),
-          date: (o.date || getToday()).slice(0, 10),
-          subject: o.subject || SUBJECTS_BASE[0],
-          category: o.category || CATEGORIES[0],
-          minutes: Math.max(0, parseInt(o.minutes, 10) || 0),
-          topic: (o.topic || '').trim() || undefined,
-          timestamp: Number(o.timestamp) || Date.now() - i * 1000,
-          owner: String(o.owner || '').toLowerCase() === 'gabi' ? 'gabi' : 'matheus',
-        };
-      }).filter(function (o) { return o.minutes > 0; });
+      .map(function (o, i) { return normalizeLog(o, i); })
+      .filter(function (o) { return o && o.minutes > 0; });
     const novasMetas = (rows || []).filter(function (o) { return o.tipo === 'meta'; })
       .map(function (o) {
         let steps = [];
@@ -918,8 +1259,8 @@
     hideCalTip();
     document.body.classList.toggle('cp-modal-open', ui.formOpen || !!ui.metaForm || !!ui.portal || ui.insightOpen || ui.milagreOpen);
     restoreFocus(f);
-    if (isStudy && ui.formOpen && !f && ui.addingSubject) {
-      const first = document.getElementById('cp-f-newsubject');
+    if (isStudy && ui.formOpen && !f && (ui.addingSubject || ui.renamingSubject)) {
+      const first = document.getElementById(ui.renamingSubject ? 'cp-f-renamesubject' : 'cp-f-newsubject');
       if (first) first.focus();
     }
     if (ui.metaForm && !f) {
@@ -1495,11 +1836,33 @@
       '</div>' +
     '</div>';
   }
-  function renderForm(s) {
-    const numeric = clampMinutes(form.minutes);
+  function renderTopicField() {
+    if (isGabi()) {
+      return '<input id="cp-f-topic" class="cp-input" type="text" value="' + esc(form.topic) + '" placeholder="Ex: limpeza da base, revisão da literatura, seção de resultados...">';
+    }
+    const bank = editalTopics(form.subject);
+    if (bank.length) {
+      const extra = form.topic && bank.indexOf(form.topic) < 0
+        ? '<option value="' + esc(form.topic) + '" selected>' + esc(form.topic) + '</option>'
+        : '';
+      return '<select id="cp-f-topic" class="cp-select">' +
+        '<option value="">Tópico do edital</option>' +
+        extra +
+        bank.map(function (t) {
+          const depth = (topicCode(t).match(/\./g) || []).length;
+          const pad = depth ? Array(depth + 1).join('·· ') : '';
+          return '<option value="' + esc(t) + '"' + (form.topic === t ? ' selected' : '') + '>' + pad + esc(t) + '</option>';
+        }).join('') +
+      '</select>';
+    }
     const subjTopics = new Set(), allTopics = new Set();
     curLogs().forEach(function (l) { if (l.topic && l.topic.trim()) { allTopics.add(l.topic.trim()); if (l.subject === form.subject) subjTopics.add(l.topic.trim()); } });
     const sugg = Array.from(subjTopics.size ? subjTopics : allTopics);
+    return '<input id="cp-f-topic" class="cp-input" type="text" list="cp-topics-datalist" value="' + esc(form.topic) + '" placeholder="Ex: Nova Lei de Licitações (14.133), Matriz de Achados...">' +
+      '<datalist id="cp-topics-datalist">' + sugg.map(function (t) { return '<option value="' + esc(t) + '"></option>'; }).join('') + '</datalist>';
+  }
+  function renderForm(s) {
+    const numeric = clampMinutes(form.minutes);
     if (!ui.formOpen) return '';
     return '' +
       '<div class="cp-modal-backdrop">' +
@@ -1516,11 +1879,9 @@
             field('Tempo', ic('clock'), renderDurationField(numeric)) +
           '</div>' +
           '<div class="cp-form-row2 cp-field">' +
-            '<label class="cp-label"><span class="l">' + ic('tag') + 'Tópico / Assunto (auto-complete inteligente)</span>' +
-            '<span style="color:var(--faint);font-weight:500">' + (isGabi() ? 'O que exatamente foi feito' : 'Controle interno dos pontos do edital') + '</span></label>' +
-            '<input id="cp-f-topic" class="cp-input" type="text" list="cp-topics-datalist" value="' + esc(form.topic) + '" placeholder="' +
-            (isGabi() ? 'Ex: limpeza da base, revisão da literatura, seção de resultados...' : 'Ex: Nova Lei de Licitações (14.133), Matriz de Achados, Balanço Orçamentário...') + '">' +
-            '<datalist id="cp-topics-datalist">' + sugg.map(function (t) { return '<option value="' + esc(t) + '"></option>'; }).join('') + '</datalist>' +
+            '<label class="cp-label"><span class="l">' + ic('tag') + (isGabi() ? 'Tópico / Assunto' : 'Tópico do edital') + '</span>' +
+            '<span style="color:var(--faint);font-weight:500">' + (isGabi() ? 'O que exatamente foi feito' : (editalTopics(form.subject).length ? 'Itens oficiais desta matéria' : 'Controle interno dos pontos do edital')) + '</span></label>' +
+            renderTopicField() +
           '</div>' +
           rotinaHint(form.date) +
           '<div class="cp-shortcuts">' +
@@ -1556,13 +1917,39 @@
         '</div>' +
       '</div>';
     }
-    const opts = allSubjects().map(function (x) {
+    if (ui.renamingSubject) {
+      return '<div class="cp-field">' +
+        '<label class="cp-label"><span class="l">' + ic('book') + 'Renomear matéria</span></label>' +
+        '<div class="cp-subject-new">' +
+          '<input id="cp-f-renamesubject" class="cp-input" type="text" maxlength="60" value="' + esc(ui.newSubject) + '">' +
+          '<button type="button" class="cp-btn primary" data-action="subject-rename-save">Salvar</button>' +
+          '<button type="button" class="cp-btn icon" data-action="subject-cancel" title="Cancelar">' + ic('close') + '</button>' +
+        '</div>' +
+      '</div>';
+    }
+    const optsList = catalogSubjects().slice();
+    if (form.subject) pushUnique(optsList, form.subject);
+    const opts = optsList.map(function (x) {
       return '<option' + (x === form.subject ? ' selected' : '') + '>' + esc(x) + '</option>';
     }).join('');
+    const custom = isCustomSubject(form.subject);
+    const links = isGabi() ? '' : (
+      '<span class="cp-subj-links">' +
+        '<button type="button" class="cp-linkbtn" data-action="subject-new">+ nova</button>' +
+        (custom ? '<button type="button" class="cp-linkbtn" data-action="subject-rename">editar</button>' +
+          '<button type="button" class="cp-linkbtn danger" data-action="subject-del-ask">remover</button>' : '') +
+      '</span>'
+    );
+    const confirm = ui.confirmSubject
+      ? '<div class="cp-subj-confirm"><span>Sai da lista. O histórico permanece.</span>' +
+          '<button type="button" class="cp-btn" style="padding:4px 10px;color:var(--red);border-color:var(--red)" data-action="subject-del-confirm">Remover</button>' +
+          '<button type="button" class="cp-btn" style="padding:4px 10px" data-action="subject-del-cancel">Cancelar</button></div>'
+      : '';
     return '<div class="cp-field">' +
       '<label class="cp-label"><span class="l">' + ic('book') + (isGabi() ? 'Frente de trabalho' : 'Matéria (Edital Base)') + '</span>' +
-        (isGabi() ? '' : '<button type="button" class="cp-linkbtn" data-action="subject-new">+ nova matéria</button>') + '</label>' +
+        links + '</label>' +
       '<select id="cp-f-subject" class="cp-select">' + opts + '</select>' +
+      confirm +
     '</div>';
   }
 
@@ -1577,8 +1964,17 @@
       if (l.date > e.lastDate) e.lastDate = l.date; m[t] = e;
     });
     let groups = allSubjects().map(function (subj) {
-      const topics = Object.keys(map[subj]).map(function (k) { return map[subj][k]; }).sort(function (a, b) { return b.totalMinutes - a.totalMinutes; });
-      return { subject: subj, topics: topics, totalMinutes: topics.reduce(function (a, t) { return a + t.totalMinutes; }, 0), uniqueTopicsCount: topics.filter(function (t) { return t.topicName !== 'Estudo Geral / Não especificado'; }).length };
+      const seen = {};
+      const bank = isGabi() ? [] : editalTopics(subj);
+      const topics = bank.map(function (name) {
+        seen[name] = true;
+        return map[subj][name] || { topicName: name, totalMinutes: 0, sessionsCount: 0, lastDate: '', categories: new Set(), official: true };
+      });
+      Object.keys(map[subj]).forEach(function (k) {
+        if (!seen[k]) topics.push(map[subj][k]);
+      });
+      if (!bank.length) topics.sort(function (a, b) { return b.totalMinutes - a.totalMinutes; });
+      return { subject: subj, topics: topics, totalMinutes: topics.reduce(function (a, t) { return a + t.totalMinutes; }, 0), uniqueTopicsCount: topics.filter(function (t) { return t.topicName !== 'Estudo Geral / Não especificado' && t.sessionsCount > 0; }).length };
     });
     const term = ui.search.trim().toLowerCase();
     if (term) {
@@ -1594,9 +1990,14 @@
       const body = g.topics.length === 0
         ? '<p class="cp-empty-topic">Nenhum tópico registrado ainda ' + (isGabi() ? 'nesta frente' : 'para esta disciplina') + '.</p>'
         : g.topics.map(function (t) {
-            return '<div class="cp-topic"><div><span class="name">' + esc(t.topicName) + '</span>' +
-              '<div class="info"><span>' + ic('calendar') + 'Último: ' + formatDateBR(t.lastDate) + '</span>' +
-              '<span>' + ic('layers') + esc(Array.from(t.categories).join(', ')) + '</span></div></div>' +
+            const empty = !t.sessionsCount;
+            const code = topicCode(t.topicName);
+            const child = (code.match(/\./g) || []).length > 0;
+            return '<div class="cp-topic' + (empty ? ' empty' : '') + (child ? ' child' : '') + '"><div><span class="name">' + esc(t.topicName) + '</span>' +
+              '<div class="info">' +
+              (t.lastDate ? '<span>' + ic('calendar') + 'Último: ' + formatDateBR(t.lastDate) + '</span>' : '<span>Ainda sem registro</span>') +
+              (t.categories.size ? '<span>' + ic('layers') + esc(Array.from(t.categories).join(', ')) + '</span>' : '') +
+              '</div></div>' +
               '<div class="right"><span class="sess">' + t.sessionsCount + ' sessão(ões)</span>' +
               '<span class="dur">' + ic('clock') + t.totalMinutes + 'm (' + formatHoursDec(t.totalMinutes / 60) + 'h)</span></div></div>';
           }).join('');
@@ -2267,7 +2668,8 @@
 
   root.addEventListener('click', function (e) {
     if (e.target.classList && e.target.classList.contains('cp-modal-backdrop')) {
-      ui.formOpen = false; form.editId = null; ui.metaForm = null; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false; render(); return;
+      ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null;
+      form.editId = null; ui.metaForm = null; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false; render(); return;
     }
     // Toque/clique na célula do calendário mostra o mesmo popup do hover (sem hover no mobile).
     const cell = e.target.closest && e.target.closest('.cp-cell');
@@ -2345,9 +2747,12 @@
         form.editId = null;
         form.minutes = '60';
         form.minutesEdit = false;
+        ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null;
         ui.formOpen = true;
         render(); break;
-      case 'form-close': ui.formOpen = false; ui.addingSubject = false; form.editId = null; render(); break;
+      case 'form-close':
+        ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; form.editId = null;
+        render(); break;
       case 'log-edit': {
         const l = logs.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
         if (!l) break;
@@ -2358,11 +2763,15 @@
         form.minutes = String(l.minutes);
         form.minutesEdit = false;
         form.topic = l.topic || '';
-        ui.confirmDel = null; ui.addingSubject = false; ui.formOpen = true;
+        ui.confirmDel = null; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.formOpen = true;
         render(); break;
       }
-      case 'subject-new': ui.addingSubject = true; ui.newSubject = ''; render(); break;
-      case 'subject-cancel': ui.addingSubject = false; ui.newSubject = ''; render(); break;
+      case 'subject-new':
+        ui.addingSubject = true; ui.renamingSubject = false; ui.confirmSubject = null; ui.newSubject = '';
+        render(); break;
+      case 'subject-cancel':
+        ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.newSubject = '';
+        render(); break;
       case 'subject-add': {
         const nome = addSubject(ui.newSubject);
         if (!nome) { toast('Informe o nome da matéria.', true); break; }
@@ -2372,6 +2781,29 @@
         toast('Matéria "' + nome + '" disponível.');
         break;
       }
+      case 'subject-rename':
+        if (!isCustomSubject(form.subject)) break;
+        ui.renamingSubject = true; ui.addingSubject = false; ui.confirmSubject = null; ui.newSubject = form.subject;
+        render(); break;
+      case 'subject-rename-save': {
+        const from = form.subject;
+        const nextName = String(ui.newSubject || '').replace(/\s+/g, ' ').trim();
+        if (!nextName) { toast('Informe o nome da matéria.', true); break; }
+        ui.renamingSubject = false; ui.newSubject = '';
+        const nome = renameSubject(from, nextName);
+        if (!nome) { toast('Informe o nome da matéria.', true); break; }
+        toast('Matéria atualizada em todo o histórico.');
+        break;
+      }
+      case 'subject-del-ask':
+        if (!isCustomSubject(form.subject)) break;
+        ui.confirmSubject = form.subject;
+        render(); break;
+      case 'subject-del-cancel': ui.confirmSubject = null; render(); break;
+      case 'subject-del-confirm':
+        if (!retireSubject(ui.confirmSubject || form.subject)) { toast('Essa matéria do edital não sai da lista.', true); break; }
+        toast('Matéria removida da lista. O histórico ficou.');
+        break;
       case 'miles-toggle': ui.milesOpen = !ui.milesOpen; render(); break;
       case 'topics-toggle': ui.topicsOpen = !ui.topicsOpen; render(); break;
       case 'history-toggle': ui.historyOpen = !ui.historyOpen; render(); break;
@@ -2379,7 +2811,14 @@
       case 'acc-toggle': { const sub = el.getAttribute('data-subject'); ui.expanded = ui.expanded === sub ? null : sub; render(); break; }
       case 'del-ask': ui.confirmDel = el.getAttribute('data-id'); render(); break;
       case 'del-cancel': ui.confirmDel = null; render(); break;
-      case 'del-confirm': { const id = el.getAttribute('data-id'); ui.confirmDel = null; setLogs(logs.filter(function (l) { return l.id !== id; })); break; }
+      case 'del-confirm': {
+        const id = el.getAttribute('data-id');
+        ui.confirmDel = null;
+        setLogs(logs.map(function (l) {
+          return l.id === id ? Object.assign({}, l, { status: 'deleted' }) : l;
+        }));
+        break;
+      }
       case 'tab': setTab(el.getAttribute('data-tab')); break;
       case 'meta-new': {
         ui.confirmMeta = null;
@@ -2429,6 +2868,11 @@
       const btn = root.querySelector('[data-action="subject-add"]');
       if (btn) btn.click();
     }
+    if (e.target.id === 'cp-f-renamesubject' && e.key === 'Enter') {
+      e.preventDefault();
+      const btn = root.querySelector('[data-action="subject-rename-save"]');
+      if (btn) btn.click();
+    }
     if (e.target.getAttribute && e.target.getAttribute('data-action') === 'miles-toggle' && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
       ui.milesOpen = !ui.milesOpen;
@@ -2469,9 +2913,9 @@
     if (editId) {
       // Mantém o timestamp original para o histórico não se reordenar na edição.
       const next = logs.map(function (l) {
-        return l.id === editId
-          ? { id: l.id, date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: form.topic.trim() || undefined, timestamp: l.timestamp, owner: logOwner(l) }
-          : l;
+        if (l.id !== editId) return l;
+        const keep = l.subject === form.subject ? logStatus(l) : '';
+        return { id: l.id, date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: form.topic.trim() || undefined, timestamp: l.timestamp, owner: logOwner(l), status: keep };
       });
       form.editId = null; form.topic = ''; form.minutes = '60'; form.minutesEdit = false;
       ui.formOpen = false;
@@ -2479,7 +2923,7 @@
       toast('Registro atualizado!');
       return;
     }
-    const log = { id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: form.topic.trim() || undefined, timestamp: Date.now(), owner: profileId() };
+    const log = { id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: form.topic.trim() || undefined, timestamp: Date.now(), owner: profileId(), status: '' };
     form.topic = ''; form.minutes = '60'; form.minutesEdit = false;
     ui.formOpen = false;
     setLogs([log].concat(logs));
@@ -2491,7 +2935,10 @@
     if (ui.milagreOpen) { ui.milagreOpen = false; render(); }
     else if (ui.insightOpen) { ui.insightOpen = false; render(); }
     else if (ui.portal) { ui.portal = null; ui.portalWho = null; render(); }
-    else if (ui.formOpen) { ui.formOpen = false; form.editId = null; render(); }
+    else if (ui.formOpen) {
+      ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; form.editId = null;
+      render();
+    }
     else if (ui.metaForm) { ui.metaForm = null; render(); }
   });
 
@@ -2522,7 +2969,7 @@
       const hidden = document.getElementById('cp-f-minutes');
       if (hidden) hidden.value = form.minutes;
     } else if (t.id === 'cp-f-topic') { form.topic = t.value; }
-    else if (t.id === 'cp-f-newsubject') { ui.newSubject = t.value; }
+    else if (t.id === 'cp-f-newsubject' || t.id === 'cp-f-renamesubject') { ui.newSubject = t.value; }
     else if (t.id === 'cp-search-input') { ui.search = t.value; render(); }
     else if (ui.metaForm && t.id === 'cp-m-title') { ui.metaForm.title = t.value; }
     else if (ui.metaForm && t.id === 'cp-m-category') { ui.metaForm.category = t.value; }
@@ -2534,7 +2981,14 @@
     const t = e.target;
     if (t.id === 'cp-f-date') form.date = t.value;
     else if (t.id === 'cp-f-category') form.category = t.value;
-    else if (t.id === 'cp-f-subject') { form.subject = t.value; render(); } // atualiza sugestões de tópico
+    else if (t.id === 'cp-f-subject') {
+      form.subject = t.value;
+      ui.confirmSubject = null;
+      const bank = editalTopics(form.subject);
+      if (bank.length && bank.indexOf(form.topic) < 0) form.topic = '';
+      render();
+    }
+    else if (t.id === 'cp-f-topic' && t.tagName === 'SELECT') { form.topic = t.value; }
     else if (ui.metaForm && t.id === 'cp-m-status') ui.metaForm.status = t.value;
     else if (ui.metaForm && t.id === 'cp-m-target') ui.metaForm.target = t.value;
     else if (ui.metaForm && t.id === 'cp-m-category') ui.metaForm.category = t.value;
@@ -2557,9 +3011,14 @@
       const r = await fetch('/life/api/logs', { cache: 'no-store' });
       if (r.ok) {
         const data = await r.json();
-        const remote = Array.isArray(data.logs) ? data.logs : [];
-        const merged = mergeById(remote, logs);
+        const remote = (Array.isArray(data.logs) ? data.logs : []).map(normalizeLog).filter(Boolean);
+        const merged = mergeById(remote, logs).map(normalizeLog).filter(Boolean);
         logs = merged.sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+        logs.forEach(function (l) {
+          if (logOwner(l) !== 'matheus' || isDeletedLog(l) || logStatus(l) === 'subject_deleted') return;
+          if (l.subject && SUBJECTS_BASE.indexOf(l.subject) < 0) pushUnique(extraSubjects, l.subject);
+        });
+        persistExtras();
         persist();
         // Deploy do Render zera o disco: devolve ao servidor o que só existe aqui.
         if (merged.length > remote.length) saveLogsToServer(logs);
