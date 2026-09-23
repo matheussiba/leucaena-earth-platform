@@ -378,6 +378,78 @@
     if (isNaN(d.getTime())) return Infinity;
     return Math.floor((Date.now() - d.getTime()) / 86400000);
   }
+  function formTopicPool() {
+    return editalTopics(form.subject).concat(catalogTopicsFor(form.subject));
+  }
+  function topicDescendants(label, pool) {
+    const code = topicCode(label);
+    if (!code) return [label];
+    return (pool || []).filter(function (t) {
+      const c = topicCode(t);
+      return t === label || c === code || (c && c.indexOf(code + '.') === 0);
+    });
+  }
+  function topicAncestors(label, pool) {
+    const code = topicCode(label);
+    if (!code || code.indexOf('.') < 0) return [];
+    const parts = code.split('.');
+    const out = [];
+    for (let i = 1; i < parts.length; i++) {
+      const prefix = parts.slice(0, i).join('.');
+      (pool || []).forEach(function (t) {
+        if (topicCode(t) === prefix && out.indexOf(t) < 0) out.push(t);
+      });
+    }
+    return out;
+  }
+  function applyTopicToggle(label) {
+    const pool = formTopicPool();
+    const has = form.topics.indexOf(label) >= 0;
+    const family = topicDescendants(label, pool);
+    if (has) {
+      const drop = family.concat(topicAncestors(label, pool));
+      form.topics = form.topics.filter(function (x) { return drop.indexOf(x) < 0; });
+      return;
+    }
+    family.forEach(function (t) { if (form.topics.indexOf(t) < 0) form.topics.push(t); });
+    topicAncestors(label, pool).forEach(function (parent) {
+      const kids = topicDescendants(parent, pool).filter(function (t) { return t !== parent; });
+      if (kids.length && kids.every(function (t) { return form.topics.indexOf(t) >= 0; }) && form.topics.indexOf(parent) < 0) {
+        form.topics.push(parent);
+      }
+    });
+  }
+  function syncTopicChecks() {
+    document.querySelectorAll('#cp-topic-wrap [data-action="topic-toggle"]').forEach(function (btn) {
+      const t = btn.getAttribute('data-topic');
+      const on = form.topics.indexOf(t) >= 0;
+      btn.classList.toggle('on', on);
+      btn.innerHTML = ic(on ? 'checkCircle' : 'circle') + '<span>' + esc(t) + '</span>';
+    });
+  }
+  function topicStatsFor(subject) {
+    const map = {};
+    curLogs().forEach(function (l) {
+      if (l.subject !== subject) return;
+      const names = logTopics(l);
+      const list = names.length ? names : ['Estudo Geral / Não especificado'];
+      const share = l.minutes / list.length;
+      list.forEach(function (t) {
+        const e = map[t] || { topicName: t, totalMinutes: 0, sessionsCount: 0, lastDate: l.date, categories: new Set() };
+        e.totalMinutes += share; e.sessionsCount += 1; e.categories.add(l.category);
+        if (l.date > e.lastDate) e.lastDate = l.date;
+        map[t] = e;
+      });
+    });
+    const seen = {};
+    const bank = isGabi() ? [] : editalTopics(subject);
+    const topics = bank.map(function (name) {
+      seen[name] = true;
+      return map[name] || { topicName: name, totalMinutes: 0, sessionsCount: 0, lastDate: '', categories: new Set() };
+    });
+    Object.keys(map).forEach(function (k) { if (!seen[k]) topics.push(map[k]); });
+    return topics;
+  }
   // Matérias extras (Inglês, por exemplo) ficam no navegador e, uma vez usadas,
   // sobrevivem nos próprios registros do data.csv.
   const EXTRA_KEY = 'concurso_study_tracker_subjects_v1';
@@ -598,7 +670,7 @@
   // Um insight por dia, por pessoa (matheus / gabi).
   let insightByOwner = loadCachedInsights();
   let milagreDays = loadMilagreDays();
-  const ui = { subjView: 'cards', subjSort: 'hours', expanded: null, search: '', confirmDel: null, mentorLoading: false, topicsOpen: false, historyOpen: false, subjectOpen: false, formOpen: false, addingSubject: false, renamingSubject: false, confirmSubject: null, topicOutroOpen: false, focusTopicOutroNext: false, newSubject: '',
+  const ui = { subjView: 'cards', subjSort: 'hours', expanded: null, subjOpen: [], search: '', confirmDel: null, mentorLoading: false, topicsOpen: false, historyOpen: false, subjectOpen: false, formOpen: false, addingSubject: false, renamingSubject: false, confirmSubject: null, topicOutroOpen: false, focusTopicOutroNext: false, newSubject: '',
     tab: initialTab(), metaForm: null, confirmMeta: null, portal: null, portalWho: null, milesOpen: false, insightOpen: false, milagreOpen: false,
     gabiProj: 'dout', gabiCap: null }; // gabiCap: null = doutorado geral; 0/1/2 = cap.
 
@@ -672,7 +744,7 @@
     if (!TABS.some(function (t) { return t.id === id; }) || id === ui.tab) return;
     ui.tab = id;
     ui.metaForm = null; ui.confirmMeta = null; ui.formOpen = false; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false;
-    ui.expanded = null; ui.search = '';
+    ui.expanded = null; ui.search = ''; ui.subjOpen = [];
     ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false;
     resetFormProfile();
     if (location.hash.replace('#', '') !== id) history.replaceState(null, '', '#' + id);
@@ -1925,7 +1997,13 @@
           '<button type="button" class="cp-linkbtn" data-action="topic-outro-toggle">fechar</button>'
         : '<button type="button" class="cp-linkbtn" data-action="topic-outro-toggle">+ outro (personalizado)</button>') +
       '</div>';
-    return '<div class="cp-topic-checklist">' + bankHtml + catalogHtml + emptyHint + '</div>' + outro;
+    return '<div id="cp-topic-wrap">' +
+      '<div class="cp-topic-tools">' +
+        '<button type="button" class="cp-linkbtn" data-action="topic-all">selecionar tudo</button>' +
+        '<button type="button" class="cp-linkbtn" data-action="topic-none">limpar todos</button>' +
+      '</div>' +
+      '<div class="cp-topic-checklist">' + bankHtml + catalogHtml + emptyHint + '</div>' + outro +
+    '</div>';
   }
   function renderForm(s) {
     const numeric = clampMinutes(form.minutes);
@@ -2021,29 +2099,9 @@
 
   /* ---- Topics breakdown ---- */
   function renderTopics() {
-    const map = {}; allSubjects().forEach(function (s) { map[s] = {}; });
-    curLogs().forEach(function (l) {
-      const names = logTopics(l);
-      const list = names.length ? names : ['Estudo Geral / Não especificado'];
-      const share = l.minutes / list.length;
-      const m = map[l.subject]; if (!m) return;
-      list.forEach(function (t) {
-        const e = m[t] || { topicName: t, totalMinutes: 0, sessionsCount: 0, lastDate: l.date, categories: new Set() };
-        e.totalMinutes += share; e.sessionsCount += 1; e.categories.add(l.category);
-        if (l.date > e.lastDate) e.lastDate = l.date; m[t] = e;
-      });
-    });
     let groups = allSubjects().map(function (subj) {
-      const seen = {};
-      const bank = isGabi() ? [] : editalTopics(subj);
-      const topics = bank.map(function (name) {
-        seen[name] = true;
-        return map[subj][name] || { topicName: name, totalMinutes: 0, sessionsCount: 0, lastDate: '', categories: new Set(), official: true };
-      });
-      Object.keys(map[subj]).forEach(function (k) {
-        if (!seen[k]) topics.push(map[subj][k]);
-      });
-      if (!bank.length) topics.sort(function (a, b) { return b.totalMinutes - a.totalMinutes; });
+      const topics = topicStatsFor(subj);
+      if (!editalTopics(subj).length) topics.sort(function (a, b) { return b.totalMinutes - a.totalMinutes; });
       return { subject: subj, topics: topics, totalMinutes: topics.reduce(function (a, t) { return a + t.totalMinutes; }, 0), uniqueTopicsCount: topics.filter(function (t) { return t.topicName !== 'Estudo Geral / Não especificado' && t.sessionsCount > 0; }).length };
     });
     const term = ui.search.trim().toLowerCase();
@@ -2157,10 +2215,31 @@
     if (ui.subjView === 'cards') {
       bodyHtml = '<div class="cp-subj-cards">' + totals.map(function (it) {
         const rel = s.totalMinutes > 0 ? (it.minutes / maxMin) * 100 : 0;
-        return '<div class="cp-subj-card' + (it.minutes > 0 ? '' : ' empty') + '">' +
+        const open = (ui.subjOpen || []).indexOf(it.subject) >= 0;
+        const rows = topicStatsFor(it.subject);
+        const studied = rows.filter(function (t) { return t.sessionsCount > 0 && t.topicName !== 'Estudo Geral / Não especificado'; });
+        const emptyN = rows.filter(function (t) { return !t.sessionsCount; }).length;
+        const topicLine = function (t) {
+          const mins = Math.round(t.totalMinutes);
+          const days = t.sessionsCount ? daysSince(t.lastDate) : null;
+          const stale = days !== null && days >= 120;
+          const child = (topicCode(t.topicName).match(/\./g) || []).length > 0;
+          return '<div class="cp-subj-t' + (child ? ' child' : '') + (stale ? ' stale' : '') + (!t.sessionsCount ? ' empty' : '') + '">' +
+            '<span>' + esc(t.topicName) + '</span>' +
+            '<b>' + (t.sessionsCount ? formatHoursDec(mins / 60) + 'h' : '—') + '</b></div>';
+        };
+        const hoverList = studied.length
+          ? studied.slice().sort(function (a, b) { return b.totalMinutes - a.totalMinutes; }).map(topicLine).join('') +
+            (emptyN ? '<p class="cp-subj-more">' + emptyN + ' tópico(s) ainda sem registro</p>' : '')
+          : '<p class="cp-subj-more">Nenhum tópico registrado ainda.</p>';
+        const detailList = rows.length ? rows.map(topicLine).join('') : '<p class="cp-subj-more">Nenhum tópico nesta matéria.</p>';
+        return '<div class="cp-subj-card' + (it.minutes > 0 ? '' : ' empty') + (open ? ' open' : '') + '" data-action="subj-card" data-subject="' + esc(it.subject) + '">' +
           '<div class="row"><h4>' + esc(it.subject) + '</h4><span class="h">' + formatHoursDec(it.hours) + 'h</span></div>' +
           '<div class="cp-mini-track"><div class="f" style="width:' + rel + '%"></div></div>' +
-          '<div class="meta"><span>' + it.count + ' ' + (it.count === 1 ? 'sessão' : 'sessões') + ' • ' + formatMinHuman(it.minutes) + '</span><span class="pc">' + it.percentage + '% do total</span></div></div>';
+          '<div class="meta"><span>' + it.count + ' ' + (it.count === 1 ? 'sessão' : 'sessões') + ' • ' + formatMinHuman(it.minutes) + '</span><span class="pc">' + it.percentage + '% do total</span></div>' +
+          '<div class="cp-subj-hover">' + hoverList + '</div>' +
+          '<div class="cp-subj-detail">' + detailList + '</div>' +
+        '</div>';
       }).join('') + '</div>';
     } else {
       bodyHtml = '<div class="cp-table-wrap"><table class="cp-table"><thead><tr><th>' + (isGabi() ? 'Frente' : 'Disciplina') + '</th><th>Sessões</th><th>Minutos</th><th>Horas</th><th>% do Total</th><th>Carga Relativa</th></tr></thead><tbody>' +
@@ -2891,9 +2970,22 @@
         toast('Matéria removida da lista. O histórico ficou.');
         break;
       case 'topic-toggle': {
-        const t = el.getAttribute('data-topic');
-        const has = form.topics.indexOf(t) >= 0;
-        form.topics = has ? form.topics.filter(function (x) { return x !== t; }) : form.topics.concat([t]);
+        applyTopicToggle(el.getAttribute('data-topic'));
+        syncTopicChecks();
+        break;
+      }
+      case 'topic-all':
+        form.topics = formTopicPool().slice();
+        syncTopicChecks();
+        break;
+      case 'topic-none':
+        form.topics = [];
+        syncTopicChecks();
+        break;
+      case 'subj-card': {
+        const name = el.getAttribute('data-subject');
+        const cur = ui.subjOpen || [];
+        ui.subjOpen = cur.indexOf(name) >= 0 ? cur.filter(function (x) { return x !== name; }) : cur.concat([name]);
         render();
         break;
       }
