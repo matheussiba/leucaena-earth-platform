@@ -306,32 +306,176 @@
       '7.2 Matriz de Achados e Matriz de Responsabilização',
       '8 Comunicação dos resultados: relatórios de auditoria',
     ],
+    'AFO (Administração Financeira e Orçamentária)': [
+      '1 Funções do Governo',
+      '1.1 Falhas de mercado e produção de bens públicos',
+      '1.2 Políticas econômicas governamentais (alocativa, distributiva e estabilizadora)',
+      '1.3 Federalismo Fiscal',
+      '2 Orçamento público: conceitos e princípios',
+      '2.1 Evolução conceitual do orçamento público',
+      '2.2 Orçamento-Programa: fundamentos e técnicas',
+      '3 Orçamento público no Brasil: Títulos I, IV, V e VI da Lei nº 4.320/1964',
+      '3.1 Orçamento na Constituição de 1988: PPA, LDO e LOA',
+      '3.2 Leis de Créditos Adicionais',
+      '3.3 Emendas parlamentares ao Orçamento',
+      '4 Plano Plurianual (PPA): estrutura, base legal, objetivos, conteúdo, tipos de programas',
+      '5 Lei de Diretrizes Orçamentárias (LDO): objetivos, estrutura, Anexos de Metas e Riscos Fiscais, limitação de empenho',
+      '6 Classificações orçamentárias',
+      '6.1 Classificação da despesa pública: institucional, funcional, programática, pela natureza e MTO',
+      '6.2 Classificação da receita pública: institucional, categorias econômicas, fontes e MTO',
+      '7 Ciclo orçamentário: elaboração, discussão, votação e aprovação',
+      '7.1 Execução orçamentária e financeira: estágios da despesa e da receita',
+      '7.2 Programação de desembolso e mecanismos retificadores do orçamento',
+      '7.3 Conta Única do Tesouro Nacional',
+      '8 Gestão organizacional das finanças públicas (Lei nº 10.180/2001)',
+      '9 Tópicos da Lei Complementar nº 101/2000 (LRF)',
+      '10 Sistemas de informação: SIAFI, SIASG e SICONV',
+      '11 Lei nº 12.527/2011 – Lei de Acesso à Informação',
+    ],
+    'Contabilidade (Geral e Pública)': [
+      '1 NBC TSP Estrutura Conceitual para elaboração e divulgação de informação contábil do setor público',
+      '1.1 Relatório Contábil de Propósito Geral (RCPG): objetivos, usuários, accountability, regimes de competência e de caixa',
+      '1.2 Características qualitativas da informação',
+      '1.3 Características da entidade que reporta a informação contábil',
+      '1.4 Elementos das demonstrações: ativos, passivos, receitas, despesas, superávit ou déficit',
+      '1.5 Reconhecimento, desreconhecimento e bases de mensuração',
+      '2 Estrutura e apresentação das Demonstrações Contábeis do Setor Público (Lei 4.320/1964, NBC T SP 11, MCASP)',
+      '3 Plano de Contas aplicado ao Setor Público',
+      '3.1 Contas patrimoniais e de resultado',
+      '3.2 Função e estrutura das contas',
+      '3.3 Escrituração: débito, crédito, saldo e partidas dobradas',
+      '4 Sistema de Contabilidade Federal (Lei 10.180/2001 e Decreto 6.976/2009)',
+      '4.1 SIAFI: conceito, objetivos, usuários e segurança',
+      '5 Tópicos da Lei Complementar nº 101/2000: dívida pública, restos a pagar, RREO e RGF',
+      '6 Procedimentos contábeis orçamentários e patrimoniais (MCASP)',
+      '6.1 Restos a pagar, empenho, liquidação e pagamento (Lei 4.320/1964 e MCASP)',
+      '6.2 Informação orçamentária nas demonstrações (NBC TSP 13)',
+      '6.3 IPSAS e informações de custos no setor público (NBC T 16.11 e Portaria STN 518/2018)',
+      '7 Trabalho de asseguração (NBC TA Estrutura Conceitual)',
+      '8 Análise das demonstrações contábeis: indicadores, análise horizontal e vertical, estrutura de capital, liquidez e notas explicativas',
+    ],
+    'Regulação Econômica e Agências': [
+      '1 Sistema de contas nacionais e identidades macroeconômicas básicas',
+      '1.1 Produto agregado, mensuração, produto nominal e real',
+      '1.2 Contas do sistema monetário',
+      '1.3 Balanço de pagamentos',
+      '2 Modelo keynesiano básico: multiplicador e gastos do governo',
+      '3 Modelo IS/LM: políticas monetária e fiscal',
+      '3.1 Políticas macroeconômicas em diferentes regimes cambiais',
+      '3.2 Avaliação do gasto público',
+      '3.3 Financiamento do setor público no Brasil',
+      '3.4 Conceitos de regulação, desregulação e re-regulação',
+      '4 Teoria econômica de indústrias reguladas',
+      '5 Estruturas de mercado: concorrência perfeita e monopolística, oligopólio, monopólio',
+      '6 Falhas de mercado, externalidades, bens públicos e assimetria de informação',
+      '7 Regulação e formação de preços em concorrência imperfeita',
+      '8 Conceitos básicos sobre regimes tarifários',
+      '9 Tarifação por custo de serviço',
+      '10 Tarifação por preço-teto',
+      '11 Regulação por incentivos',
+      '12 Regulação para competição',
+    ],
+    'TI e Análise de Dados (Python/R/SQL)': [
+      '1 Infraestrutura de TI',
+      '1.1 Arquitetura, topologias, data center, hiperconvergência e arquitetura escalável',
+      '1.2 Redes e comunicação de dados: protocolos, VLAN, SDN e wireless corporativo',
+      '1.3 Sistemas operacionais, servidores, virtualização e serviços de diretório',
+      '1.4 Armazenamento e backup: SAN, NAS, RAID, RPO/RTO',
+      '1.5 Segurança de infraestrutura: hardening, firewall, IDS/IPS, VPN e segmentação',
+      '1.6 Monitoramento, gestão, automação e alta disponibilidade',
+      '2 Engenharia de dados',
+      '2.1 Bancos relacionais e NoSQL, modelagem e SQL',
+      '2.2 Data Warehouse, DataMart, Data Lake e Data Mesh',
+      '2.3 Conectores, APIs, arquivos, mensageria e ETL/pipeline',
+      '2.4 Governança, qualidade, linhagem e integração com nuvem',
+      '3 Engenharia de software',
+      '3.1 Arquitetura: monolito, microsserviços, serverless e mensageria',
+      '3.2 Design, APIs, persistência, DevOps, testes e Java',
+      '4 Segurança da informação',
+      '4.1 Identidade e acesso, MFA, SSO, OAuth2 e OpenID Connect',
+      '4.2 Malware, ataques, SIEM, frameworks (MITRE, CIS, NIST) e incidentes',
+      '5 Computação em nuvem',
+      '5.1 IaaS, PaaS, SaaS, AWS, Azure, GCP, IaC e FinOps',
+      '6 Inteligência artificial',
+      '6.1 Aprendizado de máquina, deep learning, PLN, IA generativa, MLOps e ética',
+      '7 Contratações de TI',
+      '7.1 ETP, TR, riscos, SLA, Lei 14.133/2021, LGPD e IN SGD',
+      '8 Gestão de TI: ITIL v4, COBIT 5 e metodologias ágeis',
+      '9 Análise de dados: Python, R, SQL, ETL e mineração de dados',
+    ],
+    'Raciocínio Lógico / Matemática Financeira': [
+      '1 Regra de três simples e composta, proporcionalidades e porcentagens',
+      '2 Juros simples e compostos',
+      '3 Capitalização e desconto',
+      '4 Taxas de juros nominal, efetiva, equivalente, real e aparente',
+      '5 Rendas uniformes e variáveis',
+      '6 Planos de amortização de empréstimos e financiamentos',
+      '6.1 Sistema francês (tabela Price)',
+      '6.2 Sistema de Amortização Constante (SAC)',
+      '6.3 Sistema de Amortização Misto (SAM)',
+      '7 Cálculo financeiro',
+      '7.1 Custo real e efetivo das operações de financiamento, empréstimo e investimento',
+      '8 Avaliação de alternativas de investimento em economia estável e em ambiente inflacionário',
+      '9 Avaliação econômica de projetos',
+      '10 Taxas de retorno e taxas internas de retorno',
+    ],
   };
+  function foldName(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  }
   const EDITAL_ALIASES = {
     'lingua portuguesa': 'Língua Portuguesa',
-    'língua portuguesa': 'Língua Portuguesa',
     'lingua inglesa': 'Língua Inglesa',
-    'língua inglesa': 'Língua Inglesa',
     'ingles': 'Língua Inglesa',
-    'inglês': 'Língua Inglesa',
     'raciocinio analitico': 'Raciocínio Analítico',
-    'raciocínio analítico': 'Raciocínio Analítico',
     'controle externo': 'Controle Externo',
     'administracao publica': 'Administração Pública',
-    'administração pública': 'Administração Pública',
-    'administracao pública': 'Administração Pública',
     'direito constitucional': 'Direito Constitucional',
     'direito administrativo': 'Direito Administrativo (e Licitações)',
-    'direito administrativo (e licitações)': 'Direito Administrativo (e Licitações)',
-    'direito administrativo (e licitacoes)': 'Direito Administrativo (e Licitações)',
+    'direito administrativo e licitacoes': 'Direito Administrativo (e Licitações)',
     'auditoria governamental': 'Auditoria Governamental',
     'auditoria governamental e controle externo': 'Auditoria Governamental',
+    'afo': 'AFO (Administração Financeira e Orçamentária)',
+    'administracao financeira': 'AFO (Administração Financeira e Orçamentária)',
+    'administracao financeira e orcamentaria': 'AFO (Administração Financeira e Orçamentária)',
+    'contabilidade': 'Contabilidade (Geral e Pública)',
+    'contabilidade geral e publica': 'Contabilidade (Geral e Pública)',
+    'contabilidade publica': 'Contabilidade (Geral e Pública)',
+    'contabilidade aplicada ao setor publico': 'Contabilidade (Geral e Pública)',
+    'regulacao': 'Regulação Econômica e Agências',
+    'regulacao economica e agencias': 'Regulação Econômica e Agências',
+    'economia do setor publico': 'Regulação Econômica e Agências',
+    'economia do setor publico e da regulacao': 'Regulação Econômica e Agências',
+    'ti': 'TI e Análise de Dados (Python/R/SQL)',
+    'ti e analise de dados': 'TI e Análise de Dados (Python/R/SQL)',
+    'tecnologia da informacao': 'TI e Análise de Dados (Python/R/SQL)',
+    'analise de dados': 'TI e Análise de Dados (Python/R/SQL)',
+    'raciocinio logico': 'Raciocínio Lógico / Matemática Financeira',
+    'matematica financeira': 'Raciocínio Lógico / Matemática Financeira',
+    'raciocinio logico matematica financeira': 'Raciocínio Lógico / Matemática Financeira',
   };
   function editalKey(subject) {
     const raw = String(subject || '').trim();
     if (EDITAL_TOPICS[raw]) return raw;
-    const alias = EDITAL_ALIASES[raw.toLowerCase()];
-    return alias && EDITAL_TOPICS[alias] ? alias : '';
+    const folded = foldName(raw);
+    if (!folded) return '';
+    const alias = EDITAL_ALIASES[folded];
+    if (alias && EDITAL_TOPICS[alias]) return alias;
+    const exact = SUBJECTS_BASE.filter(function (official) { return foldName(official) === folded; })[0];
+    if (exact && EDITAL_TOPICS[exact]) return exact;
+    const tokenHits = SUBJECTS_BASE.filter(function (official) {
+      return (' ' + foldName(official) + ' ').indexOf(' ' + folded + ' ') >= 0;
+    });
+    if (tokenHits.length === 1 && EDITAL_TOPICS[tokenHits[0]]) return tokenHits[0];
+    return '';
+  }
+  function canonicalSubject(name) {
+    const raw = String(name || '').replace(/\s+/g, ' ').trim();
+    if (!raw) return '';
+    const key = editalKey(raw);
+    if (key) return key;
+    const exact = SUBJECTS_BASE.filter(function (official) { return foldName(official) === foldName(raw); })[0];
+    return exact || raw;
   }
   function editalTopics(subject) {
     const key = editalKey(subject);
@@ -467,22 +611,49 @@
   function pushUnique(list, s) { if (s && list.indexOf(s) < 0) list.push(s); }
   function catalogSubjects() {
     const out = (isGabi() ? GABI_SUBJECTS : SUBJECTS_BASE).slice();
-    if (!isGabi()) extraSubjects.forEach(function (s) { pushUnique(out, s); });
+    if (!isGabi()) extraSubjects.forEach(function (s) {
+      const canon = canonicalSubject(s);
+      if (SUBJECTS_BASE.indexOf(canon) >= 0) return;
+      pushUnique(out, s);
+    });
     curLogs().forEach(function (l) {
       if (logStatus(l) === 'subject_deleted') return;
-      pushUnique(out, l.subject);
+      const canon = canonicalSubject(l.subject);
+      pushUnique(out, canon || l.subject);
     });
     return out;
   }
   function allSubjects() {
     const out = catalogSubjects();
-    curLogs().forEach(function (l) { pushUnique(out, l.subject); });
+    curLogs().forEach(function (l) { pushUnique(out, canonicalSubject(l.subject) || l.subject); });
     return out;
+  }
+  function absorbAliasSubjects() {
+    let changed = false;
+    extraSubjects = extraSubjects.filter(function (s) {
+      const canon = canonicalSubject(s);
+      if (canon && canon !== s && SUBJECTS_BASE.indexOf(canon) >= 0) { changed = true; return false; }
+      return true;
+    });
+    logs = logs.map(function (l) {
+      const canon = canonicalSubject(l.subject);
+      if (!canon || canon === l.subject) return l;
+      changed = true;
+      return Object.assign({}, l, { subject: canon });
+    });
+    if (changed) {
+      persistExtras();
+      persist();
+      saveLogsToServer(logs);
+    }
+    return changed;
   }
   function addSubject(nome) {
     const s = String(nome || '').replace(/\s+/g, ' ').trim();
     if (!s || s.length > 60) return null;
-    const hit = catalogSubjects().filter(function (x) { return x.toLowerCase() === s.toLowerCase(); })[0];
+    const canon = canonicalSubject(s);
+    if (SUBJECTS_BASE.indexOf(canon) >= 0) return canon;
+    const hit = catalogSubjects().filter(function (x) { return foldName(x) === foldName(s) || foldName(x) === foldName(canon); })[0];
     if (hit) return hit;
     extraSubjects.push(s);
     persistExtras();
@@ -1317,6 +1488,7 @@
     if (subjectsVal) {
       extraSubjects = subjectsVal;
       try { localStorage.setItem(EXTRA_KEY, JSON.stringify(extraSubjects)); } catch (_) {}
+      absorbAliasSubjects();
     } else if (isGlobal) {
       extraSubjects = [];
       try { localStorage.removeItem(EXTRA_KEY); } catch (_) {}
@@ -2055,7 +2227,7 @@
       return '<div class="cp-field">' +
         '<label class="cp-label"><span class="l">' + ic('book') + 'Nova matéria</span></label>' +
         '<div class="cp-subject-new">' +
-          '<input id="cp-f-newsubject" class="cp-input" type="text" placeholder="Ex: Inglês" maxlength="60" value="' + esc(ui.newSubject) + '">' +
+          '<input id="cp-f-newsubject" class="cp-input" type="text" placeholder="Ex: Inglês (acento opcional)" maxlength="60" value="' + esc(ui.newSubject) + '" lang="pt-BR" spellcheck="false">' +
           '<button type="button" class="cp-btn primary" data-action="subject-add">Adicionar</button>' +
           '<button type="button" class="cp-btn icon" data-action="subject-cancel" title="Cancelar">' + ic('close') + '</button>' +
         '</div>' +
@@ -2938,12 +3110,15 @@
         ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.newSubject = '';
         render(); break;
       case 'subject-add': {
-        const nome = addSubject(ui.newSubject);
+        const typed = String(ui.newSubject || '').replace(/\s+/g, ' ').trim();
+        const nome = addSubject(typed);
         if (!nome) { toast('Informe o nome da matéria.', true); break; }
         form.subject = nome;
         ui.addingSubject = false; ui.newSubject = '';
         render();
-        toast('Matéria "' + nome + '" disponível.');
+        toast(editalKey(typed) && foldName(typed) !== foldName(nome)
+          ? 'Isso já é "' + nome + '" no edital. Tópicos oficiais liberados.'
+          : 'Matéria "' + nome + '" disponível.');
         break;
       }
       case 'subject-rename':
@@ -3200,6 +3375,7 @@
   async function boot() {
     applyTheme();
     resetFormProfile();
+    absorbAliasSubjects();
     await loadFrases();
     try {
       const r = await fetch('/life/api/logs', { cache: 'no-store' });
@@ -3210,8 +3386,11 @@
         logs = merged.sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
         logs.forEach(function (l) {
           if (logOwner(l) !== 'matheus' || isDeletedLog(l) || logStatus(l) === 'subject_deleted') return;
+          const canon = canonicalSubject(l.subject);
+          if (canon && canon !== l.subject) l.subject = canon;
           if (l.subject && SUBJECTS_BASE.indexOf(l.subject) < 0) pushUnique(extraSubjects, l.subject);
         });
+        absorbAliasSubjects();
         persistExtras();
         persist();
         // Deploy do Render zera o disco: devolve ao servidor o que só existe aqui.
