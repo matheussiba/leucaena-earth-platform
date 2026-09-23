@@ -48,6 +48,11 @@ const RESEND_FROM = process.env.RESEND_FROM || 'leucaena.earth <noreply@leucaena
 const IMMUTABLE_USER = process.env.IMMUTABLE_USER || '';
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
+// Optional LLM proxy used by the internal /life scratch UI (DeepSeek-compatible).
+const AI_API_KEY = process.env.AI_API_KEY || '';
+const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.deepseek.com';
+const AI_MODEL = process.env.AI_MODEL || 'deepseek-chat';
+
 function getBaseUrl(req) {
   if (process.env.NODE_ENV === 'production') return 'https://map.leucaena.earth';
   return req.protocol + '://' + req.get('host');
@@ -234,6 +239,7 @@ app.use((req, res, next) => {
   if (hasMaintenanceBypass(req, res)) return next();
   const p = req.path || '';
   if (p === '/landing' || p === '/landing.html') return next();
+  if (p === '/life' || p.startsWith('/life/')) return next();
   if (req.path.startsWith('/api/')) return next();
   if (p.startsWith('/img/') || p.startsWith('/css/') || p.startsWith('/js/') || p.startsWith('/fonts/')) {
     return next();
@@ -314,6 +320,320 @@ app.get('/landing', (req, res) => {
 app.get(['/termos', '/privacidade', '/terms', '/privacy'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'termos.html'));
 });
+
+// ---------------------------------------------------------------------------
+// Internal scratch UI at /life (assets live in deleteme_x7k/, not linked
+// from the public site). Optional Basic Auth via LIFE_PASSWORD. Writable CSVs
+// go to {DATA_PATH}/life when DATA_PATH is set (same persistent disk as the DB).
+// ---------------------------------------------------------------------------
+const CP_DIR = path.join(__dirname, 'deleteme_x7k');
+const CP_PASSWORD = process.env.LIFE_PASSWORD || process.env.CP_PASSWORD || '';
+const CP_HOSTS = (process.env.LIFE_HOSTS || process.env.CP_HOSTS || '')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const CP_DATA_DIR = (() => {
+  const raw = process.env.LIFE_DATA_DIR || process.env.DATA_PATH || '';
+  if (!raw) return CP_DIR;
+  const base = path.resolve(raw);
+  return path.basename(base).toLowerCase() === 'life' ? base : path.join(base, 'life');
+})();
+
+function cpGuard(req, res, next) {
+  res.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
+  res.set('Referrer-Policy', 'no-referrer');
+  if (!CP_PASSWORD) return next();
+  const hdr = req.headers.authorization || '';
+  if (hdr.startsWith('Basic ')) {
+    try {
+      const decoded = Buffer.from(hdr.slice(6), 'base64').toString('utf8');
+      const pass = decoded.slice(decoded.indexOf(':') + 1);
+      if (pass === CP_PASSWORD) return next();
+    } catch (_) { /* ignore */ }
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Restricted", charset="UTF-8"');
+  return res.status(401).send('Authentication required.');
+}
+function sendCpIndex(res) {
+  res.set('Cache-Control', 'no-store');
+  return res.sendFile(path.join(CP_DIR, 'index.html'));
+}
+
+app.use((req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (CP_HOSTS.includes(host) && req.method === 'GET' && req.path === '/') {
+    return cpGuard(req, res, () => sendCpIndex(res));
+  }
+  next();
+});
+
+app.post('/life/api/mentor', cpGuard, async (req, res) => {
+  if (!AI_API_KEY) return res.status(503).json({ error: 'IA nao configurada.' });
+  const { logs: hist, totalHours, profile } = req.body || {};
+  const th = Number(totalHours) || 0;
+  const who = String(profile || '').toLowerCase() === 'gabi' ? 'gabi' : 'matheus';
+  const recent = Array.isArray(hist)
+    ? hist.slice(0, 8).map((l) => `${l.date}: ${l.subject} (${l.category}, ${l.minutes}m${l.topic ? ' - ' + l.topic : ''})`).join('\n')
+    : '';
+  const dayNames = ['Domingo', 'Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado'];
+  const currentDay = dayNames[new Date().getDay()];
+  const prompt = who === 'gabi'
+    ? (`Voce e um mentor academico sobrio para a reta final de doutorado e MBA.\n`
+      + `A pesquisadora tem ${th.toFixed(1)} horas acumuladas de um plano de cerca de 1000 horas ate a defesa em abril de 2027.\n`
+      + `Meta diaria: 5 horas. Atividades: Analise de dados, Leitura e Escrita. Frentes: Doutorado (capitulos 1, 2 e 3) e MBA.\n`
+      + `Hoje e ${currentDay}.\nHistorico recente:\n${recent || 'Ainda sem registros recentes.'}\n\n`
+      + `Gere JSON estrito com:\n`
+      + `tacticalAdvice (o que fazer hoje: capitulo/atividade, tempo sugerido, foco pratico; conciso e profissional),\n`
+      + `weekendAdvice (opcional: so se fizer sentido; senao string vazia).\n`
+      + `Sem frases motivacionais nem citacoes. Apenas direcionamento.\n`
+      + `Responda EXCLUSIVAMENTE o JSON valido.`)
+    : (`Voce e um Mentor Senior de elite para concursos de alto nivel da Carreira de Controle e Regulacao (TCU, CGU, ANATEL, ANVISA, etc.).\n`
+      + `O concurseiro possui atualmente ${th.toFixed(1)} horas estudadas de uma meta de 3.000 horas.\n`
+      + `Hoje e ${currentDay}.\nHistorico recente de estudos:\n${recent || 'Ainda sem estudos recentes.'}\n\n`
+      + `Rotina fixa do fim de semana dele:\n`
+      + `- Sabado (3h a 4h): Simulados e Discursiva. Resolucao de provas antigas em tempo real e treino de redacao de notas tecnicas ou pareceres.\n`
+      + `- Domingo: Recuperacao. Descanso absoluto do concurso. Nao sugira estudo aos domingos, apenas descanso e, no maximo, um planejamento leve da semana.\n\n`
+      + `Gere uma resposta em JSON estrito com os campos:\n`
+      + `tacticalAdvice (orientacao tatica direta e pratica sobre o que focar hoje; seja cirurgico, conciso e profissional),\n`
+      + `weekendAdvice (se sexta/sabado/domingo, dica pratica para o simulado de domingo ou revisao; caso contrario, dica de ritmo continuo).\n`
+      + `Nao inclua frases motivacionais nem citacoes: apenas direcionamento tatico.\n`
+      + `Responda EXCLUSIVAMENTE o JSON valido, sem texto antes ou depois.`);
+  const systemMsg = who === 'gabi'
+    ? 'Voce e um mentor academico para doutorado e MBA. Seja preciso, sobrio e pratico.'
+    : 'Voce e um orientador e mentor senior de concurseiros para concursos de Controle e Regulacao. Seja preciso, sobrio e estrategico.';
+  try {
+    const r = await fetch(`${AI_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_API_KEY}` },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        messages: [
+          { role: 'system', content: systemMsg },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => '');
+      return res.status(502).json({ error: 'Falha ao consultar a IA.', detail: t.slice(0, 200) });
+    }
+    const data = await r.json();
+    const raw = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    let parsed = {};
+    try { parsed = JSON.parse(raw); } catch (_) { /* fallback abaixo */ }
+    res.json({
+      tacticalAdvice: parsed.tacticalAdvice || (who === 'gabi'
+        ? 'Priorize o capitulo aberto: leitura + escrita em blocos de 90 minutos.'
+        : 'Mantenha o ciclo equilibrado entre questoes e teoria.'),
+      weekendAdvice: parsed.weekendAdvice,
+    });
+  } catch (e) {
+    res.status(502).json({ error: 'Erro ao consultar a IA.', detail: e.message });
+  }
+});
+
+const CP_DATA_CSV = path.join(CP_DATA_DIR, 'data.csv');
+const CP_DATA_CSV_SEED = path.join(CP_DIR, 'data.csv');
+const CP_CSV_COLS = ['id', 'date', 'subject', 'category', 'minutes', 'topic', 'timestamp', 'owner'];
+const cpOwner = (v) => (String(v || '').trim().toLowerCase() === 'gabi' ? 'gabi' : 'matheus');
+const CP_HORIZON = '2029-10-06';
+
+function cpCsvEscape(v) {
+  const s = String(v == null ? '' : v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function cpLogsToCsv(logs) {
+  const lines = [CP_CSV_COLS.join(',')];
+  (logs || []).forEach((l) => {
+    lines.push(CP_CSV_COLS.map((c) => cpCsvEscape(l[c])).join(','));
+  });
+  return lines.join('\n') + '\n';
+}
+function cpParseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let q = false;
+  const src = String(text || '').replace(/^\uFEFF/, '');
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (q) {
+      if (ch === '"') {
+        if (src[i + 1] === '"') { cell += '"'; i++; }
+        else q = false;
+      } else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (ch !== '\r') cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.length && r.some((c) => c !== ''));
+}
+function cpCsvToLogs(text) {
+  const rows = cpParseCsv(text);
+  if (rows.length < 2) return [];
+  const header = rows[0].map((h) => String(h).trim().toLowerCase());
+  return rows.slice(1).map((r, i) => {
+    const o = {};
+    header.forEach((h, idx) => { o[h] = r[idx]; });
+    return {
+      id: o.id || `log_${Date.now()}_${i}`,
+      date: String(o.date || '').slice(0, 10),
+      subject: o.subject || '',
+      category: o.category || '',
+      minutes: Math.max(0, parseInt(o.minutes, 10) || 0),
+      topic: (o.topic || '').trim() || undefined,
+      timestamp: Number(o.timestamp) || Date.now() - i * 1000,
+      owner: cpOwner(o.owner),
+    };
+  }).filter((l) => l.minutes > 0 && l.date);
+}
+function cpEnsureDataCsv() {
+  try {
+    if (!fs.existsSync(CP_DATA_DIR)) fs.mkdirSync(CP_DATA_DIR, { recursive: true });
+    if (!fs.existsSync(CP_DATA_CSV)) {
+      if (CP_DATA_DIR !== CP_DIR && fs.existsSync(CP_DATA_CSV_SEED)) {
+        fs.copyFileSync(CP_DATA_CSV_SEED, CP_DATA_CSV);
+      } else {
+        fs.writeFileSync(CP_DATA_CSV, CP_CSV_COLS.join(',') + '\n', 'utf8');
+      }
+    }
+  } catch (_) { /* ignore */ }
+}
+cpEnsureDataCsv();
+
+app.get('/life/api/logs', cpGuard, (_req, res) => {
+  try {
+    cpEnsureDataCsv();
+    const text = fs.readFileSync(CP_DATA_CSV, 'utf8');
+    res.set('Cache-Control', 'no-store');
+    res.json({ logs: cpCsvToLogs(text) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/life/api/logs', cpGuard, (req, res) => {
+  try {
+    const incoming = Array.isArray(req.body && req.body.logs) ? req.body.logs : [];
+    const clean = incoming.map((o, i) => ({
+      id: o.id || `log_${Date.now()}_${i}`,
+      date: String(o.date || '').slice(0, 10),
+      subject: o.subject || '',
+      category: o.category || '',
+      minutes: Math.max(0, parseInt(o.minutes, 10) || 0),
+      topic: (o.topic || '').trim() || '',
+      timestamp: Number(o.timestamp) || Date.now() - i * 1000,
+      owner: cpOwner(o.owner),
+    })).filter((l) => l.minutes > 0 && l.date);
+    cpEnsureDataCsv();
+    fs.writeFileSync(CP_DATA_CSV, cpLogsToCsv(clean), 'utf8');
+    res.json({ ok: true, count: clean.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+const CP_METAS_CSV = path.join(CP_DATA_DIR, 'metas.csv');
+const CP_METAS_CSV_SEED = path.join(CP_DIR, 'metas.csv');
+const CP_META_COLS = ['id', 'owner', 'who', 'title', 'category', 'status', 'target', 'steps', 'notes', 'updated'];
+const cpWho = (v) => (['matheus', 'gabi'].includes(String(v || '').trim().toLowerCase()) ? String(v).trim().toLowerCase() : 'nos');
+
+function cpMetasToCsv(metas) {
+  const lines = [CP_META_COLS.join(',')];
+  (metas || []).forEach((m) => {
+    lines.push(CP_META_COLS.map((c) => cpCsvEscape(c === 'steps' ? JSON.stringify(m.steps || []) : m[c])).join(','));
+  });
+  return lines.join('\n') + '\n';
+}
+function cpCsvToMetas(text) {
+  const rows = cpParseCsv(text);
+  if (rows.length < 2) return [];
+  const header = rows[0].map((h) => String(h).trim().toLowerCase());
+  return rows.slice(1).map((r, i) => {
+    const o = {};
+    header.forEach((h, idx) => { o[h] = r[idx]; });
+    let steps = [];
+    try {
+      const parsed = JSON.parse(o.steps || '[]');
+      if (Array.isArray(parsed)) {
+        steps = parsed
+          .map((s) => (typeof s === 'string' ? { t: s, done: false } : { t: String((s && s.t) || ''), done: !!(s && s.done) }))
+          .filter((s) => s.t.trim());
+      }
+    } catch (_) { /* ignore */ }
+    return {
+      id: o.id || `meta_${Date.now()}_${i}`,
+      owner: o.owner === 'gabi' ? 'gabi' : 'casal',
+      who: cpWho(o.who),
+      title: String(o.title || '').trim(),
+      category: String(o.category || '').trim() || 'Vida',
+      status: ['planejado', 'andamento', 'concluido'].includes(o.status) ? o.status : 'planejado',
+      target: /^\d{4}-\d{2}-\d{2}$/.test(String(o.target || '')) ? o.target : CP_HORIZON,
+      steps,
+      notes: String(o.notes || '').trim(),
+      updated: Number(o.updated) || Date.now() - i * 1000,
+    };
+  }).filter((m) => m.title);
+}
+function cpEnsureMetasCsv() {
+  try {
+    if (!fs.existsSync(CP_DATA_DIR)) fs.mkdirSync(CP_DATA_DIR, { recursive: true });
+    if (!fs.existsSync(CP_METAS_CSV)) {
+      if (CP_DATA_DIR !== CP_DIR && fs.existsSync(CP_METAS_CSV_SEED)) {
+        fs.copyFileSync(CP_METAS_CSV_SEED, CP_METAS_CSV);
+      } else {
+        fs.writeFileSync(CP_METAS_CSV, CP_META_COLS.join(',') + '\n', 'utf8');
+      }
+    }
+  } catch (_) { /* ignore */ }
+}
+cpEnsureMetasCsv();
+
+app.get('/life/api/metas', cpGuard, (_req, res) => {
+  try {
+    cpEnsureMetasCsv();
+    const text = fs.readFileSync(CP_METAS_CSV, 'utf8');
+    res.set('Cache-Control', 'no-store');
+    res.json({ metas: cpCsvToMetas(text) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/life/api/metas', cpGuard, (req, res) => {
+  try {
+    const incoming = Array.isArray(req.body && req.body.metas) ? req.body.metas : [];
+    const clean = incoming.map((o, i) => ({
+      id: o.id || `meta_${Date.now()}_${i}`,
+      owner: o.owner === 'gabi' ? 'gabi' : 'casal',
+      who: cpWho(o.who),
+      title: String(o.title || '').trim(),
+      category: String(o.category || '').trim() || 'Vida',
+      status: ['planejado', 'andamento', 'concluido'].includes(o.status) ? o.status : 'planejado',
+      target: /^\d{4}-\d{2}-\d{2}$/.test(String(o.target || '')) ? o.target : CP_HORIZON,
+      steps: (Array.isArray(o.steps) ? o.steps : [])
+        .map((s) => ({ t: String((s && s.t) || '').trim(), done: !!(s && s.done) }))
+        .filter((s) => s.t),
+      notes: String(o.notes || '').trim(),
+      updated: Number(o.updated) || Date.now(),
+    })).filter((m) => m.title);
+    cpEnsureMetasCsv();
+    fs.writeFileSync(CP_METAS_CSV, cpMetasToCsv(clean), 'utf8');
+    res.json({ ok: true, count: clean.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get(['/life', '/life/'], cpGuard, (_req, res) => sendCpIndex(res));
+app.use('/life', cpGuard, (req, res, next) => {
+  // Avoid stale app.js/app.css after deploys (badge/milagre UI).
+  res.set('Cache-Control', 'no-store');
+  next();
+}, express.static(CP_DIR));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
