@@ -648,6 +648,27 @@ body.cp-modal-open { overflow: hidden; }
 .cp-empty-topic { font-size: 12px; font-style: italic; color: var(--faint); padding: 6px 0; }
 .cp-topic.empty { opacity: 0.62; }
 .cp-topic.child { margin-left: 14px; }
+.cp-topic.stale { border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.06); }
+.cp-stale-tag { color: var(--amber) !important; font-weight: 700; }
+
+/* ---------- Registro: checklist de tópicos ---------- */
+.cp-topic-checklist {
+  display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--inset); padding: 6px;
+}
+.cp-topic-check {
+  display: flex; align-items: flex-start; gap: 8px; width: 100%; text-align: left;
+  background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 8px;
+  font-family: var(--font); font-size: 12.5px; color: var(--text-soft); line-height: 1.4; transition: .12s;
+}
+.cp-topic-check:hover { background: var(--border-soft); }
+.cp-topic-check.child { margin-left: 16px; }
+.cp-topic-check svg { width: 15px; height: 15px; margin-top: 1px; flex-shrink: 0; color: var(--faint); }
+.cp-topic-check.on { color: var(--text); font-weight: 600; }
+.cp-topic-check.on svg { color: var(--emerald); }
+.cp-topic-divider { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--faint); padding: 8px 8px 2px; }
+.cp-topic-outro { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cp-topic-outro .cp-input { flex: 1; min-width: 200px; }
 
 /* ---------- Recent history ---------- */
 .cp-hist { display: flex; flex-direction: column; gap: 10px; }

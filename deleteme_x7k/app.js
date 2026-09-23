@@ -341,6 +341,43 @@
     const m = String(label || '').match(/^(\d+(?:\.\d+)*)\b/);
     return m ? m[1] : '';
   }
+  // Um registro pode marcar vários tópicos ao mesmo tempo; guardamos como JSON
+  // dentro da mesma coluna "topic" do CSV (retrocompatível com texto simples antigo).
+  function parseTopicsRaw(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s) return [];
+    try {
+      const p = JSON.parse(s);
+      if (Array.isArray(p)) return p.map(function (t) { return String(t || '').trim(); }).filter(Boolean);
+    } catch (_) { /* texto antigo, não é JSON */ }
+    return [s];
+  }
+  function logTopics(l) { return parseTopicsRaw(l && l.topic); }
+  function serializeTopics(arr) {
+    const clean = (arr || []).map(function (t) { return String(t || '').trim(); }).filter(Boolean);
+    return clean.length ? JSON.stringify(clean) : '';
+  }
+  // Tópicos "outros" já usados nessa matéria (fora do edital oficial), para
+  // virarem checkbox também em vez de precisar redigitar tudo de novo.
+  function catalogTopicsFor(subject) {
+    const bank = editalTopics(subject);
+    const seen = {};
+    const out = [];
+    curLogs().forEach(function (l) {
+      if (l.subject !== subject) return;
+      logTopics(l).forEach(function (t) {
+        if (!t || t === 'Estudo Geral / Não especificado' || bank.indexOf(t) >= 0) return;
+        if (!seen[t]) { seen[t] = true; out.push(t); }
+      });
+    });
+    return out;
+  }
+  function daysSince(dateStr) {
+    if (!dateStr) return Infinity;
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return Infinity;
+    return Math.floor((Date.now() - d.getTime()) / 86400000);
+  }
   // Matérias extras (Inglês, por exemplo) ficam no navegador e, uma vez usadas,
   // sobrevivem nos próprios registros do data.csv.
   const EXTRA_KEY = 'concurso_study_tracker_subjects_v1';
@@ -561,7 +598,7 @@
   // Um insight por dia, por pessoa (matheus / gabi).
   let insightByOwner = loadCachedInsights();
   let milagreDays = loadMilagreDays();
-  const ui = { subjView: 'cards', subjSort: 'hours', expanded: null, search: '', confirmDel: null, mentorLoading: false, topicsOpen: false, historyOpen: false, subjectOpen: false, formOpen: false, addingSubject: false, renamingSubject: false, confirmSubject: null, newSubject: '',
+  const ui = { subjView: 'cards', subjSort: 'hours', expanded: null, search: '', confirmDel: null, mentorLoading: false, topicsOpen: false, historyOpen: false, subjectOpen: false, formOpen: false, addingSubject: false, renamingSubject: false, confirmSubject: null, topicOutroOpen: false, focusTopicOutroNext: false, newSubject: '',
     tab: initialTab(), metaForm: null, confirmMeta: null, portal: null, portalWho: null, milesOpen: false, insightOpen: false, milagreOpen: false,
     gabiProj: 'dout', gabiCap: null }; // gabiCap: null = doutorado geral; 0/1/2 = cap.
 
@@ -636,21 +673,39 @@
     ui.tab = id;
     ui.metaForm = null; ui.confirmMeta = null; ui.formOpen = false; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false;
     ui.expanded = null; ui.search = '';
-    ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null;
+    ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false;
     resetFormProfile();
     if (location.hash.replace('#', '') !== id) history.replaceState(null, '', '#' + id);
     render();
     window.scrollTo({ top: 0 });
   }
-  const form = { date: getToday(), subject: SUBJECTS_BASE[0], category: CATEGORIES[0], minutes: '60', topic: '', editId: null, minutesEdit: false };
+  const form = {
+    date: getToday(), subject: SUBJECTS_BASE[0], category: CATEGORIES[0], minutes: '60',
+    topic: '', topics: [], topicOutro: '', editId: null, minutesEdit: false,
+  };
   // Cada aba tem suas próprias frentes e tipos de trabalho.
   function resetFormProfile() {
     form.editId = null;
     form.topic = '';
+    form.topics = [];
+    form.topicOutro = '';
     form.minutes = '60';
     form.minutesEdit = false;
     form.subject = isGabi() ? GABI_SUBJECTS[0] : SUBJECTS_BASE[0];
     form.category = cats()[0];
+  }
+  // Reúne o que foi marcado (checkbox) + o texto livre do "Outro" num único array.
+  function collectFormTopics() {
+    if (isGabi()) {
+      const t = String(form.topic || '').trim();
+      return t ? [t] : [];
+    }
+    const chosen = (form.topics || []).slice();
+    String(form.topicOutro || '').split(',').forEach(function (raw) {
+      const t = raw.trim();
+      if (t && chosen.indexOf(t) < 0) chosen.push(t);
+    });
+    return chosen;
   }
 
   /* ------------------------------- Helpers -------------------------------- */
@@ -917,7 +972,7 @@
         profile: profileId(),
         totalHours: totalHours,
         logs: all.slice(0, 8).map(function (l) {
-          return { date: l.date, subject: l.subject, category: l.category, minutes: l.minutes, topic: l.topic };
+          return { date: l.date, subject: l.subject, category: l.category, minutes: l.minutes, topic: logTopics(l).join(', ') };
         }),
       }),
     });
@@ -1262,6 +1317,11 @@
     if (isStudy && ui.formOpen && !f && (ui.addingSubject || ui.renamingSubject)) {
       const first = document.getElementById(ui.renamingSubject ? 'cp-f-renamesubject' : 'cp-f-newsubject');
       if (first) first.focus();
+    }
+    if (ui.focusTopicOutroNext) {
+      ui.focusTopicOutroNext = false;
+      const outro = document.getElementById('cp-f-topic-outro');
+      if (outro) outro.focus();
     }
     if (ui.metaForm && !f) {
       const first = document.getElementById('cp-m-title');
@@ -1765,7 +1825,7 @@
       return '<div class="ct-row">' +
         '<span class="ct-dot" style="background:' + color + '"></span>' +
         '<div class="ct-txt"><span class="ct-sub">' + esc(l.subject) + '</span>' +
-        (l.topic ? '<span class="ct-top">' + esc(l.topic) + '</span>' : '') + '</div>' +
+        (logTopics(l).length ? '<span class="ct-top">' + esc(logTopics(l).join(', ')) + '</span>' : '') + '</div>' +
         '<span class="ct-min">' + l.minutes + 'm</span>' +
       '</div>';
     }).join('');
@@ -1836,30 +1896,36 @@
       '</div>' +
     '</div>';
   }
+  function topicCheckRow(t, depth) {
+    const checked = form.topics.indexOf(t) >= 0;
+    const pad = depth ? ' style="margin-left:' + (depth * 16) + 'px"' : '';
+    return '<button type="button" class="cp-topic-check' + (checked ? ' on' : '') + '"' + pad +
+      ' data-action="topic-toggle" data-topic="' + esc(t) + '">' +
+      ic(checked ? 'checkCircle' : 'circle') + '<span>' + esc(t) + '</span></button>';
+  }
   function renderTopicField() {
     if (isGabi()) {
       return '<input id="cp-f-topic" class="cp-input" type="text" value="' + esc(form.topic) + '" placeholder="Ex: limpeza da base, revisão da literatura, seção de resultados...">';
     }
     const bank = editalTopics(form.subject);
-    if (bank.length) {
-      const extra = form.topic && bank.indexOf(form.topic) < 0
-        ? '<option value="' + esc(form.topic) + '" selected>' + esc(form.topic) + '</option>'
-        : '';
-      return '<select id="cp-f-topic" class="cp-select">' +
-        '<option value="">Tópico do edital</option>' +
-        extra +
-        bank.map(function (t) {
-          const depth = (topicCode(t).match(/\./g) || []).length;
-          const pad = depth ? Array(depth + 1).join('·· ') : '';
-          return '<option value="' + esc(t) + '"' + (form.topic === t ? ' selected' : '') + '>' + pad + esc(t) + '</option>';
-        }).join('') +
-      '</select>';
-    }
-    const subjTopics = new Set(), allTopics = new Set();
-    curLogs().forEach(function (l) { if (l.topic && l.topic.trim()) { allTopics.add(l.topic.trim()); if (l.subject === form.subject) subjTopics.add(l.topic.trim()); } });
-    const sugg = Array.from(subjTopics.size ? subjTopics : allTopics);
-    return '<input id="cp-f-topic" class="cp-input" type="text" list="cp-topics-datalist" value="' + esc(form.topic) + '" placeholder="Ex: Nova Lei de Licitações (14.133), Matriz de Achados...">' +
-      '<datalist id="cp-topics-datalist">' + sugg.map(function (t) { return '<option value="' + esc(t) + '"></option>'; }).join('') + '</datalist>';
+    const catalog = catalogTopicsFor(form.subject);
+    const bankHtml = bank.map(function (t) {
+      const depth = (topicCode(t).match(/\./g) || []).length;
+      return topicCheckRow(t, depth);
+    }).join('');
+    const catalogHtml = catalog.length
+      ? '<div class="cp-topic-divider">Outros já usados nesta matéria</div>' + catalog.map(function (t) { return topicCheckRow(t, 0); }).join('')
+      : '';
+    const emptyHint = (!bank.length && !catalog.length)
+      ? '<p class="cp-empty-topic">Sem tópicos ainda. Use "Outro" abaixo para começar o catálogo desta matéria.</p>'
+      : '';
+    const outro = '<div class="cp-topic-outro">' +
+      (ui.topicOutroOpen
+        ? '<input id="cp-f-topic-outro" class="cp-input" type="text" value="' + esc(form.topicOutro) + '" placeholder="Outro tópico (separe por vírgula para vários)">' +
+          '<button type="button" class="cp-linkbtn" data-action="topic-outro-toggle">fechar</button>'
+        : '<button type="button" class="cp-linkbtn" data-action="topic-outro-toggle">+ outro (personalizado)</button>') +
+      '</div>';
+    return '<div class="cp-topic-checklist">' + bankHtml + catalogHtml + emptyHint + '</div>' + outro;
   }
   function renderForm(s) {
     const numeric = clampMinutes(form.minutes);
@@ -1869,7 +1935,7 @@
       '<div class="cp-modal" id="formulario-registro-estudo" role="dialog" aria-modal="true" aria-label="Registrar estudo">' +
         '<div class="cp-modal-head"><div class="cp-hgroup"><div class="cp-ico">' + ic(form.editId ? 'pencil' : 'plus') + '</div>' +
           '<div><h3>' + (form.editId ? 'Editar Registro' : (isGabi() ? 'Registrar Horas' : 'Registrar Estudo')) + '</h3>' +
-          '<p>' + (isGabi() ? 'Horas do dia em cada capítulo e tipo de atividade' : 'Sessão com tempo e tópico do edital') + '</p></div></div>' +
+          '<p>' + (isGabi() ? 'Horas do dia em cada capítulo e tipo de atividade' : 'Sessão com tempo e os tópicos do edital estudados') + '</p></div></div>' +
           '<button type="button" class="cp-btn icon" data-action="form-close" title="Fechar (Esc)">' + ic('close') + '</button></div>' +
         '<form data-action="add-log" class="cp-modal-body">' +
           '<div class="cp-grid-4">' +
@@ -1879,8 +1945,8 @@
             field('Tempo', ic('clock'), renderDurationField(numeric)) +
           '</div>' +
           '<div class="cp-form-row2 cp-field">' +
-            '<label class="cp-label"><span class="l">' + ic('tag') + (isGabi() ? 'Tópico / Assunto' : 'Tópico do edital') + '</span>' +
-            '<span style="color:var(--faint);font-weight:500">' + (isGabi() ? 'O que exatamente foi feito' : (editalTopics(form.subject).length ? 'Itens oficiais desta matéria' : 'Controle interno dos pontos do edital')) + '</span></label>' +
+            '<label class="cp-label"><span class="l">' + ic('tag') + (isGabi() ? 'Tópico / Assunto' : 'Tópicos do edital') + '</span>' +
+            '<span style="color:var(--faint);font-weight:500">' + (isGabi() ? 'O que exatamente foi feito' : 'Marque 1+ · o tempo se divide entre eles') + '</span></label>' +
             renderTopicField() +
           '</div>' +
           rotinaHint(form.date) +
@@ -1957,11 +2023,15 @@
   function renderTopics() {
     const map = {}; allSubjects().forEach(function (s) { map[s] = {}; });
     curLogs().forEach(function (l) {
-      const t = (l.topic && l.topic.trim()) || 'Estudo Geral / Não especificado';
+      const names = logTopics(l);
+      const list = names.length ? names : ['Estudo Geral / Não especificado'];
+      const share = l.minutes / list.length;
       const m = map[l.subject]; if (!m) return;
-      const e = m[t] || { topicName: t, totalMinutes: 0, sessionsCount: 0, lastDate: l.date, categories: new Set() };
-      e.totalMinutes += l.minutes; e.sessionsCount += 1; e.categories.add(l.category);
-      if (l.date > e.lastDate) e.lastDate = l.date; m[t] = e;
+      list.forEach(function (t) {
+        const e = m[t] || { topicName: t, totalMinutes: 0, sessionsCount: 0, lastDate: l.date, categories: new Set() };
+        e.totalMinutes += share; e.sessionsCount += 1; e.categories.add(l.category);
+        if (l.date > e.lastDate) e.lastDate = l.date; m[t] = e;
+      });
     });
     let groups = allSubjects().map(function (subj) {
       const seen = {};
@@ -1984,7 +2054,7 @@
         return mt.length ? Object.assign({}, g, { topics: mt }) : null;
       }).filter(Boolean);
     }
-    const catalogued = new Set(); curLogs().forEach(function (l) { if (l.topic && l.topic.trim()) catalogued.add(l.topic.trim()); });
+    const catalogued = new Set(); curLogs().forEach(function (l) { logTopics(l).forEach(function (t) { if (t) catalogued.add(t); }); });
     const acc = groups.map(function (g) {
       const open = ui.expanded === g.subject || (term !== '' && g.topics.length > 0);
       const body = g.topics.length === 0
@@ -1993,13 +2063,17 @@
             const empty = !t.sessionsCount;
             const code = topicCode(t.topicName);
             const child = (code.match(/\./g) || []).length > 0;
-            return '<div class="cp-topic' + (empty ? ' empty' : '') + (child ? ' child' : '') + '"><div><span class="name">' + esc(t.topicName) + '</span>' +
+            const days = t.sessionsCount ? daysSince(t.lastDate) : null;
+            const stale = days !== null && days >= 120;
+            const mins = Math.round(t.totalMinutes);
+            return '<div class="cp-topic' + (empty ? ' empty' : '') + (child ? ' child' : '') + (stale ? ' stale' : '') + '"><div><span class="name">' + esc(t.topicName) + '</span>' +
               '<div class="info">' +
               (t.lastDate ? '<span>' + ic('calendar') + 'Último: ' + formatDateBR(t.lastDate) + '</span>' : '<span>Ainda sem registro</span>') +
               (t.categories.size ? '<span>' + ic('layers') + esc(Array.from(t.categories).join(', ')) + '</span>' : '') +
+              (stale ? '<span class="cp-stale-tag">' + ic('alert') + 'Revisar · ' + Math.floor(days / 30) + ' meses sem estudar</span>' : '') +
               '</div></div>' +
               '<div class="right"><span class="sess">' + t.sessionsCount + ' sessão(ões)</span>' +
-              '<span class="dur">' + ic('clock') + t.totalMinutes + 'm (' + formatHoursDec(t.totalMinutes / 60) + 'h)</span></div></div>';
+              '<span class="dur">' + ic('clock') + mins + 'm (' + formatHoursDec(mins / 60) + 'h)</span></div></div>';
           }).join('');
       return '<div class="cp-acc-item">' +
         '<button type="button" class="cp-acc-head" data-action="acc-toggle" data-subject="' + esc(g.subject) + '">' +
@@ -2151,7 +2225,7 @@
           '<span class="cp-datechip">' + ic('calendar') + formatDateBR(l.date) + '</span>' +
           '<div><div class="cp-hist-subj"><span class="s">' + esc(l.subject) + '</span>' +
           '<span class="cp-cat-tag sm" style="color:' + color + ';border-color:' + color + '55;background:' + color + '18">' + esc(l.category) + '</span></div>' +
-          (l.topic ? '<div class="cp-hist-topic"><span class="b"></span><span>' + esc(l.topic) + '</span></div>' : '') +
+          (logTopics(l).length ? '<div class="cp-hist-topic"><span class="b"></span><span>' + esc(logTopics(l).join(' · ')) + '</span></div>' : '') +
           '</div></div>' +
           '<div class="cp-hist-right"><div class="cp-hist-dur"><span class="m">' + l.minutes + ' min</span><span class="h">(' + formatHoursDec(minToHours(l.minutes)) + 'h)</span></div>' + right + '</div></div>';
       }).join('') + '</div>';
@@ -2668,7 +2742,7 @@
 
   root.addEventListener('click', function (e) {
     if (e.target.classList && e.target.classList.contains('cp-modal-backdrop')) {
-      ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null;
+      ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false;
       form.editId = null; ui.metaForm = null; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false; render(); return;
     }
     // Toque/clique na célula do calendário mostra o mesmo popup do hover (sem hover no mobile).
@@ -2747,11 +2821,12 @@
         form.editId = null;
         form.minutes = '60';
         form.minutesEdit = false;
-        ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null;
+        form.topic = ''; form.topics = []; form.topicOutro = '';
+        ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false;
         ui.formOpen = true;
         render(); break;
       case 'form-close':
-        ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; form.editId = null;
+        ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false; form.editId = null;
         render(); break;
       case 'log-edit': {
         const l = logs.filter(function (x) { return x.id === el.getAttribute('data-id'); })[0];
@@ -2762,7 +2837,18 @@
         form.category = l.category;
         form.minutes = String(l.minutes);
         form.minutesEdit = false;
-        form.topic = l.topic || '';
+        const existingTopics = logTopics(l);
+        if (isGabi()) {
+          form.topic = existingTopics[0] || '';
+          form.topics = []; form.topicOutro = '';
+          ui.topicOutroOpen = false;
+        } else {
+          const known = editalTopics(l.subject).concat(catalogTopicsFor(l.subject));
+          form.topics = existingTopics.filter(function (t) { return known.indexOf(t) >= 0; });
+          form.topicOutro = existingTopics.filter(function (t) { return known.indexOf(t) < 0; }).join(', ');
+          form.topic = '';
+          ui.topicOutroOpen = !!form.topicOutro;
+        }
         ui.confirmDel = null; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.formOpen = true;
         render(); break;
       }
@@ -2803,6 +2889,19 @@
       case 'subject-del-confirm':
         if (!retireSubject(ui.confirmSubject || form.subject)) { toast('Essa matéria do edital não sai da lista.', true); break; }
         toast('Matéria removida da lista. O histórico ficou.');
+        break;
+      case 'topic-toggle': {
+        const t = el.getAttribute('data-topic');
+        const has = form.topics.indexOf(t) >= 0;
+        form.topics = has ? form.topics.filter(function (x) { return x !== t; }) : form.topics.concat([t]);
+        render();
+        break;
+      }
+      case 'topic-outro-toggle':
+        ui.topicOutroOpen = !ui.topicOutroOpen;
+        if (!ui.topicOutroOpen) form.topicOutro = '';
+        else ui.focusTopicOutroNext = true;
+        render();
         break;
       case 'miles-toggle': ui.milesOpen = !ui.milesOpen; render(); break;
       case 'topics-toggle': ui.topicsOpen = !ui.topicsOpen; render(); break;
@@ -2910,21 +3009,24 @@
     if (rawMins <= 0) { toast('Informe um tempo válido em minutos.', true); return; }
     const mins = clampMinutes(rawMins);
     const editId = form.editId;
+    const topicValue = serializeTopics(collectFormTopics()) || undefined;
     if (editId) {
       // Mantém o timestamp original para o histórico não se reordenar na edição.
       const next = logs.map(function (l) {
         if (l.id !== editId) return l;
         const keep = l.subject === form.subject ? logStatus(l) : '';
-        return { id: l.id, date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: form.topic.trim() || undefined, timestamp: l.timestamp, owner: logOwner(l), status: keep };
+        return { id: l.id, date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: topicValue, timestamp: l.timestamp, owner: logOwner(l), status: keep };
       });
-      form.editId = null; form.topic = ''; form.minutes = '60'; form.minutesEdit = false;
+      form.editId = null; form.topic = ''; form.topics = []; form.topicOutro = ''; form.minutes = '60'; form.minutesEdit = false;
+      ui.topicOutroOpen = false;
       ui.formOpen = false;
       setLogs(next);
       toast('Registro atualizado!');
       return;
     }
-    const log = { id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: form.topic.trim() || undefined, timestamp: Date.now(), owner: profileId(), status: '' };
-    form.topic = ''; form.minutes = '60'; form.minutesEdit = false;
+    const log = { id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), date: form.date, subject: form.subject, category: form.category, minutes: mins, topic: topicValue, timestamp: Date.now(), owner: profileId(), status: '' };
+    form.topic = ''; form.topics = []; form.topicOutro = ''; form.minutes = '60'; form.minutesEdit = false;
+    ui.topicOutroOpen = false;
     ui.formOpen = false;
     setLogs([log].concat(logs));
     toast('Sessão registrada!');
@@ -2936,7 +3038,7 @@
     else if (ui.insightOpen) { ui.insightOpen = false; render(); }
     else if (ui.portal) { ui.portal = null; ui.portalWho = null; render(); }
     else if (ui.formOpen) {
-      ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; form.editId = null;
+      ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false; form.editId = null;
       render();
     }
     else if (ui.metaForm) { ui.metaForm = null; render(); }
@@ -2969,6 +3071,7 @@
       const hidden = document.getElementById('cp-f-minutes');
       if (hidden) hidden.value = form.minutes;
     } else if (t.id === 'cp-f-topic') { form.topic = t.value; }
+    else if (t.id === 'cp-f-topic-outro') { form.topicOutro = t.value; }
     else if (t.id === 'cp-f-newsubject' || t.id === 'cp-f-renamesubject') { ui.newSubject = t.value; }
     else if (t.id === 'cp-search-input') { ui.search = t.value; render(); }
     else if (ui.metaForm && t.id === 'cp-m-title') { ui.metaForm.title = t.value; }
@@ -2984,11 +3087,10 @@
     else if (t.id === 'cp-f-subject') {
       form.subject = t.value;
       ui.confirmSubject = null;
-      const bank = editalTopics(form.subject);
-      if (bank.length && bank.indexOf(form.topic) < 0) form.topic = '';
+      form.topic = ''; form.topics = []; form.topicOutro = '';
+      ui.topicOutroOpen = false;
       render();
     }
-    else if (t.id === 'cp-f-topic' && t.tagName === 'SELECT') { form.topic = t.value; }
     else if (ui.metaForm && t.id === 'cp-m-status') ui.metaForm.status = t.value;
     else if (ui.metaForm && t.id === 'cp-m-target') ui.metaForm.target = t.value;
     else if (ui.metaForm && t.id === 'cp-m-category') ui.metaForm.category = t.value;
