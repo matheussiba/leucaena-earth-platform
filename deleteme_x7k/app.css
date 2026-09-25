@@ -336,6 +336,22 @@ body.cp-modal-open { overflow: hidden; }
   padding-top: 2px; flex-shrink: 0;
 }
 .cp-modal-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+.cv-tools { display: inline-flex; align-items: center; gap: 10px; }
+.cv-ghost {
+  border: 0; background: transparent; padding: 0; margin: 0;
+  font: inherit; font-size: 11px; color: var(--faint); cursor: pointer;
+}
+.cv-ghost:hover { color: var(--muted); }
+.cv-add { align-self: flex-start; margin-top: 2px; }
+.cv-list.editing { gap: 8px; }
+.cv-edit-row { display: flex; align-items: flex-start; gap: 8px; }
+.cv-edit-row .n {
+  font-family: var(--mono); font-size: 11px; font-weight: 800; color: var(--emerald);
+  padding-top: 10px; flex-shrink: 0;
+}
+.cv-edit-ta { min-height: 72px; resize: vertical; line-height: 1.5; }
+.cv-edit-del { font-size: 16px; line-height: 1; padding: 8px 4px; color: var(--faint); }
+.cv-edit-del:hover { color: var(--red); }
 .cv-foot { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
 .cv-foot svg { color: var(--amber); }
 .cp-ico.emerald { background: rgba(16,185,129,.12); color: var(--emerald); }
@@ -488,7 +504,9 @@ body.cp-modal-open { overflow: hidden; }
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 2px; border-radius: 12px; min-width: 0;
   background: var(--card); border: 1px solid transparent;
+  cursor: pointer; font: inherit; color: inherit;
 }
+.mm-day:hover { transform: translateY(-1px); }
 .mm-day-ico { display: grid; place-items: center; width: 22px; height: 22px; }
 .mm-day-ico svg { width: 16px; height: 16px; }
 .mm-day-l { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }

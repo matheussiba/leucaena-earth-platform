@@ -832,6 +832,7 @@
   const THEME_KEY = 'concurso_study_tracker_theme_v1';
   const INSIGHT_KEY = 'life_insight_v2';
   const MILAGRE_KEY = 'life_milagre_gabi_v1';
+  const WORDS_KEY = 'life_words_v1';
   const MILAGRE_WEEK = 7; // últimos dias visíveis na ofensiva
   const MILAGRE_DOW = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
@@ -842,7 +843,7 @@
   let insightByOwner = loadCachedInsights();
   let milagreDays = loadMilagreDays();
   const ui = { subjView: 'cards', subjSort: 'hours', expanded: null, subjOpen: [], search: '', confirmDel: null, mentorLoading: false, topicsOpen: false, historyOpen: false, subjectOpen: false, formOpen: false, addingSubject: false, renamingSubject: false, confirmSubject: null, topicOutroOpen: false, focusTopicOutroNext: false, newSubject: '',
-    tab: initialTab(), metaForm: null, confirmMeta: null, portal: null, portalWho: null, milesOpen: false, insightOpen: false, milagreOpen: false,
+    tab: initialTab(), metaForm: null, confirmMeta: null, portal: null, portalWho: null, portalEdit: false, portalDraft: [], focusWordNext: false, milesOpen: false, insightOpen: false, milagreOpen: false,
     gabiProj: 'dout', gabiCap: null }; // gabiCap: null = doutorado geral; 0/1/2 = cap.
 
   // A visualização de cada um: o dia da chegada escrito no presente, para ler
@@ -905,6 +906,47 @@
     },
   };
 
+  function emptyWords() {
+    return { vision: { matheus: null, gabi: null }, afirmacoes: { matheus: null, gabi: null } };
+  }
+  function loadWords() {
+    const out = emptyWords();
+    try {
+      const s = localStorage.getItem(WORDS_KEY);
+      if (!s) return out;
+      const p = JSON.parse(s);
+      ['vision', 'afirmacoes'].forEach(function (kind) {
+        ['matheus', 'gabi'].forEach(function (who) {
+          const arr = p && p[kind] && p[kind][who];
+          if (Array.isArray(arr)) out[kind][who] = arr.map(function (t) { return String(t || '').trim(); }).filter(Boolean);
+        });
+      });
+    } catch (_) {}
+    return out;
+  }
+  let words = loadWords();
+  function persistWords() {
+    try { localStorage.setItem(WORDS_KEY, JSON.stringify(words)); } catch (_) {}
+  }
+  function packFor(kind, who) {
+    const base = kind === 'afirmacoes' ? AFIRMACOES[who] : kind === 'vision' ? VISION[who] : null;
+    if (!base) return null;
+    const custom = words[kind] && words[kind][who];
+    return Object.assign({}, base, { itens: Array.isArray(custom) && custom.length ? custom.slice() : base.itens.slice() });
+  }
+  function savePackItens(kind, who, itens) {
+    const clean = (itens || []).map(function (t) { return String(t || '').replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+    if (!words[kind]) words[kind] = { matheus: null, gabi: null };
+    words[kind][who] = clean.length ? clean : null;
+    persistWords();
+    return clean;
+  }
+  function readWordDraft() {
+    const tas = document.querySelectorAll('.cv-edit-ta');
+    if (!tas.length) return;
+    ui.portalDraft = Array.prototype.map.call(tas, function (ta) { return ta.value; });
+  }
+
   // Abrir o /life cai sempre no GATHEUS; as outras abas ficam a um link (#gabi, #matheus).
   function initialTab() {
     const fromHash = String(location.hash || '').replace('#', '').toLowerCase();
@@ -914,7 +956,7 @@
   function setTab(id) {
     if (!TABS.some(function (t) { return t.id === id; }) || id === ui.tab) return;
     ui.tab = id;
-    ui.metaForm = null; ui.confirmMeta = null; ui.formOpen = false; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false;
+    ui.metaForm = null; ui.confirmMeta = null; ui.formOpen = false; ui.portal = null; ui.portalWho = null; ui.portalEdit = false; ui.portalDraft = []; ui.insightOpen = false; ui.milagreOpen = false;
     ui.expanded = null; ui.search = ''; ui.subjOpen = [];
     ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false;
     resetFormProfile();
@@ -1113,12 +1155,21 @@
     return true;
   }
   function unmarkMilagreToday() {
-    const t = getToday();
-    const next = milagreDays.filter(function (d) { return d !== t; });
-    if (next.length === milagreDays.length) return false;
-    milagreDays = next;
+    return toggleMilagreDay(getToday()) === 'off';
+  }
+  function toggleMilagreDay(key) {
+    const k = String(key || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return '';
+    const inWeek = milagreLastDays(MILAGRE_WEEK).some(function (d) { return d.key === k; });
+    if (!inWeek) return '';
+    if (milagreDays.indexOf(k) >= 0) {
+      milagreDays = milagreDays.filter(function (d) { return d !== k; });
+      persistMilagre();
+      return 'off';
+    }
+    milagreDays = milagreDays.concat([k]).sort();
     persistMilagre();
-    return true;
+    return 'on';
   }
 
   async function saveLogsToServer(all) {
@@ -1360,6 +1411,7 @@
     });
     linha({ tipo: 'config', id: 'theme', status: String(!!darkMode) });
     linha({ tipo: 'config', id: 'subjects', notes: JSON.stringify(extraSubjects || []) });
+    linha({ tipo: 'config', id: 'words', notes: JSON.stringify(words || emptyWords()) });
     const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1437,6 +1489,7 @@
     });
     let themeVal = null;
     let subjectsVal = null;
+    let wordsVal = null;
     (rows || []).filter(function (o) { return o.tipo === 'config'; }).forEach(function (o) {
       const id = String(o.id || '').toLowerCase();
       if (id === 'theme') themeVal = String(o.status) === 'true';
@@ -1446,10 +1499,16 @@
           if (Array.isArray(p)) subjectsVal = p.map(function (s) { return String(s || '').trim(); }).filter(Boolean);
         } catch (_) {}
       }
+      if (id === 'words') {
+        try {
+          const p = JSON.parse(o.notes || '{}');
+          if (p && typeof p === 'object') wordsVal = p;
+        } catch (_) {}
+      }
     });
 
     const hasAnything = novosLogs.length || novasMetas.length || novosMilagres.length ||
-      novosInsights.matheus || novosInsights.gabi || themeVal !== null || subjectsVal !== null || isGlobal;
+      novosInsights.matheus || novosInsights.gabi || themeVal !== null || subjectsVal !== null || wordsVal || isGlobal;
     if (!hasAnything) { toast('Nenhum dado válido encontrado no arquivo.', true); return; }
 
     const msg = isGlobal
@@ -1492,6 +1551,20 @@
     } else if (isGlobal) {
       extraSubjects = [];
       try { localStorage.removeItem(EXTRA_KEY); } catch (_) {}
+    }
+    if (wordsVal) {
+      const next = emptyWords();
+      ['vision', 'afirmacoes'].forEach(function (kind) {
+        ['matheus', 'gabi'].forEach(function (who) {
+          const arr = wordsVal[kind] && wordsVal[kind][who];
+          if (Array.isArray(arr)) next[kind][who] = arr.map(function (t) { return String(t || '').trim(); }).filter(Boolean);
+        });
+      });
+      words = next;
+      persistWords();
+    } else if (isGlobal) {
+      words = emptyWords();
+      persistWords();
     }
     if (themeVal !== null) {
       darkMode = themeVal;
@@ -1567,6 +1640,11 @@
       const outro = document.getElementById('cp-f-topic-outro');
       if (outro) outro.focus();
     }
+    if (ui.focusWordNext) {
+      ui.focusWordNext = false;
+      const tas = document.querySelectorAll('.cv-edit-ta');
+      if (tas.length) tas[tas.length - 1].focus();
+    }
     if (ui.metaForm && !f) {
       const first = document.getElementById('cp-m-title');
       if (first) first.focus();
@@ -1606,25 +1684,42 @@
   function renderVisionModal() {
     const kind = ui.portal;
     const who = ui.portalWho || profileId();
-    const pack = kind === 'afirmacoes' ? AFIRMACOES[who] : kind === 'vision' ? VISION[who] : null;
+    const pack = packFor(kind, who);
     if (!pack) return '';
     const isAf = kind === 'afirmacoes';
+    const editing = !!ui.portalEdit;
+    const itens = editing ? (ui.portalDraft || []) : pack.itens;
     const quem = who === 'gabi' ? 'Gabi' : who === 'matheus' ? 'Matheus' : '';
     const titulo = ui.tab === 'gatheus' && quem ? (quem + ' · ' + pack.titulo.replace(/^Minha /, '').replace(/^Minhas /, '')) : pack.titulo;
+    const list = editing
+      ? itens.map(function (t, i) {
+          return '<div class="cv-edit-row">' +
+            (isAf ? '<span class="n">' + String(i + 1).padStart(2, '0') + '</span>' : '') +
+            '<textarea class="cp-input cv-edit-ta" data-word-i="' + i + '" rows="3">' + esc(t) + '</textarea>' +
+            '<button type="button" class="cv-ghost cv-edit-del" data-action="word-del" data-i="' + i + '" title="Remover" aria-label="Remover">×</button>' +
+          '</div>';
+        }).join('') +
+        '<button type="button" class="cv-ghost cv-add" data-action="word-add">+ adicionar</button>'
+      : itens.map(function (t, i) {
+          return isAf
+            ? '<p class="cv-item af"><span class="n">' + String(i + 1).padStart(2, '0') + '</span>' + esc(t) + '</p>'
+            : '<p class="cv-item">' + esc(t) + '</p>';
+        }).join('');
+    const tools = editing
+      ? '<button type="button" class="cv-ghost" data-action="word-cancel">cancelar</button>' +
+        '<button type="button" class="cp-btn" data-action="word-save">Salvar</button>'
+      : '<button type="button" class="cv-ghost" data-action="word-edit" title="Editar lista">editar</button>' +
+        '<button type="button" class="cp-btn primary" data-action="portal-close">Fechar</button>';
     return '<div class="cp-modal-backdrop">' +
       '<div class="cp-modal cp-vision-modal" role="dialog" aria-modal="true" aria-label="' + esc(titulo) + '">' +
         '<div class="cp-modal-head"><div class="cp-hgroup"><div class="cp-ico' + (isAf ? ' emerald' : '') + '">' + ic(isAf ? 'checkCircle' : 'eye') + '</div>' +
           '<div><h3>' + esc(titulo) + '</h3><p>' + esc(pack.resumo) + '</p></div></div>' +
           '<button type="button" class="cp-btn icon" data-action="portal-close" title="Fechar (Esc)">' + ic('close') + '</button></div>' +
         '<div class="cp-modal-body">' +
-          '<div class="cv-list' + (isAf ? ' af' : '') + '">' + pack.itens.map(function (t, i) {
-            return isAf
-              ? '<p class="cv-item af"><span class="n">' + String(i + 1).padStart(2, '0') + '</span>' + esc(t) + '</p>'
-              : '<p class="cv-item">' + esc(t) + '</p>';
-          }).join('') + '</div>' +
+          '<div class="cv-list' + (isAf ? ' af' : '') + (editing ? ' editing' : '') + '">' + list + '</div>' +
           '<div class="cp-modal-foot">' +
             '<span class="cv-foot">' + ic('flag') + (isAf ? 'Leia em voz alta. Uma de cada vez.' : 'Leia inteiro antes de começar o dia.') + '</span>' +
-            '<button type="button" class="cp-btn primary" data-action="portal-close">Fechar</button>' +
+            '<span class="cv-tools">' + tools + '</span>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -1826,11 +1921,12 @@
           (d.done ? ' lit' : ' ice') +
           (d.isToday ? ' today' : '') +
           (d.isToday && !d.done ? ' pending' : '');
-        return '<div class="' + cls + '" title="' + formatDateBR(d.key) + (d.done ? ' · feito' : ' · gelo') + '">' +
+        return '<button type="button" class="' + cls + '" data-action="milagre-day" data-date="' + d.key + '"' +
+          ' title="' + formatDateBR(d.key) + (d.done ? ' · chama acesa — toque para apagar' : ' · gelo — toque para acender') + '">' +
           '<span class="mm-day-ico">' + ic(d.done ? 'flame' : 'snow') + '</span>' +
           '<span class="mm-day-l">' + d.label + '</span>' +
           '<span class="mm-day-n">' + d.day + '</span>' +
-        '</div>';
+        '</button>';
       }).join('') +
     '</div>';
   }
@@ -1860,7 +1956,7 @@
           '<button type="button" class="cp-btn icon" data-action="milagre-close" title="Fechar (Esc)">' + ic('close') + '</button></div>' +
         '<div class="cp-modal-body">' + body +
           renderMilagreWeek() +
-          '<p class="mm-nudge">Últimos 7 dias · chama = feito · gelo = não fez</p>' +
+          '<p class="mm-nudge">Últimos 7 dias · toque no gelo para acender a chama</p>' +
           '<div class="cp-modal-foot">' +
             (done
               ? '<button type="button" class="cp-btn" data-action="milagre-undo">Desfazer hoje</button>' +
@@ -2994,7 +3090,7 @@
   root.addEventListener('click', function (e) {
     if (e.target.classList && e.target.classList.contains('cp-modal-backdrop')) {
       ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false;
-      form.editId = null; ui.metaForm = null; ui.portal = null; ui.portalWho = null; ui.insightOpen = false; ui.milagreOpen = false; render(); return;
+      form.editId = null; ui.metaForm = null; ui.portal = null; ui.portalWho = null; ui.portalEdit = false; ui.portalDraft = []; ui.insightOpen = false; ui.milagreOpen = false; render(); return;
     }
     // Toque/clique na célula do calendário mostra o mesmo popup do hover (sem hover no mobile).
     const cell = e.target.closest && e.target.closest('.cp-cell');
@@ -3029,6 +3125,14 @@
         if (unmarkMilagreToday()) toast('Ofensiva de hoje desfeita.');
         render();
         break;
+      case 'milagre-day': {
+        const day = el.getAttribute('data-date');
+        const r = toggleMilagreDay(day);
+        if (r === 'on') toast('Chama acesa em ' + formatDateBR(day) + '.');
+        else if (r === 'off') toast('Chama apagada em ' + formatDateBR(day) + '.');
+        render();
+        break;
+      }
       case 'chip-delta': {
         e.preventDefault();
         applyMinutes((parseInt(form.minutes, 10) || 0) + (parseInt(el.getAttribute('data-delta'), 10) || 0));
@@ -3054,9 +3158,49 @@
       case 'portal-open':
         ui.portal = el.getAttribute('data-portal');
         ui.portalWho = el.getAttribute('data-who') || profileId();
+        ui.portalEdit = false; ui.portalDraft = [];
         render();
         break;
-      case 'portal-close': ui.portal = null; ui.portalWho = null; render(); break;
+      case 'portal-close':
+        ui.portal = null; ui.portalWho = null; ui.portalEdit = false; ui.portalDraft = [];
+        render(); break;
+      case 'word-edit': {
+        const p = packFor(ui.portal, ui.portalWho || profileId());
+        ui.portalDraft = p ? p.itens.slice() : [''];
+        ui.portalEdit = true;
+        render();
+        break;
+      }
+      case 'word-cancel':
+        ui.portalEdit = false; ui.portalDraft = [];
+        render();
+        break;
+      case 'word-save': {
+        readWordDraft();
+        const who = ui.portalWho || profileId();
+        const saved = savePackItens(ui.portal, who, ui.portalDraft);
+        ui.portalDraft = saved;
+        ui.portalEdit = false;
+        render();
+        toast(saved.length ? 'Lista atualizada.' : 'Lista vazia — voltou ao texto original.');
+        break;
+      }
+      case 'word-add':
+        readWordDraft();
+        ui.portalDraft = (ui.portalDraft || []).concat(['']);
+        ui.focusWordNext = true;
+        render();
+        break;
+      case 'word-del': {
+        readWordDraft();
+        const i = parseInt(el.getAttribute('data-i'), 10);
+        const next = (ui.portalDraft || []).slice();
+        if (next.length <= 1) { next[0] = ''; }
+        else if (!isNaN(i)) next.splice(i, 1);
+        ui.portalDraft = next.length ? next : [''];
+        render();
+        break;
+      }
       case 'gabi-proj':
         ui.gabiProj = el.getAttribute('data-proj') === 'mba' ? 'mba' : 'dout';
         if (ui.gabiProj === 'mba') ui.gabiCap = null;
@@ -3303,7 +3447,8 @@
     if (e.key !== 'Escape') return;
     if (ui.milagreOpen) { ui.milagreOpen = false; render(); }
     else if (ui.insightOpen) { ui.insightOpen = false; render(); }
-    else if (ui.portal) { ui.portal = null; ui.portalWho = null; render(); }
+    else if (ui.portalEdit) { ui.portalEdit = false; ui.portalDraft = []; render(); }
+    else if (ui.portal) { ui.portal = null; ui.portalWho = null; ui.portalEdit = false; ui.portalDraft = []; render(); }
     else if (ui.formOpen) {
       ui.formOpen = false; ui.addingSubject = false; ui.renamingSubject = false; ui.confirmSubject = null; ui.topicOutroOpen = false; form.editId = null;
       render();
@@ -3345,6 +3490,13 @@
     else if (ui.metaForm && t.id === 'cp-m-category') { ui.metaForm.category = t.value; }
     else if (ui.metaForm && t.id === 'cp-m-steps') { ui.metaForm.stepsText = t.value; }
     else if (ui.metaForm && t.id === 'cp-m-notes') { ui.metaForm.notes = t.value; }
+    else if (ui.portalEdit && t.classList && t.classList.contains('cv-edit-ta')) {
+      const i = parseInt(t.getAttribute('data-word-i'), 10);
+      if (!isNaN(i)) {
+        if (!ui.portalDraft) ui.portalDraft = [];
+        ui.portalDraft[i] = t.value;
+      }
+    }
   });
 
   root.addEventListener('change', function (e) {
