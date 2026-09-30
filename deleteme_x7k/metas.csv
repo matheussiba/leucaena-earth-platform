@@ -1,0 +1,17 @@
+id,owner,who,title,category,status,target,steps,notes,updated
+meta_gabi_defesa,casal,gabi,Gabi defende o doutorado e o MBA,Formação,andamento,2027-04-15,"[{""t"":""Capítulos 1, 2 e 3 fechados"",""done"":false},{""t"":""Tese revisada e entregue à banca"",""done"":false},{""t"":""Trabalho final do MBA entregue"",""done"":false},{""t"":""Defesa realizada"",""done"":false}]",As duas defesas caem em meados de abril de 2027.,1758500000001
+meta_primeiro_filho,casal,nos,Primeiro filho a caminho,Família,planejado,2027-06-30,[],Gravidez em meados de 2027.,1758500000002
+meta_marie_curie,casal,gabi,Projeto Marie Curie enviado,Carreira,planejado,2027-09-30,[],Prazo de envio: setembro de 2027.,1758500000003
+meta_sanduiche,casal,matheus,Doutorado sanduíche concluído,Formação,planejado,2027-10-31,"[{""t"":""Instituição e orientador no exterior definidos"",""done"":false},{""t"":""Bolsa aprovada"",""done"":false},{""t"":""Seis meses cumpridos"",""done"":false}]",Seis meses fora até outubro de 2027.,1758500000004
+meta_ingles_gabi,casal,gabi,Inglês fluente,Formação,planejado,2028-12-31,[],,1758500000005
+meta_leucenas,casal,matheus,Referência em erradicação de leucenas,Carreira,planejado,2028-12-31,[],,1758500000006
+meta_doutorado_matheus,casal,matheus,Matheus defende o doutorado,Formação,andamento,2029-06-30,"[{""t"":""Qualificação aprovada"",""done"":false},{""t"":""Tese escrita"",""done"":false},{""t"":""Defesa realizada"",""done"":false}]",Defesa prevista para junho de 2029.,1758500000007
+meta_segundo_filho,casal,nos,Segundo filho,Família,planejado,2029-09-30,[],,1758500000008
+meta_casal_unido,casal,nos,Casal unido e feliz,Relacionamento,andamento,2029-10-06,[],O fio que atravessa todo o resto.,1758500000009
+meta_gabi_cap1,gabi,gabi,Capítulo 1 fechado,Doutorado,planejado,2026-11-30,"[{""t"":""Análise de dados concluída"",""done"":false},{""t"":""Leitura fechada"",""done"":false},{""t"":""Texto escrito e revisado"",""done"":false}]",,1758500000010
+meta_gabi_cap2,gabi,gabi,Capítulo 2 fechado,Doutorado,planejado,2027-01-15,"[{""t"":""Análise de dados concluída"",""done"":false},{""t"":""Leitura fechada"",""done"":false},{""t"":""Texto escrito e revisado"",""done"":false}]",,1758500000011
+meta_gabi_cap3,gabi,gabi,Capítulo 3 fechado,Doutorado,planejado,2027-02-28,"[{""t"":""Análise de dados concluída"",""done"":false},{""t"":""Leitura fechada"",""done"":false},{""t"":""Texto escrito e revisado"",""done"":false}]",,1758500000012
+meta_gabi_tese,gabi,gabi,Tese completa entregue à banca,Doutorado,planejado,2027-03-15,"[{""t"":""Introdução e conclusão escritas"",""done"":false},{""t"":""Revisão final do texto"",""done"":false},{""t"":""Depósito na secretaria"",""done"":false}]",,1758500000013
+meta_gabi_mba,gabi,gabi,Trabalho final do MBA entregue,MBA,planejado,2027-03-15,[],,1758500000014
+meta_gabi_def_dout,gabi,gabi,Defesa do doutorado,Doutorado,planejado,2027-04-15,[],Meados de abril de 2027.,1758500000015
+meta_gabi_def_mba,gabi,gabi,Defesa do MBA,MBA,planejado,2027-04-20,[],Meados de abril de 2027.,1758500000016

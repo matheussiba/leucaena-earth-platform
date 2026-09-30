@@ -2,5 +2,6 @@ node_modules/
 leucena-deploy*.zip
 .env
 data/leucaena-earth.db
+data/life/
 *.db
 leucena_backup_*
