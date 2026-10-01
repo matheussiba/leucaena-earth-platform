@@ -1,4 +1,5 @@
 node_modules/
+cmq-workstations/node_modules/
 leucena-deploy*.zip
 .env
 data/leucaena-earth.db

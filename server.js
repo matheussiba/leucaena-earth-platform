@@ -240,6 +240,7 @@ app.use((req, res, next) => {
   const p = req.path || '';
   if (p === '/landing' || p === '/landing.html') return next();
   if (p === '/life' || p.startsWith('/life/')) return next();
+  if (p === '/cmq' || p.startsWith('/cmq/')) return next();
   if (req.path.startsWith('/api/')) return next();
   if (p.startsWith('/img/') || p.startsWith('/css/') || p.startsWith('/js/') || p.startsWith('/fonts/')) {
     return next();
@@ -640,6 +641,98 @@ app.use('/life', cpGuard, (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 }, express.static(CP_DIR));
+
+// ---------------------------------------------------------------------------
+// Internal CMQ workstations scheduler at /cmq (built assets in deleteme_cmq/).
+// Optional Basic Auth via CMQ_PASSWORD. State lives in cmq_store inside the
+// same SQLite DB on DATA_PATH, so deploys do not wipe reservations.
+// ---------------------------------------------------------------------------
+const CMQ_DIR = path.join(__dirname, 'deleteme_cmq');
+const CMQ_PASSWORD = process.env.CMQ_PASSWORD || '';
+const CMQ_HOSTS = (process.env.CMQ_HOSTS || '')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+function cmqGuard(req, res, next) {
+  res.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
+  res.set('Referrer-Policy', 'no-referrer');
+  if (!CMQ_PASSWORD) return next();
+  const hdr = req.headers.authorization || '';
+  if (hdr.startsWith('Basic ')) {
+    try {
+      const decoded = Buffer.from(hdr.slice(6), 'base64').toString('utf8');
+      const pass = decoded.slice(decoded.indexOf(':') + 1);
+      if (pass === CMQ_PASSWORD) return next();
+    } catch (_) { /* ignore */ }
+  }
+  res.set('WWW-Authenticate', 'Basic realm="CMQ", charset="UTF-8"');
+  return res.status(401).send('Authentication required.');
+}
+function sendCmqIndex(res) {
+  res.set('Cache-Control', 'no-store');
+  return res.sendFile(path.join(CMQ_DIR, 'index.html'));
+}
+function cmqReadKey(key, fallback) {
+  try {
+    const row = queryOne('SELECT value FROM cmq_store WHERE key = ?', [key]);
+    if (!row || row.value == null) return fallback;
+    return JSON.parse(row.value);
+  } catch (_) {
+    return fallback;
+  }
+}
+function cmqWriteKey(key, value) {
+  runSQL(
+    'INSERT OR REPLACE INTO cmq_store (key, value, updated_at) VALUES (?, ?, ?)',
+    [key, JSON.stringify(value), new Date().toISOString()]
+  );
+}
+
+app.use((req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (CMQ_HOSTS.includes(host) && req.method === 'GET' && req.path === '/') {
+    return cmqGuard(req, res, () => sendCmqIndex(res));
+  }
+  next();
+});
+
+app.get('/cmq/api/state', cmqGuard, (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      workstations: cmqReadKey('workstations', []),
+      members: cmqReadKey('members', []),
+      reservations: cmqReadKey('reservations', []),
+      deletionLog: cmqReadKey('deletionLog', []),
+      rules: cmqReadKey('rules', null),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/cmq/api/state', cmqGuard, (req, res) => {
+  try {
+    const body = req.body || {};
+    if (Array.isArray(body.workstations)) cmqWriteKey('workstations', body.workstations);
+    if (Array.isArray(body.members)) cmqWriteKey('members', body.members);
+    if (Array.isArray(body.reservations)) cmqWriteKey('reservations', body.reservations);
+    if (Array.isArray(body.deletionLog)) cmqWriteKey('deletionLog', body.deletionLog);
+    if (body.rules && typeof body.rules === 'object') cmqWriteKey('rules', body.rules);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get(['/cmq', '/cmq/'], cmqGuard, (_req, res) => sendCmqIndex(res));
+app.use('/cmq', cmqGuard, (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+}, express.static(CMQ_DIR), (req, res) => {
+  // SPA fallback for client-side routes under /cmq/*
+  if (req.method === 'GET') return sendCmqIndex(res);
+  return res.status(404).end();
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 

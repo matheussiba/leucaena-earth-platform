@@ -227,6 +227,15 @@ async function initDB() {
     )
   `);
   try { db.run('CREATE INDEX IF NOT EXISTS idx_sessions_username ON sessions(username)'); } catch (e) { /* ignore */ }
+
+  // Internal CMQ workstations scheduler (/cmq) — JSON blobs on the same DB disk.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS cmq_store (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
   try { db.run('CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)'); } catch (e) { /* ignore */ }
 
   db.run(`

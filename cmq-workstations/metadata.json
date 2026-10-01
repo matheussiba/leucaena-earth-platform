@@ -1,0 +1,6 @@
+{
+  "name": "LabStation Hub - Gestão de Workstations",
+  "description": "Sistema de controle, reservas em tempo real e agendamento de workstations para laboratórios de pesquisa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
