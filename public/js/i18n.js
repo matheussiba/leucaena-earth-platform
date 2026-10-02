@@ -325,6 +325,8 @@ window.LeucenaI18n = (function () {
     'guide.docsDesc': { pt: 'Sobre o projeto, pesquisador e objetivos da plataforma', en: 'About the project, researcher and platform objectives', es: 'Sobre el proyecto, investigador y objetivos de la plataforma' },
     'guide.leucena': { pt: 'O que é Leucena?', en: 'What is Leucaena?', es: '¿Qué es la Leucaena?' },
     'guide.leucenaDesc': { pt: 'Identificação visual, história e por que é invasora', en: 'Visual identification, history and why it is invasive', es: 'Identificación visual, historia y por qué es invasora' },
+    'guide.cartilhas': { pt: 'Cartilhas', en: 'Guides', es: 'Guías' },
+    'guide.cartilhasDesc': { pt: 'PDFs de identificação e controle da leucena (GADE/ESALQ)', en: 'PDFs on leucaena identification and control (GADE/ESALQ)', es: 'PDFs de identificación y control de la leucaena (GADE/ESALQ)' },
     'guide.howto': { pt: 'Como mapear', en: 'How to map', es: 'Cómo mapear' },
     'guide.howtoDesc': { pt: 'Passo a passo para contribuir com o mapeamento', en: 'Step by step to contribute to the mapping', es: 'Paso a paso para contribuir con el mapeo' },
     'guide.media': { pt: 'Mídia', en: 'Media', es: 'Medios' },
@@ -932,6 +934,7 @@ window.LeucenaI18n = (function () {
 
   function translateGuideModal() {
     const leucenaPage = document.getElementById('guide-leucena-content');
+    const cartilhasPage = document.getElementById('guide-cartilhas-content');
     const howtoPage = document.getElementById('guide-howto-content');
     const mediaPage = document.getElementById('guide-media-content');
     const collabPage = document.getElementById('guide-collaborate-content');
@@ -940,16 +943,19 @@ window.LeucenaI18n = (function () {
 
     if (currentLang === 'en') {
       leucenaPage.innerHTML = getLeucenaContentEN();
+      if (cartilhasPage) cartilhasPage.innerHTML = getCartilhasContentEN();
       howtoPage.innerHTML = getHowtoContentEN();
       if (mediaPage) mediaPage.innerHTML = getMediaContentEN();
       if (collabPage) collabPage.innerHTML = getCollaborateContentEN();
     } else if (currentLang === 'es') {
       leucenaPage.innerHTML = getLeucenaContentES();
+      if (cartilhasPage) cartilhasPage.innerHTML = getCartilhasContentES();
       howtoPage.innerHTML = getHowtoContentES();
       if (mediaPage) mediaPage.innerHTML = getMediaContentES();
       if (collabPage) collabPage.innerHTML = getCollaborateContentES();
     } else {
       leucenaPage.innerHTML = getLeucenaContentPT();
+      if (cartilhasPage) cartilhasPage.innerHTML = getCartilhasContentPT();
       howtoPage.innerHTML = getHowtoContentPT();
       if (mediaPage) mediaPage.innerHTML = getMediaContentPT();
       if (collabPage) collabPage.innerHTML = getCollaborateContentPT();
@@ -975,12 +981,54 @@ window.LeucenaI18n = (function () {
 
   // ── Leucena content per language ──
 
+  function getCartilhasCreditsHTML(lang) {
+    const gadeHref = 'https://www.esalq.usp.br/svcex/content/grupo-de-adequa%C3%A7%C3%A3o-ambiental-gade';
+    if (lang === 'en') {
+      return `<div class="guide-cartilhas-credits"><img src="/img/team/rafael-menassi.jpg" alt="Rafael Perin Menassi" width="64" height="64"><div><strong>Credits</strong><p>Produced by <a href="${gadeHref}" target="_blank" rel="noopener noreferrer">GADE — Environmental Adequacy Group at USP/ESALQ</a>, with coordination and authorship led by <strong>Rafael Perin Menassi</strong>, a member of the <strong>leucaena.earth</strong> team. <a href="https://www.instagram.com/gade.esalq/" target="_blank" rel="noopener noreferrer">@gade.esalq</a> · <a href="https://www.linkedin.com/in/rafael-perin-menassi-7b591139a/" target="_blank" rel="noopener noreferrer">LinkedIn</a></p></div></div>`;
+    }
+    if (lang === 'es') {
+      return `<div class="guide-cartilhas-credits"><img src="/img/team/rafael-menassi.jpg" alt="Rafael Perin Menassi" width="64" height="64"><div><strong>Créditos</strong><p>Elaboradas por el <a href="${gadeHref}" target="_blank" rel="noopener noreferrer">GADE — Grupo de Adecuación Ambiental de la USP/ESALQ</a>, con coordinación y autoría liderada por <strong>Rafael Perin Menassi</strong>, miembro del equipo <strong>leucaena.earth</strong>. <a href="https://www.instagram.com/gade.esalq/" target="_blank" rel="noopener noreferrer">@gade.esalq</a> · <a href="https://www.linkedin.com/in/rafael-perin-menassi-7b591139a/" target="_blank" rel="noopener noreferrer">LinkedIn</a></p></div></div>`;
+    }
+    return `<div class="guide-cartilhas-credits"><img src="/img/team/rafael-menassi.jpg" alt="Rafael Perin Menassi" width="64" height="64"><div><strong>Créditos</strong><p>Elaboradas pelo <a href="${gadeHref}" target="_blank" rel="noopener noreferrer">GADE — Grupo de Adequação Ambiental da USP/ESALQ</a>, com coordenação e autoria liderada por <strong>Rafael Perin Menassi</strong>, membro da equipe <strong>leucaena.earth</strong>. <a href="https://www.instagram.com/gade.esalq/" target="_blank" rel="noopener noreferrer">@gade.esalq</a> · <a href="https://www.linkedin.com/in/rafael-perin-menassi-7b591139a/" target="_blank" rel="noopener noreferrer">LinkedIn</a></p></div></div>`;
+  }
+
+  function getCartilhasContentPT() {
+    return `<h2>Cartilhas GADE</h2>
+<p>Dois guias práticos em PDF sobre <em>Leucaena leucocephala</em>, elaborados pelo <strong>GADE — Grupo de Adequação Ambiental da USP/ESALQ</strong>.</p>
+<div class="guide-cartilha-links">
+  <a class="guide-cartilha-link" href="/docs/gade-identificacao-leucaena-leucocephala.pdf" target="_blank" rel="noopener noreferrer"><span class="guide-cartilha-kicker">Identificação</span><strong>Cartilha de Identificação da Leucena</strong><span>Como reconhecer a espécie e diferenciá-la de semelhantes · PDF</span></a>
+  <a class="guide-cartilha-link" href="/docs/gade-controle-leucaena-leucocephala.pdf" target="_blank" rel="noopener noreferrer"><span class="guide-cartilha-kicker">Controle</span><strong>Cartilha de Controle da Leucena</strong><span>Orientações práticas de manejo e controle · PDF</span></a>
+</div>
+${getCartilhasCreditsHTML('pt')}`;
+  }
+
+  function getCartilhasContentEN() {
+    return `<h2>GADE Guides</h2>
+<p>Two practical PDF guides on <em>Leucaena leucocephala</em>, produced by <strong>GADE — Environmental Adequacy Group at USP/ESALQ</strong>.</p>
+<div class="guide-cartilha-links">
+  <a class="guide-cartilha-link" href="/docs/gade-identificacao-leucaena-leucocephala.pdf" target="_blank" rel="noopener noreferrer"><span class="guide-cartilha-kicker">Identification</span><strong>Leucaena Identification Guide</strong><span>How to recognize the species and tell it apart from look-alikes · PDF</span></a>
+  <a class="guide-cartilha-link" href="/docs/gade-controle-leucaena-leucocephala.pdf" target="_blank" rel="noopener noreferrer"><span class="guide-cartilha-kicker">Control</span><strong>Leucaena Control Guide</strong><span>Practical management and control guidance · PDF</span></a>
+</div>
+${getCartilhasCreditsHTML('en')}`;
+  }
+
+  function getCartilhasContentES() {
+    return `<h2>Guías GADE</h2>
+<p>Dos guías prácticas en PDF sobre <em>Leucaena leucocephala</em>, elaboradas por el <strong>GADE — Grupo de Adecuación Ambiental de la USP/ESALQ</strong>.</p>
+<div class="guide-cartilha-links">
+  <a class="guide-cartilha-link" href="/docs/gade-identificacao-leucaena-leucocephala.pdf" target="_blank" rel="noopener noreferrer"><span class="guide-cartilha-kicker">Identificación</span><strong>Guía de Identificación de la Leucaena</strong><span>Cómo reconocer la especie y diferenciarla de similares · PDF</span></a>
+  <a class="guide-cartilha-link" href="/docs/gade-controle-leucaena-leucocephala.pdf" target="_blank" rel="noopener noreferrer"><span class="guide-cartilha-kicker">Control</span><strong>Guía de Control de la Leucaena</strong><span>Orientaciones prácticas de manejo y control · PDF</span></a>
+</div>
+${getCartilhasCreditsHTML('es')}`;
+  }
+
   function getLeucenaContentPT() {
     return `<h2>O que é Leucena?</h2>
 <div class="guide-photos"><figure><img src="/img/leucena-tree.jpg" alt="Árvore de Leucena"><figcaption>Leucena em área urbana: porte típico da espécie</figcaption></figure><figure><img src="/img/leucena-detail.jpg" alt="Detalhes da Leucena"><figcaption>Flores esféricas brancas, folhas bipinadas e vagens</figcaption></figure></div>
 <h3>Identificação</h3><p><em>Leucaena leucocephala</em>, conhecida popularmente como <strong>leucena</strong>, é uma árvore ou arbusto tropical da família das leguminosas (Fabaceae). Suas características mais marcantes para identificação são:</p><ul><li><strong>Folhas bipinadas</strong>: compostas por muitos folíolos pequenos e alinhados, dando aparência de "pena"</li><li><strong>Flores esféricas brancas</strong>: inflorescências em formato de "pompom" ou "bolinha" branca</li><li><strong>Vagens achatadas</strong>: marrons quando maduras, contendo várias sementes</li><li><strong>Porte médio</strong>: geralmente entre 5 e 15 metros de altura</li></ul>
 <h3>Origem e história</h3><p>Originária da América Central e do México, a leucena foi amplamente introduzida em regiões tropicais do mundo todo, incluindo o Brasil, a partir da década de 1940. Inicialmente, foi promovida como forrageira, para reflorestamento, adubação verde e fixação de nitrogênio no solo.</p>
-<h3>Por que é invasora?</h3><p>Apesar de seus usos iniciais, a leucena tornou-se uma das <strong>100 piores espécies invasoras do mundo</strong> segundo a IUCN:</p><ul><li><strong>Crescimento rápido</strong>: até 3 metros por ano</li><li><strong>Produção massiva de sementes</strong>: milhares de sementes viáveis por ano</li><li><strong>Efeitos alelopáticos</strong>: libera substâncias que inibem outras plantas</li><li><strong>Formação de monoculturas</strong>: impede a regeneração da vegetação nativa</li><li><strong>Tolerância a condições adversas</strong>: resiste a secas e solos pobres</li></ul><p>No estado de São Paulo, a leucena é encontrada em áreas urbanas, margens de rodovias, terrenos baldios e bordas de fragmentos florestais.</p>`;
+<h3>Por que é invasora?</h3><p>Apesar de seus usos iniciais, a leucena tornou-se uma das <strong>100 piores espécies invasoras do mundo</strong> segundo a IUCN:</p><ul><li><strong>Crescimento rápido</strong>: até 3 metros por ano</li><li><strong>Produção massiva de sementes</strong>: milhares de sementes viáveis por ano</li><li><strong>Efeitos alelopáticos</strong>: libera substâncias que inibem outras plantas</li><li><strong>Formação de monoculturas</strong>: impede a regeneração da vegetação nativa</li><li><strong>Tolerância a condições adversas</strong>: resiste a secas e solos pobres</li></ul><p>No estado de São Paulo, a leucena é encontrada em áreas urbanas, margens de rodovias, terrenos baldios e bordas de fragmentos florestais.</p>
+<p class="guide-cartilhas-inline">Materiais em PDF: <a href="#cartilhas">Cartilhas de Identificação e Controle (GADE/ESALQ)</a>.</p>`;
   }
 
   function getLeucenaContentEN() {
@@ -988,7 +1036,8 @@ window.LeucenaI18n = (function () {
 <div class="guide-photos"><figure><img src="/img/leucena-tree.jpg" alt="Leucaena tree"><figcaption>Leucaena in an urban area: typical species form</figcaption></figure><figure><img src="/img/leucena-detail.jpg" alt="Leucaena details"><figcaption>White spherical flowers, bipinnate leaves and seed pods</figcaption></figure></div>
 <h3>Identification</h3><p><em>Leucaena leucocephala</em>, commonly known as <strong>white leadtree</strong> or <strong>leucaena</strong>, is a tropical tree or shrub in the legume family (Fabaceae). Key identification features include:</p><ul><li><strong>Bipinnate leaves</strong>: composed of many small, aligned leaflets, giving a "feathery" appearance</li><li><strong>White spherical flowers</strong>: globe-shaped inflorescences resembling "pompoms"</li><li><strong>Flat seed pods</strong>: brown when mature, containing several seeds</li><li><strong>Medium size</strong>: typically 5 to 15 meters tall</li></ul>
 <h3>Origin and history</h3><p>Native to Central America and Mexico, leucaena was widely introduced to tropical regions worldwide, including Brazil, from the 1940s onward. It was initially promoted as fodder, for reforestation, green manure, and nitrogen fixation in soil.</p>
-<h3>Why is it invasive?</h3><p>Despite its initial uses, leucaena has become one of the <strong>100 worst invasive species in the world</strong> according to the IUCN:</p><ul><li><strong>Rapid growth</strong>: up to 3 meters per year</li><li><strong>Massive seed production</strong>: thousands of viable seeds per year</li><li><strong>Allelopathic effects</strong>: releases chemicals that inhibit other plants</li><li><strong>Monoculture formation</strong>: prevents native vegetation regeneration</li><li><strong>Tolerance to adverse conditions</strong>: withstands droughts and poor soils</li></ul><p>In the state of São Paulo, leucaena is found in urban areas, road margins, vacant lots, and forest fragment edges.</p>`;
+<h3>Why is it invasive?</h3><p>Despite its initial uses, leucaena has become one of the <strong>100 worst invasive species in the world</strong> according to the IUCN:</p><ul><li><strong>Rapid growth</strong>: up to 3 meters per year</li><li><strong>Massive seed production</strong>: thousands of viable seeds per year</li><li><strong>Allelopathic effects</strong>: releases chemicals that inhibit other plants</li><li><strong>Monoculture formation</strong>: prevents native vegetation regeneration</li><li><strong>Tolerance to adverse conditions</strong>: withstands droughts and poor soils</li></ul><p>In the state of São Paulo, leucaena is found in urban areas, road margins, vacant lots, and forest fragment edges.</p>
+<p class="guide-cartilhas-inline">PDF materials: <a href="#cartilhas">Identification and Control Guides (GADE/ESALQ)</a>.</p>`;
   }
 
   function getLeucenaContentES() {
@@ -996,7 +1045,8 @@ window.LeucenaI18n = (function () {
 <div class="guide-photos"><figure><img src="/img/leucena-tree.jpg" alt="Árbol de Leucaena"><figcaption>Leucaena en área urbana: porte típico de la especie</figcaption></figure><figure><img src="/img/leucena-detail.jpg" alt="Detalles de Leucaena"><figcaption>Flores esféricas blancas, hojas bipinnadas y vainas</figcaption></figure></div>
 <h3>Identificación</h3><p><em>Leucaena leucocephala</em>, conocida popularmente como <strong>leucaena</strong>, es un árbol o arbusto tropical de la familia de las leguminosas (Fabaceae). Sus características más distintivas son:</p><ul><li><strong>Hojas bipinnadas</strong>: compuestas por muchos folíolos pequeños y alineados, con apariencia de "pluma"</li><li><strong>Flores esféricas blancas</strong>: inflorescencias en forma de "pompón" blanco</li><li><strong>Vainas aplanadas</strong>: marrones cuando maduras, con varias semillas</li><li><strong>Porte medio</strong>: generalmente entre 5 y 15 metros de altura</li></ul>
 <h3>Origen e historia</h3><p>Originaria de América Central y México, la leucaena fue introducida ampliamente en regiones tropicales de todo el mundo, incluido Brasil, a partir de la década de 1940. Fue promovida como forrajera, para reforestación, abono verde y fijación de nitrógeno.</p>
-<h3>¿Por qué es invasora?</h3><p>A pesar de sus usos iniciales, la leucaena se ha convertido en una de las <strong>100 peores especies invasoras del mundo</strong> según la UICN:</p><ul><li><strong>Crecimiento rápido</strong>: hasta 3 metros por año</li><li><strong>Producción masiva de semillas</strong>: miles de semillas viables por año</li><li><strong>Efectos alelopáticos</strong>: libera sustancias que inhiben otras plantas</li><li><strong>Formación de monocultivos</strong>: impide la regeneración de la vegetación nativa</li><li><strong>Tolerancia a condiciones adversas</strong>: resiste sequías y suelos pobres</li></ul><p>En el estado de São Paulo, la leucaena se encuentra en áreas urbanas, márgenes de carreteras, terrenos baldíos y bordes de fragmentos forestales.</p>`;
+<h3>¿Por qué es invasora?</h3><p>A pesar de sus usos iniciales, la leucaena se ha convertido en una de las <strong>100 peores especies invasoras del mundo</strong> según la UICN:</p><ul><li><strong>Crecimiento rápido</strong>: hasta 3 metros por año</li><li><strong>Producción masiva de semillas</strong>: miles de semillas viables por año</li><li><strong>Efectos alelopáticos</strong>: libera sustancias que inhiben otras plantas</li><li><strong>Formación de monocultivos</strong>: impide la regeneración de la vegetación nativa</li><li><strong>Tolerancia a condiciones adversas</strong>: resiste sequías y suelos pobres</li></ul><p>En el estado de São Paulo, la leucaena se encuentra en áreas urbanas, márgenes de carreteras, terrenos baldíos y bordes de fragmentos forestales.</p>
+<p class="guide-cartilhas-inline">Materiales en PDF: <a href="#cartilhas">Guías de Identificación y Control (GADE/ESALQ)</a>.</p>`;
   }
 
   // ── How-to content per language ──

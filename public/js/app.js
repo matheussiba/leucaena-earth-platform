@@ -296,6 +296,7 @@ window.LeucenaApp = (function () {
       openDocsModal();
     });
     document.getElementById('guide-go-leucena').addEventListener('click', () => showGuidePage('leucena'));
+    document.getElementById('guide-go-cartilhas').addEventListener('click', () => showGuidePage('cartilhas'));
     document.getElementById('guide-go-howto').addEventListener('click', () => showGuidePage('howto'));
     document.getElementById('guide-go-media').addEventListener('click', () => showGuidePage('media'));
     document.getElementById('guide-go-collaborate').addEventListener('click', () => showGuidePage('collaborate'));
@@ -304,6 +305,7 @@ window.LeucenaApp = (function () {
       showGuidePage('about');
     });
     document.getElementById('guide-back-leucena').addEventListener('click', () => showGuidePage('main'));
+    document.getElementById('guide-back-cartilhas').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-howto').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-media').addEventListener('click', () => showGuidePage('main'));
     document.getElementById('guide-back-collaborate').addEventListener('click', () => showGuidePage('main'));
@@ -796,8 +798,8 @@ window.LeucenaApp = (function () {
 
   // ── Deep-linking (hash) ──
 
-  const GUIDE_PAGES = ['main', 'leucena', 'howto', 'media', 'collaborate', 'about'];
-  const VALID_HASHES = new Set(['docs', 'guide', ...Object.keys({ leucena:1, howto:1, media:1, collaborate:1, about:1 })]);
+  const GUIDE_PAGES = ['main', 'leucena', 'cartilhas', 'howto', 'media', 'collaborate', 'about'];
+  const VALID_HASHES = new Set(['docs', 'guide', ...Object.keys({ leucena:1, cartilhas:1, howto:1, media:1, collaborate:1, about:1 })]);
 
   function setHash(h) { history.replaceState(null, '', h ? '#' + h : window.location.pathname + window.location.search); }
 
