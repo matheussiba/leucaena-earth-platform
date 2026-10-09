@@ -142,8 +142,10 @@ window.LeucenaCollab = (function () {
     socket.on('connect', () => {
       socket.emit('user:join', { username });
       if (typeof LeucenaMap !== 'undefined' && LeucenaMap.getCurrentState) {
-        var currentUf = LeucenaMap.getCurrentState();
-        if (currentUf) socket.emit('user:locationState', { state: currentUf });
+        // The map may still be restoring the saved UF at connect time, so fall
+        // back to the persisted choice; its absence means the user is on Brasil.
+        var currentUf = LeucenaMap.getCurrentState() || localStorage.getItem('leucena_selected_state') || 'BR';
+        socket.emit('user:locationState', { state: currentUf });
       }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) LeucenaApp.logEvent('socket_connect');
     });

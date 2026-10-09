@@ -23,6 +23,10 @@ window.LeucenaQC = (function () {
   let state = null; // { cellId, gridCellLabel, polygons: [...], idx, statusFilter }
   let _summaryCache = null;
   let _previousMapView = null; // { zoom, center } so we can restore on exit
+  const CELL_ONLY_STORAGE_KEY = 'leucena_qc_cell_only';
+  let _cellOnly = (function () {
+    try { return localStorage.getItem(CELL_ONLY_STORAGE_KEY) === '1'; } catch (e) { return false; }
+  })();
 
   /**
    * QC review is open to team+ (team, admin, superadmin). Server-side gating
@@ -297,6 +301,7 @@ window.LeucenaQC = (function () {
     });
 
     document.body.classList.add('qc-review-active');
+    _applyCellOnly();
     _showPanel();
     if (LeucenaApp && LeucenaApp.collapseSidebarUi) LeucenaApp.collapseSidebarUi();
 
@@ -524,6 +529,7 @@ window.LeucenaQC = (function () {
       'qc-panel-undo': undoCurrent,
       'qc-panel-hole': toggleHoleTool,
       'qc-panel-remove-vertex': toggleRemoveVertexTool,
+      'qc-panel-cell-only': toggleCellOnly,
       'qc-panel-exit': exit
     };
     Object.keys(handlers).forEach((id) => {
@@ -622,6 +628,25 @@ window.LeucenaQC = (function () {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.toggle('active', !!active);
+  }
+
+  /** "Só esta célula": hide polygons from neighbouring cells while reviewing. */
+  function toggleCellOnly() {
+    if (!state) return;
+    _cellOnly = !_cellOnly;
+    try { localStorage.setItem(CELL_ONLY_STORAGE_KEY, _cellOnly ? '1' : '0'); } catch (e) { /* private mode */ }
+    if (LeucenaApp && LeucenaApp.logEvent) {
+      LeucenaApp.logEvent('qc_cell_only_toggle', state.cellId, null, { on: _cellOnly });
+    }
+    _applyCellOnly();
+  }
+
+  function _applyCellOnly() {
+    const active = !!state && _cellOnly;
+    if (LeucenaDrawing.setQcCellFilter) LeucenaDrawing.setQcCellFilter(active ? state.cellId : null);
+    _setToolBtnActive('qc-panel-cell-only', active);
+    const btn = document.getElementById('qc-panel-cell-only');
+    if (btn) btn.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
   /** Sai de qualquer ferramenta de edição em andamento (hole / vertex-remove). */
@@ -732,6 +757,7 @@ window.LeucenaQC = (function () {
       LeucenaApp.logEvent('qc_review_exit', state.cellId);
     }
     state = null;
+    _applyCellOnly();
     document.body.classList.remove('qc-review-active');
     _hidePanel();
     // Restore the grid fill (was made transparent on entry).
@@ -752,6 +778,7 @@ window.LeucenaQC = (function () {
   // ── Keyboard shortcuts ──────────────────────────────────────────────────
   // Only active while the panel is open. Mirrors common photo-review tools:
   //   ← → navigate (no QC status change) · A approve · F flag · R reject · Esc exit
+  //   C: toggle "only this cell's polygons".
   //   Ctrl/Cmd+Z: undo last geometry edit on the current polygon.
 
   function _bindKeyboard() {
@@ -777,6 +804,7 @@ window.LeucenaQC = (function () {
       else if (e.key === 'a' || e.key === 'A') { e.preventDefault(); approveCurrent(); }
       else if (e.key === 'f' || e.key === 'F') { e.preventDefault(); flagCurrent(); }
       else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); rejectCurrent(); }
+      else if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); toggleCellOnly(); }
       else if (e.key === 'Escape') { e.preventDefault(); exit(); }
     });
   }

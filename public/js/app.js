@@ -17,6 +17,9 @@ window.LeucenaApp = (function () {
   // chosen ordering. Values: 'alpha' (A→Z, default), 'polygons' (most→least),
   // 'area' (most→least ha).
   let _colabSort = 'alpha';
+  // Admin collaborators list: filter by last region used (users.last_location_state).
+  // 'all' = no filter, 'BR' = Brasil inteiro, '__none' = never recorded, else a UF.
+  let _colabStateFilter = 'all';
   /** Superadmin permanent delete: { id, expectedPhrase, rowEl } */
   let _pendingPermanentDelete = null;
 
@@ -5222,21 +5225,27 @@ window.LeucenaApp = (function () {
         return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.\-_]/g, ' ').replace(/\s+/g, ' ').trim();
       }
 
+      function _colabLocState(u) {
+        const s = (u.last_location_state || '').trim().toUpperCase();
+        return s || '__none';
+      }
+
       function _filterColabCards() {
         const body = colabDropdown.body;
         const cards = body.querySelectorAll('.admin-user-card');
         const raw = (_colabSearchInput ? _colabSearchInput.value : '').trim();
         const query = _normalizeSearch(raw);
+        const stateFilter = _colabStateFilter;
         let shown = 0;
         const total = cards.length;
         cards.forEach(card => {
-          if (!query) { card.style.display = ''; shown++; return; }
-          const haystack = card.dataset.searchText || '';
-          card.style.display = haystack.includes(query) ? '' : 'none';
+          const matchesQuery = !query || (card.dataset.searchText || '').includes(query);
+          const matchesState = stateFilter === 'all' || card.dataset.locState === stateFilter;
+          card.style.display = matchesQuery && matchesState ? '' : 'none';
           if (card.style.display !== 'none') shown++;
         });
         if (_colabFilterInfo) {
-          if (query) {
+          if (query || stateFilter !== 'all') {
             _colabFilterInfo.textContent = t('admin.searchResult', shown, total);
             _colabFilterInfo.classList.add('active');
             body.classList.add('admin-colab-filtered');
@@ -5246,6 +5255,19 @@ window.LeucenaApp = (function () {
             body.classList.remove('admin-colab-filtered');
           }
         }
+      }
+
+      function _visibleBatchCbs() {
+        return [...colabDropdown.body.querySelectorAll('.admin-batch-cb')]
+          .filter(cb => { const card = cb.closest('.admin-user-card'); return !card || card.style.display !== 'none'; });
+      }
+
+      function _syncSelectAllLabel() {
+        if (!batchToolbar) return;
+        const btn = batchToolbar.querySelector('.batch-select-all');
+        const cbs = _visibleBatchCbs();
+        const allSelected = cbs.length > 0 && cbs.every(cb => cb.checked);
+        if (btn) btn.textContent = allSelected ? t('admin.batchDeselectAll') : t('admin.batchSelectAll');
       }
 
       function syncBatchToolbar() {
@@ -5282,12 +5304,32 @@ window.LeucenaApp = (function () {
             + '</select>'
           + '</label>'
           : '';
+        const stateCounts = {};
+        for (const u of colabUsers) {
+          const s = _colabLocState(u);
+          stateCounts[s] = (stateCounts[s] || 0) + 1;
+        }
+        if (_colabStateFilter !== 'all' && !stateCounts[_colabStateFilter]) _colabStateFilter = 'all';
+        const ufKeys = Object.keys(stateCounts).filter(s => s !== 'BR' && s !== '__none').sort();
+        const stateOpt = (value, label) =>
+          '<option value="' + value + '"' + (_colabStateFilter === value ? ' selected' : '') + '>' + label + '</option>';
+        const stateSelectHtml =
+          '<label class="admin-colab-sort-wrap" title="' + t('admin.stateFilterTitle') + '">'
+            + '<span class="admin-colab-sort-label">' + t('admin.stateFilterLabel') + '</span>'
+            + '<select class="admin-colab-state">'
+              + stateOpt('all', t('admin.stateFilterAll') + ' (' + colabUsers.length + ')')
+              + (stateCounts.BR ? stateOpt('BR', t('admin.stateFilterBrazil') + ' (' + stateCounts.BR + ')') : '')
+              + ufKeys.map(uf => stateOpt(uf, uf + ' (' + stateCounts[uf] + ')')).join('')
+              + (stateCounts.__none ? stateOpt('__none', t('admin.stateFilterNone') + ' (' + stateCounts.__none + ')') : '')
+            + '</select>'
+          + '</label>';
         searchRow.innerHTML =
           '<div class="admin-colab-search-wrap">' +
           '<svg class="admin-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
           '<input type="text" class="admin-colab-search" placeholder="' + t('admin.searchPlaceholder') + '">' +
           '<button type="button" class="admin-search-clear hidden" title="Limpar">&times;</button>' +
           '</div>' +
+          stateSelectHtml +
           sortSelectHtml +
           '<span class="admin-colab-filter-info"></span>';
         colabDropdown.body.insertBefore(searchRow, colabDropdown.body.firstChild);
@@ -5301,6 +5343,25 @@ window.LeucenaApp = (function () {
             openAdminUsersModal();
           });
         }
+
+        const stateSelect = searchRow.querySelector('.admin-colab-state');
+        stateSelect.addEventListener('change', () => {
+          _colabStateFilter = stateSelect.value;
+          logEvent('admin_colab_state_filter', null, null, { state: _colabStateFilter });
+          _filterColabCards();
+          // Drop selections hidden by the new state so a batch message can't
+          // silently reach people outside the chosen region.
+          colabDropdown.body.querySelectorAll('.admin-batch-cb:checked').forEach(cb => {
+            const card = cb.closest('.admin-user-card');
+            if (card && card.style.display === 'none') {
+              cb.checked = false;
+              card.classList.remove('batch-selected');
+              _batchSelected.delete(Number(cb.dataset.userId));
+            }
+          });
+          _syncSelectAllLabel();
+          syncBatchToolbar();
+        });
 
         _colabSearchInput = searchRow.querySelector('.admin-colab-search');
         _colabFilterInfo = searchRow.querySelector('.admin-colab-filter-info');
@@ -5322,8 +5383,8 @@ window.LeucenaApp = (function () {
           if (!btn) return;
           const action = btn.dataset.action;
           if (action === 'select-all') {
-            const allCbs = colabDropdown.body.querySelectorAll('.admin-batch-cb');
-            const allSelected = _batchSelected.size === allCbs.length;
+            const allCbs = _visibleBatchCbs();
+            const allSelected = allCbs.length > 0 && allCbs.every(cb => cb.checked);
             allCbs.forEach(cb => {
               const card = cb.closest('.admin-user-card');
               const uid = Number(cb.dataset.userId);
@@ -5337,7 +5398,7 @@ window.LeucenaApp = (function () {
                 _batchSelected.add(uid);
               }
             });
-            btn.textContent = _batchSelected.size === allCbs.length ? t('admin.batchDeselectAll') : t('admin.batchSelectAll');
+            _syncSelectAllLabel();
             syncBatchToolbar();
             return;
           }
@@ -5731,9 +5792,11 @@ window.LeucenaApp = (function () {
           row.dataset.searchText = _normalizeSearch(
             (user.full_name || '') + ' ' + (user.username || '') + ' ' + (user.email || '')
           );
+          row.dataset.locState = _colabLocState(user);
           colabDropdown.body.appendChild(row);
         }
       }
+      if (_colabStateFilter !== 'all') _filterColabCards();
 
       if (adminPanelRestore) {
         requestAnimationFrame(() => {
@@ -7050,6 +7113,7 @@ window.LeucenaApp = (function () {
     const role = getEffectiveRole();
     const isRecipient = isSuperAdmin()
       || (data.target === 'all' && role === 'contributor')
+      || (data.target === 'list' && Array.isArray(data.recipients) && data.recipients.includes(username))
       || data.target === username
       || (data.target === 'admins' && isSuperAdmin());
     if (!isRecipient) return;

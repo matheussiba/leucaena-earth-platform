@@ -5014,7 +5014,8 @@ body.sv-active .edit-tools-row {
   font-weight: 500;
   white-space: nowrap;
 }
-.admin-colab-sort {
+.admin-colab-sort,
+.admin-colab-state {
   background: rgba(15, 23, 42, 0.5);
   color: var(--text-primary);
   border: 1px solid var(--border);
@@ -5023,7 +5024,8 @@ body.sv-active .edit-tools-row {
   font-size: 12px;
   cursor: pointer;
 }
-.admin-colab-sort:focus {
+.admin-colab-sort:focus,
+.admin-colab-state:focus {
   outline: none;
   border-color: var(--accent);
 }
@@ -8263,6 +8265,20 @@ body.sv-active .edit-tools-row {
 .qc-action-remove-vertex:hover:not(:disabled) {
   background: rgba(248, 113, 113, 0.22);
   border-color: rgba(248, 113, 113, 0.65);
+}
+.qc-action-cell-only {
+  background: rgba(34, 211, 238, 0.10);
+  border-color: rgba(34, 211, 238, 0.35);
+  color: #a5f3fc;
+}
+.qc-action-cell-only:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.20);
+  border-color: rgba(34, 211, 238, 0.65);
+}
+.qc-action-cell-only.active {
+  background: rgba(34, 211, 238, 0.30);
+  border-color: rgba(34, 211, 238, 0.85);
+  color: #ecfeff;
 }
 .qc-action-btn {
   display: inline-flex;

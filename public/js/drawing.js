@@ -20,6 +20,8 @@ window.LeucenaDrawing = (function () {
   let activeMode = 'select';
   const drawnPolygons = {}; // keyed by polygon UUID
   const polyBounds = {}; // LatLngBounds per id for viewport culling
+  /** When set (QC review "only this cell"), polygons from other grid cells are hidden. */
+  let _qcCellFilterId = null;
   let holeTargetId = null;
   /** Cleared whenever a new QC hole session starts or is aborted — avoids stacked pollers. */
   let _qcHolePoller = null;
@@ -2024,7 +2026,9 @@ window.LeucenaDrawing = (function () {
       const inView = !viewport || !polyBounds[id] || viewport.intersects(polyBounds[id]);
       const inState = !currentState || (entry.data.grid_cell_id && loadedCells && loadedCells[entry.data.grid_cell_id]);
       const inEditScope = !hasEditFilter || LeucenaMap.isEditNeighborOrSelf(entry.data.grid_cell_id);
-      const show = globalShow && shouldShowPoly(crole, qcStatus) && inView && inState && inEditScope;
+      const inQcCell = _qcCellFilterId == null || entry._qcFocused
+        || String(entry.data.grid_cell_id) === _qcCellFilterId;
+      const show = globalShow && shouldShowPoly(crole, qcStatus) && inView && inState && inEditScope && inQcCell;
       entry.gmapsPoly.setMap(show ? map : null);
       if (entry.areaLabel) entry.areaLabel.setMap(show && _areaLabelsVisible ? map : null);
     }
@@ -2053,6 +2057,12 @@ window.LeucenaDrawing = (function () {
 
   function getPolyEntry(id) {
     return drawnPolygons[id] || null;
+  }
+
+  /** Restrict visible polygons to one grid cell (null = no restriction). */
+  function setQcCellFilter(cellId) {
+    _qcCellFilterId = cellId == null ? null : String(cellId);
+    refreshPolyVisibility();
   }
 
   function setQcFocus(id, focused) {
@@ -2573,6 +2583,7 @@ window.LeucenaDrawing = (function () {
     getPolyEntry,
     getLiveAreaHaForPolygon,
     setQcFocus,
+    setQcCellFilter,
     setPolyEditableSingle,
     getPolyCurrentGeometry,
     setPolyQcStatus
