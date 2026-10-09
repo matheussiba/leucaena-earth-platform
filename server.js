@@ -2613,6 +2613,7 @@ app.put('/api/admin/users/:id/username', requireAuth, (req, res) => {
   runSQL('UPDATE grid_cells SET locked_by = ? WHERE locked_by = ?', [new_username, oldUsername]);
   runSQL('UPDATE grid_cells SET finished_by = ? WHERE finished_by = ?', [new_username, oldUsername]);
   try { runSQL('UPDATE activity_logs SET username = ? WHERE username = ?', [new_username, oldUsername]); } catch (e) { /* ignore */ }
+  try { runSQL('UPDATE message_queue SET recipient_username = ? WHERE recipient_username = ?', [new_username, oldUsername]); } catch (e) { /* ignore */ }
 
   for (const [token, sessData] of sessions.entries()) {
     const sessUsername = typeof sessData === 'string' ? sessData : sessData.username;
@@ -2823,6 +2824,10 @@ function inboxVisibilityCondition() {
   //   3) gating: stop leaking inbox history older than the requester's account
   return `(
     (m.target = 'all' AND ? IN (SELECT username FROM users WHERE role = 'contributor'))
+    OR (m.target = 'list' AND EXISTS (
+      SELECT 1 FROM message_queue q
+      WHERE q.message_id IN (m.id, COALESCE(m.reply_to, -1)) AND q.recipient_username = ?
+    ))
     OR m.target = ?
     OR (m.target = 'admins' AND ? IN (SELECT username FROM users WHERE role = 'superadmin'))
     OR (m.sender = ? AND COALESCE(m.is_system, 0) = 0)
@@ -2839,7 +2844,7 @@ function inboxVisibilityCondition() {
 }
 
 function inboxVisibilityParams(username) {
-  return [username, username, username, username, username, username, username, username];
+  return [username, username, username, username, username, username, username, username, username];
 }
 
 app.post('/api/admin/messages', requireAuth, messageLimiter, async (req, res) => {
@@ -3063,10 +3068,11 @@ app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, r
   const allowReply = allow_reply === false || allow_reply === 0 ? 0 : 1;
   const imagesJson = cleanImages.length > 0 ? JSON.stringify(cleanImages) : null;
   const now = new Date().toISOString();
-  // One messages row per batch — UI shows it as a single broadcast. Recipients
-  // can still see/read it via inbox visibility (target='all') even though we
-  // email them in waves.
-  const batchTarget = target_kind === 'all_collaborators' ? 'all' : 'all';
+  // One messages row per batch — UI shows it as a single broadcast. "All
+  // collaborators" uses target='all'; a hand-picked list (e.g. one state) uses
+  // target='list', whose inbox visibility is resolved through message_queue so
+  // only the listed recipients see it.
+  const batchTarget = target_kind === 'all_collaborators' ? 'all' : 'list';
   // recipients_meta lets the sender's inbox show the actual recipient list as a
   // single thread instead of replicating per-user. We persist sender-visible
   // metadata: usernames, full names, and whether this was an "all collaborators"
@@ -3105,7 +3111,10 @@ app.post('/api/admin/messages/batch', requireAuth, messageLimiter, async (req, r
 
   logActivity(req.username, 'inbox_message_batch', null, String(msg.id),
     { subject: subject.trim(), total: recipients.length, plan, allow_reply: allowReply }, null, req);
-  io.emit('inbox:new', { id: msg.id, subject: subject.trim(), sender: req.username, target: batchTarget, created_at: now });
+  io.emit('inbox:new', {
+    id: msg.id, subject: subject.trim(), sender: req.username, target: batchTarget, created_at: now,
+    recipients: batchTarget === 'list' ? recipients.map(r => r.username) : undefined
+  });
 
   // Drain today's slice immediately (best-effort; the worker covers retries).
   const drained = await drainMessageQueueDueToday();
@@ -3199,6 +3208,9 @@ app.post('/api/messages/reply', requireAuth, messageLimiter, async (req, res) =>
   const requesterRole = queryOne('SELECT role FROM users WHERE username = ?', [req.username]);
   const isRecipient = isSuperAdmin(req.username)
     || (parent.target === 'all' && requesterRole && requesterRole.role === 'contributor')
+    || (parent.target === 'list' && !!queryOne(
+      'SELECT 1 AS ok FROM message_queue WHERE message_id IN (?, ?) AND recipient_username = ?',
+      [parent.id, parent.reply_to || -1, req.username]))
     || parent.target === req.username
     || (parent.target === 'admins' && isSuperAdmin(req.username))
     || parent.sender === req.username;
