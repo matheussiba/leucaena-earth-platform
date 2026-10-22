@@ -302,6 +302,7 @@ window.LeucenaQC = (function () {
 
     document.body.classList.add('qc-review-active');
     _applyCellOnly();
+    _syncStreetViewAvailability();
     _showPanel();
     if (LeucenaApp && LeucenaApp.collapseSidebarUi) LeucenaApp.collapseSidebarUi();
 
@@ -530,6 +531,7 @@ window.LeucenaQC = (function () {
       'qc-panel-hole': toggleHoleTool,
       'qc-panel-remove-vertex': toggleRemoveVertexTool,
       'qc-panel-cell-only': toggleCellOnly,
+      'qc-panel-streetview': toggleStreetView,
       'qc-panel-exit': exit
     };
     Object.keys(handlers).forEach((id) => {
@@ -663,6 +665,28 @@ window.LeucenaQC = (function () {
     }
   }
 
+  /** Exposed for streetview.js so coverage clicks aren't blocked by QC tools. */
+  function exitGeometryToolsIfAny() {
+    _exitAllGeometryTools();
+  }
+
+  function toggleStreetView() {
+    if (!state) return;
+    if (typeof LeucenaStreetView === 'undefined') return;
+    if (LeucenaStreetView.toggle) {
+      LeucenaStreetView.toggle();
+    } else {
+      const mainBtn = document.getElementById('tool-streetview');
+      if (mainBtn && !mainBtn.disabled) mainBtn.click();
+    }
+  }
+
+  function _syncStreetViewAvailability() {
+    if (typeof LeucenaApp !== 'undefined' && LeucenaApp.syncQcStreetViewAvailability) {
+      LeucenaApp.syncQcStreetViewAvailability();
+    }
+  }
+
   function next() {
     if (!state) return;
     if (state.idx < state.polygons.length - 1) {
@@ -760,6 +784,11 @@ window.LeucenaQC = (function () {
     _applyCellOnly();
     document.body.classList.remove('qc-review-active');
     _hidePanel();
+    if (typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive
+        && LeucenaStreetView.isActive() && LeucenaStreetView.close) {
+      LeucenaStreetView.close();
+    }
+    _syncStreetViewAvailability();
     // Restore the grid fill (was made transparent on entry).
     if (LeucenaMap.setGridsHollow) LeucenaMap.setGridsHollow(false);
     // Refresh the sidebar's "Modo Revisão" badge so the count reflects any
@@ -863,6 +892,7 @@ window.LeucenaQC = (function () {
     refreshSummary,
     getReviewCellId,
     refocusCurrentPolygonIfReview,
+    exitGeometryToolsIfAny,
     refreshPanelLiveArea,
     syncSavedAreaAfterGeometryPut
   };

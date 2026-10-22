@@ -162,6 +162,9 @@ async function initDB() {
   try { db.run('ALTER TABLE polygons ADD COLUMN qc_notes TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE polygons ADD COLUMN qc_by TEXT'); } catch (e) { /* already exists */ }
   try { db.run('ALTER TABLE polygons ADD COLUMN qc_at TEXT'); } catch (e) { /* already exists */ }
+  // QGIS round-trip: set only when geometry was replaced via /api/admin/polygons/import.
+  try { db.run('ALTER TABLE polygons ADD COLUMN upload_corrected_at TEXT'); } catch (e) { /* already exists */ }
+  try { db.run('ALTER TABLE polygons ADD COLUMN upload_corrected_by TEXT'); } catch (e) { /* already exists */ }
   // One-shot backfill: anything already in the DB created by an admin or team
   // member is treated as approved (their own work, no extra review needed).
   // Everything else stays at the default 'unreviewed' so the QC queue starts
