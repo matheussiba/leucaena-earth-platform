@@ -159,6 +159,11 @@ window.LeucenaStreetView = (function () {
   }
 
   function _activate() {
+    // QC hole / vertex-remove tools also intercept map clicks; drop them
+    // before coverage lines become the click target.
+    if (typeof LeucenaQC !== 'undefined' && LeucenaQC.exitGeometryToolsIfAny) {
+      LeucenaQC.exitGeometryToolsIfAny();
+    }
     _disableAllEditTools();
     active = true;
     // body-level class drives the "compact tools" CSS (icon-only buttons,
@@ -170,7 +175,9 @@ window.LeucenaStreetView = (function () {
     }
     LeucenaMap.showStreetViewCoverage(true);
     if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logEvent) {
-      LeucenaApp.logEvent('streetview_open', null, null, null);
+      const qcCell = typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId
+        ? LeucenaQC.getReviewCellId() : null;
+      LeucenaApp.logEvent('streetview_open', qcCell, null, { fromQc: !!qcCell });
     }
     LeucenaApp.showToast(LeucenaI18n.t('toast.svClickHint'), 'info');
   }
@@ -186,6 +193,10 @@ window.LeucenaStreetView = (function () {
       LeucenaApp.logEvent('streetview_close', null, null, null);
     }
     close();
+    // Resume QC vertex handles after the panorama is gone.
+    if (typeof LeucenaQC !== 'undefined' && LeucenaQC.refocusCurrentPolygonIfReview) {
+      LeucenaQC.refocusCurrentPolygonIfReview();
+    }
   }
 
   function isActive() {
@@ -332,6 +343,7 @@ window.LeucenaStreetView = (function () {
   }
 
   function close() {
+    const wasActive = active;
     document.getElementById('streetview-container').classList.add('hidden');
     const resizer = document.getElementById('streetview-resizer');
     if (resizer) resizer.classList.add('hidden');
@@ -340,6 +352,9 @@ window.LeucenaStreetView = (function () {
     document.getElementById('tool-streetview').classList.remove('active');
     const floatBtn = document.getElementById('tool-streetview-float');
     if (floatBtn) floatBtn.classList.remove('active');
+    if (typeof LeucenaDrawing !== 'undefined' && LeucenaDrawing.syncStreetViewToolbarActive) {
+      LeucenaDrawing.syncStreetViewToolbarActive();
+    }
     LeucenaMap.showStreetViewCoverage(false);
     // Map regains its full height on mobile — re-trigger resize so tiles fill
     // the freed space without requiring a manual pan/zoom from the user.
@@ -350,7 +365,12 @@ window.LeucenaStreetView = (function () {
     // after the user closes Street View. Listeners get unregistered too,
     // otherwise they'd keep firing if the panorama is reused later.
     _detachDirectionMarker();
+    // close() is also called from the × button (not only _deactivate). Restore
+    // QC focus when the panorama was actually open.
+    if (wasActive && typeof LeucenaQC !== 'undefined' && LeucenaQC.refocusCurrentPolygonIfReview) {
+      LeucenaQC.refocusCurrentPolygonIfReview();
+    }
   }
 
-  return { init, isActive, showAt, close };
+  return { init, isActive, showAt, close, toggle: toggleActive };
 })();

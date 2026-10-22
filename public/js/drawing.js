@@ -576,6 +576,13 @@ window.LeucenaDrawing = (function () {
     // Clickable polygons capture mousemove from the map; keep _lastMouseLatLng in sync
     poly.addListener('mousemove', (e) => { _lastMouseLatLng = e.latLng; });
     poly.addListener('click', (e) => {
+      // Street View coverage clicks often land on a polygon overlay; forward
+      // them so the admin can open a panorama even when standing on a mask.
+      if (typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive
+          && LeucenaStreetView.isActive() && e.latLng) {
+        LeucenaStreetView.showAt(e.latLng);
+        return;
+      }
       if (typeof LeucenaApp !== 'undefined' && LeucenaApp.logInputTrace) {
         LeucenaApp.logInputTrace('polygon_click', {
           polyId: id, activeMode,
@@ -899,8 +906,13 @@ window.LeucenaDrawing = (function () {
     const on = typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive && LeucenaStreetView.isActive();
     const main = document.getElementById('tool-streetview');
     const float = document.getElementById('tool-streetview-float');
+    const qcBtn = document.getElementById('qc-panel-streetview');
     if (main) main.classList.toggle('active', !!on);
     if (float) float.classList.toggle('active', !!on);
+    if (qcBtn) {
+      qcBtn.classList.toggle('active', !!on);
+      qcBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
   }
 
   // Edit only makes sense if the locked cell has at least one polygon the user can edit.
@@ -1017,7 +1029,11 @@ window.LeucenaDrawing = (function () {
         }));
       }
     }
-    if (mode !== 'draw' && mode !== 'hole' && mode !== 'delete') {
+    // Skip QC refocus while Street View owns map clicks — otherwise the
+    // focused polygon becomes editable again and swallows coverage-line clicks.
+    const svOn = typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive
+      && LeucenaStreetView.isActive();
+    if (!svOn && mode !== 'draw' && mode !== 'hole' && mode !== 'delete') {
       if (typeof LeucenaQC !== 'undefined' && LeucenaQC.refocusCurrentPolygonIfReview) {
         LeucenaQC.refocusCurrentPolygonIfReview();
       }

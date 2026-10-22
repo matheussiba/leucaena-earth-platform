@@ -301,6 +301,7 @@
         </div>
       </div>
       <input type="file" id="admin-import-geojson-input" accept=".geojson,.json" class="hidden">
+      <input type="file" id="admin-import-polygons-input" accept=".geojson,.json" class="hidden">
     </div>
   </div>
 
@@ -386,6 +387,10 @@
       <button type="button" id="qc-panel-cell-only" class="qc-action-btn qc-action-cell-only" data-i18n-title="qc.cellOnly" title="Mostrar só os polígonos desta célula (C)" aria-pressed="false">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M9 10l3-2 3 2v4l-3 2-3-2z" fill="currentColor"/></svg>
         <span data-i18n="qc.cellOnlyBtn">Só esta célula</span>
+      </button>
+      <button type="button" id="qc-panel-streetview" class="qc-action-btn qc-action-streetview" data-i18n-title="qc.streetview" title="Street View (Shift+S)" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+        <span data-i18n="qc.streetviewBtn">Street View</span>
       </button>
     </div>
     <div class="qc-review-actions">

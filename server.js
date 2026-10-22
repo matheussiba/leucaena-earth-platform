@@ -31,7 +31,7 @@ const BUILD_ID = Date.now().toString();
 
 const fs = require('fs');
 const backupRemote = require('./backup-remote');
-const { validatePolygonGeometry } = require('./geometry-validate');
+const { validatePolygonGeometry, polygonAreaHa: computePolygonAreaHa } = require('./geometry-validate');
 const monitoring = require('./monitoring');
 
 monitoring.init();
@@ -3875,7 +3875,9 @@ app.get('/api/polygons', (req, res) => {
       // that pre-date the migration (also handled by db.js backfill).
       qc_status: p.qc_status || 'unreviewed',
       qc_by: p.qc_by || null,
-      qc_at: p.qc_at || null
+      qc_at: p.qc_at || null,
+      upload_corrected_at: p.upload_corrected_at || null,
+      upload_corrected_by: p.upload_corrected_by || null
     },
     geometry: JSON.parse(p.geometry)
   }));
@@ -4669,12 +4671,16 @@ app.get('/api/export/geojson', requireAuth, (req, res) => {
     type: 'FeatureCollection',
     features: polys.map(p => ({
       type: 'Feature',
+      // feature.id helps QGIS / GDAL keep the UUID when round-tripping edits
+      id: p.id,
       properties: {
         id: p.id,
         grid_cell_id: p.grid_cell_id,
         created_by: p.created_by,
         created_at: p.created_at,
-        area_ha: p.area_ha || 0
+        area_ha: p.area_ha || 0,
+        upload_corrected_at: p.upload_corrected_at || null,
+        upload_corrected_by: p.upload_corrected_by || null
       },
       geometry: JSON.parse(p.geometry)
     }))
@@ -4683,6 +4689,165 @@ app.get('/api/export/geojson', requireAuth, (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="leucena_polygons.geojson"');
   res.setHeader('Content-Type', 'application/geo+json');
   res.json(fc);
+});
+
+// ── Reimport edited polygons from QGIS (superadmin only) ──
+// Match by UUID (feature.id or properties.id). Recalculate area_ha for both the
+// live platform geometry and the uploaded GeoJSON; update only when the two
+// areas differ at 6 decimal places. Never creates or deletes polygons.
+function _featurePolygonId(f) {
+  if (!f) return null;
+  if (f.id != null && String(f.id).trim() !== '') return String(f.id).trim();
+  const props = f.properties || {};
+  for (const key of ['id', 'ID', 'Id']) {
+    if (props[key] != null && String(props[key]).trim() !== '') return String(props[key]).trim();
+  }
+  return null;
+}
+
+function _coerceImportPolygonGeometry(geom) {
+  if (!geom || typeof geom !== 'object') return null;
+  if (geom.type === 'Polygon') return geom;
+  // QGIS sometimes saves a single-part MultiPolygon; unwrap when safe.
+  if (geom.type === 'MultiPolygon' && Array.isArray(geom.coordinates) && geom.coordinates.length === 1) {
+    return { type: 'Polygon', coordinates: geom.coordinates[0] };
+  }
+  return null;
+}
+
+function _roundHa6(ha) {
+  return Number(Number(ha || 0).toFixed(6));
+}
+
+app.post('/api/admin/polygons/import', requireAuth, (req, res) => {
+  if (!isSuperAdmin(req.username)) return res.status(403).json({ error: 'Super Admin only' });
+
+  const body = req.body || {};
+  const dryRun = !!(body.dry_run || body.dryRun || req.query.dry_run === '1');
+  const geojson = (body.type === 'FeatureCollection') ? body
+    : (body.geojson && body.geojson.type === 'FeatureCollection') ? body.geojson
+    : null;
+
+  if (!geojson || !Array.isArray(geojson.features)) {
+    return res.status(400).json({ error: 'GeoJSON inválido. Esperado um FeatureCollection com features (e properties.id).' });
+  }
+  if (geojson.features.length === 0) {
+    return res.status(400).json({ error: 'Nenhuma feature encontrada no GeoJSON.' });
+  }
+  if (geojson.features.length > 50000) {
+    return res.status(400).json({ error: 'Máximo de 50.000 polígonos por importação.' });
+  }
+
+  let updated = 0;
+  let unchanged = 0;
+  let notFound = 0;
+  let skippedNoId = 0;
+  const errors = [];
+  const updatedIds = [];
+
+  for (let i = 0; i < geojson.features.length; i++) {
+    const f = geojson.features[i];
+    const polyId = _featurePolygonId(f);
+    if (!polyId) {
+      skippedNoId++;
+      if (errors.length < 40) errors.push(`Feature ${i + 1}: sem id (feature.id ou properties.id)`);
+      continue;
+    }
+
+    const rawGeom = _coerceImportPolygonGeometry(f.geometry);
+    if (!rawGeom) {
+      if (errors.length < 40) {
+        const t = f.geometry && f.geometry.type;
+        errors.push(`${polyId}: geometria inválida${t ? ` (tipo "${t}")` : ''} — esperado Polygon`);
+      }
+      continue;
+    }
+
+    const row = queryOne('SELECT id, geometry, grid_cell_id FROM polygons WHERE id = ? AND deleted_at IS NULL', [polyId]);
+    if (!row) {
+      notFound++;
+      if (errors.length < 40) errors.push(`${polyId}: não encontrado na plataforma`);
+      continue;
+    }
+
+    let platformGeom;
+    try {
+      platformGeom = typeof row.geometry === 'string' ? JSON.parse(row.geometry) : row.geometry;
+    } catch (e) {
+      if (errors.length < 40) errors.push(`${polyId}: geometria atual no banco é inválida`);
+      continue;
+    }
+
+    // Same formula used by PUT /api/polygons (geometry-validate), not the legacy
+    // server.js helper — so QGIS round-trips compare apples to apples.
+    const platformAreaHa = computePolygonAreaHa(platformGeom);
+    const validResult = validatePolygonGeometry(rawGeom);
+    if (!validResult.ok) {
+      if (errors.length < 40) errors.push(`${polyId}: ${validResult.error}`);
+      continue;
+    }
+
+    const uploadAreaHa = validResult.area_ha;
+    if (_roundHa6(platformAreaHa) === _roundHa6(uploadAreaHa)) {
+      unchanged++;
+      continue;
+    }
+
+    const areaHaStored = Math.round(uploadAreaHa * 100000) / 100000;
+    const now = new Date().toISOString();
+    if (!dryRun) {
+      // Only geometry/area (+ correction stamp). created_by, qc_*, grid_cell_id stay as-is.
+      runSQL(
+        `UPDATE polygons
+            SET geometry = ?, updated_at = ?, area_ha = ?,
+                upload_corrected_at = ?, upload_corrected_by = ?
+          WHERE id = ?`,
+        [JSON.stringify(validResult.geometry), now, areaHaStored, now, req.username, polyId]
+      );
+      io.emit('polygon:updated', {
+        id: polyId,
+        geometry: validResult.geometry,
+        updated_at: now,
+        area_ha: areaHaStored,
+        upload_corrected_at: now,
+        upload_corrected_by: req.username
+      });
+    }
+    updated++;
+    if (updatedIds.length < 200) {
+      updatedIds.push({
+        id: polyId,
+        platform_area_ha: _roundHa6(platformAreaHa),
+        upload_area_ha: _roundHa6(uploadAreaHa)
+      });
+    }
+  }
+
+  if (!dryRun && updated > 0) {
+    try { persist(); } catch (e) { /* best-effort */ }
+  }
+
+  logActivity(req.username, dryRun ? 'import_polygons_dry_run' : 'import_polygons', null, null, {
+    total: geojson.features.length,
+    updated,
+    unchanged,
+    notFound,
+    skippedNoId,
+    errors: errors.length
+  }, null, req);
+
+  res.json({
+    success: true,
+    dry_run: dryRun,
+    total: geojson.features.length,
+    updated,
+    unchanged,
+    not_found: notFound,
+    skipped_no_id: skippedNoId,
+    error_count: errors.length,
+    details: errors.length ? errors : undefined,
+    changed_sample: updatedIds.length ? updatedIds : undefined
+  });
 });
 
 app.get('/api/export/grid-status', (req, res) => {

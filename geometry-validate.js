@@ -190,4 +190,4 @@ function validatePolygonGeometry(geometry, { autoFix = true } = {}) {
   return { ok: true, geometry: cleanedGeometry, area_ha: netAreaM2 / 10000 };
 }
 
-module.exports = { validatePolygonGeometry };
+module.exports = { validatePolygonGeometry, polygonAreaHa };

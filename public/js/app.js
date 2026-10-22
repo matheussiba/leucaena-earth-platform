@@ -3502,6 +3502,10 @@ window.LeucenaApp = (function () {
     if (typeof LeucenaDrawing !== 'undefined') LeucenaDrawing.deactivate();
   }
 
+  function _isQcReviewActive() {
+    return typeof LeucenaQC !== 'undefined' && LeucenaQC.getReviewCellId && !!LeucenaQC.getReviewCellId();
+  }
+
   function syncStreetViewButtonTitle() {
     const btn = document.getElementById('tool-streetview');
     const wrap = document.getElementById('tool-streetview-wrap');
@@ -3519,6 +3523,19 @@ window.LeucenaApp = (function () {
     syncStreetViewButtonTitle();
   }
 
+  /** Keep the toolbar Street View control enabled during QC review (no cell lock). */
+  function syncQcStreetViewAvailability() {
+    const pointMode = insertionMode || deletionMode;
+    const cellLocked = !!(selectedCellData && selectedCellData.locked_by === username);
+    const allow = cellLocked || pointMode || _isQcReviewActive();
+    const btn = document.getElementById('tool-streetview');
+    if (btn) btn.disabled = !allow;
+    syncStreetViewButtonTitle();
+    if (!allow && typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive()) {
+      LeucenaStreetView.close();
+    }
+  }
+
   function enableTools(enabled) {
     const editPanel = document.getElementById('edit-tools-panel');
     const unlockBtn = document.getElementById('tool-unlock');
@@ -3533,9 +3550,10 @@ window.LeucenaApp = (function () {
     const selectBtn = document.getElementById('tool-select');
     if (selectBtn) { selectBtn.disabled = false; selectBtn.classList.add('active'); }
     const pointMode = insertionMode || deletionMode;
-    document.getElementById('tool-streetview').disabled = !(enabled || pointMode);
+    document.getElementById('tool-streetview').disabled = !(enabled || pointMode || _isQcReviewActive());
     syncStreetViewButtonTitle();
-    if (!enabled && !pointMode && typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive()) {
+    if (!enabled && !pointMode && !_isQcReviewActive()
+        && typeof LeucenaStreetView !== 'undefined' && LeucenaStreetView.isActive()) {
       LeucenaStreetView.close();
     }
     if (typeof LeucenaMap !== 'undefined') {
@@ -4105,7 +4123,7 @@ window.LeucenaApp = (function () {
       LeucenaMap.setMapBorder(anyActive);
     }
     const cellLocked = selectedCellData && selectedCellData.locked_by === username;
-    document.getElementById('tool-streetview').disabled = !(anyActive || cellLocked);
+    document.getElementById('tool-streetview').disabled = !(anyActive || cellLocked || _isQcReviewActive());
     syncStreetViewButtonTitle();
   }
 
@@ -4785,6 +4803,7 @@ window.LeucenaApp = (function () {
           <div class="admin-tools-buttons">
             <button id="admin-create-user-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg> ${t('admin.createUser')}</button>
             ${effectiveSuperAdmin ? `<button id="admin-import-points-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> ${t('admin.importPoints')}</button>` : ''}
+            ${effectiveSuperAdmin ? `<button id="admin-import-polygons-btn" class="admin-tool-btn admin-tool-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> ${t('admin.importPolygons')}</button>` : ''}
             ${effectiveSuperAdmin ? `<button id="admin-backup-db" class="admin-tool-btn admin-tool-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> ${t('admin.backupDb')}</button>` : ''}
           </div>
         </div>`;
@@ -4894,6 +4913,68 @@ window.LeucenaApp = (function () {
             showToast('Erro ao ler arquivo', 'error');
           }
         });
+      }
+
+      const importPolygonsBtn = document.getElementById('admin-import-polygons-btn');
+      if (importPolygonsBtn) {
+        const polyInput = document.getElementById('admin-import-polygons-input');
+        importPolygonsBtn.addEventListener('click', () => {
+          if (polyInput) { polyInput.value = ''; polyInput.click(); }
+        });
+        if (polyInput && !polyInput._wiredPolygonsImport) {
+          polyInput._wiredPolygonsImport = true;
+          polyInput.addEventListener('change', async () => {
+            const file = polyInput.files[0];
+            if (!file) return;
+            if (file.size > 50 * 1024 * 1024) {
+              showToast(t('admin.importPolygonsFileTooLarge'), 'error');
+              return;
+            }
+            try {
+              const text = await file.text();
+              let geojson;
+              try { geojson = JSON.parse(text); }
+              catch (e) { showToast(t('admin.importInvalidJson'), 'error'); return; }
+              if (!geojson || geojson.type !== 'FeatureCollection' || !Array.isArray(geojson.features)) {
+                showToast(t('admin.importNotFeatureCollection'), 'error');
+                return;
+              }
+              const count = geojson.features.length;
+              if (count === 0) { showToast(t('admin.importEmpty'), 'warning'); return; }
+              if (!confirm(t('admin.importPolygonsConfirm', count))) return;
+
+              showToast(t('admin.importPolygonsUploading'), 'info', 15000);
+              const r = await fetch('/api/admin/polygons/import', {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(geojson)
+              });
+              const data = await r.json().catch(() => ({}));
+              if (!r.ok) {
+                showToast(data.error || 'Erro na importação', 'error', 8000);
+                return;
+              }
+              logEvent('polygons_reimport', null, null, {
+                updated: data.updated, unchanged: data.unchanged,
+                not_found: data.not_found, errors: data.error_count, total: count
+              });
+              showToast(
+                t('admin.importPolygonsSuccess', data.updated || 0, data.unchanged || 0, data.not_found || 0),
+                (data.updated || 0) > 0 ? 'success' : 'info',
+                9000
+              );
+              if (data.error_count > 0) {
+                showToast(t('admin.importPolygonsErrors', data.error_count), 'warning', 8000);
+                if (Array.isArray(data.details) && data.details.length) {
+                  console.warn('[polygons import] details:', data.details);
+                }
+              }
+            } catch (e) {
+              logEvent('polygons_reimport_error', null, null, { error: e.message || String(e) });
+              showToast('Erro ao ler arquivo', 'error');
+            }
+          });
+        }
       }
 
       // Dedup button: preview → confirm modal → execute → undo toast
@@ -7163,6 +7244,7 @@ window.LeucenaApp = (function () {
     scheduleAutoCollapseLegend,
     refreshLegendToggleTitleForLang,
     refreshStreetViewTitleForLang,
+    syncQcStreetViewAvailability,
     isEditing,
     isAdminUser,
     isSuperAdmin,

@@ -8280,6 +8280,20 @@ body.sv-active .edit-tools-row {
   border-color: rgba(34, 211, 238, 0.85);
   color: #ecfeff;
 }
+.qc-action-streetview {
+  background: rgba(132, 204, 22, 0.10);
+  border-color: rgba(132, 204, 22, 0.35);
+  color: #d9f99d;
+}
+.qc-action-streetview:hover:not(:disabled) {
+  background: rgba(132, 204, 22, 0.20);
+  border-color: rgba(132, 204, 22, 0.65);
+}
+.qc-action-streetview.active {
+  background: rgba(132, 204, 22, 0.30);
+  border-color: rgba(132, 204, 22, 0.85);
+  color: #f7fee7;
+}
 .qc-action-btn {
   display: inline-flex;
   align-items: center;
@@ -8389,6 +8403,13 @@ body.sv-active .edit-tools-row {
 body.qc-review-active .edit-tools-panel,
 body.qc-review-active .edit-mode-badge {
   display: none;
+}
+
+/* Street View pane sits at the bottom of the map — park the QC carousel at
+   the top so it doesn't cover the panorama while the admin inspects. */
+body.sv-active.qc-review-active .qc-review-panel {
+  bottom: auto;
+  top: calc(var(--topbar-height, 56px) + 8px);
 }
 
 @media (max-width: 768px) {
