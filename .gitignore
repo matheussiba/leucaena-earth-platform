@@ -1,5 +1,6 @@
 node_modules/
 cmq-workstations/node_modules/
+inventario-florestal/node_modules/
 leucena-deploy*.zip
 .env
 data/leucaena-earth.db

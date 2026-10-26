@@ -6,7 +6,9 @@
   "scripts": {
     "seed": "node seed-data/seed.js",
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build:inventario": "npm --prefix inventario-florestal run build",
+    "build:cmq": "npm --prefix cmq-workstations run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1037.0",

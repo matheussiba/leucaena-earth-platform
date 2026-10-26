@@ -1,0 +1,6 @@
+{
+  "name": "Inventário Florestal | ESALQ/USP — CMQ",
+  "description": "Plataforma web para a disciplina LCF0510 - Inventário Florestal da ESALQ/USP com coleta em campo, cálculos dendrométricos (CAP, DAP, g, G, G/ha), GPS e persistência IndexedDB.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

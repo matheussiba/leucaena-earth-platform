@@ -239,6 +239,15 @@ async function initDB() {
       updated_at TEXT NOT NULL
     )
   `);
+
+  // Internal Inventário Florestal (/inventario) — JSON blobs on the same DB disk.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS inventario_store (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
   try { db.run('CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)'); } catch (e) { /* ignore */ }
 
   db.run(`
