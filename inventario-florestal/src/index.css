@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+:root {
+  --forest-dark: #1b4332;
+  --forest-base: #2d6a4f;
+  --forest-light: #40916c;
+  --forest-accent: #52b788;
+  --forest-tint: #d8f3dc;
+  --forest-soft: #f0fdf4;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --border-light: #e2e8f0;
+  --bg-app: #f8fafc;
+  --card-bg: #ffffff;
+}
+
+/* Base ergonomics for outdoor / sunlight visibility */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text-main);
+  background-color: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100vh;
+}
+
+/* Touch targets >= 44x44px */
+button,
+a,
+input[type="button"],
+input[type="submit"],
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Input styles optimized for field data entry */
+.field-input {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field-input:focus {
+  border-color: #2d6a4f;
+  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.2);
+}
+
+.btn-primary {
+  background-color: #2d6a4f;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.05s;
+}
+
+.btn-primary:hover {
+  background-color: #1b4332;
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #2d6a4f;
+  border: 1.5px solid #2d6a4f;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.btn-secondary:hover {
+  background-color: #f0fdf4;
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+}
+
+/* Table styles */
+.inventory-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.inventory-table th {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 2px solid #cbd5e1;
+  text-align: left;
+}
+
+.inventory-table td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.925rem;
+  color: #1e293b;
+}
+
+.inventory-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Metric Card */
+.stat-card {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.stat-card .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.stat-card .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1b4332;
+  line-height: 1.2;
+}
+
+.stat-card .subtext {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+/* Badges */
+.badge-success {
+  background-color: #d8f3dc;
+  color: #1b4332;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.badge-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.badge-demo {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Autocomplete container */
+.autocomplete-container {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-item {
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.active {
+  background-color: #f0fdf4;
+  color: #1b4332;
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+/* High contrast mode for extreme field sun */
+.sunlight-mode {
+  --bg-app: #ffffff;
+  --card-bg: #ffffff;
+  --border-light: #000000;
+}
+.sunlight-mode .stat-card {
+  border: 2px solid #000000;
+}
+.sunlight-mode .inventory-table th {
+  background-color: #e2e8f0;
+  color: #000000;
+  border-bottom: 2px solid #000000;
+}
+.sunlight-mode .inventory-table td {
+  border-bottom: 1px solid #94a3b8;
+  color: #000000;
+}

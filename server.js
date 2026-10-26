@@ -241,6 +241,7 @@ app.use((req, res, next) => {
   if (p === '/landing' || p === '/landing.html') return next();
   if (p === '/life' || p.startsWith('/life/')) return next();
   if (p === '/cmq' || p.startsWith('/cmq/')) return next();
+  if (p === '/inventario' || p.startsWith('/inventario/')) return next();
   if (req.path.startsWith('/api/')) return next();
   if (p.startsWith('/img/') || p.startsWith('/css/') || p.startsWith('/js/') || p.startsWith('/fonts/')) {
     return next();
@@ -731,6 +732,96 @@ app.use('/cmq', cmqGuard, (req, res, next) => {
 }, express.static(CMQ_DIR), (req, res) => {
   // SPA fallback for client-side routes under /cmq/*
   if (req.method === 'GET') return sendCmqIndex(res);
+  return res.status(404).end();
+});
+
+// Internal Inventário Florestal at /inventario (built assets in deleteme_inventario/).
+// Optional Basic Auth via INVENTARIO_PASSWORD. State lives in inventario_store
+// inside the same SQLite DB on DATA_PATH.
+// ---------------------------------------------------------------------------
+const INVENTARIO_DIR = path.join(__dirname, 'deleteme_inventario');
+const INVENTARIO_PASSWORD = process.env.INVENTARIO_PASSWORD || '';
+const INVENTARIO_HOSTS = (process.env.INVENTARIO_HOSTS || '')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+function inventarioGuard(req, res, next) {
+  res.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
+  res.set('Referrer-Policy', 'no-referrer');
+  if (!INVENTARIO_PASSWORD) return next();
+  const hdr = req.headers.authorization || '';
+  if (hdr.startsWith('Basic ')) {
+    try {
+      const decoded = Buffer.from(hdr.slice(6), 'base64').toString('utf8');
+      const pass = decoded.slice(decoded.indexOf(':') + 1);
+      if (pass === INVENTARIO_PASSWORD) return next();
+    } catch (_) { /* ignore */ }
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Inventario", charset="UTF-8"');
+  return res.status(401).send('Authentication required.');
+}
+function sendInventarioIndex(res) {
+  res.set('Cache-Control', 'no-store');
+  return res.sendFile(path.join(INVENTARIO_DIR, 'index.html'));
+}
+function inventarioReadKey(key, fallback) {
+  try {
+    const row = queryOne('SELECT value FROM inventario_store WHERE key = ?', [key]);
+    if (!row || row.value == null) return fallback;
+    return JSON.parse(row.value);
+  } catch (_) {
+    return fallback;
+  }
+}
+function inventarioWriteKey(key, value) {
+  runSQL(
+    'INSERT OR REPLACE INTO inventario_store (key, value, updated_at) VALUES (?, ?, ?)',
+    [key, JSON.stringify(value), new Date().toISOString()]
+  );
+}
+
+app.use((req, res, next) => {
+  const host = (req.hostname || '').toLowerCase();
+  if (INVENTARIO_HOSTS.includes(host) && req.method === 'GET' && req.path === '/') {
+    return inventarioGuard(req, res, () => sendInventarioIndex(res));
+  }
+  next();
+});
+
+app.get('/inventario/api/state', inventarioGuard, (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      inventarios: inventarioReadKey('inventarios', []),
+      grupos: inventarioReadKey('grupos', []),
+      parcelas: inventarioReadKey('parcelas', []),
+      arvores: inventarioReadKey('arvores', []),
+      activityLog: inventarioReadKey('activityLog', []),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/inventario/api/state', inventarioGuard, (req, res) => {
+  try {
+    const body = req.body || {};
+    if (Array.isArray(body.inventarios)) inventarioWriteKey('inventarios', body.inventarios);
+    if (Array.isArray(body.grupos)) inventarioWriteKey('grupos', body.grupos);
+    if (Array.isArray(body.parcelas)) inventarioWriteKey('parcelas', body.parcelas);
+    if (Array.isArray(body.arvores)) inventarioWriteKey('arvores', body.arvores);
+    if (Array.isArray(body.activityLog)) inventarioWriteKey('activityLog', body.activityLog);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get(['/inventario', '/inventario/'], inventarioGuard, (_req, res) => sendInventarioIndex(res));
+app.use('/inventario', inventarioGuard, (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+}, express.static(INVENTARIO_DIR), (req, res) => {
+  if (req.method === 'GET') return sendInventarioIndex(res);
   return res.status(404).end();
 });
 

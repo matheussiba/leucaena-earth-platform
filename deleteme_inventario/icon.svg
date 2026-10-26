@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#1b4332"/>
+  <!-- Compass / Caliper / Tree Motif -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#52b788" stroke-width="8" stroke-dasharray="16 12" opacity="0.6"/>
+  <!-- Tree Trunk -->
+  <path d="M236 340 L236 430 L276 430 L276 340 Z" fill="#b7b7a4"/>
+  <!-- Tree Foliage Canopy -->
+  <path d="M256 100 L350 240 L300 240 L380 340 L132 340 L212 240 L162 240 Z" fill="#40916c"/>
+  <path d="M256 100 L320 200 L280 200 L340 300 L256 300 Z" fill="#52b788" opacity="0.4"/>
+  <!-- Caliper / Measuring ribbon curve -->
+  <path d="M160 300 Q256 350 352 300" fill="none" stroke="#d8f3dc" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="160" cy="300" r="8" fill="#d8f3dc"/>
+  <circle cx="352" cy="300" r="8" fill="#d8f3dc"/>
+  <text x="256" y="475" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#d8f3dc" letter-spacing="3">ESALQ · CMQ</text>
+</svg>
