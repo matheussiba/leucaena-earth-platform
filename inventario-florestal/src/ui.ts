@@ -7,6 +7,7 @@ import {
   Tree,
   PlotFormat,
   PlotDimensions,
+  PlotCoordinates,
   GeoPoint,
 } from './types';
 import {
@@ -51,8 +52,16 @@ import {
   baixarArquivo,
   DelimitadorCSV,
 } from './export';
-import { capturarPontoGPS, formatarCoordenada, temCoordenadasRegistradas } from './geo';
+import {
+  capturarPontoGPS,
+  formatarCoordenada,
+  temCoordenadasRegistradas,
+  isMobileDevice,
+} from './geo';
 import { executarTodosTestes } from './tests';
+
+/** Coordenadas GPS capturadas antes de salvar uma parcela nova. */
+let pendingPlotCoords: PlotCoordinates | null = null;
 
 // Estado global da aplicação
 interface AppState {
@@ -190,7 +199,7 @@ function confirmDeleteModal(
   });
 }
 
-const HOLD_MS = 10000;
+const HOLD_MS = 5000;
 
 function bindHoldOrClick(
   el: HTMLElement,
@@ -394,20 +403,33 @@ function renderHeader(): string {
             ? `style="background:${corGrupo.solid};border-color:${corGrupo.border};color:#fff"`
             : ''
         }>
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="font-bold">Inventário:</span>
-            <span class="px-2 py-0.5 rounded border border-white/30 bg-black/20 font-semibold">${state.inventarioAtivo.nome}</span>
+          <nav class="flex items-center gap-1.5 flex-wrap" aria-label="Breadcrumb">
+            <button type="button" data-crumb="inventarios" class="px-2 py-0.5 rounded border border-white/30 bg-black/15 hover:bg-white/20 font-semibold underline-offset-2 hover:underline">
+              Inventários
+            </button>
+            <span class="opacity-70">›</span>
+            <button type="button" data-crumb="inventario" class="px-2 py-0.5 rounded border border-white/30 bg-black/20 hover:bg-white/20 font-semibold underline-offset-2 hover:underline">
+              ${state.inventarioAtivo.nome}
+            </button>
             ${
               state.grupoAtivo
-                ? `<span class="mx-1">›</span><span class="font-bold">Grupo:</span> <span class="px-2 py-0.5 rounded border border-white/40 bg-white/20 font-semibold">${state.grupoAtivo.nome}</span>`
+                ? `
+              <span class="opacity-70">›</span>
+              <button type="button" data-crumb="grupo" class="px-2 py-0.5 rounded border border-white/40 bg-white/20 hover:bg-white/30 font-semibold underline-offset-2 hover:underline">
+                ${state.grupoAtivo.nome}
+              </button>`
                 : ''
             }
             ${
               state.parcelaAtiva
-                ? `<span class="mx-1">›</span><span class="font-bold">Parcela:</span> <span class="px-2 py-0.5 rounded border border-white/30 bg-black/20 font-mono">${state.parcelaAtiva.codigo}${state.parcelaAtiva.nome ? ` — ${state.parcelaAtiva.nome}` : ''}</span>`
+                ? `
+              <span class="opacity-70">›</span>
+              <button type="button" data-crumb="parcela" class="px-2 py-0.5 rounded border border-white/30 bg-black/20 hover:bg-white/20 font-mono font-semibold underline-offset-2 hover:underline">
+                ${state.parcelaAtiva.codigo}${state.parcelaAtiva.nome ? ` — ${state.parcelaAtiva.nome}` : ''}
+              </button>`
                 : ''
             }
-          </div>
+          </nav>
         </div>
       `
           : ''
@@ -1103,7 +1125,6 @@ async function renderGrupoDetalhes(): Promise<string> {
                 <tr>
                   <th>Código</th>
                   <th>Nome da Parcela</th>
-                  <th>Quem está Inventariando</th>
                   <th>Formato</th>
                   <th>Dimensões</th>
                   <th>Área (m²)</th>
@@ -1138,8 +1159,7 @@ async function renderGrupoDetalhes(): Promise<string> {
                     return `
                     <tr>
                       <td class="font-bold font-mono text-emerald-900">${p.codigo}</td>
-                      <td class="font-semibold text-slate-900 max-w-xs">${p.nome || '<span class="text-slate-400 font-normal italic">Sem nome</span>'}</td>
-                      <td class="text-xs text-slate-700 max-w-xs">${p.inventariante || '<span class="text-slate-400 italic">Não especificado</span>'}</td>
+                      <td class="font-semibold text-slate-900 max-w-xs">${p.nome || '<span class="text-slate-400 font-normal italic">—</span>'}</td>
                       <td class="capitalize text-xs">${p.formato}</td>
                       <td class="text-xs text-slate-600 font-mono">${dimTexto}</td>
                       <td class="font-mono">${formatarNumero(p.areaM2, 1)}</td>
@@ -1201,7 +1221,7 @@ function renderParcelaForm(parcela?: Plot): string {
   const circularDims =
     parcela?.dimensoes.tipo === 'circular'
       ? parcela.dimensoes
-      : { tipo: 'circular' as const, tipoEntrada: 'raio' as const, valorOriginal: 12.62, unidade: 'm' as const };
+      : { tipo: 'circular' as const, tipoEntrada: 'raio' as const, valorOriginal: 10, unidade: 'm' as const };
   const rectangularDims =
     parcela?.dimensoes.tipo === 'retangular'
       ? parcela.dimensoes
@@ -1237,24 +1257,13 @@ function renderParcelaForm(parcela?: Plot): string {
               value="${parcela?.codigo || 'P01'}">
           </div>
 
-          <div class="sm:col-span-2">
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Nome da Parcela *
-            </label>
-            <input type="text" id="parc-nome" required class="field-input w-full"
-              placeholder="Ex: Talhão Experimental de Eucalipto, Borda da Mata..."
-              value="${parcela?.nome || ''}">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Quem está inventariando (Inventariantes) *
+              Nome da Parcela <span class="normal-case font-normal text-slate-400">(opcional)</span>
             </label>
-            <input type="text" id="parc-inventariante" required class="field-input w-full"
-              placeholder="Ex: Aluno A, Aluno B, Monitor..."
-              value="${parcela?.inventariante || grupo?.integrantes || ''}">
+            <input type="text" id="parc-nome" class="field-input w-full"
+              placeholder="Ex: Talhão Experimental, Borda da Mata..."
+              value="${parcela?.nome || ''}">
           </div>
 
           <div>
@@ -1264,6 +1273,10 @@ function renderParcelaForm(parcela?: Plot): string {
             <input type="date" id="parc-data" class="field-input w-full"
               value="${parcela?.data || hoje}">
           </div>
+        </div>
+
+        <div class="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-600">
+          <strong class="text-slate-800">Integrantes do grupo:</strong> ${grupo?.integrantes || 'Não informados no grupo'}
         </div>
 
         <!-- Seleção de Formato -->
@@ -1348,13 +1361,13 @@ function renderParcelaForm(parcela?: Plot): string {
 
         <!-- Seção de Geolocalização Opcional -->
         <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <span class="block text-xs font-bold text-slate-700 uppercase">Geolocalização Opcional (GPS do Dispositivo)</span>
-              <p class="text-xs text-slate-500">Funciona sem internet. O GPS pode apresentar imprecisão sob dossel florestal denso.</p>
+              <span class="block text-xs font-bold text-slate-700 uppercase">GPS da parcela (centro ou 4 cantos)</span>
+              <p class="text-xs text-slate-500">Disponível no celular. Circular: centro · Retangular: 4 cantos.</p>
             </div>
             <button type="button" id="btn-abrir-gps-modal" class="btn-secondary text-xs py-1 px-3">
-              📍 Gerenciar Coordenadas
+              📍 Cadastrar pontos GPS
             </button>
           </div>
           <div id="resumo-coords-parcela" class="text-xs text-slate-600 bg-white p-2.5 rounded border border-slate-200 font-mono">
@@ -1518,7 +1531,7 @@ async function renderColetaArvores(): Promise<string> {
               value="${proximoNumero}" min="1">
           </div>
 
-          <div class="sm:col-span-4 autocomplete-container">
+          <div class="sm:col-span-3 autocomplete-container">
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
               Espécie (Opcional)
             </label>
@@ -1528,7 +1541,7 @@ async function renderColetaArvores(): Promise<string> {
             <div id="autocomplete-lista" class="autocomplete-dropdown hidden"></div>
           </div>
 
-          <div class="sm:col-span-3">
+          <div class="sm:col-span-2">
             <div class="flex items-center justify-between mb-1">
               <label class="text-xs font-bold text-slate-900 uppercase">
                 CAP (cm) *
@@ -1540,11 +1553,41 @@ async function renderColetaArvores(): Promise<string> {
               placeholder="Ex: 58.5">
           </div>
 
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+              H (m) <span class="normal-case font-normal text-slate-400">(opc.)</span>
+            </label>
+            <input type="number" step="0.1" min="0" inputmode="decimal" id="input-arv-altura"
+              class="field-input w-full font-mono"
+              placeholder="Altura">
+          </div>
+
           <div class="sm:col-span-3 flex gap-2">
             <button type="submit" id="btn-adicionar-arvore" class="btn-primary w-full py-3 text-sm font-bold shadow-sm">
               <span>+</span> Adicionar
             </button>
           </div>
+
+          ${
+            p.formato === 'circular'
+              ? `
+          <div class="sm:col-span-3">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Azimute (°) <span class="normal-case font-normal text-slate-400">(opc.)</span>
+            </label>
+            <input type="number" step="0.1" min="0" max="360" inputmode="decimal" id="input-arv-azimute"
+              class="field-input w-full font-mono" placeholder="0–360 do Norte">
+          </div>
+          <div class="sm:col-span-3">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+              Dist. centro (m) <span class="normal-case font-normal text-slate-400">(opc.)</span>
+            </label>
+            <input type="number" step="0.01" min="0" inputmode="decimal" id="input-arv-dist"
+              class="field-input w-full font-mono" placeholder="metros">
+          </div>
+          `
+              : ''
+          }
 
           <div class="sm:col-span-12 flex flex-wrap items-center justify-between text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
             <div class="flex items-center gap-4">
@@ -1601,6 +1644,8 @@ async function renderColetaArvores(): Promise<string> {
                   <th>Espécie</th>
                   <th>CAP (cm)</th>
                   <th>DAP (cm)</th>
+                  <th>H (m)</th>
+                  ${p.formato === 'circular' ? '<th>Azimute (°)</th><th>Dist. centro (m)</th>' : ''}
                   <th>Área Transv. g (m²)</th>
                   <th>Status</th>
                   <th>Observações</th>
@@ -1625,6 +1670,13 @@ async function renderColetaArvores(): Promise<string> {
                       </td>
                       <td class="font-mono font-semibold">${formatarNumero(t.cap, 1)}</td>
                       <td class="font-mono font-bold text-emerald-900">${formatarNumero(t.dap, 2)}</td>
+                      <td class="font-mono">${t.alturaH != null ? formatarNumero(t.alturaH, 1) : '—'}</td>
+                      ${
+                        p.formato === 'circular'
+                          ? `<td class="font-mono">${t.azimute != null ? formatarNumero(t.azimute, 1) : '—'}</td>
+                             <td class="font-mono">${t.distanciaCentro != null ? formatarNumero(t.distanciaCentro, 2) : '—'}</td>`
+                          : ''
+                      }
                       <td class="font-mono text-emerald-800">${formatarNumero(t.g, 6)}</td>
                       <td>
                         <span class="${statusClass} text-[0.7rem] px-2 py-0.5 rounded-full inline-block">
@@ -2244,6 +2296,27 @@ function renderTestes(): string {
 
 function attachEventListeners() {
   document.getElementById('nav-brand-home')?.addEventListener('click', () => navigate('dashboard'));
+
+  document.querySelectorAll('[data-crumb]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const crumb = (el as HTMLElement).getAttribute('data-crumb');
+      if (crumb === 'inventarios') {
+        navigate('dashboard');
+        return;
+      }
+      if (crumb === 'inventario' && state.inventarioAtivo) {
+        navigate('inventario-detalhes', state.inventarioAtivo.id);
+        return;
+      }
+      if (crumb === 'grupo' && state.inventarioAtivo && state.grupoAtivo) {
+        navigate('grupo-detalhes', state.inventarioAtivo.id, state.grupoAtivo.id);
+        return;
+      }
+      if (crumb === 'parcela' && state.inventarioAtivo && state.grupoAtivo && state.parcelaAtiva) {
+        navigate('coleta-arvores', state.inventarioAtivo.id, state.grupoAtivo.id, state.parcelaAtiva.id);
+      }
+    });
+  });
   const ajudaBtn = document.getElementById('nav-btn-ajuda');
   if (ajudaBtn) {
     bindHoldOrClick(ajudaBtn, {
@@ -2503,6 +2576,10 @@ function attachEventListeners() {
 
   document.querySelectorAll('[data-action="gps-parcela"]').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
+      if (!isMobileDevice()) {
+        showToast('O cadastro de GPS (centro / 4 cantos) só é ativado no celular.', 'aviso');
+        return;
+      }
       const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
       if (!id) return;
       const parcela = await obterParcela(id);
@@ -2566,7 +2643,39 @@ function attachEventListeners() {
   });
 
   document.getElementById('btn-abrir-gps-modal')?.addEventListener('click', () => {
-    if (state.parcelaAtiva) abrirModalGPSParcela(state.parcelaAtiva);
+    if (!isMobileDevice()) {
+      showToast('O cadastro de GPS (centro / 4 cantos) só é ativado no celular.', 'aviso');
+      return;
+    }
+    if (state.parcelaAtiva && state.parcelaAtiva.id && !state.parcelaAtiva.id.startsWith('draft-')) {
+      abrirModalGPSParcela(state.parcelaAtiva);
+      return;
+    }
+    const formato =
+      ((document.querySelector('input[name="parc-formato"]:checked') as HTMLInputElement | null)
+        ?.value as PlotFormat) || 'circular';
+    const codigo =
+      (document.getElementById('parc-codigo') as HTMLInputElement | null)?.value.trim() || 'P01';
+    const stub: Plot = {
+      id: 'draft-gps',
+      inventarioId: state.inventarioAtivo?.id || '',
+      grupoId: state.grupoAtivo?.id,
+      codigo,
+      formato,
+      dimensoes:
+        formato === 'circular'
+          ? { tipo: 'circular', tipoEntrada: 'raio', valorOriginal: 10, unidade: 'm' }
+          : { tipo: 'retangular', comprimento: 25, largura: 20, unidade: 'm' },
+      areaM2: 0,
+      areaHa: 0,
+      observacoes: '',
+      data: '',
+      status: 'nao_iniciada',
+      coordenadas: pendingPlotCoords || { tipo: 'nenhum' },
+      criadoEm: new Date().toISOString(),
+      atualizadoEm: new Date().toISOString(),
+    };
+    abrirModalGPSParcela(stub);
   });
 
   document.getElementById('form-parcela')?.addEventListener('submit', async (e) => {
@@ -2577,7 +2686,7 @@ function attachEventListeners() {
     const grupoId = (document.getElementById('parc-grupo-id') as HTMLInputElement).value || state.grupoAtivo?.id;
     const codigo = (document.getElementById('parc-codigo') as HTMLInputElement).value.trim();
     const nome = (document.getElementById('parc-nome') as HTMLInputElement).value.trim();
-    const inventariante = (document.getElementById('parc-inventariante') as HTMLInputElement).value.trim();
+    const inventariante = state.grupoAtivo?.integrantes || state.parcelaAtiva?.inventariante || '';
     const data = (document.getElementById('parc-data') as HTMLInputElement).value;
     const observacoes = (document.getElementById('parc-obs') as HTMLTextAreaElement).value.trim();
     const formato = (document.querySelector('input[name="parc-formato"]:checked') as HTMLInputElement).value as PlotFormat;
@@ -2623,12 +2732,16 @@ function attachEventListeners() {
       observacoes,
       data,
       status: state.parcelaAtiva?.status || 'nao_iniciada',
-      coordenadas: state.parcelaAtiva?.coordenadas || { tipo: 'nenhum' },
+      coordenadas:
+        state.parcelaAtiva?.coordenadas ||
+        pendingPlotCoords ||
+        { tipo: 'nenhum' },
       criadoEm: state.parcelaAtiva?.criadoEm || new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
     };
 
     await salvarParcela(parcelaSalva);
+    pendingPlotCoords = null;
     state.parcelaAtiva = parcelaSalva;
     showToast(`Parcela ${codigo} salva com sucesso!`);
     if (state.grupoAtivo) {
@@ -2697,12 +2810,21 @@ function attachEventListeners() {
     const numInput = document.getElementById('input-arv-numero') as HTMLInputElement;
     const espInput = document.getElementById('input-arv-especie') as HTMLInputElement;
     const capInput = document.getElementById('input-arv-cap') as HTMLInputElement;
+    const altInput = document.getElementById('input-arv-altura') as HTMLInputElement | null;
+    const aziInput = document.getElementById('input-arv-azimute') as HTMLInputElement | null;
+    const distInput = document.getElementById('input-arv-dist') as HTMLInputElement | null;
     const obsInput = document.getElementById('input-arv-obs') as HTMLInputElement;
 
     const numero = numInput.value.trim();
     const especie = espInput.value.trim();
     const capStr = capInput.value.trim();
     const cap = capStr !== '' ? Number(capStr) : null;
+    const altStr = altInput?.value.trim() || '';
+    const alturaH = altStr !== '' ? Number(altStr) : null;
+    const aziStr = aziInput?.value.trim() || '';
+    const azimute = aziStr !== '' ? Number(aziStr) : null;
+    const distStr = distInput?.value.trim() || '';
+    const distanciaCentro = distStr !== '' ? Number(distStr) : null;
     const observacoes = obsInput.value.trim();
 
     const arvoresExistentes = await listarArvoresPorParcela(state.parcelaAtiva.id);
@@ -2727,6 +2849,17 @@ function attachEventListeners() {
       cap: validacao.cap,
       dap: validacao.dap,
       g: validacao.g,
+      alturaH: alturaH != null && !isNaN(alturaH) ? alturaH : null,
+      azimute:
+        state.parcelaAtiva.formato === 'circular' && azimute != null && !isNaN(azimute)
+          ? azimute
+          : null,
+      distanciaCentro:
+        state.parcelaAtiva.formato === 'circular' &&
+        distanciaCentro != null &&
+        !isNaN(distanciaCentro)
+          ? distanciaCentro
+          : null,
       observacoes,
       status: validacao.status,
       motivoInvalido: validacao.motivo,
@@ -2992,6 +3125,7 @@ async function atualizarSugestoesEspecies(textoDigitado: string) {
 }
 
 function abrirModalEditarArvore(arvore: Tree) {
+  const isCircular = state.parcelaAtiva?.formato === 'circular';
   const body = `
     <form id="form-edit-tree-modal" class="space-y-4">
       <div>
@@ -3002,10 +3136,31 @@ function abrirModalEditarArvore(arvore: Tree) {
         <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Espécie</label>
         <input type="text" id="modal-tree-esp" class="field-input w-full" value="${arvore.especie || ''}" placeholder="Nome científico ou comum">
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">CAP (cm)</label>
-        <input type="number" step="0.1" min="0.1" id="modal-tree-cap" class="field-input w-full font-mono text-lg font-bold" value="${arvore.cap || ''}">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">CAP (cm)</label>
+          <input type="number" step="0.1" min="0.1" id="modal-tree-cap" class="field-input w-full font-mono text-lg font-bold" value="${arvore.cap ?? ''}">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">H (m) opcional</label>
+          <input type="number" step="0.1" min="0" id="modal-tree-altura" class="field-input w-full font-mono" value="${arvore.alturaH ?? ''}">
+        </div>
       </div>
+      ${
+        isCircular
+          ? `
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Azimute (°) opcional</label>
+          <input type="number" step="0.1" min="0" max="360" id="modal-tree-azimute" class="field-input w-full font-mono" value="${arvore.azimute ?? ''}">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Dist. centro (m) opcional</label>
+          <input type="number" step="0.01" min="0" id="modal-tree-dist" class="field-input w-full font-mono" value="${arvore.distanciaCentro ?? ''}">
+        </div>
+      </div>`
+          : ''
+      }
       <div>
         <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Observações</label>
         <textarea id="modal-tree-obs" rows="2" class="field-input w-full text-xs">${arvore.observacoes || ''}</textarea>
@@ -3025,6 +3180,12 @@ function abrirModalEditarArvore(arvore: Tree) {
     const esp = (document.getElementById('modal-tree-esp') as HTMLInputElement).value.trim();
     const capStr = (document.getElementById('modal-tree-cap') as HTMLInputElement).value.trim();
     const cap = capStr !== '' ? Number(capStr) : null;
+    const altStr = (document.getElementById('modal-tree-altura') as HTMLInputElement).value.trim();
+    const alturaH = altStr !== '' ? Number(altStr) : null;
+    const aziEl = document.getElementById('modal-tree-azimute') as HTMLInputElement | null;
+    const distEl = document.getElementById('modal-tree-dist') as HTMLInputElement | null;
+    const aziStr = aziEl?.value.trim() || '';
+    const distStr = distEl?.value.trim() || '';
     const obs = (document.getElementById('modal-tree-obs') as HTMLTextAreaElement).value.trim();
 
     const validacao = validarMedicaoArvore({ cap });
@@ -3034,6 +3195,13 @@ function abrirModalEditarArvore(arvore: Tree) {
     arvore.cap = validacao.cap;
     arvore.dap = validacao.dap;
     arvore.g = validacao.g;
+    arvore.alturaH = alturaH != null && !isNaN(alturaH) ? alturaH : null;
+    if (isCircular) {
+      const az = aziStr !== '' ? Number(aziStr) : null;
+      const dist = distStr !== '' ? Number(distStr) : null;
+      arvore.azimute = az != null && !isNaN(az) ? az : null;
+      arvore.distanciaCentro = dist != null && !isNaN(dist) ? dist : null;
+    }
     arvore.status = validacao.status;
     arvore.motivoInvalido = validacao.motivo;
     arvore.observacoes = obs;
@@ -3126,6 +3294,10 @@ function formatPointLine(p: GeoPoint | null | undefined, label: string): string 
 }
 
 function abrirModalGPSParcela(parcela: Plot) {
+  if (!isMobileDevice()) {
+    showToast('O cadastro de GPS (centro / 4 cantos) só é ativado no celular.', 'aviso');
+    return;
+  }
   const isCircular = parcela.formato === 'circular';
   let draftCentro: GeoPoint | null = parcela.coordenadas?.centro || null;
   let draftCantos: (GeoPoint | null)[] = [null, null, null, null];
@@ -3278,6 +3450,21 @@ function abrirModalGPSParcela(parcela: Plot) {
         centro: null,
         cantos: draftCantos.map((c, i) => ({ ...(c as GeoPoint), rotulo: `Canto ${i + 1}` })),
       };
+    }
+
+    if (parcela.id === 'draft-gps') {
+      pendingPlotCoords = parcela.coordenadas;
+      closeModal();
+      showToast('Coordenadas capturadas. Salve a parcela para gravá-las.');
+      const resumo = document.getElementById('resumo-coords-parcela');
+      if (resumo) {
+        const c = parcela.coordenadas;
+        resumo.textContent =
+          c.tipo === 'centro' && c.centro
+            ? `Tipo: centro | ${formatarCoordenada(c.centro.latitude, c.centro.longitude)}`
+            : `Tipo: cantos | ${c.cantos?.length || 0} pontos registrados`;
+      }
+      return;
     }
 
     await salvarParcela(parcela);
