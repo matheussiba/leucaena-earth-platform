@@ -54,7 +54,6 @@ import {
 } from './export';
 import {
   capturarPontoGPS,
-  capturarAzimuteBussola,
   formatarCoordenada,
   temCoordenadasRegistradas,
   isMobileDevice,
@@ -1604,13 +1603,8 @@ async function renderColetaArvores(): Promise<string> {
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
               Azimute (°) <span class="normal-case font-normal text-slate-400">(opc.)</span>
             </label>
-            <div class="flex gap-1.5">
-              <input type="number" step="0.1" min="0" max="360" inputmode="decimal" id="input-arv-azimute"
-                class="field-input w-full font-mono" placeholder="0–360">
-              <button type="button" id="btn-capturar-azimute" title="Usar bússola do aparelho" class="btn-secondary shrink-0 px-2.5 text-xs">
-                🧭
-              </button>
-            </div>
+            <input type="number" step="0.1" min="0" max="360" inputmode="decimal" id="input-arv-azimute"
+              class="field-input w-full font-mono" placeholder="0–360 do Norte">
           </div>
           <div class="sm:col-span-3">
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
@@ -2835,27 +2829,6 @@ function attachEventListeners() {
       }
     });
   }
-
-  document.getElementById('btn-capturar-azimute')?.addEventListener('click', async () => {
-    const btn = document.getElementById('btn-capturar-azimute') as HTMLButtonElement | null;
-    const input = document.getElementById('input-arv-azimute') as HTMLInputElement | null;
-    if (!input) return;
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = '…';
-    }
-    const res = await capturarAzimuteBussola();
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '🧭';
-    }
-    if (res.sucesso && res.azimute != null) {
-      input.value = String(res.azimute);
-      showToast(`Azimute ${res.azimute}° capturado.`);
-    } else {
-      showToast(res.mensagemErro || 'Falha ao ler a bússola.', 'erro');
-    }
-  });
 
   // Submissão rápida de Árvore
   document.getElementById('form-coleta-arvore')?.addEventListener('submit', async (e) => {
