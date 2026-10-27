@@ -136,3 +136,83 @@ export function isMobileDevice(): boolean {
   }
   return navigator.maxTouchPoints > 1 && window.matchMedia('(pointer: coarse)').matches;
 }
+
+export interface AzimuthCaptureResult {
+  sucesso: boolean;
+  azimute?: number;
+  mensagemErro?: string;
+}
+
+/**
+ * Lê o azimute (0–360°, do Norte, sentido horário) para onde o aparelho está apontando.
+ * Usa DeviceOrientation / bússola nativa (requer permissão no iOS).
+ */
+export async function capturarAzimuteBussola(): Promise<AzimuthCaptureResult> {
+  if (typeof window === 'undefined' || !('DeviceOrientationEvent' in window)) {
+    return {
+      sucesso: false,
+      mensagemErro: 'Bússola/orientação não disponível neste dispositivo ou navegador.',
+    };
+  }
+
+  const DOE = DeviceOrientationEvent as unknown as {
+    requestPermission?: () => Promise<'granted' | 'denied' | 'default'>;
+  };
+  if (typeof DOE.requestPermission === 'function') {
+    try {
+      const perm = await DOE.requestPermission();
+      if (perm !== 'granted') {
+        return {
+          sucesso: false,
+          mensagemErro: 'Permissão de orientação/bússola negada. Ative nas configurações do navegador.',
+        };
+      }
+    } catch {
+      return {
+        sucesso: false,
+        mensagemErro: 'Não foi possível solicitar permissão da bússola.',
+      };
+    }
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: AzimuthCaptureResult) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('deviceorientationabsolute', onOrient as EventListener);
+      window.removeEventListener('deviceorientation', onOrient as EventListener);
+      resolve(result);
+    };
+
+    const onOrient = (event: Event) => {
+      const e = event as DeviceOrientationEvent & { webkitCompassHeading?: number };
+      let heading: number | null = null;
+
+      if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
+        heading = e.webkitCompassHeading;
+      } else if (e.alpha != null && !isNaN(e.alpha)) {
+        // alpha absoluto: 0 ≈ Norte; conversão para heading de bússola
+        heading = e.absolute ? (360 - e.alpha) % 360 : (360 - e.alpha) % 360;
+      }
+
+      if (heading == null) return;
+      if (heading < 0) heading = (heading + 360) % 360;
+      finish({
+        sucesso: true,
+        azimute: Math.round(heading * 10) / 10,
+      });
+    };
+
+    window.addEventListener('deviceorientationabsolute', onOrient as EventListener);
+    window.addEventListener('deviceorientation', onOrient as EventListener);
+
+    setTimeout(() => {
+      finish({
+        sucesso: false,
+        mensagemErro:
+          'Não foi possível ler a bússola a tempo. Aponte o aparelho na horizontal e tente de novo.',
+      });
+    }, 6000);
+  });
+}
