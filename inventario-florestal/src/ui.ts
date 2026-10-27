@@ -54,6 +54,7 @@ import {
 } from './export';
 import {
   capturarPontoGPS,
+  capturarAzimuteBussola,
   formatarCoordenada,
   temCoordenadasRegistradas,
   isMobileDevice,
@@ -264,14 +265,46 @@ export async function navigate(
 ) {
   state.view = novaView;
 
+  const topLevel: AppState['view'][] = [
+    'dashboard',
+    'ajuda',
+    'testes',
+    'exportacao',
+    'inventario-novo',
+  ];
+
+  if (topLevel.includes(novaView)) {
+    state.inventarioAtivo = null;
+    state.grupoAtivo = null;
+    state.parcelaAtiva = null;
+    renderApp();
+    return;
+  }
+
   if (inventarioId) {
     state.inventarioAtivo = await obterInventario(inventarioId);
   }
+
   if (grupoId) {
     state.grupoAtivo = await obterGrupo(grupoId);
+  } else if (
+    novaView === 'inventario-detalhes' ||
+    novaView === 'inventario-editar' ||
+    novaView === 'inventario-sintese' ||
+    novaView === 'grupo-novo'
+  ) {
+    state.grupoAtivo = null;
+    state.parcelaAtiva = null;
   }
+
   if (parcelaId) {
     state.parcelaAtiva = await obterParcela(parcelaId);
+  } else if (
+    novaView === 'grupo-detalhes' ||
+    novaView === 'grupo-editar' ||
+    novaView === 'parcela-nova'
+  ) {
+    state.parcelaAtiva = null;
   }
 
   renderApp();
@@ -303,7 +336,11 @@ export async function renderApp() {
 
   let html = renderHeader();
 
-  html += `<main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">`;
+  const mainPad =
+    state.view === 'coleta-arvores'
+      ? 'p-2 sm:p-4 space-y-3'
+      : 'p-3 sm:p-6 space-y-4 sm:space-y-6';
+  html += `<main class="flex-1 max-w-7xl w-full mx-auto ${mainPad}">`;
 
   switch (state.view) {
     case 'dashboard':
@@ -364,58 +401,61 @@ export async function renderApp() {
 // ----------------- Componente: Cabeçalho -----------------
 
 function renderHeader(): string {
-  const corGrupo = state.grupoAtivo ? corDoGrupo(state.grupoAtivo.id) : null;
+  const showCrumb =
+    !!state.inventarioAtivo &&
+    state.view !== 'dashboard' &&
+    state.view !== 'ajuda' &&
+    state.view !== 'testes' &&
+    state.view !== 'exportacao' &&
+    state.view !== 'inventario-novo';
+  const corGrupo = showCrumb && state.grupoAtivo ? corDoGrupo(state.grupoAtivo.id) : null;
   return `
-    <header class="bg-[#1b4332] text-white shadow-md sticky top-0 z-40">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3 cursor-pointer" id="nav-brand-home">
-          <div class="w-10 h-10 rounded-lg bg-emerald-800/80 border border-emerald-500/40 flex items-center justify-center font-bold text-emerald-200">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+    <header class="bg-[#1b4332] text-white shadow-sm sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-2.5 sm:px-4 py-1.5 sm:py-2.5 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 cursor-pointer min-w-0" id="nav-brand-home">
+          <div class="w-7 h-7 sm:w-9 sm:h-9 rounded-md bg-emerald-800/80 border border-emerald-500/40 flex items-center justify-center shrink-0 text-emerald-200">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2L3 14h6v8h6v-8h6z" />
             </svg>
           </div>
-          <div>
-            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white leading-tight">
-              Inventário Florestal | ESALQ/USP
+          <div class="min-w-0">
+            <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white leading-tight truncate">
+              Inventário Florestal
             </h1>
-            <p class="text-xs text-emerald-200 font-medium">
-              LCF0510 - Inventário Florestal • CMQ — Centro de Métodos Quantitativos
+            <p class="hidden sm:block text-[0.7rem] text-emerald-200 font-medium truncate">
+              ESALQ/USP • LCF0510 • CMQ
             </p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap ml-auto">
-          <button id="nav-btn-ajuda" title="Ajuda" class="px-3 py-1.5 rounded bg-emerald-900/80 hover:bg-emerald-800 text-xs font-semibold flex items-center gap-1 border border-emerald-700/50">
-            <span>📖</span> Ajuda
-          </button>
-        </div>
+        <button id="nav-btn-ajuda" title="Ajuda" class="shrink-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded bg-emerald-900/80 hover:bg-emerald-800 text-[0.7rem] sm:text-xs font-semibold flex items-center gap-1 border border-emerald-700/50">
+          <span>📖</span> <span class="hidden xs:inline sm:inline">Ajuda</span>
+        </button>
       </div>
 
       ${
-        state.inventarioAtivo
+        showCrumb
           ? `
-        <div class="border-t px-4 sm:px-6 py-2 text-xs flex flex-wrap items-center gap-2 ${
-          corGrupo
-            ? ''
-            : 'bg-[#143225] border-emerald-900 text-emerald-100'
+        <div class="border-t px-2 sm:px-4 py-1 text-[0.65rem] sm:text-xs flex items-center gap-1 overflow-x-auto ${
+          corGrupo ? '' : 'bg-[#143225] border-emerald-900 text-emerald-100'
         }" ${
           corGrupo
             ? `style="background:${corGrupo.solid};border-color:${corGrupo.border};color:#fff"`
             : ''
         }>
-          <nav class="flex items-center gap-1.5 flex-wrap" aria-label="Breadcrumb">
-            <button type="button" data-crumb="inventarios" class="px-2 py-0.5 rounded border border-white/30 bg-black/15 hover:bg-white/20 font-semibold underline-offset-2 hover:underline">
-              Inventários
+          <nav class="flex items-center gap-1 flex-nowrap whitespace-nowrap" aria-label="Breadcrumb">
+            <button type="button" data-crumb="inventarios" class="px-1.5 py-0.5 rounded border border-white/25 bg-black/15 hover:bg-white/20 font-semibold">
+              Início
             </button>
             <span class="opacity-70">›</span>
-            <button type="button" data-crumb="inventario" class="px-2 py-0.5 rounded border border-white/30 bg-black/20 hover:bg-white/20 font-semibold underline-offset-2 hover:underline">
-              ${state.inventarioAtivo.nome}
+            <button type="button" data-crumb="inventario" class="px-1.5 py-0.5 rounded border border-white/25 bg-black/20 hover:bg-white/20 font-semibold max-w-[9rem] truncate">
+              ${state.inventarioAtivo!.nome}
             </button>
             ${
               state.grupoAtivo
                 ? `
               <span class="opacity-70">›</span>
-              <button type="button" data-crumb="grupo" class="px-2 py-0.5 rounded border border-white/40 bg-white/20 hover:bg-white/30 font-semibold underline-offset-2 hover:underline">
+              <button type="button" data-crumb="grupo" class="px-1.5 py-0.5 rounded border border-white/35 bg-white/20 hover:bg-white/30 font-semibold max-w-[8rem] truncate">
                 ${state.grupoAtivo.nome}
               </button>`
                 : ''
@@ -424,8 +464,8 @@ function renderHeader(): string {
               state.parcelaAtiva
                 ? `
               <span class="opacity-70">›</span>
-              <button type="button" data-crumb="parcela" class="px-2 py-0.5 rounded border border-white/30 bg-black/20 hover:bg-white/20 font-mono font-semibold underline-offset-2 hover:underline">
-                ${state.parcelaAtiva.codigo}${state.parcelaAtiva.nome ? ` — ${state.parcelaAtiva.nome}` : ''}
+              <button type="button" data-crumb="parcela" class="px-1.5 py-0.5 rounded border border-white/25 bg-black/20 hover:bg-white/20 font-mono font-semibold">
+                ${state.parcelaAtiva.codigo}
               </button>`
                 : ''
             }
@@ -441,24 +481,25 @@ function renderHeader(): string {
 // ----------------- Componente: Rodapé -----------------
 
 function renderFooter(): string {
-  return `
-    <footer class="bg-slate-900 text-slate-400 text-xs border-t border-slate-800 py-6 px-4 mt-12">
-      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <p class="font-semibold text-slate-300">
-            Inventário Florestal | ESALQ/USP — Escola Superior de Agricultura Luiz de Queiroz
-          </p>
-          <p class="text-slate-400 mt-0.5">
-            Disciplina: LCF0510 - Inventário Florestal • Desenvolvimento: CMQ — Centro de Métodos Quantitativos
-          </p>
-          <p class="text-slate-400 mt-0.5 text-[0.7rem]">
-            Professores: Matheus Pinheiro Ferreira e Jonathan Trautenmüller • Monitor: Matheus Siqueira Barros
-          </p>
+  if (state.view === 'coleta-arvores') {
+    return `
+      <footer class="bg-slate-900 text-slate-500 text-[0.65rem] border-t border-slate-800 py-1.5 px-3 mt-4">
+        <div class="max-w-7xl mx-auto text-center">
+          <span>Desenvolvedor: Matheus Siqueira Barros · </span>
+          <a href="mailto:ms.barros@usp.br" class="text-emerald-400 hover:underline">ms.barros@usp.br</a>
         </div>
-        <div class="flex items-center gap-4 text-slate-400 text-xs">
-          <span>Cálculos Dendrométricos</span>
-          <span>•</span>
-          <span>ESALQ/USP — CMQ</span>
+      </footer>
+    `;
+  }
+  return `
+    <footer class="bg-slate-900 text-slate-400 text-[0.7rem] sm:text-xs border-t border-slate-800 py-3 sm:py-4 px-3 sm:px-4 mt-6 sm:mt-10">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+        <div>
+          <p class="font-semibold text-slate-300">Inventário Florestal | ESALQ/USP — CMQ</p>
+          <p class="text-slate-500 mt-0.5">
+            Desenvolvedor: Matheus Siqueira Barros ·
+            <a href="mailto:ms.barros@usp.br" class="text-emerald-400 hover:underline">ms.barros@usp.br</a>
+          </p>
         </div>
       </div>
     </footer>
@@ -545,39 +586,27 @@ async function renderInventariosLista(): Promise<string> {
   }
 
   return `
-    <div class="space-y-6">
-      <!-- Banner Acadêmico da Disciplina -->
-      <section class="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm border border-emerald-950">
-        <div class="max-w-3xl space-y-3">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-800/80 border border-emerald-600 text-xs font-semibold text-emerald-200">
-            <span>🏛️</span> ESALQ/USP • CMQ — Centro de Métodos Quantitativos
-          </div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            LCF0510 - Inventário Florestal
-          </h2>
-          <div class="text-xs sm:text-sm text-emerald-100/90 space-y-1">
-            <p><strong>Professores:</strong> Matheus Pinheiro Ferreira e Jonathan Trautenmüller</p>
-            <p><strong>Monitor:</strong> Matheus Siqueira Barros</p>
-          </div>
-          <p class="text-xs text-emerald-200/80 pt-1 leading-relaxed">
-            Selecione ou crie um Inventário para gerenciar os grupos da disciplina, cadastrar parcelas amostrais, realizar a medição de árvores em campo e calcular as estatísticas dendrométricas.
-          </p>
-        </div>
+    <div class="space-y-4 sm:space-y-6">
+      <section class="text-sm text-slate-600 space-y-1">
+        <h2 class="text-base sm:text-lg font-bold text-slate-900">Inventário Florestal — ESALQ/USP</h2>
+        <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+          App da disciplina LCF0510 para cadastrar inventários, grupos, parcelas e medições de árvores em campo, com cálculos dendrométricos e exportação.
+        </p>
       </section>
 
       <!-- Barra de Controle de Inventários -->
-      <section class="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <section class="bg-white rounded-xl p-3 sm:p-5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-            <span>📋</span> Inventários Cadastrados
+          <h3 class="text-sm sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span>📋</span> Inventários
           </h3>
           <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
-            ${inventarios.length} inventário(s)
+            ${inventarios.length}
           </span>
         </div>
 
         <div class="flex items-center gap-2">
-          <button id="btn-novo-inventario" class="btn-primary">
+          <button id="btn-novo-inventario" class="btn-primary text-xs sm:text-sm">
             <span>+</span> Novo Inventário
           </button>
         </div>
@@ -1447,35 +1476,35 @@ async function renderColetaArvores(): Promise<string> {
   const cor = corDoGrupo(g?.id);
 
   return `
-    <div class="space-y-4">
+    <div class="space-y-2 sm:space-y-4">
       <!-- Barra Superior de Navegação -->
-      <div class="rounded-xl p-4 border-2 shadow-xs flex flex-wrap items-center justify-between gap-3" style="background:${cor.bg};border-color:${cor.border}">
-        <div>
-          <div class="flex items-center gap-2">
-            <button id="btn-voltar-ao-grupo" class="text-xs font-semibold flex items-center gap-1" style="color:${cor.text}">
+      <div class="rounded-lg p-2 sm:p-3 border-2 shadow-xs flex flex-wrap items-center justify-between gap-2" style="background:${cor.bg};border-color:${cor.border}">
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5 text-xs sm:text-sm">
+            <button id="btn-voltar-ao-grupo" class="font-semibold flex items-center gap-1 shrink-0" style="color:${cor.text}">
               ← ${g?.nome || 'Grupo'}
             </button>
             <span style="color:${cor.border}">/</span>
-            <span class="font-bold font-mono text-base" style="color:${cor.text}">${p.codigo}</span>
-            ${p.nome ? `<span class="text-sm font-semibold" style="color:${cor.text}">— ${p.nome}</span>` : ''}
+            <span class="font-bold font-mono" style="color:${cor.text}">${p.codigo}</span>
+            ${p.nome ? `<span class="font-semibold truncate hidden sm:inline" style="color:${cor.text}">— ${p.nome}</span>` : ''}
           </div>
-          <p class="text-xs mt-0.5" style="color:${cor.text}">
-            <strong>Inventariante:</strong> ${p.inventariante || g?.integrantes || 'Não especificado'} • <strong>Área:</strong> ${formatarNumero(p.areaM2, 1)} m² (${formatarNumero(p.areaHa, 4)} ha)
+          <p class="text-[0.65rem] sm:text-xs mt-0.5 truncate" style="color:${cor.text}">
+            ${formatarNumero(p.areaM2, 1)} m² · ${stats.totalArvores} árv.
           </p>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="btn-finalizar-parcela" class="btn-primary text-xs sm:text-sm py-2 px-4 shadow-sm bg-emerald-700 hover:bg-emerald-800">
-            ✓ Finalizar Parcela
+        <div class="flex items-center gap-1.5">
+          <button id="btn-finalizar-parcela" class="btn-primary text-[0.7rem] sm:text-xs py-1.5 px-2.5 sm:px-3 shadow-sm bg-emerald-700 hover:bg-emerald-800">
+            ✓ Finalizar
           </button>
-          <button id="btn-ver-estatisticas" class="btn-secondary text-xs sm:text-sm py-2 px-3">
-            📊 Resultados
+          <button id="btn-ver-estatisticas" class="btn-secondary text-[0.7rem] sm:text-xs py-1.5 px-2">
+            📊
           </button>
         </div>
       </div>
 
       <!-- Resumo Compacto da Parcela -->
-      <section class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+      <section class="hidden sm:grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
         <div class="stat-card p-2.5">
           <span class="label text-[0.68rem]">Árvores Totais</span>
           <span class="value text-lg" id="live-total-arv">${stats.totalArvores}</span>
@@ -1575,8 +1604,13 @@ async function renderColetaArvores(): Promise<string> {
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
               Azimute (°) <span class="normal-case font-normal text-slate-400">(opc.)</span>
             </label>
-            <input type="number" step="0.1" min="0" max="360" inputmode="decimal" id="input-arv-azimute"
-              class="field-input w-full font-mono" placeholder="0–360 do Norte">
+            <div class="flex gap-1.5">
+              <input type="number" step="0.1" min="0" max="360" inputmode="decimal" id="input-arv-azimute"
+                class="field-input w-full font-mono" placeholder="0–360">
+              <button type="button" id="btn-capturar-azimute" title="Usar bússola do aparelho" class="btn-secondary shrink-0 px-2.5 text-xs">
+                🧭
+              </button>
+            </div>
           </div>
           <div class="sm:col-span-3">
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
@@ -2801,6 +2835,27 @@ function attachEventListeners() {
       }
     });
   }
+
+  document.getElementById('btn-capturar-azimute')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-capturar-azimute') as HTMLButtonElement | null;
+    const input = document.getElementById('input-arv-azimute') as HTMLInputElement | null;
+    if (!input) return;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '…';
+    }
+    const res = await capturarAzimuteBussola();
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🧭';
+    }
+    if (res.sucesso && res.azimute != null) {
+      input.value = String(res.azimute);
+      showToast(`Azimute ${res.azimute}° capturado.`);
+    } else {
+      showToast(res.mensagemErro || 'Falha ao ler a bússola.', 'erro');
+    }
+  });
 
   // Submissão rápida de Árvore
   document.getElementById('form-coleta-arvore')?.addEventListener('submit', async (e) => {
