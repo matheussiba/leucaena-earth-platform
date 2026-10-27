@@ -1255,6 +1255,12 @@ function renderParcelaForm(parcela?: Plot): string {
       ? parcela.dimensoes
       : { tipo: 'retangular' as const, comprimento: 25, largura: 20, unidade: 'm' as const };
 
+  const areaInicialM2 =
+    formatoAtual === 'circular'
+      ? calcularAreaCircular(circularDims.tipoEntrada, circularDims.valorOriginal)
+      : calcularAreaRetangular(rectangularDims.comprimento, rectangularDims.largura);
+  const areaInicialHa = converterM2ParaHectares(areaInicialM2);
+
   return `
     <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-xs border border-slate-200 p-6 space-y-6">
       <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
@@ -1380,8 +1386,8 @@ function renderParcelaForm(parcela?: Plot): string {
           <div>
             <span class="text-xs font-semibold text-emerald-800 uppercase tracking-wide">Área Calculada Automaticamente</span>
             <div class="flex items-baseline gap-3 mt-0.5">
-              <span id="preview-area-m2" class="text-xl font-bold font-mono text-emerald-950">500.00 m²</span>
-              <span id="preview-area-ha" class="text-sm font-semibold font-mono text-emerald-700">0.0500 ha</span>
+              <span id="preview-area-m2" class="text-xl font-bold font-mono text-emerald-950">${formatarNumero(areaInicialM2, 2)} m²</span>
+              <span id="preview-area-ha" class="text-sm font-semibold font-mono text-emerald-700">${formatarNumero(areaInicialHa, 4)} ha</span>
             </div>
           </div>
           <span class="text-2xl">📐</span>
@@ -2652,8 +2658,14 @@ function attachEventListeners() {
 
   document.getElementById('parc-circ-tipo-entrada')?.addEventListener('change', atualizarPreviaAreaParcela);
   document.getElementById('parc-circ-valor')?.addEventListener('input', atualizarPreviaAreaParcela);
+  document.getElementById('parc-circ-valor')?.addEventListener('change', atualizarPreviaAreaParcela);
   document.getElementById('parc-rect-comp')?.addEventListener('input', atualizarPreviaAreaParcela);
+  document.getElementById('parc-rect-comp')?.addEventListener('change', atualizarPreviaAreaParcela);
   document.getElementById('parc-rect-larg')?.addEventListener('input', atualizarPreviaAreaParcela);
+  document.getElementById('parc-rect-larg')?.addEventListener('change', atualizarPreviaAreaParcela);
+  if (document.getElementById('preview-area-m2')) {
+    atualizarPreviaAreaParcela();
+  }
 
   document.getElementById('btn-cancelar-parc')?.addEventListener('click', () => {
     if (state.inventarioAtivo && state.grupoAtivo) {
