@@ -3,6 +3,42 @@ import {
   calcularEstatisticasParcela,
   calcularResumoEspecies,
 } from './calculations';
+import { destinoPorAzimuteDistancia } from './geo';
+
+function coordsArvoreExport(
+  parc: Plot | undefined,
+  arv: Tree
+): { lat: number | null; lng: number | null; tipo: string } {
+  if (!parc?.coordenadas) return { lat: null, lng: null, tipo: 'nao_informado' };
+
+  const centro = parc.coordenadas.centro;
+  if (
+    parc.formato === 'circular' &&
+    centro &&
+    arv.azimute != null &&
+    arv.distanciaCentro != null &&
+    !isNaN(arv.azimute) &&
+    !isNaN(arv.distanciaCentro)
+  ) {
+    const dest = destinoPorAzimuteDistancia(
+      centro.latitude,
+      centro.longitude,
+      arv.azimute,
+      arv.distanciaCentro
+    );
+    return { lat: dest.latitude, lng: dest.longitude, tipo: 'calculada_azimute_distancia' };
+  }
+
+  const pto = centro || (parc.coordenadas.cantos && parc.coordenadas.cantos[0]);
+  if (pto) {
+    return {
+      lat: pto.latitude,
+      lng: pto.longitude,
+      tipo: parc.coordenadas.tipo || 'parcela',
+    };
+  }
+  return { lat: null, lng: null, tipo: parc.coordenadas.tipo || 'nao_informado' };
+}
 
 export type DelimitadorCSV = ';' | ',';
 
@@ -90,6 +126,9 @@ export function gerarCSVArvoresIndividuais(
     'Especie',
     'CAP_cm',
     'DAP_cm',
+    'Altura_H_m',
+    'Azimute_graus',
+    'Distancia_Centro_m',
     'Area_Transversal_g_m2',
     'Status_Medicao',
     'Motivo_Invalido',
@@ -109,9 +148,6 @@ export function gerarCSVArvoresIndividuais(
     const inv = invMap.get(arv.inventarioId);
 
     let dimDesc = '';
-    let coordTipo = 'nao_informado';
-    let lat = '';
-    let lng = '';
     let alt = '';
     let prec = '';
     let dh = '';
@@ -123,21 +159,18 @@ export function gerarCSVArvoresIndividuais(
         dimDesc = `${parc.dimensoes.comprimento}x${parc.dimensoes.largura}m`;
       }
 
-      if (parc.coordenadas) {
-        coordTipo = parc.coordenadas.tipo;
-        const pto =
-          parc.coordenadas.centro ||
-          (parc.coordenadas.cantos && parc.coordenadas.cantos[0]);
-        if (pto) {
-          lat = formatarNumeroExport(pto.latitude, delimitador, 7);
-          lng = formatarNumeroExport(pto.longitude, delimitador, 7);
-          const altitudeVal = pto.manualAltitude ?? pto.altitude;
-          alt = formatarNumeroExport(altitudeVal, delimitador, 2);
-          prec = formatarNumeroExport(pto.precisao, delimitador, 1);
-          dh = pto.dataHora || '';
-        }
+      const pto =
+        parc.coordenadas?.centro ||
+        (parc.coordenadas?.cantos && parc.coordenadas.cantos[0]);
+      if (pto) {
+        const altitudeVal = pto.manualAltitude ?? pto.altitude;
+        alt = formatarNumeroExport(altitudeVal, delimitador, 2);
+        prec = formatarNumeroExport(pto.precisao, delimitador, 1);
+        dh = pto.dataHora || '';
       }
     }
+
+    const treeCoord = coordsArvoreExport(parc, arv);
 
     const linha = [
       escaparCSV(inv?.id || arv.inventarioId, delimitador),
@@ -161,13 +194,16 @@ export function gerarCSVArvoresIndividuais(
       escaparCSV(arv.especie || 'Não identificada', delimitador),
       formatarNumeroExport(arv.cap, delimitador, 2),
       formatarNumeroExport(arv.dap, delimitador, 4),
+      formatarNumeroExport(arv.alturaH ?? null, delimitador, 2),
+      formatarNumeroExport(arv.azimute ?? null, delimitador, 2),
+      formatarNumeroExport(arv.distanciaCentro ?? null, delimitador, 3),
       formatarNumeroExport(arv.g, delimitador, 6),
       escaparCSV(arv.status, delimitador),
       escaparCSV(arv.motivoInvalido || '', delimitador),
       escaparCSV(arv.observacoes || '', delimitador),
-      escaparCSV(coordTipo, delimitador),
-      lat,
-      lng,
+      escaparCSV(treeCoord.tipo, delimitador),
+      formatarNumeroExport(treeCoord.lat, delimitador, 7),
+      formatarNumeroExport(treeCoord.lng, delimitador, 7),
       alt,
       prec,
       escaparCSV(dh, delimitador),
@@ -365,6 +401,9 @@ export function gerarCSVGrupoCompleto(
     'Especie',
     'CAP_cm',
     'DAP_cm',
+    'Altura_H_m',
+    'Azimute_graus',
+    'Distancia_Centro_m',
     'Area_Transversal_g_m2',
     'Status_Medicao',
     'Motivo_Invalido',
@@ -386,9 +425,6 @@ export function gerarCSVGrupoCompleto(
     const parc = parcMap.get(arv.parcelaId);
 
     let dimDesc = '';
-    let coordTipo = 'nao_informado';
-    let lat = '';
-    let lng = '';
     let alt = '';
     let prec = '';
     let dh = '';
@@ -400,21 +436,18 @@ export function gerarCSVGrupoCompleto(
         dimDesc = `${parc.dimensoes.comprimento}x${parc.dimensoes.largura}m`;
       }
 
-      if (parc.coordenadas) {
-        coordTipo = parc.coordenadas.tipo;
-        const pto =
-          parc.coordenadas.centro ||
-          (parc.coordenadas.cantos && parc.coordenadas.cantos[0]);
-        if (pto) {
-          lat = formatarNumeroExport(pto.latitude, delimitador, 7);
-          lng = formatarNumeroExport(pto.longitude, delimitador, 7);
-          const altitudeVal = pto.manualAltitude ?? pto.altitude;
-          alt = formatarNumeroExport(altitudeVal, delimitador, 2);
-          prec = formatarNumeroExport(pto.precisao, delimitador, 1);
-          dh = pto.dataHora || '';
-        }
+      const pto =
+        parc.coordenadas?.centro ||
+        (parc.coordenadas?.cantos && parc.coordenadas.cantos[0]);
+      if (pto) {
+        const altitudeVal = pto.manualAltitude ?? pto.altitude;
+        alt = formatarNumeroExport(altitudeVal, delimitador, 2);
+        prec = formatarNumeroExport(pto.precisao, delimitador, 1);
+        dh = pto.dataHora || '';
       }
     }
+
+    const treeCoord = coordsArvoreExport(parc, arv);
 
     const linha = [
       escaparCSV(inventario.id, delimitador),
@@ -429,7 +462,7 @@ export function gerarCSVGrupoCompleto(
       escaparCSV(parc?.id || arv.parcelaId, delimitador),
       escaparCSV(parc?.codigo || '', delimitador),
       escaparCSV(parc?.nome || '', delimitador),
-      escaparCSV(parc?.inventariante || '', delimitador),
+      escaparCSV(parc?.inventariante || grupo.integrantes || '', delimitador),
       escaparCSV(parc?.formato || '', delimitador),
       escaparCSV(dimDesc, delimitador),
       formatarNumeroExport(parc?.areaM2, delimitador, 2),
@@ -440,13 +473,16 @@ export function gerarCSVGrupoCompleto(
       escaparCSV(arv.especie || 'Não identificada', delimitador),
       formatarNumeroExport(arv.cap, delimitador, 2),
       formatarNumeroExport(arv.dap, delimitador, 4),
+      formatarNumeroExport(arv.alturaH ?? null, delimitador, 2),
+      formatarNumeroExport(arv.azimute ?? null, delimitador, 2),
+      formatarNumeroExport(arv.distanciaCentro ?? null, delimitador, 3),
       formatarNumeroExport(arv.g, delimitador, 6),
       escaparCSV(arv.status, delimitador),
       escaparCSV(arv.motivoInvalido || '', delimitador),
       escaparCSV(arv.observacoes || '', delimitador),
-      escaparCSV(coordTipo, delimitador),
-      lat,
-      lng,
+      escaparCSV(treeCoord.tipo, delimitador),
+      formatarNumeroExport(treeCoord.lat, delimitador, 7),
+      formatarNumeroExport(treeCoord.lng, delimitador, 7),
       alt,
       prec,
       escaparCSV(dh, delimitador),

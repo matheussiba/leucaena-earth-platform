@@ -92,6 +92,9 @@ export interface Tree {
   cap: number | null; // Circunferência à Altura do Peito em cm
   dap: number | null; // Diâmetro à Altura do Peito em cm = CAP / π
   g: number | null; // Área transversal individual em m² = CAP² / (40000 × π)
+  alturaH?: number | null; // Altura total H em metros (opcional)
+  azimute?: number | null; // Azimute do centro em graus (0–360), parcelas circulares
+  distanciaCentro?: number | null; // Distância do centro em metros, parcelas circulares
   observacoes: string;
   status: TreeStatus;
   motivoInvalido?: string;
