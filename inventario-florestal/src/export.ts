@@ -5,39 +5,30 @@ import {
 } from './calculations';
 import { destinoPorAzimuteDistancia } from './geo';
 
+/** Lat/lng da árvore só quando há centro GPS + azimute + distância; senão em branco. */
 function coordsArvoreExport(
   parc: Plot | undefined,
   arv: Tree
 ): { lat: number | null; lng: number | null; tipo: string } {
-  if (!parc?.coordenadas) return { lat: null, lng: null, tipo: 'nao_informado' };
-
-  const centro = parc.coordenadas.centro;
+  const centro = parc?.coordenadas?.centro;
   if (
-    parc.formato === 'circular' &&
-    centro &&
-    arv.azimute != null &&
-    arv.distanciaCentro != null &&
-    !isNaN(arv.azimute) &&
-    !isNaN(arv.distanciaCentro)
+    !parc ||
+    !centro ||
+    arv.azimute == null ||
+    arv.distanciaCentro == null ||
+    isNaN(Number(arv.azimute)) ||
+    isNaN(Number(arv.distanciaCentro))
   ) {
-    const dest = destinoPorAzimuteDistancia(
-      centro.latitude,
-      centro.longitude,
-      arv.azimute,
-      arv.distanciaCentro
-    );
-    return { lat: dest.latitude, lng: dest.longitude, tipo: 'calculada_azimute_distancia' };
+    return { lat: null, lng: null, tipo: '' };
   }
 
-  const pto = centro || (parc.coordenadas.cantos && parc.coordenadas.cantos[0]);
-  if (pto) {
-    return {
-      lat: pto.latitude,
-      lng: pto.longitude,
-      tipo: parc.coordenadas.tipo || 'parcela',
-    };
-  }
-  return { lat: null, lng: null, tipo: parc.coordenadas.tipo || 'nao_informado' };
+  const dest = destinoPorAzimuteDistancia(
+    centro.latitude,
+    centro.longitude,
+    Number(arv.azimute),
+    Number(arv.distanciaCentro)
+  );
+  return { lat: dest.latitude, lng: dest.longitude, tipo: 'calculada_azimute_distancia' };
 }
 
 export type DelimitadorCSV = ';' | ',';
@@ -148,29 +139,25 @@ export function gerarCSVArvoresIndividuais(
     const inv = invMap.get(arv.inventarioId);
 
     let dimDesc = '';
-    let alt = '';
-    let prec = '';
-    let dh = '';
-
     if (parc) {
       if (parc.dimensoes.tipo === 'circular') {
         dimDesc = `${parc.dimensoes.tipoEntrada}=${parc.dimensoes.valorOriginal}m`;
       } else {
         dimDesc = `${parc.dimensoes.comprimento}x${parc.dimensoes.largura}m`;
       }
-
-      const pto =
-        parc.coordenadas?.centro ||
-        (parc.coordenadas?.cantos && parc.coordenadas.cantos[0]);
-      if (pto) {
-        const altitudeVal = pto.manualAltitude ?? pto.altitude;
-        alt = formatarNumeroExport(altitudeVal, delimitador, 2);
-        prec = formatarNumeroExport(pto.precisao, delimitador, 1);
-        dh = pto.dataHora || '';
-      }
     }
 
     const treeCoord = coordsArvoreExport(parc, arv);
+    const centro = parc?.coordenadas?.centro;
+    const alt =
+      treeCoord.lat != null && centro
+        ? formatarNumeroExport(centro.manualAltitude ?? centro.altitude, delimitador, 2)
+        : '';
+    const prec =
+      treeCoord.lat != null && centro
+        ? formatarNumeroExport(centro.precisao, delimitador, 1)
+        : '';
+    const dh = treeCoord.lat != null && centro ? centro.dataHora || '' : '';
 
     const linha = [
       escaparCSV(inv?.id || arv.inventarioId, delimitador),
@@ -425,29 +412,25 @@ export function gerarCSVGrupoCompleto(
     const parc = parcMap.get(arv.parcelaId);
 
     let dimDesc = '';
-    let alt = '';
-    let prec = '';
-    let dh = '';
-
     if (parc) {
       if (parc.dimensoes.tipo === 'circular') {
         dimDesc = `${parc.dimensoes.tipoEntrada}=${parc.dimensoes.valorOriginal}m`;
       } else {
         dimDesc = `${parc.dimensoes.comprimento}x${parc.dimensoes.largura}m`;
       }
-
-      const pto =
-        parc.coordenadas?.centro ||
-        (parc.coordenadas?.cantos && parc.coordenadas.cantos[0]);
-      if (pto) {
-        const altitudeVal = pto.manualAltitude ?? pto.altitude;
-        alt = formatarNumeroExport(altitudeVal, delimitador, 2);
-        prec = formatarNumeroExport(pto.precisao, delimitador, 1);
-        dh = pto.dataHora || '';
-      }
     }
 
     const treeCoord = coordsArvoreExport(parc, arv);
+    const centro = parc?.coordenadas?.centro;
+    const alt =
+      treeCoord.lat != null && centro
+        ? formatarNumeroExport(centro.manualAltitude ?? centro.altitude, delimitador, 2)
+        : '';
+    const prec =
+      treeCoord.lat != null && centro
+        ? formatarNumeroExport(centro.precisao, delimitador, 1)
+        : '';
+    const dh = treeCoord.lat != null && centro ? centro.dataHora || '' : '';
 
     const linha = [
       escaparCSV(inventario.id, delimitador),
