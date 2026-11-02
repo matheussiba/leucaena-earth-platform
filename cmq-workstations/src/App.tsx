@@ -19,6 +19,7 @@ import { CheckOutConfirmModal } from './components/CheckOutConfirmModal';
 import { ExtendModal } from './components/ExtendModal';
 import { ReservationDetailsModal } from './components/ReservationDetailsModal';
 import { Check, AlertTriangle, Zap } from 'lucide-react';
+import { validateReservation } from './utils/fairUseValidator';
 import { defaultState, loadState, saveState } from './api';
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
 
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
   const [reservationToExtend, setReservationToExtend] = useState<Reservation | null>(null);
+  const [extendMode, setExtendMode] = useState<'extend' | 'edit'>('extend');
 
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedDetailsReservation, setSelectedDetailsReservation] = useState<Reservation | null>(null);
@@ -173,10 +175,34 @@ export default function App() {
   };
 
   const handleConfirmExtend = (reservationId: string, newEndIso: string) => {
+    const current = reservations.find((r) => r.id === reservationId);
     setReservations((prev) =>
-      prev.map((r) => (r.id === reservationId ? { ...r, endTime: newEndIso } : r))
+      prev.map((r) => {
+        if (r.id !== reservationId) return r;
+        const validation = validateReservation(
+          {
+            workstationId: r.workstationId,
+            researcherName: r.researcherName,
+            startTime: r.startTime,
+            endTime: newEndIso,
+          },
+          prev,
+          rules,
+          r.id
+        );
+        const fairUsePatch = validation.isValid
+          ? {
+              isNonFairUse: validation.isNonFairUse,
+              nonFairUseThreshold: validation.isNonFairUse ? validation.thresholdIso : undefined,
+              nonFairUseReasons: validation.isNonFairUse ? validation.fairUseViolations : undefined,
+            }
+          : {};
+        return { ...r, endTime: newEndIso, ...fairUsePatch };
+      })
     );
-    showToast('Tempo de uso estendido com sucesso!');
+    const shortened =
+      current != null && new Date(newEndIso).getTime() < new Date(current.endTime).getTime();
+    showToast(shortened ? 'Duração da reserva reduzida.' : 'Tempo de uso estendido com sucesso!');
   };
 
   const handleCancelReservation = (reservationId: string) => {
@@ -450,6 +476,7 @@ export default function App() {
       />
 
       <ExtendModal
+        key={`${reservationToExtend?.id ?? 'none'}-${extendMode}`}
         isOpen={isExtendModalOpen}
         onClose={() => setIsExtendModalOpen(false)}
         reservation={reservationToExtend}
@@ -459,6 +486,7 @@ export default function App() {
             : null
         }
         allReservations={reservations}
+        mode={extendMode}
         onConfirmExtend={handleConfirmExtend}
       />
 
@@ -476,8 +504,9 @@ export default function App() {
           setIsReleaseModalOpen(true);
         }}
         onCancelReservation={handleCancelReservation}
-        onExtend={(res) => {
+        onExtend={(res, mode) => {
           setReservationToExtend(res);
+          setExtendMode(mode ?? 'extend');
           setIsExtendModalOpen(true);
         }}
       />

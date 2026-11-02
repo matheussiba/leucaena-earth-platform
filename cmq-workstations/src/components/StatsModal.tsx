@@ -12,7 +12,7 @@ interface StatsModalProps {
   deletionLog: DeletedReservationEntry[];
 }
 
-type PeriodFilter = 'day' | 'week' | 'month';
+type PeriodFilter = 'day' | 'week' | 'month' | 'year' | 'ytd' | 'max';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
@@ -53,12 +53,37 @@ export const StatsModal: React.FC<StatsModalProps> = ({
       start.setHours(0, 0, 0, 0);
       end.setDate(start.getDate() + 6);
       end.setHours(23, 59, 59, 999);
-    } else {
-      // month
+    } else if (p === 'month') {
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
       end.setMonth(end.getMonth() + 1, 0);
       end.setHours(23, 59, 59, 999);
+    } else if (p === 'year') {
+      start.setMonth(0, 1);
+      start.setHours(0, 0, 0, 0);
+      end.setMonth(11, 31);
+      end.setHours(23, 59, 59, 999);
+    } else if (p === 'ytd') {
+      // Último ano até hoje: da mesma data no ano passado até o fim de hoje
+      start.setFullYear(start.getFullYear() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else {
+      let min = Infinity;
+      let max = -Infinity;
+      reservations.forEach((r) => {
+        const s = new Date(r.startTime).getTime();
+        const e = new Date(r.endTime).getTime();
+        if (!Number.isNaN(s)) min = Math.min(min, s);
+        if (!Number.isNaN(e)) max = Math.max(max, e);
+      });
+      if (min !== Infinity && max !== -Infinity) {
+        start.setTime(min);
+        end.setTime(max);
+      } else {
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+      }
     }
     return { start, end };
   };
@@ -130,6 +155,9 @@ export const StatsModal: React.FC<StatsModalProps> = ({
     day: 'Hoje',
     week: 'Esta Semana',
     month: 'Este Mês',
+    year: 'Este Ano',
+    ytd: 'Último ano até hoje',
+    max: 'Todo o histórico',
   };
 
   const buildOccupancyLogTxt = () => {
@@ -266,41 +294,32 @@ export const StatsModal: React.FC<StatsModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Segmented Period Filter: Dia | Semana | Mês */}
-            <div className="flex items-center p-0.5 bg-slate-200/80 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setPeriod('day')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  period === 'day'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Dia
-              </button>
-              <button
-                type="button"
-                onClick={() => setPeriod('week')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  period === 'week'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Semana
-              </button>
-              <button
-                type="button"
-                onClick={() => setPeriod('month')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  period === 'month'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Mês
-              </button>
+            {/* Segmented Period Filter: Dia | Semana | Mês | Ano | YTD | MAX */}
+            <div className="flex flex-wrap items-center p-0.5 bg-slate-200/80 rounded-lg">
+              {(
+                [
+                  ['day', 'Dia', 'Hoje'],
+                  ['week', 'Semana', 'Esta semana'],
+                  ['month', 'Mês', 'Este mês'],
+                  ['year', 'Ano', 'Ano corrente, de janeiro a dezembro'],
+                  ['ytd', 'YTD', 'Último ano até a data de hoje'],
+                  ['max', 'MAX', 'Tudo que já tem de registro'],
+                ] as const
+              ).map(([id, label, title]) => (
+                <button
+                  key={id}
+                  type="button"
+                  title={title}
+                  onClick={() => setPeriod(id)}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                    period === id
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
             <button

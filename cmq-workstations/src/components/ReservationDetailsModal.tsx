@@ -2,7 +2,7 @@ import React from 'react';
 import { Reservation, Workstation } from '../types';
 import { formatTime, formatDateFull, calculateDurationHours, formatBayNumber } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
-import { X, Clock, Calendar, User, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 
 interface ReservationDetailsModalProps {
   isOpen: boolean;
@@ -11,7 +11,7 @@ interface ReservationDetailsModalProps {
   workstation: Workstation | null;
   onReleaseNow: (reservation: Reservation) => void;
   onCancelReservation: (reservationId: string) => void;
-  onExtend: (reservation: Reservation) => void;
+  onExtend: (reservation: Reservation, mode?: 'extend' | 'edit') => void;
 }
 
 export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = ({
@@ -176,12 +176,23 @@ export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = (
           </button>
 
           <div className="flex items-center gap-1.5 ml-auto">
+            <button
+              type="button"
+              onClick={() => {
+                onExtend(reservation, 'edit');
+                onClose();
+              }}
+              className="px-2.5 py-1.5 text-xs text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md font-semibold transition-colors flex items-center gap-1"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Editar</span>
+            </button>
             {isNowActive && (
               <>
                 <button
                   type="button"
                   onClick={() => {
-                    onExtend(reservation);
+                    onExtend(reservation, 'extend');
                     onClose();
                   }}
                   className="px-2.5 py-1.5 text-xs text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-md font-semibold transition-colors"
