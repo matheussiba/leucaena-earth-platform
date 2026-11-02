@@ -183,6 +183,7 @@ export default function App() {
 
   const handleConfirmExtend = (reservationId: string, newEndIso: string) => {
     const current = reservations.find((r) => r.id === reservationId);
+    let updated: Reservation | null = null;
     setReservations((prev) =>
       prev.map((r) => {
         if (r.id !== reservationId) return r;
@@ -204,9 +205,28 @@ export default function App() {
               nonFairUseReasons: validation.isNonFairUse ? validation.fairUseViolations : undefined,
             }
           : {};
-        return { ...r, endTime: newEndIso, ...fairUsePatch };
+
+        // Reabrir como ativa se o novo intervalo cobrir (ou for depois de) agora —
+        // ex.: liberou a máquina e depois alongou o término de novo.
+        const nowMs = Date.now();
+        const startMs = new Date(r.startTime).getTime();
+        const endMs = new Date(newEndIso).getTime();
+        let status = r.status;
+        if (r.status !== 'cancelled') {
+          if (endMs <= nowMs) status = 'completed';
+          else if (startMs <= endMs) status = 'active';
+        }
+
+        updated = { ...r, endTime: newEndIso, status, ...fairUsePatch };
+        return updated;
       })
     );
+    if (updated) {
+      setSelectedDetailsReservation((prev) =>
+        prev?.id === reservationId ? updated : prev
+      );
+      setReservationToExtend((prev) => (prev?.id === reservationId ? updated : prev));
+    }
     const shortened =
       current != null && new Date(newEndIso).getTime() < new Date(current.endTime).getTime();
     showToast(shortened ? 'Duração da reserva reduzida.' : 'Tempo de uso estendido com sucesso!');
