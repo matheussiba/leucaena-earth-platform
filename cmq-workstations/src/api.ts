@@ -29,6 +29,15 @@ export type CmqState = {
 
 const API = '/cmq/api/state';
 
+function normalizeReservation(r: Reservation): Reservation {
+  const raw = r?.createdAt;
+  const createdAt =
+    typeof raw === 'string' && raw.trim() && !Number.isNaN(new Date(raw).getTime())
+      ? raw
+      : null;
+  return { ...r, createdAt };
+}
+
 export function defaultState(): CmqState {
   return {
     workstations: withDefaultIps(INITIAL_WORKSTATIONS.map((w) => ({ ...w }))),
@@ -53,8 +62,15 @@ export async function loadState(): Promise<CmqState> {
     members: Array.isArray(data.members) && data.members.length
       ? data.members
       : base.members,
-    reservations: Array.isArray(data.reservations) ? data.reservations : [],
-    deletionLog: Array.isArray(data.deletionLog) ? data.deletionLog : [],
+    reservations: Array.isArray(data.reservations)
+      ? data.reservations.map(normalizeReservation)
+      : [],
+    deletionLog: Array.isArray(data.deletionLog)
+      ? data.deletionLog.map((entry: DeletedReservationEntry) => ({
+          ...entry,
+          reservation: normalizeReservation(entry.reservation),
+        }))
+      : [],
     rules: data.rules && typeof data.rules === 'object'
       ? { ...DEFAULT_RULES, ...data.rules }
       : base.rules,

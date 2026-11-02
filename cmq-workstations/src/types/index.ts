@@ -50,7 +50,10 @@ export interface Reservation {
   isNonFairUse?: boolean;
   nonFairUseThreshold?: string; // Horário exato a partir do qual ultrapassa o Fair-Use
   nonFairUseReasons?: string[];
-  createdAt: string;
+  /** When the booking was created. Null for legacy rows without that timestamp. */
+  createdAt: string | null;
+  /** Optional series id when created via recurrence */
+  seriesId?: string;
 }
 
 /** Snapshot kept after hard-delete so the occupancy log still has history. */

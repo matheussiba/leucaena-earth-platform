@@ -143,20 +143,27 @@ export default function App() {
   };
 
   const handleCreateReservation = (
-    data: Omit<Reservation, 'id' | 'createdAt' | 'status'>
+    data: Omit<Reservation, 'id' | 'createdAt' | 'status'> | Array<Omit<Reservation, 'id' | 'createdAt' | 'status'>>
   ) => {
-    const newReservation: Reservation = {
-      ...data,
-      id: `res-${Date.now()}`,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    };
+    const items = Array.isArray(data) ? data : [data];
+    const createdAt = new Date().toISOString();
+    const stamp = Date.now();
+    const created: Reservation[] = items.map((item, idx) => ({
+      ...item,
+      id: `res-${stamp}-${idx}`,
+      status: 'active' as const,
+      createdAt,
+    }));
 
-    setReservations((prev) => [newReservation, ...prev]);
+    setReservations((prev) => [...created, ...prev]);
 
-    if (data.isNonFairUse) {
+    const first = items[0];
+    if (!first) return;
+    if (items.length > 1) {
+      showToast(`${items.length} ocorrências agendadas no calendário.`);
+    } else if (first.isNonFairUse) {
       showToast('Reserva criada com destaque (fora do Fair-Use, combinável no WhatsApp).');
-    } else if (data.type === 'instant_checkin') {
+    } else if (first.type === 'instant_checkin') {
       showToast('Check-in realizado! Máquina marcada como em uso.');
     } else {
       showToast('Reserva confirmada no calendário!');
