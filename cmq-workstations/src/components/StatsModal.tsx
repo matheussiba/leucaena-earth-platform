@@ -425,9 +425,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                 </div>
               </div>
               <span className="text-[10px] text-slate-400 font-mono mt-1">
-                {leadSamples.length > 0
-                  ? `antecedência · ${leadSamples.length} c/ data`
-                  : 'sem data de criação no período'}
+                {avgLeadHours == null ? 'sem data de criação' : 'antecedência'}
               </span>
             </div>
 

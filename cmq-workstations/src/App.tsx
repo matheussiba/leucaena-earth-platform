@@ -212,16 +212,35 @@ export default function App() {
     showToast(shortened ? 'Duração da reserva reduzida.' : 'Tempo de uso estendido com sucesso!');
   };
 
-  const handleCancelReservation = (reservationId: string) => {
-    const doomed = reservations.find((r) => r.id === reservationId);
-    if (doomed) {
-      setDeletionLog((log) => [
-        { deletedAt: new Date().toISOString(), reservation: { ...doomed } },
-        ...log,
-      ]);
-    }
-    setReservations((prev) => prev.filter((r) => r.id !== reservationId));
-    showToast('Atividade removida do cronograma.');
+  const handleCancelReservation = (
+    reservationId: string,
+    mode: 'one' | 'all' | 'this_and_future' = 'one'
+  ) => {
+    const target = reservations.find((r) => r.id === reservationId);
+    if (!target) return;
+
+    const startMs = new Date(target.startTime).getTime();
+    const doomed = reservations.filter((r) => {
+      if (mode === 'one') return r.id === reservationId;
+      if (!target.seriesId || r.seriesId !== target.seriesId) return r.id === reservationId;
+      if (mode === 'all') return true;
+      return new Date(r.startTime).getTime() >= startMs;
+    });
+
+    if (doomed.length === 0) return;
+
+    const deletedAt = new Date().toISOString();
+    setDeletionLog((log) => [
+      ...doomed.map((reservation) => ({ deletedAt, reservation: { ...reservation } })),
+      ...log,
+    ]);
+    const doomedIds = new Set(doomed.map((r) => r.id));
+    setReservations((prev) => prev.filter((r) => !doomedIds.has(r.id)));
+    showToast(
+      doomed.length > 1
+        ? `${doomed.length} ocorrências removidas do cronograma.`
+        : 'Atividade removida do cronograma.'
+    );
   };
 
   const handleSaveWorkstation = (ws: Workstation) => {
@@ -506,6 +525,7 @@ export default function App() {
             ? liveWorkstations.find((w) => w.id === selectedDetailsReservation.workstationId) || null
             : null
         }
+        allReservations={reservations}
         onReleaseNow={(res) => {
           setReservationToRelease(res);
           setIsReleaseModalOpen(true);
