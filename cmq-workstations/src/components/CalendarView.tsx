@@ -293,7 +293,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       <div className="shrink-0 bg-white rounded-lg border border-slate-200 px-3 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-2 text-xs shadow-2xs">
         {viewMode === 'day' && (
           <span className="font-mono text-[11px] text-blue-700 font-bold flex items-center gap-1.5">
-            <span>👉 CLIQUE E ARRASTE NO CRONOGRAMA PARA MARCAR O INTERVALO</span>
+            <span className="sm:hidden">👉 CLIQUE E ARRASTE PARA MARCAR O INTERVALO</span>
+            <span className="hidden sm:inline">
+              👉 CLIQUE E ARRASTE NO CRONOGRAMA PARA MARCAR O INTERVALO
+            </span>
           </span>
         )}
 
