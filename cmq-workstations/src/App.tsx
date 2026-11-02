@@ -279,7 +279,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen lg:h-dvh lg:max-h-dvh lg:overflow-hidden bg-slate-100/60 text-slate-900 font-sans flex flex-col">
+    <div className="h-dvh max-h-dvh overflow-hidden bg-slate-100/60 text-slate-900 font-sans flex flex-col">
       {/* Toast */}
       {toastMessage && (
         <div className="fixed top-16 right-4 sm:right-6 z-50 bg-slate-900 text-white px-3.5 py-2 rounded-lg shadow-xl border border-slate-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-200">
@@ -301,7 +301,7 @@ export default function App() {
       />
 
       {/* Main Content — fill remaining viewport height on desktop */}
-      <main className="flex-1 min-h-0 w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-3 sm:py-4 lg:py-4 flex flex-col gap-3 sm:gap-3.5 lg:overflow-hidden">
+      <main className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-3 sm:py-4 lg:py-4 flex flex-col gap-3 sm:gap-3.5">
         {/* Compact Live Workstations Bar (Clean, without any "Trocar" text) */}
         <div className="shrink-0 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
           {liveWorkstations.map((ws) => {
@@ -312,101 +312,130 @@ export default function App() {
             return (
               <div
                 key={ws.id}
-                className={`bg-white rounded-xl border p-2 sm:p-3 flex items-center justify-between gap-2 sm:gap-3 transition-all min-w-0 ${
+                className={`bg-white rounded-xl border p-2 sm:p-3 transition-all min-w-0 ${
                   isBusy
                     ? 'border-slate-300 ring-1 ring-emerald-200/60 shadow-2xs'
                     : 'border-slate-200 shadow-2xs hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                  <WorkstationThumbnail workstation={ws} size="md" />
-                  <div className="min-w-0 hidden sm:block">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-bold text-slate-500">
-                        BAIA {formatBayNumber(ws.bayNumber)}
-                      </span>
-                      <span className="text-slate-300">·</span>
-                      <span className="font-bold text-slate-900 text-xs truncate">
-                        {ws.name}
-                      </span>
+                {/* Mobile: compact stack */}
+                <div className="sm:hidden space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <WorkstationThumbnail workstation={ws} size="md" />
                     </div>
-                    <div className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
-                      {ws.gpu}
+                    <div className="shrink-0 text-right">
+                      {isBusy && activeRes ? (
+                        <div>
+                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                            <span className="max-w-[4.5rem] truncate">
+                              {activeRes.researcherName.split(' ')[0]}
+                            </span>
+                            {activeRes.isNonFairUse && (
+                              <span title="Excede o limite de Fair-Use">
+                                <AlertTriangle className="w-3 h-3 text-amber-500 fill-amber-100 shrink-0 ml-0.5" />
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5">
+                            {remaining?.formatted}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>Livre</span>
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
-                      <span>RAM: {ws.ram}</span>
-                      <span>·</span>
-                      <span>HD: {ws.internalStorage}</span>
-                    </div>
-                    {ws.ip ? (
-                      <div
-                        className="text-[10px] font-mono font-semibold text-slate-700 mt-0.5 truncate"
-                        title="IP da máquina"
-                      >
-                        IP {ws.ip}
-                      </div>
-                    ) : null}
                   </div>
-                  <div className="min-w-0 sm:hidden">
-                    <div className="font-mono text-[10px] font-bold text-slate-600 truncate">
-                      B{formatBayNumber(ws.bayNumber)}
+                  <div className="text-[10px] font-bold text-slate-800 uppercase tracking-wide truncate">
+                    {ws.name}
+                  </div>
+                  {ws.ip ? (
+                    <div
+                      className="text-[10px] font-mono text-slate-400 truncate"
+                      title="IP da máquina"
+                    >
+                      {ws.ip}
                     </div>
-                    {ws.ip ? (
-                      <div
-                        className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5 truncate"
-                        title="IP da máquina"
-                      >
-                        {ws.ip}
+                  ) : null}
+                </div>
+
+                {/* Desktop / tablet: fuller card */}
+                <div className="hidden sm:flex items-center justify-between gap-2.5 sm:gap-3 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <WorkstationThumbnail workstation={ws} size="md" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold text-slate-500">
+                          BAIA {formatBayNumber(ws.bayNumber)}
+                        </span>
+                        <span className="text-slate-300">·</span>
+                        <span className="font-bold text-slate-900 text-xs truncate">
+                          {ws.name}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
+                        {ws.gpu}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                        <span>RAM: {ws.ram}</span>
+                        <span>·</span>
+                        <span>HD: {ws.internalStorage}</span>
+                      </div>
+                      {ws.ip ? (
+                        <div
+                          className="text-[10px] font-mono font-semibold text-slate-700 mt-0.5 truncate"
+                          title="IP da máquina"
+                        >
+                          IP {ws.ip}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    {isBusy && activeRes ? (
+                      <div>
+                        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                          <span>{activeRes.researcherName.split(' ')[0]}</span>
+                          {activeRes.isNonFairUse && (
+                            <span title="Excede o limite de Fair-Use">
+                              <AlertTriangle className="w-3 h-3 text-amber-500 fill-amber-100 shrink-0 ml-0.5" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5">
+                          {remaining?.formatted}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setReservationToRelease(activeRes);
+                            setIsReleaseModalOpen(true);
+                          }}
+                          className="text-[10px] font-semibold text-rose-700 hover:underline mt-1"
+                        >
+                          Liberar
+                        </button>
                       </div>
                     ) : (
-                      <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5 truncate">
-                        {ws.name}
+                      <div>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>Livre</span>
+                        </span>
+                        <button
+                          onClick={() => handleOpenQuickCheckIn(ws.id)}
+                          className="mt-1 block text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
+                        >
+                          Usar Agora →
+                        </button>
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  {isBusy && activeRes ? (
-                    <div>
-                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span className="max-w-[4.5rem] truncate">
-                          {activeRes.researcherName.split(' ')[0]}
-                        </span>
-                        {activeRes.isNonFairUse && (
-                          <span title="Excede o limite de Fair-Use">
-                            <AlertTriangle className="w-3 h-3 text-amber-500 fill-amber-100 shrink-0 ml-0.5" />
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5">
-                        {remaining?.formatted}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setReservationToRelease(activeRes);
-                          setIsReleaseModalOpen(true);
-                        }}
-                        className="hidden sm:inline text-[10px] font-semibold text-rose-700 hover:underline mt-1"
-                      >
-                        Liberar
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        <span>Livre</span>
-                      </span>
-                      <button
-                        onClick={() => handleOpenQuickCheckIn(ws.id)}
-                        className="hidden sm:block mt-1 text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
-                      >
-                        Usar Agora →
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -426,7 +455,7 @@ export default function App() {
       </main>
 
       {/* Simplified Footer */}
-      <footer className="shrink-0 bg-white border-t border-slate-200 py-2.5 lg:py-3 text-xs text-slate-500">
+      <footer className="shrink-0 bg-white border-t border-slate-200 py-1.5 lg:py-2.5 text-xs text-slate-500">
         <div className="w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-center sm:justify-between gap-2 whitespace-nowrap overflow-hidden">
           <div className="truncate">
             <span className="sm:hidden">
