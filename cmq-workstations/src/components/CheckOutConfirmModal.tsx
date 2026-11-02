@@ -64,7 +64,7 @@ export const CheckOutConfirmModal: React.FC<CheckOutConfirmModalProps> = ({
 
           <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-1.5">
             <div className="flex justify-between">
-              <span className="text-slate-500">Pesquisador:</span>
+              <span className="text-slate-500">Usuário:</span>
               <span className="font-semibold text-slate-900">{reservation.researcherName}</span>
             </div>
             <div className="flex justify-between">

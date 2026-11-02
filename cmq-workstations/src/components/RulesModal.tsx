@@ -198,7 +198,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({
                   <span>Trava Anti-Monopólio (Máx. {rules.maxAdvanceDays} Dias)</span>
                 </div>
                 <p className="text-slate-600 leading-relaxed text-[11px]">
-                  Não é permitido bloquear máquinas com mais de <strong>{rules.maxAdvanceDays} dias de antecedência</strong>. Isso impede que alguém feche três semanas seguidas todos os dias e garante rotatividade entre os pesquisadores.
+                  Não é permitido bloquear máquinas com mais de <strong>{rules.maxAdvanceDays} dias de antecedência</strong>. Isso impede que alguém feche três semanas seguidas todos os dias e garante rotatividade entre os usuários.
                 </p>
               </div>
 
@@ -208,7 +208,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({
                   <span>Pontualidade & Liberação Imediata</span>
                 </div>
                 <p className="text-slate-600 leading-relaxed text-[11px]">
-                  Como um pesquisador pode sair logo e o próximo já precisa entrar, <strong>coloque exatamente o horário planejado</strong>. Se terminar o processamento antes, use o botão <strong>"Liberar Máquina Agora"</strong> para desocupar para os colegas.
+                  Como um usuário pode sair logo e o próximo já precisa entrar, <strong>coloque exatamente o horário planejado</strong>. Se terminar o processamento antes, use o botão <strong>"Liberar Máquina Agora"</strong> para desocupar para os colegas.
                 </p>
               </div>
 

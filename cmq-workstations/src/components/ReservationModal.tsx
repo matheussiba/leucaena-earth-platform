@@ -306,7 +306,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       const v = validateReservation(
         {
           workstationId: selectedWsId,
-          researcherName: selectedMemberName || 'Pesquisador',
+          researcherName: selectedMemberName || 'Usuário',
           startTime: w.startTime,
           endTime: w.endTime,
         },
@@ -322,7 +322,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         {
           id: `preview-${accepted.length}`,
           workstationId: selectedWsId,
-          researcherName: selectedMemberName || 'Pesquisador',
+          researcherName: selectedMemberName || 'Usuário',
           researcherRole: 'Mestrado',
           startTime: w.startTime,
           endTime: w.endTime,
@@ -359,7 +359,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     return validateReservation(
       {
         workstationId: selectedWsId,
-        researcherName: selectedMemberName || 'Pesquisador',
+        researcherName: selectedMemberName || 'Usuário',
         startTime: computedStartIso,
         endTime: computedEndIso,
       },
@@ -406,7 +406,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     if (!canSubmit) return;
 
     if (!selectedMemberName.trim()) {
-      alert('Por favor, selecione ou adicione um pesquisador.');
+      alert('Por favor, selecione ou adicione um usuário.');
       return;
     }
 
@@ -580,7 +580,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
-                Pesquisador *
+                Usuário *
               </label>
               <button
                 type="button"
@@ -597,7 +597,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input
                     type="text"
-                    placeholder="Nome do pesquisador"
+                    placeholder="Nome do usuário"
                     value={newMemberName}
                     onChange={(e) => setNewMemberName(e.target.value)}
                     className="p-1.5 text-xs border border-slate-300 rounded bg-white"
@@ -970,7 +970,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                       ))}
                     </ul>
                     <p className="mt-1.5 text-[11px] text-slate-600">
-                      A parte regular da reserva será exibida normalmente. A partir do momento em que ultrapassa as regras, o trecho excedente ficará marcado no calendário com o ícone <strong>(!)</strong> para que você possa combinar liberação no WhatsApp caso outro pesquisador precise.
+                      A parte regular da reserva será exibida normalmente. A partir do momento em que ultrapassa as regras, o trecho excedente ficará marcado no calendário com o ícone <strong>(!)</strong> para que você possa combinar liberação no WhatsApp caso outro usuário precise.
                     </p>
                   </div>
                 </div>

@@ -263,19 +263,19 @@ export default function App() {
 
   const handleAddMember = (member: LabMember) => {
     setMembers((prev) => [...prev, member]);
-    showToast(`Pesquisador ${member.name} cadastrado!`);
+    showToast(`Usuário ${member.name} cadastrado!`);
   };
 
   const handleUpdateMember = (updatedMember: LabMember) => {
     setMembers((prev) =>
       prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
     );
-    showToast(`Pesquisador ${updatedMember.name} atualizado!`);
+    showToast(`Usuário ${updatedMember.name} atualizado!`);
   };
 
   const handleDeleteMember = (id: string) => {
     setMembers((prev) => prev.filter((m) => m.id !== id));
-    showToast('Pesquisador removido.');
+    showToast('Usuário removido.');
   };
 
   return (
@@ -303,7 +303,7 @@ export default function App() {
       {/* Main Content — fill remaining viewport height on desktop */}
       <main className="flex-1 min-h-0 w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-3 sm:py-4 lg:py-4 flex flex-col gap-3 sm:gap-3.5 lg:overflow-hidden">
         {/* Compact Live Workstations Bar (Clean, without any "Trocar" text) */}
-        <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="shrink-0 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
           {liveWorkstations.map((ws) => {
             const activeRes = getCurrentActiveReservation(ws.id, reservations);
             const isBusy = !!activeRes;
@@ -312,15 +312,15 @@ export default function App() {
             return (
               <div
                 key={ws.id}
-                className={`bg-white rounded-xl border p-3 flex items-center justify-between gap-2.5 sm:gap-3 transition-all ${
+                className={`bg-white rounded-xl border p-2 sm:p-3 flex items-center justify-between gap-2 sm:gap-3 transition-all min-w-0 ${
                   isBusy
                     ? 'border-slate-300 ring-1 ring-emerald-200/60 shadow-2xs'
                     : 'border-slate-200 shadow-2xs hover:border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                   <WorkstationThumbnail workstation={ws} size="md" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 hidden sm:block">
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-xs font-bold text-slate-500">
                         BAIA {formatBayNumber(ws.bayNumber)}
@@ -330,34 +330,50 @@ export default function App() {
                         {ws.name}
                       </span>
                     </div>
-
                     <div className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
                       {ws.gpu}
                     </div>
-
                     <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
                       <span>RAM: {ws.ram}</span>
                       <span>·</span>
                       <span>HD: {ws.internalStorage}</span>
                     </div>
-
                     {ws.ip ? (
-                      <div className="text-[10px] font-mono font-semibold text-slate-700 mt-0.5 truncate" title="IP da máquina">
+                      <div
+                        className="text-[10px] font-mono font-semibold text-slate-700 mt-0.5 truncate"
+                        title="IP da máquina"
+                      >
                         IP {ws.ip}
                       </div>
                     ) : null}
                   </div>
+                  <div className="min-w-0 sm:hidden">
+                    <div className="font-mono text-[10px] font-bold text-slate-600 truncate">
+                      B{formatBayNumber(ws.bayNumber)}
+                    </div>
+                    {ws.ip ? (
+                      <div
+                        className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5 truncate"
+                        title="IP da máquina"
+                      >
+                        {ws.ip}
+                      </div>
+                    ) : (
+                      <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5 truncate">
+                        {ws.name}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Right Action / Status in bay card */}
                 <div className="shrink-0 text-right">
                   {isBusy && activeRes ? (
                     <div>
-                      <div
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900"
-                      >
+                      <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span>{activeRes.researcherName.split(' ')[0]}</span>
+                        <span className="max-w-[4.5rem] truncate">
+                          {activeRes.researcherName.split(' ')[0]}
+                        </span>
                         {activeRes.isNonFairUse && (
                           <span title="Excede o limite de Fair-Use">
                             <AlertTriangle className="w-3 h-3 text-amber-500 fill-amber-100 shrink-0 ml-0.5" />
@@ -365,19 +381,17 @@ export default function App() {
                         )}
                       </div>
                       <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5">
-                        restam {remaining?.formatted}
+                        {remaining?.formatted}
                       </div>
-                      <div className="flex items-center justify-end gap-1 mt-1">
-                        <button
-                          onClick={() => {
-                            setReservationToRelease(activeRes);
-                            setIsReleaseModalOpen(true);
-                          }}
-                          className="text-[10px] font-semibold text-rose-700 hover:underline"
-                        >
-                          Liberar
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setReservationToRelease(activeRes);
+                          setIsReleaseModalOpen(true);
+                        }}
+                        className="hidden sm:inline text-[10px] font-semibold text-rose-700 hover:underline mt-1"
+                      >
+                        Liberar
+                      </button>
                     </div>
                   ) : (
                     <div>
@@ -387,7 +401,7 @@ export default function App() {
                       </span>
                       <button
                         onClick={() => handleOpenQuickCheckIn(ws.id)}
-                        className="mt-1 block text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
+                        className="hidden sm:block mt-1 text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
                       >
                         Usar Agora →
                       </button>
@@ -413,13 +427,30 @@ export default function App() {
 
       {/* Simplified Footer */}
       <footer className="shrink-0 bg-white border-t border-slate-200 py-2.5 lg:py-3 text-xs text-slate-500">
-        <div className="w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            <span className="font-bold text-slate-800">CMQ Workstations</span>
-            <span className="mx-2">·</span>
-            <span>Controle & Agendamento de Workstations do Laboratório</span>
+        <div className="w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-center sm:justify-between gap-2 whitespace-nowrap overflow-hidden">
+          <div className="truncate">
+            <span className="sm:hidden">
+              Sugestões de melhoria:{' '}
+              <a
+                href="mailto:ms.barros@usp.br"
+                className="text-slate-700 font-medium hover:text-slate-900 hover:underline"
+              >
+                ms.barros@usp.br
+              </a>
+            </span>
+            <span className="hidden sm:inline">
+              <span className="font-bold text-slate-800">CMQ Workstations</span>
+              <span className="mx-2">·</span>
+              <span>Sugestões de melhoria: </span>
+              <a
+                href="mailto:ms.barros@usp.br"
+                className="text-slate-700 font-medium hover:text-slate-900 hover:underline"
+              >
+                ms.barros@usp.br
+              </a>
+            </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3 shrink-0">
             <button
               onClick={() => setIsWorkstationsModalOpen(true)}
               className="text-slate-600 hover:text-slate-900 hover:underline"
