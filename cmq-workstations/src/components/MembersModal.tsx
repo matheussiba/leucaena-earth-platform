@@ -109,7 +109,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
           <form onSubmit={handleSubmit} className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-3">
             <div className="font-semibold text-slate-800 flex items-center gap-1.5">
               <UserPlus className="w-4 h-4 text-emerald-600" />
-              <span>Cadastrar Novo Pesquisador</span>
+              <span>Cadastrar Novo Usuário</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -165,14 +165,14 @@ export const MembersModal: React.FC<MembersModalProps> = ({
           {/* Members list (Sorted alphabetically) */}
           <div>
             <div className="font-semibold text-slate-700 mb-2 flex items-center justify-between">
-              <span>Pesquisadores Cadastrados ({members.length}) — Ordem Alfabética</span>
+              <span>Usuários Cadastrados ({members.length}) — Ordem Alfabética</span>
               <span className="text-[11px] text-slate-400 font-normal">Aparecerão no menu ao agendar</span>
             </div>
 
             <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg max-h-64 overflow-y-auto bg-white">
               {sortedMembers.length === 0 ? (
                 <div className="p-4 text-center text-slate-400 italic">
-                  Nenhum pesquisador cadastrado.
+                  Nenhum usuário cadastrado.
                 </div>
               ) : (
                 sortedMembers.map((mem) => {
@@ -255,7 +255,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
                         <button
                           onClick={() => onDeleteMember(mem.id)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition-colors"
-                          title="Excluir pesquisador"
+                          title="Excluir usuário"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

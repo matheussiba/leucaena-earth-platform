@@ -198,7 +198,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
       '=== RESUMO DO PERÍODO ===',
       `Total de horas: ${totalHours.toFixed(2)}h`,
       `Reservas (ativas/concluídas no período): ${activeOrCompleted.length}`,
-      `Pesquisadores ativos: ${Object.keys(hoursByResearcher).length}`,
+      `Usuários ativos: ${Object.keys(hoursByResearcher).length}`,
       `Excedentes Fair-Use: ${nonFairUseRes.length}`,
       `Horas totais fora Fair-Use: ${totalExcessHours.toFixed(2)}h`,
       `Média horas fora Fair-Use: ${avgExcessHours.toFixed(2)}h`,
@@ -217,7 +217,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
       );
     });
 
-    lines.push('', '=== USO POR PESQUISADOR ===');
+    lines.push('', '=== USO POR USUÁRIO ===');
     Object.entries(hoursByResearcher)
       .sort((a, b) => b[1].hours - a[1].hours)
       .forEach(([name, data], idx) => {
@@ -397,12 +397,12 @@ export const StatsModal: React.FC<StatsModalProps> = ({
               </span>
             </div>
 
-            {/* 3. Pesquisadores */}
+            {/* 3. Usuários */}
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-col justify-between">
               <div>
                 <span className="text-[10px] uppercase font-semibold text-slate-500 block flex items-center gap-1">
                   <Users className="w-3 h-3 text-emerald-500" />
-                  <span>Pesquisadores</span>
+                  <span>Usuários</span>
                 </span>
                 <div className="text-xl font-bold font-mono text-emerald-700 mt-1">
                   {Object.keys(hoursByResearcher).length}
@@ -487,7 +487,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
           {/* Top Researchers */}
           <div className="p-4 bg-white rounded-lg border border-slate-200 space-y-2.5">
             <div className="flex items-center justify-between">
-              <h4 className="font-bold text-slate-800 text-xs">Uso por Pesquisador</h4>
+              <h4 className="font-bold text-slate-800 text-xs">Uso por Usuário</h4>
               <span className="text-[10px] font-mono text-slate-400">
                 Filtro: {periodLabels[period]}
               </span>
