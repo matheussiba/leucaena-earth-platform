@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Reservation, Workstation } from '../types';
 import { formatTime, formatDateFull, calculateDurationHours, formatBayNumber } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { X, Trash2, AlertTriangle, Pencil } from 'lucide-react';
+
+export type SeriesDeleteMode = 'one' | 'all' | 'this_and_future';
 
 interface ReservationDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   reservation: Reservation | null;
   workstation: Workstation | null;
+  allReservations: Reservation[];
   onReleaseNow: (reservation: Reservation) => void;
-  onCancelReservation: (reservationId: string) => void;
+  onCancelReservation: (reservationId: string, mode?: SeriesDeleteMode) => void;
   onExtend: (reservation: Reservation, mode?: 'extend' | 'edit') => void;
 }
 
@@ -19,10 +22,30 @@ export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = (
   onClose,
   reservation,
   workstation,
+  allReservations,
   onReleaseNow,
   onCancelReservation,
   onExtend,
 }) => {
+  const [showSeriesDelete, setShowSeriesDelete] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) setShowSeriesDelete(false);
+  }, [isOpen, reservation?.id]);
+
+  const seriesPeers = useMemo(() => {
+    if (!reservation?.seriesId) return [];
+    return allReservations
+      .filter((r) => r.seriesId === reservation.seriesId && r.status !== 'cancelled')
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  }, [allReservations, reservation]);
+
+  const futureInSeries = useMemo(() => {
+    if (!reservation?.seriesId) return [];
+    const startMs = new Date(reservation.startTime).getTime();
+    return seriesPeers.filter((r) => new Date(r.startTime).getTime() >= startMs);
+  }, [reservation, seriesPeers]);
+
   if (!isOpen || !reservation || !workstation) return null;
 
   const now = new Date();
@@ -31,6 +54,25 @@ export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = (
   const isNowActive = now >= start && now <= end && reservation.status === 'active';
   const isFuture = start > now && reservation.status === 'active';
   const durationHours = calculateDurationHours(reservation.startTime, reservation.endTime);
+  const isSeries = Boolean(reservation.seriesId) && seriesPeers.length > 1;
+
+  const confirmSingleDelete = () => {
+    const msg = isNowActive
+      ? 'Excluir esta atividade em uso agora? O horário some do cronograma.'
+      : isFuture
+      ? 'Excluir este agendamento? O horário volta a ficar livre.'
+      : 'Excluir esta atividade do histórico?';
+    if (confirm(msg)) {
+      onCancelReservation(reservation.id, 'one');
+      onClose();
+    }
+  };
+
+  const applySeriesDelete = (mode: SeriesDeleteMode) => {
+    onCancelReservation(reservation.id, mode);
+    setShowSeriesDelete(false);
+    onClose();
+  };
 
   return (
     <div
@@ -149,9 +191,50 @@ export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = (
               </div>
               <div className="text-slate-500 text-[10px] mt-0.5">
                 {reservation.type === 'instant_checkin' ? 'Check-in Imediato' : 'Agendamento Prévio'}
+                {isSeries ? ` · série (${seriesPeers.length})` : ''}
               </div>
             </div>
           </div>
+
+          {showSeriesDelete && isSeries && (
+            <div className="p-3 rounded-lg border border-rose-200 bg-rose-50/80 space-y-2">
+              <div className="font-semibold text-rose-900 text-xs">Excluir ocorrência da série</div>
+              <p className="text-[11px] text-rose-800/90 leading-relaxed">
+                Esta reserva faz parte de uma série com {seriesPeers.length} ocorrências. Escolha o
+                escopo da exclusão:
+              </p>
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => applySeriesDelete('one')}
+                  className="w-full text-left px-2.5 py-2 text-xs bg-white border border-slate-200 rounded-md hover:bg-slate-50 text-slate-800"
+                >
+                  Somente esta ocorrência
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySeriesDelete('this_and_future')}
+                  className="w-full text-left px-2.5 py-2 text-xs bg-white border border-slate-200 rounded-md hover:bg-slate-50 text-slate-800"
+                >
+                  Esta e todas as seguintes ({futureInSeries.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySeriesDelete('all')}
+                  className="w-full text-left px-2.5 py-2 text-xs bg-white border border-rose-200 rounded-md hover:bg-rose-50 text-rose-800 font-medium"
+                >
+                  Toda a série ({seriesPeers.length})
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSeriesDelete(false)}
+                className="text-[11px] text-slate-600 hover:text-slate-900"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -159,15 +242,11 @@ export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = (
           <button
             type="button"
             onClick={() => {
-              const msg = isNowActive
-                ? 'Excluir esta atividade em uso agora? O horário some do cronograma.'
-                : isFuture
-                ? 'Excluir este agendamento? O horário volta a ficar livre.'
-                : 'Excluir esta atividade do histórico?';
-              if (confirm(msg)) {
-                onCancelReservation(reservation.id);
-                onClose();
+              if (isSeries) {
+                setShowSeriesDelete(true);
+                return;
               }
+              confirmSingleDelete();
             }}
             className="px-2.5 py-1.5 text-xs text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-md font-medium flex items-center gap-1 transition-colors"
           >
