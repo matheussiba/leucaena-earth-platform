@@ -95,10 +95,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            {/* Main Action: Reservar Button with Green Zap (raiozinho) icon */}
+            {/* Main Action: Reservar — desktop/tablet only (mobile uses FAB) */}
             <button
               onClick={onOpenNewReservation}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap shadow-2xs"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap shadow-2xs"
             >
               <Zap className="w-3.5 h-3.5 fill-emerald-400 text-emerald-400" />
               <span>Reservar</span>
