@@ -2,7 +2,19 @@ import React, { useRef, useState } from 'react';
 import { Workstation, Reservation, DeletedReservationEntry } from '../types';
 import { calculateDurationHours, formatBayNumber } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
-import { BarChart3, X, Clock, Users, TrendingUp, AlertTriangle } from 'lucide-react';
+import { BarChart3, X, Clock, Users, TrendingUp, AlertTriangle, Timer } from 'lucide-react';
+
+function formatLeadTime(hours: number): string {
+  if (!Number.isFinite(hours) || hours < 0) return '—';
+  if (hours < 1) {
+    const mins = Math.round(hours * 60);
+    return `${mins} min`;
+  }
+  if (hours < 48) return `${hours.toFixed(1)}h`;
+  const days = hours / 24;
+  if (days < 14) return `${days.toFixed(1)} dias`;
+  return `${(days / 7).toFixed(1)} sem`;
+}
 
 interface StatsModalProps {
   isOpen: boolean;
@@ -151,6 +163,21 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   const totalExcessHours = nonFairUseRes.reduce((sum, r) => sum + getExcessHours(r), 0);
   const avgExcessHours = nonFairUseRes.length > 0 ? totalExcessHours / nonFairUseRes.length : 0;
 
+  // Antecedência média: createdAt → startTime (só reservas com createdAt)
+  const leadSamples = activeOrCompleted
+    .map((r) => {
+      if (!r.createdAt) return null;
+      const created = new Date(r.createdAt).getTime();
+      const start = new Date(r.startTime).getTime();
+      if (Number.isNaN(created) || Number.isNaN(start)) return null;
+      return Math.max(0, (start - created) / (1000 * 60 * 60));
+    })
+    .filter((h): h is number => h != null);
+  const avgLeadHours =
+    leadSamples.length > 0
+      ? leadSamples.reduce((s, h) => s + h, 0) / leadSamples.length
+      : null;
+
   const periodLabels: Record<PeriodFilter, string> = {
     day: 'Hoje',
     week: 'Esta Semana',
@@ -175,6 +202,9 @@ export const StatsModal: React.FC<StatsModalProps> = ({
       `Excedentes Fair-Use: ${nonFairUseRes.length}`,
       `Horas totais fora Fair-Use: ${totalExcessHours.toFixed(2)}h`,
       `Média horas fora Fair-Use: ${avgExcessHours.toFixed(2)}h`,
+      `Tempo médio de agendamento (antecedência): ${
+        avgLeadHours == null ? 'n/d' : formatLeadTime(avgLeadHours)
+      } (${leadSamples.length} com data de criação)`,
       '',
       '=== OCUPAÇÃO POR BAIA ===',
     ];
@@ -334,7 +364,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
         {/* Content */}
         <div className="p-5 space-y-4 text-xs overflow-y-auto">
           {/* Key Metrics Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {/* 1. Total Horas */}
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-col justify-between">
               <div>
@@ -383,8 +413,26 @@ export const StatsModal: React.FC<StatsModalProps> = ({
               </span>
             </div>
 
-            {/* 4. Média Horas Fora Fair-Use */}
-            <div className="p-3 bg-amber-50/60 rounded-lg border border-amber-200 flex flex-col justify-between">
+            {/* 4. Tempo médio de agendamento (antecedência) */}
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-slate-500 block flex items-center gap-1">
+                  <Timer className="w-3 h-3 text-indigo-500" />
+                  <span className="truncate">Tempo médio de agendamento</span>
+                </span>
+                <div className="text-xl font-bold font-mono text-indigo-700 mt-1">
+                  {avgLeadHours == null ? '—' : formatLeadTime(avgLeadHours)}
+                </div>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono mt-1">
+                {leadSamples.length > 0
+                  ? `antecedência · ${leadSamples.length} c/ data`
+                  : 'sem data de criação no período'}
+              </span>
+            </div>
+
+            {/* 5. Média Horas Fora Fair-Use */}
+            <div className="p-3 bg-amber-50/60 rounded-lg border border-amber-200 flex flex-col justify-between sm:col-span-2">
               <div>
                 <span className="text-[10px] uppercase font-semibold text-amber-900 block flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3 text-amber-500 fill-amber-100" />

@@ -122,7 +122,7 @@ export const createSampleReservations = (): Reservation[] => {
       checkedInAt: getISOForToday(mbStartHour, 0),
       isNonFairUse: false, // Normal, within fair use!
       notes: 'Execução de experimentos e visualização de dados.',
-      createdAt: getISOForToday(mbStartHour, 0),
+      createdAt: null,
     },
 
     // Baia 04: Gabriel Ferraz (Scheduled tonight)
@@ -136,7 +136,7 @@ export const createSampleReservations = (): Reservation[] => {
       type: 'scheduled',
       status: 'active',
       notes: 'Análise de métricas de acurácia.',
-      createdAt: getISOForDayOffset(-1, 10, 0),
+      createdAt: null,
     },
 
     // Baia 07: Jomil Costa (18h continuous run - EXCEEDS Fair-Use after 12h threshold)
@@ -156,7 +156,7 @@ export const createSampleReservations = (): Reservation[] => {
         `Duração de 18h contínuas ultrapassa o limite diário de 12h do laboratório. O trecho a partir das ${jcThresholdHour}:00 é excedente.`,
       ],
       notes: 'Pipeline de simulação pesada. A partir das 18h posso pausar e ceder caso outro colega precise no WhatsApp.',
-      createdAt: getISOForToday(jcStartHour, 0),
+      createdAt: null,
     },
 
     // Baia 07: Francisca Pereira (Tomorrow morning)
@@ -170,7 +170,7 @@ export const createSampleReservations = (): Reservation[] => {
       type: 'scheduled',
       status: 'active',
       notes: 'Simulação numérica de dinâmica de fluidos.',
-      createdAt: getISOForDayOffset(-1, 14, 0),
+      createdAt: null,
     },
 
     // Baia 07: Matheus Ferreira (Day after tomorrow)
@@ -184,7 +184,7 @@ export const createSampleReservations = (): Reservation[] => {
       type: 'scheduled',
       status: 'active',
       notes: 'Processamento de dados de bancada.',
-      createdAt: getISOForDayOffset(-1, 16, 0),
+      createdAt: null,
     },
   ];
 };

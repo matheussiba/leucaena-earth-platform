@@ -1,19 +1,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Workstation, Reservation, FairUseRules, LabMember, ResearcherRole } from '../types';
 import { validateReservation } from '../utils/fairUseValidator';
+import {
+  RecurrenceFrequency,
+  RecurrenceRule,
+  RecurrenceUnit,
+  describeRecurrenceCap,
+  expandRecurrence,
+} from '../utils/recurrence';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { formatBayNumber } from '../utils/dateUtils';
 import { 
   X, 
   Calendar, 
-  User, 
   AlertTriangle, 
   CheckCircle2, 
   Zap, 
   UserPlus,
-  MessageCircle,
-  AlertCircle
+  AlertCircle,
+  Repeat
 } from 'lucide-react';
+
+type ReservationDraft = Omit<Reservation, 'id' | 'createdAt' | 'status'>;
 
 interface ReservationModalProps {
   isOpen: boolean;
@@ -28,8 +36,18 @@ interface ReservationModalProps {
   initialEndHour?: number;
   initialType?: 'instant_checkin' | 'scheduled';
   onAddMember: (member: LabMember) => void;
-  onSubmit: (reservationData: Omit<Reservation, 'id' | 'createdAt' | 'status'>) => void;
+  onSubmit: (reservationData: ReservationDraft | ReservationDraft[]) => void;
 }
+
+const WEEKDAY_OPTIONS: { value: number; label: string; short: string }[] = [
+  { value: 0, label: 'Domingo', short: 'Dom' },
+  { value: 1, label: 'Segunda', short: 'Seg' },
+  { value: 2, label: 'Terça', short: 'Ter' },
+  { value: 3, label: 'Quarta', short: 'Qua' },
+  { value: 4, label: 'Quinta', short: 'Qui' },
+  { value: 5, label: 'Sexta', short: 'Sex' },
+  { value: 6, label: 'Sábado', short: 'Sáb' },
+];
 
 const ROLES: ResearcherRole[] = [
   'TT',
@@ -102,6 +120,16 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 
   const [notes, setNotes] = useState<string>('');
 
+  // Recurrence (scheduled only)
+  type RepeatMode = 'none' | RecurrenceFrequency;
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
+  const [customInterval, setCustomInterval] = useState(1);
+  const [customUnit, setCustomUnit] = useState<RecurrenceUnit>('weeks');
+  const [customWeekdays, setCustomWeekdays] = useState<number[]>([]);
+  const [endMode, setEndMode] = useState<'never' | 'on_date' | 'after'>('after');
+  const [repeatUntilDateStr, setRepeatUntilDateStr] = useState('');
+  const [endAfterCount, setEndAfterCount] = useState(10);
+
   useEffect(() => {
     if (initialWorkstationId) setSelectedWsId(initialWorkstationId);
     if (initialType) setModalType(initialType);
@@ -129,8 +157,28 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
   }, [initialWorkstationId, initialType, initialDate, initialHour, initialEndHour, isOpen, members, selectedMemberName, sortedMembers]);
 
   useEffect(() => {
-    if (isOpen) setActivePeriodPreset(null);
+    if (!isOpen) return;
+    setActivePeriodPreset(null);
+    setRepeatMode('none');
+    setCustomInterval(1);
+    setCustomUnit('weeks');
+    setEndMode('after');
+    setEndAfterCount(10);
+    setRepeatUntilDateStr('');
   }, [isOpen]);
+
+  useEffect(() => {
+    if (repeatMode === 'none') return;
+    const base = new Date(`${startDateStr}T12:00:00`);
+    if (Number.isNaN(base.getTime())) return;
+    const wd = base.getDay();
+    setCustomWeekdays((prev) => (prev.length === 0 ? [wd] : prev));
+    if (!repeatUntilDateStr) {
+      const until = new Date(base);
+      until.setMonth(until.getMonth() + 3);
+      setRepeatUntilDateStr(until.toISOString().split('T')[0]);
+    }
+  }, [repeatMode, startDateStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quick period shortcuts for scheduled
   const applyPeriodPreset = (preset: PeriodPreset) => {
@@ -203,7 +251,101 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     return new Date(`${endDateStr}T${endTimeStr}:00`).toISOString();
   }, [modalType, instantDurationMinutes, endDateStr, endTimeStr]);
 
-  // Real-time validation
+  const builtRecurrenceRule = useMemo((): RecurrenceRule | null => {
+    if (modalType !== 'scheduled' || repeatMode === 'none') return null;
+    const end =
+      endMode === 'on_date'
+        ? { type: 'on_date' as const, date: repeatUntilDateStr || startDateStr }
+        : endMode === 'after'
+        ? { type: 'after' as const, count: Math.max(1, endAfterCount) }
+        : { type: 'never' as const };
+
+    if (repeatMode === 'custom') {
+      return {
+        frequency: 'custom',
+        interval: Math.max(1, customInterval),
+        unit: customUnit,
+        weekdays: customUnit === 'weeks' ? customWeekdays : undefined,
+        end,
+      };
+    }
+    return {
+      frequency: repeatMode,
+      weekdays:
+        repeatMode === 'weekly'
+          ? customWeekdays.length
+            ? customWeekdays
+            : [new Date(`${startDateStr}T12:00:00`).getDay()]
+          : undefined,
+      end,
+    };
+  }, [
+    modalType,
+    repeatMode,
+    endMode,
+    repeatUntilDateStr,
+    startDateStr,
+    endAfterCount,
+    customInterval,
+    customUnit,
+    customWeekdays,
+  ]);
+
+  const occurrencePlan = useMemo(() => {
+    if (!computedStartIso || !computedEndIso) {
+      return { windows: [] as { startTime: string; endTime: string }[], skipped: 0 };
+    }
+    const windows = expandRecurrence(computedStartIso, computedEndIso, builtRecurrenceRule);
+    if (!selectedWsId) return { windows, skipped: 0 };
+
+    const accepted: { startTime: string; endTime: string }[] = [];
+    let skipped = 0;
+    let rolling = [...reservations];
+
+    windows.forEach((w) => {
+      const v = validateReservation(
+        {
+          workstationId: selectedWsId,
+          researcherName: selectedMemberName || 'Pesquisador',
+          startTime: w.startTime,
+          endTime: w.endTime,
+        },
+        rolling,
+        rules
+      );
+      if (!v.isValid) {
+        skipped += 1;
+        return;
+      }
+      accepted.push(w);
+      rolling = [
+        {
+          id: `preview-${accepted.length}`,
+          workstationId: selectedWsId,
+          researcherName: selectedMemberName || 'Pesquisador',
+          researcherRole: 'Mestrado',
+          startTime: w.startTime,
+          endTime: w.endTime,
+          type: 'scheduled',
+          status: 'active',
+          createdAt: null,
+        },
+        ...rolling,
+      ];
+    });
+
+    return { windows: accepted, skipped };
+  }, [
+    computedStartIso,
+    computedEndIso,
+    builtRecurrenceRule,
+    selectedWsId,
+    selectedMemberName,
+    reservations,
+    rules,
+  ]);
+
+  // Real-time validation (first occurrence)
   const validation = useMemo(() => {
     if (!selectedWsId || !computedStartIso || !computedEndIso) {
       return {
@@ -228,6 +370,19 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 
   if (!isOpen) return null;
 
+  const toggleWeekday = (day: number) => {
+    setCustomWeekdays((prev) => {
+      if (prev.includes(day)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((d) => d !== day);
+      }
+      return [...prev, day].sort((a, b) => a - b);
+    });
+  };
+
+  const showWeekdayPicker =
+    repeatMode === 'weekly' || (repeatMode === 'custom' && customUnit === 'weeks');
+
   const handleQuickAddMember = () => {
     if (!newMemberName.trim()) return;
     const newMember: LabMember = {
@@ -241,8 +396,10 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     setShowAddNewMember(false);
   };
 
-  // Submit is allowed if no hard time collision
-  const canSubmit = validation.isValid;
+  // Submit is allowed if no hard time collision on the first slot and at least one occurrence survives
+  const canSubmit =
+    validation.isValid &&
+    (modalType === 'instant_checkin' || occurrencePlan.windows.length > 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,20 +412,80 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 
     const currentMember = members.find((m) => m.name === selectedMemberName);
     const role = currentMember ? currentMember.role : 'Mestrado';
+    const seriesId =
+      modalType === 'scheduled' && occurrencePlan.windows.length > 1
+        ? `series-${Date.now()}`
+        : undefined;
 
-    onSubmit({
-      workstationId: selectedWsId,
-      researcherName: selectedMemberName.trim(),
-      researcherRole: role,
-      startTime: computedStartIso,
-      endTime: computedEndIso,
-      type: modalType,
-      notes: notes.trim() || undefined,
-      isNonFairUse: validation.isNonFairUse,
-      nonFairUseThreshold: validation.isNonFairUse ? validation.thresholdIso : undefined,
-      nonFairUseReasons: validation.isNonFairUse ? validation.fairUseViolations : undefined,
-      checkedInAt: modalType === 'instant_checkin' ? new Date().toISOString() : undefined,
-    });
+    if (modalType === 'instant_checkin') {
+      const v = validateReservation(
+        {
+          workstationId: selectedWsId,
+          researcherName: selectedMemberName.trim(),
+          startTime: computedStartIso,
+          endTime: computedEndIso,
+        },
+        reservations,
+        rules
+      );
+      onSubmit({
+        workstationId: selectedWsId,
+        researcherName: selectedMemberName.trim(),
+        researcherRole: role,
+        startTime: computedStartIso,
+        endTime: computedEndIso,
+        type: modalType,
+        notes: notes.trim() || undefined,
+        isNonFairUse: v.isNonFairUse,
+        nonFairUseThreshold: v.isNonFairUse ? v.thresholdIso : undefined,
+        nonFairUseReasons: v.isNonFairUse ? v.fairUseViolations : undefined,
+        checkedInAt: new Date().toISOString(),
+      });
+    } else {
+      let rolling = [...reservations];
+      const drafts: ReservationDraft[] = [];
+      occurrencePlan.windows.forEach((w) => {
+        const v = validateReservation(
+          {
+            workstationId: selectedWsId,
+            researcherName: selectedMemberName.trim(),
+            startTime: w.startTime,
+            endTime: w.endTime,
+          },
+          rolling,
+          rules
+        );
+        const draft: ReservationDraft = {
+          workstationId: selectedWsId,
+          researcherName: selectedMemberName.trim(),
+          researcherRole: role,
+          startTime: w.startTime,
+          endTime: w.endTime,
+          type: 'scheduled',
+          notes: notes.trim() || undefined,
+          isNonFairUse: v.isNonFairUse,
+          nonFairUseThreshold: v.isNonFairUse ? v.thresholdIso : undefined,
+          nonFairUseReasons: v.isNonFairUse ? v.fairUseViolations : undefined,
+          seriesId,
+        };
+        drafts.push(draft);
+        rolling = [
+          {
+            ...draft,
+            id: `pending-${drafts.length}`,
+            status: 'active',
+            createdAt: null,
+          },
+          ...rolling,
+        ];
+      });
+      if (occurrencePlan.skipped > 0) {
+        alert(
+          `${drafts.length} ocorrência(s) serão criadas. ${occurrencePlan.skipped} pulada(s) por conflito de horário.`
+        );
+      }
+      onSubmit(drafts.length === 1 ? drafts[0] : drafts);
+    }
 
     onClose();
   };
@@ -576,6 +793,157 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
             </div>
           )}
 
+          {/* Recurrence — scheduled only */}
+          {modalType === 'scheduled' && (
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
+                <Repeat className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Repetir agendamento</span>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    ['none', 'Não repetir'],
+                    ['daily', 'Todos os dias'],
+                    ['weekly', 'Todas as semanas'],
+                    ['monthly', 'Todos os meses'],
+                    ['yearly', 'Todos os anos'],
+                    ['custom', 'Personalizado'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setRepeatMode(id)}
+                    className={`px-2 py-1.5 text-[11px] font-medium rounded border transition-colors ${
+                      repeatMode === id
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {repeatMode !== 'none' && (
+                <div className="space-y-2.5 pt-1 border-t border-slate-200/70">
+                  {repeatMode === 'custom' && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-medium text-slate-600">Repetir a cada</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={99}
+                        value={customInterval}
+                        onChange={(e) =>
+                          setCustomInterval(Math.max(1, Number(e.target.value) || 1))
+                        }
+                        className="w-14 text-xs p-1.5 border border-slate-300 rounded bg-white font-mono"
+                      />
+                      <select
+                        value={customUnit}
+                        onChange={(e) => setCustomUnit(e.target.value as RecurrenceUnit)}
+                        className="text-xs p-1.5 border border-slate-300 rounded bg-white"
+                      >
+                        <option value="days">dias</option>
+                        <option value="weeks">semanas</option>
+                        <option value="months">meses</option>
+                        <option value="years">anos</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {showWeekdayPicker && (
+                    <div>
+                      <div className="text-[10px] font-medium text-slate-500 mb-1">Repetir em</div>
+                      <div className="flex flex-wrap gap-1">
+                        {WEEKDAY_OPTIONS.map((d) => (
+                          <button
+                            key={d.value}
+                            type="button"
+                            title={d.label}
+                            onClick={() => toggleWeekday(d.value)}
+                            className={`px-2 h-8 text-[10px] font-semibold rounded-md border transition-colors ${
+                              customWeekdays.includes(d.value)
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {d.short}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-medium text-slate-500">Termina</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(
+                        [
+                          ['never', 'Nunca'],
+                          ['on_date', 'Em uma data'],
+                          ['after', 'Após N ocorrências'],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setEndMode(id)}
+                          className={`px-2 py-1 text-[11px] font-medium rounded border ${
+                            endMode === id
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {endMode === 'on_date' && (
+                      <input
+                        type="date"
+                        value={repeatUntilDateStr}
+                        min={startDateStr}
+                        onChange={(e) => setRepeatUntilDateStr(e.target.value)}
+                        className="w-full sm:w-auto text-xs p-1.5 border border-slate-300 rounded bg-white font-mono"
+                      />
+                    )}
+                    {endMode === 'after' && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={endAfterCount}
+                          onChange={(e) =>
+                            setEndAfterCount(Math.max(1, Number(e.target.value) || 1))
+                          }
+                          className="w-16 text-xs p-1.5 border border-slate-300 rounded bg-white font-mono"
+                        />
+                        <span className="text-[11px] text-slate-600">ocorrências</span>
+                      </div>
+                    )}
+                    {builtRecurrenceRule && describeRecurrenceCap(builtRecurrenceRule) && (
+                      <p className="text-[10px] text-slate-500">
+                        {describeRecurrenceCap(builtRecurrenceRule)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="text-[11px] text-indigo-800 bg-indigo-50 border border-indigo-100 rounded px-2 py-1.5">
+                    {occurrencePlan.windows.length} ocorrência(s) serão criadas
+                    {occurrencePlan.skipped > 0
+                      ? ` · ${occurrencePlan.skipped} pulada(s) por conflito`
+                      : ''}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Validation & Fair-Use Override Flow */}
           <div>
             {validation.hardError ? (
@@ -656,6 +1024,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                 ? 'Confirmar (Fora do Fair-Use)'
                 : modalType === 'instant_checkin'
                 ? 'Iniciar Uso Agora'
+                : occurrencePlan.windows.length > 1
+                ? `Confirmar ${occurrencePlan.windows.length} Reservas`
                 : 'Confirmar Reserva'}
             </button>
           </div>
