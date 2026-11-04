@@ -71,9 +71,17 @@ export async function loadState(): Promise<CmqState> {
           reservation: normalizeReservation(entry.reservation),
         }))
       : [],
-    rules: data.rules && typeof data.rules === 'object'
-      ? { ...DEFAULT_RULES, ...data.rules }
-      : base.rules,
+    rules: (() => {
+      const merged =
+        data.rules && typeof data.rules === 'object'
+          ? { ...DEFAULT_RULES, ...data.rules }
+          : { ...base.rules };
+      // Policy update: weekly quota moved from 28h → 36h
+      if (merged.maxWeeklyHoursPerUser === 28) {
+        merged.maxWeeklyHoursPerUser = DEFAULT_RULES.maxWeeklyHoursPerUser;
+      }
+      return merged;
+    })(),
   };
 }
 

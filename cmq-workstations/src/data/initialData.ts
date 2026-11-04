@@ -4,7 +4,7 @@ export const DEFAULT_RULES: FairUseRules = {
   maxContinuousHoursWeekday: 12,
   maxContinuousHoursWeekend: 36,
   maxAdvanceDays: 14,
-  maxWeeklyHoursPerUser: 28,
+  maxWeeklyHoursPerUser: 36,
   maxActiveBookingsPerUser: 4,
   toleranceCheckInMinutes: 20,
 };

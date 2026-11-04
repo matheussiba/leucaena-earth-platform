@@ -23,6 +23,21 @@ import {
 
 type ReservationDraft = Omit<Reservation, 'id' | 'createdAt' | 'status'>;
 
+function toLocalDateInput(isoOrDate: string | Date) {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toLocalTimeInput(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '09:00';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 interface ReservationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,6 +50,8 @@ interface ReservationModalProps {
   initialHour?: number;
   initialEndHour?: number;
   initialType?: 'instant_checkin' | 'scheduled';
+  /** When set, modal edits this reservation instead of creating a new one */
+  editingReservation?: Reservation | null;
   onAddMember: (member: LabMember) => void;
   onSubmit: (reservationData: ReservationDraft | ReservationDraft[]) => void;
 }
@@ -71,9 +88,11 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
   initialHour,
   initialEndHour,
   initialType = 'scheduled',
+  editingReservation = null,
   onAddMember,
   onSubmit,
 }) => {
+  const isEditing = Boolean(editingReservation);
   const [modalType, setModalType] = useState<'instant_checkin' | 'scheduled'>(initialType);
   const [selectedWsId, setSelectedWsId] = useState<string>(
     initialWorkstationId || workstations[0]?.id || ''
@@ -131,18 +150,52 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
   const [endAfterCount, setEndAfterCount] = useState(10);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    setActivePeriodPreset(null);
+    setRepeatMode('none');
+    setCustomInterval(1);
+    setCustomUnit('weeks');
+    setEndMode('after');
+    setEndAfterCount(10);
+    setRepeatUntilDateStr('');
+    setShowAddNewMember(false);
+
+    if (editingReservation) {
+      setSelectedWsId(editingReservation.workstationId);
+      setModalType(
+        editingReservation.type === 'instant_checkin' ? 'instant_checkin' : 'scheduled'
+      );
+      setSelectedMemberName(editingReservation.researcherName);
+      setNotes(editingReservation.notes || '');
+      setStartDateStr(toLocalDateInput(editingReservation.startTime));
+      setStartTimeStr(toLocalTimeInput(editingReservation.startTime));
+      setEndDateStr(toLocalDateInput(editingReservation.endTime));
+      setEndTimeStr(toLocalTimeInput(editingReservation.endTime));
+      const start = new Date(editingReservation.startTime);
+      const end = new Date(editingReservation.endTime);
+      const mins = Math.max(
+        15,
+        Math.round((end.getTime() - start.getTime()) / 60000)
+      );
+      setInstantDurationMinutes(mins);
+      return;
+    }
+
     if (initialWorkstationId) setSelectedWsId(initialWorkstationId);
     if (initialType) setModalType(initialType);
+    setNotes('');
     if (initialDate) {
-      const dStr = initialDate.toISOString().split('T')[0];
+      const dStr = toLocalDateInput(initialDate);
       setStartDateStr(dStr);
       setEndDateStr(dStr);
     }
     if (initialHour !== undefined) {
       const startH = Math.min(23, Math.max(0, initialHour));
-      const endH = initialEndHour !== undefined
-        ? Math.min(24, Math.max(startH + 1, initialEndHour))
-        : Math.min(23, startH + 3);
+      const endH =
+        initialEndHour !== undefined
+          ? Math.min(24, Math.max(startH + 1, initialEndHour))
+          : Math.min(23, startH + 3);
 
       setStartTimeStr(`${startH < 10 ? '0' : ''}${startH}:00`);
       if (endH >= 24) {
@@ -151,21 +204,20 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         setEndTimeStr(`${endH < 10 ? '0' : ''}${endH}:00`);
       }
     }
-    if (members.length > 0 && !selectedMemberName) {
+    if (members.length > 0) {
       setSelectedMemberName(sortedMembers[0]?.name || members[0]?.name);
     }
-  }, [initialWorkstationId, initialType, initialDate, initialHour, initialEndHour, isOpen, members, selectedMemberName, sortedMembers]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setActivePeriodPreset(null);
-    setRepeatMode('none');
-    setCustomInterval(1);
-    setCustomUnit('weeks');
-    setEndMode('after');
-    setEndAfterCount(10);
-    setRepeatUntilDateStr('');
-  }, [isOpen]);
+  }, [
+    isOpen,
+    editingReservation,
+    initialWorkstationId,
+    initialType,
+    initialDate,
+    initialHour,
+    initialEndHour,
+    members,
+    sortedMembers,
+  ]);
 
   useEffect(() => {
     if (repeatMode === 'none') return;
@@ -234,25 +286,27 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
     }`;
 
-  // Compute final start and end ISO strings
+  // Compute final start and end ISO strings (edit mode always uses the date/time fields)
   const computedStartIso = useMemo(() => {
-    if (modalType === 'instant_checkin') {
+    if (modalType === 'instant_checkin' && !isEditing) {
       return new Date().toISOString();
     }
     return new Date(`${startDateStr}T${startTimeStr}:00`).toISOString();
-  }, [modalType, startDateStr, startTimeStr]);
+  }, [modalType, isEditing, startDateStr, startTimeStr]);
 
   const computedEndIso = useMemo(() => {
-    if (modalType === 'instant_checkin') {
+    if (modalType === 'instant_checkin' && !isEditing) {
       const d = new Date();
       d.setMinutes(d.getMinutes() + instantDurationMinutes);
       return d.toISOString();
     }
     return new Date(`${endDateStr}T${endTimeStr}:00`).toISOString();
-  }, [modalType, instantDurationMinutes, endDateStr, endTimeStr]);
+  }, [modalType, isEditing, instantDurationMinutes, endDateStr, endTimeStr]);
+
+  const excludeReservationId = editingReservation?.id;
 
   const builtRecurrenceRule = useMemo((): RecurrenceRule | null => {
-    if (modalType !== 'scheduled' || repeatMode === 'none') return null;
+    if (isEditing || modalType !== 'scheduled' || repeatMode === 'none') return null;
     const end =
       endMode === 'on_date'
         ? { type: 'on_date' as const, date: repeatUntilDateStr || startDateStr }
@@ -280,6 +334,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       end,
     };
   }, [
+    isEditing,
     modalType,
     repeatMode,
     endMode,
@@ -311,7 +366,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           endTime: w.endTime,
         },
         rolling,
-        rules
+        rules,
+        excludeReservationId
       );
       if (!v.isValid) {
         skipped += 1;
@@ -343,6 +399,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     selectedMemberName,
     reservations,
     rules,
+    excludeReservationId,
   ]);
 
   // Real-time validation (first occurrence)
@@ -364,9 +421,18 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         endTime: computedEndIso,
       },
       reservations,
-      rules
+      rules,
+      excludeReservationId
     );
-  }, [selectedWsId, computedStartIso, computedEndIso, selectedMemberName, reservations, rules]);
+  }, [
+    selectedWsId,
+    computedStartIso,
+    computedEndIso,
+    selectedMemberName,
+    reservations,
+    rules,
+    excludeReservationId,
+  ]);
 
   if (!isOpen) return null;
 
@@ -413,11 +479,11 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     const currentMember = members.find((m) => m.name === selectedMemberName);
     const role = currentMember ? currentMember.role : 'Mestrado';
     const seriesId =
-      modalType === 'scheduled' && occurrencePlan.windows.length > 1
+      !isEditing && modalType === 'scheduled' && occurrencePlan.windows.length > 1
         ? `series-${Date.now()}`
-        : undefined;
+        : editingReservation?.seriesId;
 
-    if (modalType === 'instant_checkin') {
+    if (isEditing || modalType === 'instant_checkin') {
       const v = validateReservation(
         {
           workstationId: selectedWsId,
@@ -426,7 +492,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           endTime: computedEndIso,
         },
         reservations,
-        rules
+        rules,
+        excludeReservationId
       );
       onSubmit({
         workstationId: selectedWsId,
@@ -434,12 +501,18 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         researcherRole: role,
         startTime: computedStartIso,
         endTime: computedEndIso,
-        type: modalType,
+        type: isEditing ? editingReservation!.type : modalType,
         notes: notes.trim() || undefined,
         isNonFairUse: v.isNonFairUse,
         nonFairUseThreshold: v.isNonFairUse ? v.thresholdIso : undefined,
         nonFairUseReasons: v.isNonFairUse ? v.fairUseViolations : undefined,
-        checkedInAt: new Date().toISOString(),
+        checkedInAt:
+          isEditing
+            ? editingReservation!.checkedInAt
+            : modalType === 'instant_checkin'
+            ? new Date().toISOString()
+            : undefined,
+        seriesId: isEditing ? editingReservation!.seriesId : undefined,
       });
     } else {
       let rolling = [...reservations];
@@ -502,7 +575,9 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
           <div>
             <h2 className="text-base font-bold text-slate-900">
-              {modalType === 'instant_checkin'
+              {isEditing
+                ? 'Editar Reserva'
+                : modalType === 'instant_checkin'
                 ? 'Marcar Uso Agora (Check-in Imediato)'
                 : 'Nova Reserva de Workstation'}
             </h2>
@@ -516,35 +591,37 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           </button>
         </div>
 
-        {/* Modal Mode Selector */}
-        <div className="px-4 sm:px-5 pt-3 pb-1">
-          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setModalType('instant_checkin')}
-              className={`py-2 px-3 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all ${
-                modalType === 'instant_checkin'
-                  ? 'bg-white text-emerald-800 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
-              <span>Usar Agora</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setModalType('scheduled')}
-              className={`py-2 px-3 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all ${
-                modalType === 'scheduled'
-                  ? 'bg-white text-slate-900 shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              <span>Agendar Futuro</span>
-            </button>
+        {/* Modal Mode Selector — hidden while editing */}
+        {!isEditing && (
+          <div className="px-4 sm:px-5 pt-3 pb-1">
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setModalType('instant_checkin')}
+                className={`py-2 px-3 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all ${
+                  modalType === 'instant_checkin'
+                    ? 'bg-white text-emerald-800 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
+                <span>Usar Agora</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalType('scheduled')}
+                className={`py-2 px-3 text-xs font-semibold rounded-md flex items-center justify-center gap-1.5 transition-all ${
+                  modalType === 'scheduled'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                <span>Agendar Futuro</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="px-4 sm:px-5 py-3.5 space-y-3.5 text-xs overflow-y-auto flex-1">
@@ -648,7 +725,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           </div>
 
           {/* Time configuration */}
-          {modalType === 'instant_checkin' ? (
+          {modalType === 'instant_checkin' && !isEditing ? (
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="font-semibold text-slate-700">Duração Prevista</span>
@@ -793,8 +870,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
             </div>
           )}
 
-          {/* Recurrence — scheduled only */}
-          {modalType === 'scheduled' && (
+          {/* Recurrence — scheduled create only */}
+          {modalType === 'scheduled' && !isEditing && (
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2.5">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
                 <Repeat className="w-3.5 h-3.5 text-indigo-600" />
@@ -1020,7 +1097,11 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
-              {validation.isNonFairUse
+              {isEditing
+                ? validation.isNonFairUse
+                  ? 'Salvar (Fora do Fair-Use)'
+                  : 'Salvar Alterações'
+                : validation.isNonFairUse
                 ? 'Confirmar (Fora do Fair-Use)'
                 : modalType === 'instant_checkin'
                 ? 'Iniciar Uso Agora'
