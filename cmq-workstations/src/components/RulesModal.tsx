@@ -34,7 +34,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({
       maxContinuousHoursWeekday: 12,
       maxContinuousHoursWeekend: 36,
       maxAdvanceDays: 14,
-      maxWeeklyHoursPerUser: 28,
+      maxWeeklyHoursPerUser: 36,
       maxActiveBookingsPerUser: 4,
       toleranceCheckInMinutes: 20,
     };
@@ -165,7 +165,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({
                     onChange={(e) =>
                       setDraftRules({
                         ...draftRules,
-                        maxWeeklyHoursPerUser: parseInt(e.target.value) || 28,
+                        maxWeeklyHoursPerUser: parseInt(e.target.value) || 36,
                       })
                     }
                     className="w-full p-2 border border-slate-300 rounded bg-white font-mono"

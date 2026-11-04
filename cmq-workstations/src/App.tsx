@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Workstation,
   Reservation,
+  ReservationStatus,
   FairUseRules,
   LabMember,
   DeletedReservationEntry,
@@ -38,6 +39,7 @@ export default function App() {
   const [modalDate, setModalDate] = useState<Date | undefined>(undefined);
   const [modalHour, setModalHour] = useState<number | undefined>(undefined);
   const [modalEndHour, setModalEndHour] = useState<number | undefined>(undefined);
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
 
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
@@ -49,7 +51,6 @@ export default function App() {
 
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
   const [reservationToExtend, setReservationToExtend] = useState<Reservation | null>(null);
-  const [extendMode, setExtendMode] = useState<'extend' | 'edit'>('extend');
 
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedDetailsReservation, setSelectedDetailsReservation] = useState<Reservation | null>(null);
@@ -113,6 +114,7 @@ export default function App() {
 
   // Handlers
   const handleOpenNewReservation = (wsId?: string) => {
+    setEditingReservation(null);
     setModalWorkstationId(wsId || workstations[0]?.id);
     setReservationModalType('scheduled');
     setModalDate(new Date());
@@ -122,6 +124,7 @@ export default function App() {
   };
 
   const handleOpenQuickCheckIn = (wsId?: string) => {
+    setEditingReservation(null);
     setModalWorkstationId(wsId || workstations[0]?.id);
     setReservationModalType('instant_checkin');
     setModalDate(new Date());
@@ -129,6 +132,7 @@ export default function App() {
   };
 
   const handleTimelineSlotClick = (wsId: string, date: Date, startHour: number, endHour?: number) => {
+    setEditingReservation(null);
     setModalWorkstationId(wsId);
     setReservationModalType('scheduled');
     setModalDate(date);
@@ -137,14 +141,66 @@ export default function App() {
     setIsReservationModalOpen(true);
   };
 
+  const handleOpenEditReservation = (res: Reservation) => {
+    setEditingReservation(res);
+    setModalWorkstationId(res.workstationId);
+    setReservationModalType(res.type === 'instant_checkin' ? 'instant_checkin' : 'scheduled');
+    setModalDate(new Date(res.startTime));
+    setModalHour(new Date(res.startTime).getHours());
+    setModalEndHour(new Date(res.endTime).getHours());
+    setIsDetailsModalOpen(false);
+    setIsReservationModalOpen(true);
+  };
+
   const handleReservationClick = (res: Reservation) => {
     setSelectedDetailsReservation(res);
     setIsDetailsModalOpen(true);
   };
 
+  const resolveReservationStatus = (
+    startIso: string,
+    endIso: string,
+    previous: ReservationStatus = 'active'
+  ): ReservationStatus => {
+    if (previous === 'cancelled') return 'cancelled';
+    const nowMs = Date.now();
+    const startMs = new Date(startIso).getTime();
+    const endMs = new Date(endIso).getTime();
+    if (endMs <= nowMs) return 'completed';
+    if (startMs <= endMs) return 'active';
+    return 'completed';
+  };
+
   const handleCreateReservation = (
     data: Omit<Reservation, 'id' | 'createdAt' | 'status'> | Array<Omit<Reservation, 'id' | 'createdAt' | 'status'>>
   ) => {
+    if (editingReservation) {
+      const draft = Array.isArray(data) ? data[0] : data;
+      if (!draft) return;
+      const status = resolveReservationStatus(
+        draft.startTime,
+        draft.endTime,
+        editingReservation.status
+      );
+      const updated: Reservation = {
+        ...editingReservation,
+        ...draft,
+        id: editingReservation.id,
+        createdAt: editingReservation.createdAt,
+        status,
+        seriesId: editingReservation.seriesId,
+      };
+      setReservations((prev) =>
+        prev.map((r) => (r.id === editingReservation.id ? updated : r))
+      );
+      setSelectedDetailsReservation((prev) =>
+        prev?.id === editingReservation.id ? updated : prev
+      );
+      setEditingReservation(null);
+      showToast('Reserva atualizada com sucesso!');
+      return;
+    }
+
     const items = Array.isArray(data) ? data : [data];
     const createdAt = new Date().toISOString();
     const stamp = Date.now();
@@ -514,8 +570,16 @@ export default function App() {
 
       {/* Modals */}
       <ReservationModal
+        key={
+          editingReservation
+            ? `edit-${editingReservation.id}`
+            : `new-${reservationModalType}-${modalWorkstationId ?? 'x'}-${modalDate?.getTime() ?? 0}-${modalHour ?? ''}`
+        }
         isOpen={isReservationModalOpen}
-        onClose={() => setIsReservationModalOpen(false)}
+        onClose={() => {
+          setIsReservationModalOpen(false);
+          setEditingReservation(null);
+        }}
         workstations={liveWorkstations}
         reservations={reservations}
         members={members}
@@ -525,6 +589,7 @@ export default function App() {
         initialHour={modalHour}
         initialEndHour={modalEndHour}
         initialType={reservationModalType}
+        editingReservation={editingReservation}
         onAddMember={handleAddMember}
         onSubmit={handleCreateReservation}
       />
@@ -577,7 +642,7 @@ export default function App() {
       />
 
       <ExtendModal
-        key={`${reservationToExtend?.id ?? 'none'}-${extendMode}`}
+        key={`${reservationToExtend?.id ?? 'none'}-extend`}
         isOpen={isExtendModalOpen}
         onClose={() => setIsExtendModalOpen(false)}
         reservation={reservationToExtend}
@@ -587,7 +652,7 @@ export default function App() {
             : null
         }
         allReservations={reservations}
-        mode={extendMode}
+        mode="extend"
         onConfirmExtend={handleConfirmExtend}
       />
 
@@ -607,8 +672,11 @@ export default function App() {
         }}
         onCancelReservation={handleCancelReservation}
         onExtend={(res, mode) => {
+          if (mode === 'edit') {
+            handleOpenEditReservation(res);
+            return;
+          }
           setReservationToExtend(res);
-          setExtendMode(mode ?? 'extend');
           setIsExtendModalOpen(true);
         }}
       />
