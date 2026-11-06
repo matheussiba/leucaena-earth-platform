@@ -19,6 +19,15 @@ function withDefaultIps(list: Workstation[]): Workstation[] {
   }));
 }
 
+/** Ensure seed workstations exist even when an older saved state is loaded. */
+function mergeSeedWorkstations(list: Workstation[]): Workstation[] {
+  const byId = new Set(list.map((w) => w.id));
+  const missing = INITIAL_WORKSTATIONS.filter((w) => !byId.has(w.id)).map((w) => ({
+    ...w,
+  }));
+  return missing.length ? [...list, ...missing] : list;
+}
+
 export type CmqState = {
   workstations: Workstation[];
   members: LabMember[];
@@ -55,9 +64,11 @@ export async function loadState(): Promise<CmqState> {
   const base = defaultState();
   return {
     workstations: withDefaultIps(
-      Array.isArray(data.workstations) && data.workstations.length
-        ? data.workstations
-        : base.workstations
+      mergeSeedWorkstations(
+        Array.isArray(data.workstations) && data.workstations.length
+          ? data.workstations
+          : base.workstations
+      )
     ),
     members: Array.isArray(data.members) && data.members.length
       ? data.members

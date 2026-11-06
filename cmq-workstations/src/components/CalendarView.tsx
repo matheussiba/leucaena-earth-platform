@@ -37,6 +37,14 @@ export const getWorkstationColorInfo = (bayNumber: number | string) => {
       name: 'Baia 02 (Âmbar)',
     };
   }
+  if (String(bayNumber).toUpperCase() === 'IGC') {
+    return {
+      badge: 'bg-slate-100 text-slate-900 border-slate-300 font-bold',
+      icon: 'text-slate-700',
+      borderLeft: 'border-l-4 border-l-slate-600',
+      name: 'Dados IGC',
+    };
+  }
   return {
     badge: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
     icon: 'text-emerald-700',

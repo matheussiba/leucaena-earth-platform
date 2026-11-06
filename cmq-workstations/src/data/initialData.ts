@@ -29,6 +29,8 @@ export const DEFAULT_BAY_IPS: Record<string, string> = {
   '07': '143.107.215.152',
   'ws-baia-04': '143.107.215.230',
   'ws-baia-07': '143.107.215.152',
+  'ws-dados-igc': '143.107.215.175',
+  IGC: '143.107.215.175',
 };
 
 export function defaultIpForBay(ws: Pick<Workstation, 'id' | 'bayNumber'>): string {
@@ -71,6 +73,23 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     os: 'Ubuntu 22.04 LTS',
     status: 'in_use',
     notes: 'Prioritária para pesquisa e computação.',
+    isCustom: false,
+  },
+  {
+    id: 'ws-dados-igc',
+    name: 'Dados IGC',
+    bayNumber: 'IGC',
+    location: 'Data Storage - Laboratório CMQ / IGC',
+    imageUrl: '',
+    ip: '143.107.215.175',
+    gpu: 'Sem GPU dedicada',
+    cpu: '—',
+    ram: '32 GB RAM',
+    internalStorage: '28 TB',
+    additionalStorage: '28 TB',
+    os: undefined,
+    status: 'available',
+    notes: 'Servidor de armazenamento de dados (2× 28 TB).',
     isCustom: false,
   },
 ];
