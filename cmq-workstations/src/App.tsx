@@ -454,7 +454,10 @@ export default function App() {
                       <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
                         <span>RAM: {ws.ram}</span>
                         <span>·</span>
-                        <span>HD: {ws.internalStorage}</span>
+                        <span>
+                          HD: {ws.internalStorage}
+                          {ws.additionalStorage ? ` + ${ws.additionalStorage}` : ''}
+                        </span>
                       </div>
                       {ws.ip ? (
                         <div
