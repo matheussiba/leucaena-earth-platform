@@ -202,6 +202,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     };
   };
 
+  /** Days before today keep the same fill; only the border becomes dashed. */
+  const isCalendarDayPast = (day: Date) => {
+    const d = new Date(day);
+    d.setHours(0, 0, 0, 0);
+    const t = new Date(now);
+    t.setHours(0, 0, 0, 0);
+    return d.getTime() < t.getTime();
+  };
+
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3 select-none">
       {/* Top Calendar Toolbar */}
@@ -495,6 +504,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           !baseStyle.isLive &&
                           (!threshold || threshold.getTime() <= effectiveStart);
 
+                        const dayIsPast = isCalendarDayPast(selectedDate);
+                        // Past days: same colors, dashed border. Today+: solid (no dashed on excess).
+                        const blockBorder = dayIsPast ? 'border-dashed' : 'border-solid';
+
                         return (
                           <div
                             key={res.id}
@@ -507,9 +520,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                               left: `${Math.max(0, leftPercent)}%`,
                               width: `${Math.min(100 - leftPercent, Math.max(widthPercent, 1.8))}%`,
                             }}
-                            className={`absolute top-1.5 bottom-1.5 rounded-md z-10 cursor-pointer overflow-hidden border transition-all text-left flex shadow-2xs ${
+                            className={`absolute top-1.5 bottom-1.5 rounded-md z-10 cursor-pointer overflow-hidden border transition-all text-left flex shadow-2xs ${blockBorder} ${
                               isEntirelyExcess
-                                ? 'border-dashed border-slate-400 bg-slate-100 text-slate-800'
+                                ? 'border-slate-400 bg-slate-100 text-slate-800'
                                 : baseStyle.bg
                             }`}
                           >
@@ -541,7 +554,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             {hasSplitExcess && (
                               <div
                                 style={{ width: `${100 - splitPercent}%` }}
-                                className="border-l-2 border-l-amber-500 border-dashed border-amber-300 bg-amber-50/80 p-1 flex flex-col justify-between items-center text-amber-950 h-full relative overflow-hidden"
+                                className={`border-l-2 border-l-amber-500 border-amber-300 bg-amber-50/80 p-1 flex flex-col justify-between items-center text-amber-950 h-full relative overflow-hidden ${
+                                  dayIsPast ? 'border-dashed' : 'border-solid'
+                                }`}
                                 title={`Limite de fair-use ultrapassado a partir das ${formatTime(threshold!.toISOString())}. Horário cedível no WhatsApp.`}
                               >
                                 <div className="w-full flex items-center justify-between gap-1">
@@ -643,12 +658,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         const ws = workstations.find((w) => w.id === r.workstationId);
                         const wsColor = ws ? getWorkstationColorInfo(ws.bayNumber) : null;
                         const baseStyle = getBaseStyle(r);
+                        const pastDash = isCalendarDayPast(day) ? 'border-dashed' : '';
 
                         return (
                           <div
                             key={r.id}
                             onClick={() => onReservationClick(r)}
-                            className={`p-2 rounded-lg border cursor-pointer transition-colors text-left ${baseStyle.bg} ${
+                            className={`p-2 rounded-lg border cursor-pointer transition-colors text-left ${pastDash} ${baseStyle.bg} ${
                               wsColor ? wsColor.borderLeft : ''
                             }`}
                           >
@@ -774,11 +790,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       const ws = workstations.find((w) => w.id === r.workstationId);
                       const wsColor = ws ? getWorkstationColorInfo(ws.bayNumber) : null;
                       const baseStyle = getBaseStyle(r);
+                      const pastDash = isCalendarDayPast(date) ? 'border-dashed' : '';
 
                       return (
                         <div
                           key={r.id}
-                          className={`text-[9px] sm:text-[10px] p-0.5 px-1 rounded truncate font-medium border flex items-center justify-between gap-1 ${baseStyle.bg} ${
+                          className={`text-[9px] sm:text-[10px] p-0.5 px-1 rounded truncate font-medium border flex items-center justify-between gap-1 ${pastDash} ${baseStyle.bg} ${
                             wsColor ? wsColor.borderLeft : ''
                           }`}
                         >

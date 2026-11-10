@@ -170,7 +170,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({
                     }
                     className="w-full p-2 border border-slate-300 rounded bg-white font-mono"
                   />
-                  <span className="text-[10px] text-slate-500">Horas acumuladas/semana</span>
+                  <span className="text-[10px] text-slate-500">Segunda → domingo (reseta na segunda)</span>
                 </div>
               </div>
 
