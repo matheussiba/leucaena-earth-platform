@@ -70,6 +70,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const [viewMode, setViewMode] = useState<CalendarViewMode>('day');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedWsFilter, setSelectedWsFilter] = useState<string>('all');
+  /** Day cronograma slide: next → left, prev → right */
+  const [daySlideDir, setDaySlideDir] = useState<'next' | 'prev' | null>(null);
+  const [daySlideKey, setDaySlideKey] = useState(0);
 
   // Drag-to-schedule state for timeline
   const [dragState, setDragState] = useState<{
@@ -100,21 +103,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   // Navigation handlers
   const handlePrev = () => {
     const next = new Date(selectedDate);
-    if (viewMode === 'day') next.setDate(next.getDate() - 1);
-    else if (viewMode === 'week') next.setDate(next.getDate() - 7);
+    if (viewMode === 'day') {
+      next.setDate(next.getDate() - 1);
+      setDaySlideDir('prev'); // toward right
+      setDaySlideKey((k) => k + 1);
+    } else if (viewMode === 'week') next.setDate(next.getDate() - 7);
     else if (viewMode === 'month') next.setMonth(next.getMonth() - 1);
     setSelectedDate(next);
   };
 
   const handleNext = () => {
     const next = new Date(selectedDate);
-    if (viewMode === 'day') next.setDate(next.getDate() + 1);
-    else if (viewMode === 'week') next.setDate(next.getDate() + 7);
+    if (viewMode === 'day') {
+      next.setDate(next.getDate() + 1);
+      setDaySlideDir('next'); // toward left
+      setDaySlideKey((k) => k + 1);
+    } else if (viewMode === 'week') next.setDate(next.getDate() + 7);
     else if (viewMode === 'month') next.setMonth(next.getMonth() + 1);
     setSelectedDate(next);
   };
 
   const handleToday = () => {
+    setDaySlideDir(null);
     setSelectedDate(new Date());
   };
 
@@ -364,7 +374,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* --------------------------------------------------------------------- */}
       {viewMode === 'day' && (
         <div className="flex-1 min-h-[280px] lg:min-h-0 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
-          <div className="flex-1 min-h-0 overflow-x-auto">
+          <div
+            key={daySlideKey}
+            className={`flex-1 min-h-0 overflow-x-auto will-change-transform ${
+              daySlideDir === 'next'
+                ? 'cmq-day-slide-next'
+                : daySlideDir === 'prev'
+                ? 'cmq-day-slide-prev'
+                : ''
+            }`}
+          >
             <div className="h-full min-h-[280px] lg:min-h-full min-w-[960px] xl:min-w-0 flex flex-col">
             {/* Hours Header */}
             <div className="shrink-0 flex border-b border-slate-200 bg-slate-50/50">
