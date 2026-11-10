@@ -491,7 +491,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           : 100;
 
                         const isEntirelyExcess =
-                          res.isNonFairUse && (!threshold || threshold.getTime() <= effectiveStart);
+                          res.isNonFairUse &&
+                          !baseStyle.isLive &&
+                          (!threshold || threshold.getTime() <= effectiveStart);
 
                         return (
                           <div

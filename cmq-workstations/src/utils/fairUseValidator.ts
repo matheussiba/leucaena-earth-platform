@@ -36,6 +36,33 @@ export function getWeekKey(date: Date): string {
   return `${target.getFullYear()}-W${weekNum < 10 ? '0' : ''}${weekNum}`;
 }
 
+/** Local Monday 00:00 → next Monday 00:00 for the week containing `date`. */
+export function getWeekBounds(date: Date): { start: Date; end: Date } {
+  const start = new Date(date);
+  const day = (start.getDay() + 6) % 7; // Mon=0 … Sun=6
+  start.setDate(start.getDate() - day);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { start, end };
+}
+
+/** Hours of [startIso, endIso] that fall inside the week of `weekRef`. */
+export function hoursOverlappingWeek(
+  startIso: string,
+  endIso: string,
+  weekRef: Date
+): number {
+  const { start: weekStart, end: weekEnd } = getWeekBounds(weekRef);
+  const s = Math.max(new Date(startIso).getTime(), weekStart.getTime());
+  const e = Math.min(new Date(endIso).getTime(), weekEnd.getTime());
+  return Math.max(0, (e - s) / (1000 * 60 * 60));
+}
+
+function sameUser(a: string, b: string) {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 export function validateReservation(
   candidate: {
     workstationId: string;
@@ -85,11 +112,11 @@ export function validateReservation(
     };
   }
 
-  // 2. Direct time collision check with other active reservations (Hard Error)
+  // 2. Hard conflict only with other ACTIVE reservations (completed/cancelled free the slot)
   const conflicts = existingReservations.filter((res) => {
     if (res.id === currentReservationIdToExclude) return false;
     if (res.workstationId !== candidate.workstationId) return false;
-    if (res.status === 'cancelled') return false;
+    if (res.status !== 'active') return false;
 
     const resStart = new Date(res.startTime);
     const resEnd = new Date(res.endTime);
@@ -141,33 +168,30 @@ export function validateReservation(
     }
   }
 
-  // 5. Fair-use Rule: Weekly quota per researcher
-  const candidateWeek = getWeekKey(start);
-  const activeUserBookingsThisWeek = existingReservations.filter((res) => {
-    if (res.id === currentReservationIdToExclude) return false;
-    if (res.status === 'cancelled') return false;
-    if (
-      res.researcherName.trim().toLowerCase() !==
-      candidate.researcherName.trim().toLowerCase()
-    ) {
-      return false;
-    }
+  // 5. Fair-use Rule: Weekly quota per user (only hours that fall in this week)
+  const { start: weekStart, end: weekEnd } = getWeekBounds(start);
+  const otherHoursThisWeek = existingReservations.reduce((sum, res) => {
+    if (res.id === currentReservationIdToExclude) return sum;
+    if (res.status === 'cancelled') return sum;
+    if (res.status !== 'active' && res.status !== 'completed') return sum;
+    if (!sameUser(res.researcherName, candidate.researcherName)) return sum;
     const rStart = new Date(res.startTime);
-    return getWeekKey(rStart) === candidateWeek;
-  });
-
-  const totalUserHoursThisWeek = activeUserBookingsThisWeek.reduce((sum, r) => {
-    const rDur =
-      (new Date(r.endTime).getTime() - new Date(r.startTime).getTime()) /
-      (1000 * 60 * 60);
-    return sum + rDur;
+    const rEnd = new Date(res.endTime);
+    if (!(rStart < weekEnd && rEnd > weekStart)) return sum;
+    return sum + hoursOverlappingWeek(res.startTime, res.endTime, start);
   }, 0);
 
-  if (totalUserHoursThisWeek + durationHours > rules.maxWeeklyHoursPerUser) {
+  const candidateHoursThisWeek = hoursOverlappingWeek(
+    candidate.startTime,
+    candidate.endTime,
+    start
+  );
+
+  if (otherHoursThisWeek + candidateHoursThisWeek > rules.maxWeeklyHoursPerUser + 1e-9) {
     fairUseViolations.push(
-      `Cota semanal: Totalizará ${(totalUserHoursThisWeek + durationHours).toFixed(1)}h na semana (limite: ${rules.maxWeeklyHoursPerUser}h).`
+      `Cota semanal: Totalizará ${(otherHoursThisWeek + candidateHoursThisWeek).toFixed(1)}h na semana (limite: ${rules.maxWeeklyHoursPerUser}h).`
     );
-    const remainingQuota = Math.max(0, rules.maxWeeklyHoursPerUser - totalUserHoursThisWeek);
+    const remainingQuota = Math.max(0, rules.maxWeeklyHoursPerUser - otherHoursThisWeek);
     const quotaCutoff = new Date(start.getTime() + remainingQuota * 60 * 60 * 1000);
     if (!thresholdDate || quotaCutoff.getTime() < thresholdDate.getTime()) {
       thresholdDate = quotaCutoff;
@@ -181,4 +205,53 @@ export function validateReservation(
     thresholdIso: thresholdDate ? thresholdDate.toISOString() : undefined,
     warnings: warnings.length > 0 ? warnings : undefined,
   };
+}
+
+/**
+ * Recompute isNonFairUse / threshold / reasons for every reservation.
+ * Call after create / edit / delete / release / extend so flags never stay stale
+ * (e.g. after cancelling one day of a weekly series).
+ */
+export function applyFairUseFlags(
+  reservations: Reservation[],
+  rules: FairUseRules
+): Reservation[] {
+  return reservations.map((r) => {
+    if (r.status === 'cancelled') {
+      return {
+        ...r,
+        isNonFairUse: false,
+        nonFairUseThreshold: undefined,
+        nonFairUseReasons: undefined,
+      };
+    }
+
+    const v = validateReservation(
+      {
+        workstationId: r.workstationId,
+        researcherName: r.researcherName,
+        startTime: r.startTime,
+        endTime: r.endTime,
+      },
+      reservations,
+      rules,
+      r.id
+    );
+
+    if (!v.isValid) {
+      return {
+        ...r,
+        isNonFairUse: false,
+        nonFairUseThreshold: undefined,
+        nonFairUseReasons: undefined,
+      };
+    }
+
+    return {
+      ...r,
+      isNonFairUse: v.isNonFairUse,
+      nonFairUseThreshold: v.isNonFairUse ? v.thresholdIso : undefined,
+      nonFairUseReasons: v.isNonFairUse ? v.fairUseViolations : undefined,
+    };
+  });
 }

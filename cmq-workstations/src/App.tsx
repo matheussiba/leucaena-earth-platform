@@ -20,7 +20,7 @@ import { CheckOutConfirmModal } from './components/CheckOutConfirmModal';
 import { ExtendModal } from './components/ExtendModal';
 import { ReservationDetailsModal } from './components/ReservationDetailsModal';
 import { Check, AlertTriangle, Zap } from 'lucide-react';
-import { validateReservation } from './utils/fairUseValidator';
+import { applyFairUseFlags } from './utils/fairUseValidator';
 import { defaultState, loadState, saveState } from './api';
 
 export default function App() {
@@ -171,30 +171,47 @@ export default function App() {
     return 'completed';
   };
 
+  /** Persist reservation list and always refresh fair-use flags (avoids sticky gray). */
+  const commitReservations = (
+    updater: (prev: Reservation[]) => Reservation[]
+  ): Reservation[] => {
+    let next: Reservation[] = [];
+    setReservations((prev) => {
+      next = applyFairUseFlags(updater(prev), rules);
+      return next;
+    });
+    return next;
+  };
+
   const handleCreateReservation = (
     data: Omit<Reservation, 'id' | 'createdAt' | 'status'> | Array<Omit<Reservation, 'id' | 'createdAt' | 'status'>>
   ) => {
     if (editingReservation) {
       const draft = Array.isArray(data) ? data[0] : data;
       if (!draft) return;
+      const editId = editingReservation.id;
       const status = resolveReservationStatus(
         draft.startTime,
         draft.endTime,
         editingReservation.status
       );
-      const updated: Reservation = {
-        ...editingReservation,
-        ...draft,
-        id: editingReservation.id,
-        createdAt: editingReservation.createdAt,
-        status,
-        seriesId: editingReservation.seriesId,
-      };
-      setReservations((prev) =>
-        prev.map((r) => (r.id === editingReservation.id ? updated : r))
+      const next = commitReservations((prev) =>
+        prev.map((r) =>
+          r.id === editId
+            ? {
+                ...r,
+                ...draft,
+                id: editId,
+                createdAt: r.createdAt,
+                status,
+                seriesId: r.seriesId,
+              }
+            : r
+        )
       );
+      const updated = next.find((r) => r.id === editId) || null;
       setSelectedDetailsReservation((prev) =>
-        prev?.id === editingReservation.id ? updated : prev
+        prev?.id === editId ? updated : prev
       );
       setEditingReservation(null);
       showToast('Reserva atualizada com sucesso!');
@@ -211,15 +228,15 @@ export default function App() {
       createdAt,
     }));
 
-    setReservations((prev) => [...created, ...prev]);
+    const next = commitReservations((prev) => [...created, ...prev]);
+    const firstId = created[0]?.id;
+    const first = firstId ? next.find((r) => r.id === firstId) : undefined;
 
-    const first = items[0];
-    if (!first) return;
     if (items.length > 1) {
       showToast(`${items.length} ocorrências agendadas no calendário.`);
-    } else if (first.isNonFairUse) {
+    } else if (first?.isNonFairUse) {
       showToast('Reserva criada com destaque (fora do Fair-Use, combinável no WhatsApp).');
-    } else if (first.type === 'instant_checkin') {
+    } else if (items[0]?.type === 'instant_checkin') {
       showToast('Check-in realizado! Máquina marcada como em uso.');
     } else {
       showToast('Reserva confirmada no calendário!');
@@ -227,7 +244,7 @@ export default function App() {
   };
 
   const handleConfirmRelease = (reservationId: string) => {
-    setReservations((prev) =>
+    commitReservations((prev) =>
       prev.map((r) =>
         r.id === reservationId
           ? { ...r, status: 'completed', endTime: new Date().toISOString() }
@@ -239,28 +256,9 @@ export default function App() {
 
   const handleConfirmExtend = (reservationId: string, newEndIso: string) => {
     const current = reservations.find((r) => r.id === reservationId);
-    let updated: Reservation | null = null;
-    setReservations((prev) =>
+    const next = commitReservations((prev) =>
       prev.map((r) => {
         if (r.id !== reservationId) return r;
-        const validation = validateReservation(
-          {
-            workstationId: r.workstationId,
-            researcherName: r.researcherName,
-            startTime: r.startTime,
-            endTime: newEndIso,
-          },
-          prev,
-          rules,
-          r.id
-        );
-        const fairUsePatch = validation.isValid
-          ? {
-              isNonFairUse: validation.isNonFairUse,
-              nonFairUseThreshold: validation.isNonFairUse ? validation.thresholdIso : undefined,
-              nonFairUseReasons: validation.isNonFairUse ? validation.fairUseViolations : undefined,
-            }
-          : {};
 
         // Reabrir como ativa se o novo intervalo cobrir (ou for depois de) agora —
         // ex.: liberou a máquina e depois alongou o término de novo.
@@ -273,10 +271,10 @@ export default function App() {
           else if (startMs <= endMs) status = 'active';
         }
 
-        updated = { ...r, endTime: newEndIso, status, ...fairUsePatch };
-        return updated;
+        return { ...r, endTime: newEndIso, status };
       })
     );
+    const updated = next.find((r) => r.id === reservationId) || null;
     if (updated) {
       setSelectedDetailsReservation((prev) =>
         prev?.id === reservationId ? updated : prev
@@ -311,7 +309,7 @@ export default function App() {
       ...log,
     ]);
     const doomedIds = new Set(doomed.map((r) => r.id));
-    setReservations((prev) => prev.filter((r) => !doomedIds.has(r.id)));
+    commitReservations((prev) => prev.filter((r) => !doomedIds.has(r.id)));
     showToast(
       doomed.length > 1
         ? `${doomed.length} ocorrências removidas do cronograma.`

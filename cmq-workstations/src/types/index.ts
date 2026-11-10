@@ -66,7 +66,7 @@ export interface FairUseRules {
   maxContinuousHoursWeekday: number; // e.g. 12h
   maxContinuousHoursWeekend: number; // e.g. 36h
   maxAdvanceDays: number;            // e.g. 14 days
-  maxWeeklyHoursPerUser: number;     // e.g. 36h/semana
+  maxWeeklyHoursPerUser: number;     // e.g. 40h/semana
   maxActiveBookingsPerUser: number;  // e.g. 4 reservas ativas
   toleranceCheckInMinutes: number;   // e.g. 20 min
 }

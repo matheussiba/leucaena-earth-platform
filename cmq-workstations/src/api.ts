@@ -11,6 +11,7 @@ import {
   DEFAULT_RULES,
   defaultIpForBay,
 } from './data/initialData';
+import { applyFairUseFlags } from './utils/fairUseValidator';
 
 function withDefaultIps(list: Workstation[]): Workstation[] {
   return list.map((w) => ({
@@ -73,26 +74,37 @@ export async function loadState(): Promise<CmqState> {
     members: Array.isArray(data.members) && data.members.length
       ? data.members
       : base.members,
-    reservations: Array.isArray(data.reservations)
-      ? data.reservations.map(normalizeReservation)
-      : [],
+    rules: (() => {
+      const merged =
+        data.rules && typeof data.rules === 'object'
+          ? { ...DEFAULT_RULES, ...data.rules }
+          : { ...base.rules };
+      // Policy updates: weekly quota 28/32/36 → 40h
+      if ([28, 32, 36].includes(merged.maxWeeklyHoursPerUser)) {
+        merged.maxWeeklyHoursPerUser = DEFAULT_RULES.maxWeeklyHoursPerUser;
+      }
+      return merged;
+    })(),
+    reservations: (() => {
+      const list = Array.isArray(data.reservations)
+        ? data.reservations.map(normalizeReservation)
+        : [];
+      const rules =
+        data.rules && typeof data.rules === 'object'
+          ? { ...DEFAULT_RULES, ...data.rules }
+          : { ...base.rules };
+      if ([28, 32, 36].includes(rules.maxWeeklyHoursPerUser)) {
+        rules.maxWeeklyHoursPerUser = DEFAULT_RULES.maxWeeklyHoursPerUser;
+      }
+      // Refresh sticky fair-use flags against current rules / remaining bookings
+      return applyFairUseFlags(list, rules);
+    })(),
     deletionLog: Array.isArray(data.deletionLog)
       ? data.deletionLog.map((entry: DeletedReservationEntry) => ({
           ...entry,
           reservation: normalizeReservation(entry.reservation),
         }))
       : [],
-    rules: (() => {
-      const merged =
-        data.rules && typeof data.rules === 'object'
-          ? { ...DEFAULT_RULES, ...data.rules }
-          : { ...base.rules };
-      // Policy update: weekly quota moved from 28h → 36h
-      if (merged.maxWeeklyHoursPerUser === 28) {
-        merged.maxWeeklyHoursPerUser = DEFAULT_RULES.maxWeeklyHoursPerUser;
-      }
-      return merged;
-    })(),
   };
 }
 

@@ -61,7 +61,7 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
   const nextReservations = allReservations.filter((r) => {
     if (r.id === reservation.id) return false;
     if (r.workstationId !== workstation.id) return false;
-    if (r.status === 'cancelled') return false;
+    if (r.status !== 'active') return false;
 
     const rStart = new Date(r.startTime);
     const rEnd = new Date(r.endTime);
