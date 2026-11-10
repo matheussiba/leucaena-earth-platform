@@ -1,4 +1,5 @@
 import { Reservation, FairUseRules } from '../types';
+import { findHardConflicts } from './sharedUse';
 
 export interface ValidationResult {
   isValid: boolean;            // true if no hard conflict (can be booked)
@@ -179,6 +180,8 @@ export function validateReservation(
     researcherName: string;
     startTime: string;
     endTime: string;
+    isSharedUse?: boolean;
+    sharedFrom?: string;
   },
   existingReservations: Reservation[],
   rules: FairUseRules,
@@ -221,16 +224,12 @@ export function validateReservation(
     };
   }
 
-  // Hard conflict only with other ACTIVE reservations (completed/cancelled free the slot)
-  const conflicts = existingReservations.filter((res) => {
-    if (res.id === currentReservationIdToExclude) return false;
-    if (res.workstationId !== candidate.workstationId) return false;
-    if (res.status !== 'active') return false;
-
-    const resStart = new Date(res.startTime);
-    const resEnd = new Date(res.endTime);
-    return isOverlapping(start, end, resStart, resEnd);
-  });
+  // Hard conflict (uso compartilhado allows a second booking on soft/shared windows)
+  const conflicts = findHardConflicts(
+    candidate,
+    existingReservations,
+    currentReservationIdToExclude
+  );
 
   if (conflicts.length > 0) {
     const firstConflict = conflicts[0];

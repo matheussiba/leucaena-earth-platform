@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Workstation, Reservation, FairUseRules, LabMember, ResearcherRole } from '../types';
 import { validateReservation } from '../utils/fairUseValidator';
+import { normalizeSharedFields } from '../utils/sharedUse';
+import { getLastSelectedUser, setLastSelectedUser } from '../utils/sessionPrefs';
 import {
   RecurrenceFrequency,
   RecurrenceRule,
@@ -18,7 +20,8 @@ import {
   Zap, 
   UserPlus,
   AlertCircle,
-  Repeat
+  Repeat,
+  Share2
 } from 'lucide-react';
 
 type ReservationDraft = Omit<Reservation, 'id' | 'createdAt' | 'status'>;
@@ -139,6 +142,11 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 
   const [notes, setNotes] = useState<string>('');
 
+  // Uso compartilhado (half-height from sharedFrom → end)
+  const [isSharedUse, setIsSharedUse] = useState(false);
+  const [sharedFromDateStr, setSharedFromDateStr] = useState('');
+  const [sharedFromTimeStr, setSharedFromTimeStr] = useState('');
+
   // Recurrence (scheduled only)
   type RepeatMode = 'none' | RecurrenceFrequency;
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
@@ -179,16 +187,23 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         Math.round((end.getTime() - start.getTime()) / 60000)
       );
       setInstantDurationMinutes(mins);
+      const shared = Boolean(editingReservation.isSharedUse);
+      setIsSharedUse(shared);
+      const fromIso = editingReservation.sharedFrom || editingReservation.startTime;
+      setSharedFromDateStr(toLocalDateInput(fromIso));
+      setSharedFromTimeStr(toLocalTimeInput(fromIso));
       return;
     }
 
     if (initialWorkstationId) setSelectedWsId(initialWorkstationId);
     if (initialType) setModalType(initialType);
     setNotes('');
+    setIsSharedUse(false);
     if (initialDate) {
       const dStr = toLocalDateInput(initialDate);
       setStartDateStr(dStr);
       setEndDateStr(dStr);
+      setSharedFromDateStr(dStr);
     }
     if (initialHour !== undefined) {
       const startH = Math.min(23, Math.max(0, initialHour));
@@ -197,15 +212,25 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           ? Math.min(24, Math.max(startH + 1, initialEndHour))
           : Math.min(23, startH + 3);
 
-      setStartTimeStr(`${startH < 10 ? '0' : ''}${startH}:00`);
+      const startT = `${startH < 10 ? '0' : ''}${startH}:00`;
+      setStartTimeStr(startT);
+      setSharedFromTimeStr(startT);
       if (endH >= 24) {
         setEndTimeStr('23:59');
       } else {
         setEndTimeStr(`${endH < 10 ? '0' : ''}${endH}:00`);
       }
+    } else {
+      setSharedFromDateStr((prev) => prev || toLocalDateInput(initialDate || new Date()));
+      setSharedFromTimeStr((prev) => prev || startTimeStr);
     }
     if (members.length > 0) {
-      setSelectedMemberName(sortedMembers[0]?.name || members[0]?.name);
+      const remembered = getLastSelectedUser();
+      const match = remembered
+        ? sortedMembers.find((m) => m.name === remembered) ||
+          members.find((m) => m.name === remembered)
+        : undefined;
+      setSelectedMemberName(match?.name || sortedMembers[0]?.name || members[0]?.name);
     }
   }, [
     isOpen,
@@ -303,6 +328,28 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     return new Date(`${endDateStr}T${endTimeStr}:00`).toISOString();
   }, [modalType, isEditing, instantDurationMinutes, endDateStr, endTimeStr]);
 
+  const sharedFields = useMemo(() => {
+    if (!isSharedUse || !computedStartIso || !computedEndIso) {
+      // Explicit false/undefined so edits clear a previous shared flag
+      return { isSharedUse: false as boolean | undefined, sharedFrom: undefined as string | undefined };
+    }
+    const fromIso =
+      modalType === 'instant_checkin' && !isEditing
+        ? computedStartIso
+        : new Date(`${sharedFromDateStr || startDateStr}T${sharedFromTimeStr || startTimeStr}:00`).toISOString();
+    return normalizeSharedFields(computedStartIso, computedEndIso, true, fromIso);
+  }, [
+    isSharedUse,
+    computedStartIso,
+    computedEndIso,
+    modalType,
+    isEditing,
+    sharedFromDateStr,
+    sharedFromTimeStr,
+    startDateStr,
+    startTimeStr,
+  ]);
+
   const excludeReservationId = editingReservation?.id;
 
   const builtRecurrenceRule = useMemo((): RecurrenceRule | null => {
@@ -358,12 +405,25 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     let rolling = [...reservations];
 
     windows.forEach((w) => {
+      const shared = normalizeSharedFields(
+        w.startTime,
+        w.endTime,
+        Boolean(sharedFields.isSharedUse),
+        sharedFields.sharedFrom
+          ? new Date(
+              new Date(w.startTime).getTime() +
+                (new Date(sharedFields.sharedFrom!).getTime() -
+                  new Date(computedStartIso!).getTime())
+            ).toISOString()
+          : w.startTime
+      );
       const v = validateReservation(
         {
           workstationId: selectedWsId,
           researcherName: selectedMemberName || 'Usuário',
           startTime: w.startTime,
           endTime: w.endTime,
+          ...shared,
         },
         rolling,
         rules,
@@ -385,6 +445,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           type: 'scheduled',
           status: 'active',
           createdAt: null,
+          ...shared,
         },
         ...rolling,
       ];
@@ -400,6 +461,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     reservations,
     rules,
     excludeReservationId,
+    sharedFields,
   ]);
 
   // Real-time validation (first occurrence)
@@ -419,6 +481,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
         researcherName: selectedMemberName || 'Usuário',
         startTime: computedStartIso,
         endTime: computedEndIso,
+        ...sharedFields,
       },
       reservations,
       rules,
@@ -432,6 +495,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     reservations,
     rules,
     excludeReservationId,
+    sharedFields,
   ]);
 
   if (!isOpen) return null;
@@ -458,6 +522,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     };
     onAddMember(newMember);
     setSelectedMemberName(newMember.name);
+    setLastSelectedUser(newMember.name);
     setNewMemberName('');
     setShowAddNewMember(false);
   };
@@ -476,6 +541,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       return;
     }
 
+    setLastSelectedUser(selectedMemberName.trim());
+
     const currentMember = members.find((m) => m.name === selectedMemberName);
     const role = currentMember ? currentMember.role : 'Mestrado';
     const seriesId =
@@ -490,6 +557,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           researcherName: selectedMemberName.trim(),
           startTime: computedStartIso,
           endTime: computedEndIso,
+          ...sharedFields,
         },
         reservations,
         rules,
@@ -513,17 +581,31 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
             ? new Date().toISOString()
             : undefined,
         seriesId: isEditing ? editingReservation!.seriesId : undefined,
+        ...sharedFields,
       });
     } else {
       let rolling = [...reservations];
       const drafts: ReservationDraft[] = [];
+      const baseStartMs = new Date(computedStartIso).getTime();
+      const sharedOffsetMs = sharedFields.sharedFrom
+        ? new Date(sharedFields.sharedFrom).getTime() - baseStartMs
+        : 0;
       occurrencePlan.windows.forEach((w) => {
+        const shared = normalizeSharedFields(
+          w.startTime,
+          w.endTime,
+          Boolean(sharedFields.isSharedUse),
+          sharedFields.isSharedUse
+            ? new Date(new Date(w.startTime).getTime() + sharedOffsetMs).toISOString()
+            : undefined
+        );
         const v = validateReservation(
           {
             workstationId: selectedWsId,
             researcherName: selectedMemberName.trim(),
             startTime: w.startTime,
             endTime: w.endTime,
+            ...shared,
           },
           rolling,
           rules
@@ -540,6 +622,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
           nonFairUseThreshold: v.isNonFairUse ? v.thresholdIso : undefined,
           nonFairUseReasons: v.isNonFairUse ? v.fairUseViolations : undefined,
           seriesId,
+          ...shared,
         };
         drafts.push(draft);
         rolling = [
@@ -711,7 +794,10 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
             ) : (
               <select
                 value={selectedMemberName}
-                onChange={(e) => setSelectedMemberName(e.target.value)}
+                onChange={(e) => {
+                  setSelectedMemberName(e.target.value);
+                  setLastSelectedUser(e.target.value);
+                }}
                 className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-medium focus:border-blue-500 focus:outline-none"
                 required
               >
@@ -869,6 +955,65 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Uso compartilhado */}
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSharedUse}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setIsSharedUse(on);
+                  if (on) {
+                    // Default: 100% do intervalo compartilhado
+                    if (modalType === 'instant_checkin' && !isEditing) {
+                      setSharedFromDateStr(toLocalDateInput(new Date()));
+                      setSharedFromTimeStr(toLocalTimeInput(new Date().toISOString()));
+                    } else {
+                      setSharedFromDateStr(startDateStr);
+                      setSharedFromTimeStr(startTimeStr);
+                    }
+                  }
+                }}
+                className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
+                  <Share2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  Uso compartilhado
+                </span>
+                <span className="block text-[10px] text-slate-500 leading-snug mt-0.5">
+                  Deixa 50% da altura no trecho compartilhado para outra pessoa usar (ex.: processamento à noite).
+                </span>
+              </span>
+            </label>
+
+            {isSharedUse && !(modalType === 'instant_checkin' && !isEditing) && (
+              <div className="pt-2 border-t border-slate-200/60 space-y-1.5">
+                <span className="text-[10px] font-medium text-slate-600">
+                  Compartilhar a partir de
+                  <span className="text-slate-400 font-normal"> (antes disso fica exclusivo / altura total)</span>
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    value={sharedFromDateStr || startDateStr}
+                    min={startDateStr}
+                    max={endDateStr}
+                    onChange={(e) => setSharedFromDateStr(e.target.value)}
+                    className="w-full text-xs p-1.5 border border-slate-300 rounded bg-white font-mono"
+                  />
+                  <input
+                    type="time"
+                    value={sharedFromTimeStr || startTimeStr}
+                    onChange={(e) => setSharedFromTimeStr(e.target.value)}
+                    className="w-full text-xs p-1.5 border border-slate-300 rounded bg-white font-mono"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Recurrence — scheduled create only */}
           {modalType === 'scheduled' && !isEditing && (

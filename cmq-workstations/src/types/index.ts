@@ -54,6 +54,13 @@ export interface Reservation {
   createdAt: string | null;
   /** Optional series id when created via recurrence */
   seriesId?: string;
+  /**
+   * Uso compartilhado: from `sharedFrom` (or start if omitted) until end,
+   * the block is half-height so another person can use the machine.
+   */
+  isSharedUse?: boolean;
+  /** ISO instant when the shared (50% height) portion begins. */
+  sharedFrom?: string;
 }
 
 /** Snapshot kept after hard-delete so the occupancy log still has history. */

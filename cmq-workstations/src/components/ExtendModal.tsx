@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Reservation, Workstation } from '../types';
 import { calculateDurationHours, formatDateShort, formatTime, formatBayNumber, isSameDay } from '../utils/dateUtils';
-import { isOverlapping } from '../utils/fairUseValidator';
+import { reservationsHardConflict } from '../utils/sharedUse';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { Clock, X, AlertTriangle, CheckCircle2, Pencil } from 'lucide-react';
 
@@ -57,16 +57,16 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
     setAddedMinutes((prev) => Math.max(minDeltaMinutes, prev + delta));
   };
 
-  // Check collision of the full new interval with other reservations
+  // Check collision of the full new interval with other reservations (respects uso compartilhado)
+  const extendedCandidate = {
+    ...reservation,
+    endTime: potentialNewEnd.toISOString(),
+  };
   const nextReservations = allReservations.filter((r) => {
     if (r.id === reservation.id) return false;
     if (r.workstationId !== workstation.id) return false;
     if (r.status !== 'active') return false;
-
-    const rStart = new Date(r.startTime);
-    const rEnd = new Date(r.endTime);
-
-    return isOverlapping(currentStart, potentialNewEnd, rStart, rEnd);
+    return reservationsHardConflict(extendedCandidate, r);
   });
 
   const hasConflict = nextReservations.length > 0;

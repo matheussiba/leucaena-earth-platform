@@ -161,6 +161,19 @@ export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = (
               </div>
             </div>
 
+            {reservation.isSharedUse && (
+              <div className="pt-2 border-t border-slate-200 text-[11px] text-indigo-800 flex items-start gap-1.5">
+                <span className="font-semibold shrink-0">Uso compartilhado</span>
+                <span className="text-indigo-700/90">
+                  {reservation.sharedFrom &&
+                  new Date(reservation.sharedFrom).getTime() >
+                    new Date(reservation.startTime).getTime() + 1000
+                    ? `exclusivo até ${formatTime(reservation.sharedFrom)}; depois 50% (outro usuário pode usar)`
+                    : 'todo o intervalo em 50% (outro usuário pode usar)'}
+                </span>
+              </div>
+            )}
+
             {reservation.notes && (
               <div className="pt-2 border-t border-slate-200 text-slate-600 italic">
                 "{reservation.notes}"

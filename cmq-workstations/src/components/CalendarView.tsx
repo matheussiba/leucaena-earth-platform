@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Workstation, Reservation, CalendarViewMode } from '../types';
 import { formatTime, formatDateFull, isSameDay, formatBayNumber } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
+import { isOverlapping } from '../utils/fairUseValidator';
+import { getSoftInterval, getHardInterval } from '../utils/sharedUse';
 import { 
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon, 
   Plus, 
   AlertTriangle,
-  Monitor
+  Monitor,
+  Share2
 } from 'lucide-react';
 
 export const getWorkstationColorInfo = (bayNumber: number | string) => {
@@ -374,229 +377,310 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* --------------------------------------------------------------------- */}
       {viewMode === 'day' && (
         <div className="flex-1 min-h-[280px] lg:min-h-0 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
-          <div
-            key={daySlideKey}
-            className={`flex-1 min-h-0 overflow-x-auto will-change-transform ${
-              daySlideDir === 'next'
-                ? 'cmq-day-slide-next'
-                : daySlideDir === 'prev'
-                ? 'cmq-day-slide-prev'
-                : ''
-            }`}
-          >
-            <div className="h-full min-h-[280px] lg:min-h-full min-w-[960px] xl:min-w-0 flex flex-col">
-            {/* Hours Header */}
-            <div className="shrink-0 flex border-b border-slate-200 bg-slate-50/50">
-              <div className="sticky left-0 z-40 w-[4.5rem] sm:w-24 shrink-0 px-1.5 py-2 border-r border-slate-200 bg-slate-50 text-[10px] sm:text-xs font-semibold text-slate-600 text-center shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)]">
+          <div className="flex-1 min-h-0 flex min-h-[280px] lg:min-h-0">
+            {/* Sticky Baia column — does not slide */}
+            <div className="w-[4.5rem] sm:w-24 shrink-0 flex flex-col border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)]">
+              <div className="shrink-0 px-1.5 py-2 border-b border-slate-200 bg-slate-50 text-[10px] sm:text-xs font-semibold text-slate-600 text-center">
                 Baia
               </div>
-              <div className="flex-1 flex relative min-w-0">
-                {hoursArray.map((hour) => (
+              <div className="flex-1 min-h-0 flex flex-col divide-y divide-slate-100">
+                {visibleWorkstations.map((ws) => (
                   <div
-                    key={hour}
-                    className="flex-1 min-w-[2.25rem] xl:min-w-0 text-center py-2 border-r border-slate-100 text-[10px] sm:text-[11px] font-mono tabular-nums text-slate-500 last:border-r-0"
+                    key={ws.id}
+                    className="flex flex-1 min-h-[92px] lg:min-h-[140px] xl:min-h-[160px] px-1.5 py-2 flex-col items-center justify-center gap-0.5 bg-white"
                   >
-                    {String(hour).padStart(2, '0')}
+                    <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
+                    <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
+                      B{formatBayNumber(ws.bayNumber)}
+                    </div>
+                    <div className="w-full text-[9px] sm:text-[10px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
+                      {ws.name}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Workstations Rows — share remaining height on desktop */}
-            <div className="flex-1 min-h-0 flex flex-col divide-y divide-slate-100">
-              {visibleWorkstations.map((ws) => {
-                const wsReservations = dayReservations.filter((r) => r.workstationId === ws.id);
-
-                return (
-                  <div key={ws.id} className="flex flex-1 min-h-[92px] lg:min-h-[140px] xl:min-h-[160px] group">
-                    {/* Frozen bay column: thumb + name only */}
-                    <div className="sticky left-0 z-30 w-[4.5rem] sm:w-24 shrink-0 px-1.5 py-2 border-r border-slate-200 bg-white flex flex-col items-center justify-center gap-0.5 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)]">
-                      <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
-                      <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
-                        B{formatBayNumber(ws.bayNumber)}
-                      </div>
-                      <div className="w-full text-[9px] sm:text-[10px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
-                        {ws.name}
-                      </div>
+            {/* Hours timeline — slides on prev/next */}
+            <div className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden">
+              <div
+                key={daySlideKey}
+                className={`h-full min-h-[280px] lg:min-h-full min-w-[960px] xl:min-w-0 flex flex-col will-change-transform ${
+                  daySlideDir === 'next'
+                    ? 'cmq-day-slide-next'
+                    : daySlideDir === 'prev'
+                    ? 'cmq-day-slide-prev'
+                    : ''
+                }`}
+              >
+                <div className="shrink-0 flex border-b border-slate-200 bg-slate-50/50">
+                  {hoursArray.map((hour) => (
+                    <div
+                      key={hour}
+                      className="flex-1 min-w-[2.25rem] xl:min-w-0 text-center py-2 border-r border-slate-100 text-[10px] sm:text-[11px] font-mono tabular-nums text-slate-500 last:border-r-0"
+                    >
+                      {String(hour).padStart(2, '0')}
                     </div>
+                  ))}
+                </div>
 
-                    {/* Right Column: 24h timeline track with Click & Drag */}
-                    <div className="flex-1 relative flex cursor-crosshair min-w-0">
-                      {hoursArray.map((hour) => (
-                        <div
-                          key={hour}
-                          onMouseDown={(e) => {
-                            if (e.button === 0) {
-                              setDragState({
-                                wsId: ws.id,
-                                startHour: hour,
-                                currentHour: hour,
-                              });
-                            }
-                          }}
-                          onMouseEnter={() => {
-                            if (dragState && dragState.wsId === ws.id) {
-                              setDragState((prev) => (prev ? { ...prev, currentHour: hour } : null));
-                            }
-                          }}
-                          className="flex-1 min-w-[2.25rem] xl:min-w-0 border-r border-slate-100 hover:bg-blue-50/50 transition-colors"
-                          title={`Clique e arraste a partir das ${hour}:00`}
-                        />
-                      ))}
+                <div className="flex-1 min-h-0 flex flex-col divide-y divide-slate-100">
+                  {visibleWorkstations.map((ws) => {
+                    const wsReservations = dayReservations.filter((r) => r.workstationId === ws.id);
+                    const dayIsPast = isCalendarDayPast(selectedDate);
+                    const blockBorder = dayIsPast ? 'border-dashed' : 'border-solid';
 
-                      {/* Current Time Red Line */}
-                      {isToday && (
+                    const selStartOfDay = new Date(selectedDate);
+                    selStartOfDay.setHours(0, 0, 0, 0);
+                    const selEndOfDay = new Date(selectedDate);
+                    selEndOfDay.setHours(24, 0, 0, 0);
+                    const dayOrigin = selStartOfDay.getTime();
+
+                    const renderBlock = (
+                      res: Reservation,
+                      segStart: number,
+                      segEnd: number,
+                      lane: 'full' | 'top' | 'bottom',
+                      segKey: string,
+                      opts?: { sharedHalf?: boolean }
+                    ) => {
+                      if (segEnd <= segStart) return null;
+                      const leftPercent = ((segStart - dayOrigin) / (1000 * 60 * 60) / 24) * 100;
+                      const widthPercent = ((segEnd - segStart) / (1000 * 60 * 60) / 24) * 100;
+                      const baseStyle = getBaseStyle(res);
+                      const threshold = res.nonFairUseThreshold
+                        ? new Date(res.nonFairUseThreshold)
+                        : null;
+                      const hasSplitExcess =
+                        res.isNonFairUse &&
+                        threshold &&
+                        threshold.getTime() > segStart &&
+                        threshold.getTime() < segEnd;
+                      const splitPercent = hasSplitExcess
+                        ? ((threshold!.getTime() - segStart) / (segEnd - segStart)) * 100
+                        : 100;
+                      const isEntirelyExcess =
+                        res.isNonFairUse &&
+                        !baseStyle.isLive &&
+                        (!threshold || threshold.getTime() <= segStart);
+
+                      const vertical =
+                        lane === 'full'
+                          ? 'top-1.5 bottom-1.5'
+                          : lane === 'top'
+                          ? 'top-1.5 bottom-1/2'
+                          : 'top-1/2 bottom-1.5';
+
+                      return (
                         <div
-                          className="absolute top-0 bottom-0 w-0.5 bg-rose-500 z-20 pointer-events-none"
-                          style={{ left: `${currentLinePercent}%` }}
+                          key={segKey}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReservationClick(res);
+                          }}
+                          style={{
+                            left: `${Math.max(0, leftPercent)}%`,
+                            width: `${Math.min(100 - leftPercent, Math.max(widthPercent, 1.8))}%`,
+                          }}
+                          className={`absolute ${vertical} rounded-md z-10 cursor-pointer overflow-hidden border transition-all text-left flex shadow-2xs ${blockBorder} ${
+                            isEntirelyExcess
+                              ? 'border-slate-400 bg-slate-100 text-slate-800'
+                              : baseStyle.bg
+                          }`}
+                          title={
+                            opts?.sharedHalf
+                              ? 'Uso compartilhado (50%) — outro usuário pode usar neste trecho'
+                              : undefined
+                          }
                         >
-                          <div className="absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                        </div>
-                      )}
-
-                      {/* Real-time Drag-to-Schedule Selection Box */}
-                      {dragState && dragState.wsId === ws.id && (() => {
-                        const minH = Math.min(dragState.startHour, dragState.currentHour);
-                        const maxH = Math.max(dragState.startHour, dragState.currentHour);
-                        const selEnd = maxH + 1;
-                        const leftPct = (minH / 24) * 100;
-                        const widthPct = ((selEnd - minH) / 24) * 100;
-                        const duration = selEnd - minH;
-
-                        return (
                           <div
-                            style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-                            className="absolute top-1.5 bottom-1.5 rounded-lg bg-blue-500/25 border-2 border-blue-600 z-30 pointer-events-none flex items-center justify-between px-2 text-[10px] font-bold text-blue-950 shadow-md backdrop-blur-xs"
+                            style={{ width: `${hasSplitExcess ? splitPercent : 100}%` }}
+                            className="p-1 flex flex-col justify-between min-w-0 h-full overflow-hidden"
                           >
-                            <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
-                              {minH < 10 ? `0${minH}` : minH}:00
-                            </span>
-                            <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] font-mono shadow-2xs">
-                              {duration}h {duration === 1 ? 'hora' : 'horas'}
-                            </span>
-                            <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
-                              {selEnd >= 24 ? '23:59' : `${selEnd < 10 ? `0${selEnd}` : selEnd}:00`}
-                            </span>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Reservation Blocks */}
-                      {wsReservations.map((res) => {
-                        const resStart = new Date(res.startTime);
-                        const resEnd = new Date(res.endTime);
-
-                        const selStartOfDay = new Date(selectedDate);
-                        selStartOfDay.setHours(0, 0, 0, 0);
-                        const selEndOfDay = new Date(selectedDate);
-                        selEndOfDay.setHours(24, 0, 0, 0);
-
-                        const effectiveStart = Math.max(resStart.getTime(), selStartOfDay.getTime());
-                        const effectiveEnd = Math.min(resEnd.getTime(), selEndOfDay.getTime());
-                        if (effectiveEnd <= effectiveStart) return null;
-
-                        const startHours = (effectiveStart - selStartOfDay.getTime()) / (1000 * 60 * 60);
-                        const durationHours = (effectiveEnd - effectiveStart) / (1000 * 60 * 60);
-
-                        const leftPercent = (startHours / 24) * 100;
-                        const widthPercent = (durationHours / 24) * 100;
-
-                        const baseStyle = getBaseStyle(res);
-
-                        // Check if fair-use is exceeded specifically after a threshold
-                        const threshold = res.nonFairUseThreshold
-                          ? new Date(res.nonFairUseThreshold)
-                          : null;
-
-                        const hasSplitExcess =
-                          res.isNonFairUse &&
-                          threshold &&
-                          threshold.getTime() > effectiveStart &&
-                          threshold.getTime() < effectiveEnd;
-
-                        const splitPercent = hasSplitExcess
-                          ? ((threshold!.getTime() - effectiveStart) / (effectiveEnd - effectiveStart)) * 100
-                          : 100;
-
-                        const isEntirelyExcess =
-                          res.isNonFairUse &&
-                          !baseStyle.isLive &&
-                          (!threshold || threshold.getTime() <= effectiveStart);
-
-                        const dayIsPast = isCalendarDayPast(selectedDate);
-                        // Past days: same colors, dashed border. Today+: solid (no dashed on excess).
-                        const blockBorder = dayIsPast ? 'border-dashed' : 'border-solid';
-
-                        return (
-                          <div
-                            key={res.id}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onReservationClick(res);
-                            }}
-                            style={{
-                              left: `${Math.max(0, leftPercent)}%`,
-                              width: `${Math.min(100 - leftPercent, Math.max(widthPercent, 1.8))}%`,
-                            }}
-                            className={`absolute top-1.5 bottom-1.5 rounded-md z-10 cursor-pointer overflow-hidden border transition-all text-left flex shadow-2xs ${blockBorder} ${
-                              isEntirelyExcess
-                                ? 'border-slate-400 bg-slate-100 text-slate-800'
-                                : baseStyle.bg
-                            }`}
-                          >
-                            {/* Regular part (within Fair-Use) */}
-                            <div
-                              style={{ width: `${hasSplitExcess ? splitPercent : 100}%` }}
-                              className="p-1.5 flex flex-col justify-between min-w-0 h-full overflow-hidden"
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="font-bold text-xs truncate flex items-center gap-1">
-                                  {baseStyle.isLive && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0"></span>
-                                  )}
-                                  <span className="truncate">{res.researcherName}</span>
-                                </span>
-                                {isEntirelyExcess && (
-                                  <span title="Excede Fair-Use">
-                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 fill-amber-100 shrink-0" />
-                                  </span>
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-[11px] truncate flex items-center gap-1">
+                                {baseStyle.isLive && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0"></span>
                                 )}
-                              </div>
-
-                              <div className="text-[10px] opacity-85 font-mono truncate">
-                                {formatTime(res.startTime)} - {formatTime(hasSplitExcess && threshold ? threshold.toISOString() : res.endTime)}
+                                {opts?.sharedHalf && (
+                                  <Share2 className="w-3 h-3 text-indigo-600 shrink-0" />
+                                )}
+                                <span className="truncate">{res.researcherName}</span>
+                              </span>
+                              {isEntirelyExcess && (
+                                <span title="Excede Fair-Use">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 fill-amber-100 shrink-0" />
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[9px] opacity-85 font-mono truncate">
+                              {formatTime(new Date(segStart).toISOString())} -{' '}
+                              {formatTime(
+                                hasSplitExcess && threshold
+                                  ? threshold.toISOString()
+                                  : new Date(segEnd).toISOString()
+                              )}
+                            </div>
+                          </div>
+                          {hasSplitExcess && (
+                            <div
+                              style={{ width: `${100 - splitPercent}%` }}
+                              className={`border-l-2 border-l-amber-500 border-amber-300 bg-amber-50/80 p-1 flex flex-col justify-between items-center text-amber-950 h-full relative overflow-hidden ${
+                                dayIsPast ? 'border-dashed' : 'border-solid'
+                              }`}
+                              title={`Limite de fair-use ultrapassado a partir das ${formatTime(threshold!.toISOString())}.`}
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 fill-amber-100 shrink-0" />
+                              <div className="text-[9px] font-mono text-amber-800 font-semibold truncate text-right w-full">
+                                fim {formatTime(new Date(segEnd).toISOString())}
                               </div>
                             </div>
+                          )}
+                        </div>
+                      );
+                    };
 
-                            {/* Excess portion (A partir do momento que ultrapassa o Fair-Use) */}
-                            {hasSplitExcess && (
-                              <div
-                                style={{ width: `${100 - splitPercent}%` }}
-                                className={`border-l-2 border-l-amber-500 border-amber-300 bg-amber-50/80 p-1 flex flex-col justify-between items-center text-amber-950 h-full relative overflow-hidden ${
-                                  dayIsPast ? 'border-dashed' : 'border-solid'
-                                }`}
-                                title={`Limite de fair-use ultrapassado a partir das ${formatTime(threshold!.toISOString())}. Horário cedível no WhatsApp.`}
-                              >
-                                <div className="w-full flex items-center justify-between gap-1">
-                                  <span className="text-[9px] font-mono font-bold text-amber-900 bg-amber-200/90 px-1 rounded truncate">
-                                    às {formatTime(threshold!.toISOString())}
-                                  </span>
-                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 fill-amber-100 shrink-0" />
-                                </div>
-                                <div className="text-[9px] font-mono text-amber-800 font-semibold truncate text-right w-full">
-                                  fim {formatTime(res.endTime)}
-                                </div>
-                              </div>
-                            )}
+                    return (
+                      <div
+                        key={ws.id}
+                        className="flex flex-1 min-h-[92px] lg:min-h-[140px] xl:min-h-[160px] relative group"
+                      >
+                        <div className="absolute inset-0 flex cursor-crosshair min-w-0">
+                          {hoursArray.map((hour) => (
+                            <div
+                              key={hour}
+                              onMouseDown={(e) => {
+                                if (e.button === 0) {
+                                  setDragState({
+                                    wsId: ws.id,
+                                    startHour: hour,
+                                    currentHour: hour,
+                                  });
+                                }
+                              }}
+                              onMouseEnter={() => {
+                                if (dragState && dragState.wsId === ws.id) {
+                                  setDragState((prev) =>
+                                    prev ? { ...prev, currentHour: hour } : null
+                                  );
+                                }
+                              }}
+                              className="flex-1 min-w-[2.25rem] xl:min-w-0 border-r border-slate-100 hover:bg-blue-50/50 transition-colors"
+                              title={`Clique e arraste a partir das ${hour}:00`}
+                            />
+                          ))}
+                        </div>
+
+                        {isToday && (
+                          <div
+                            className="absolute top-0 bottom-0 w-0.5 bg-rose-500 z-20 pointer-events-none"
+                            style={{ left: `${currentLinePercent}%` }}
+                          >
+                            <div className="absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full bg-rose-500"></div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        )}
+
+                        {dragState && dragState.wsId === ws.id && (() => {
+                          const minH = Math.min(dragState.startHour, dragState.currentHour);
+                          const maxH = Math.max(dragState.startHour, dragState.currentHour);
+                          const selEnd = maxH + 1;
+                          const leftPct = (minH / 24) * 100;
+                          const widthPct = ((selEnd - minH) / 24) * 100;
+                          const duration = selEnd - minH;
+
+                          return (
+                            <div
+                              style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                              className="absolute top-1.5 bottom-1.5 rounded-lg bg-blue-500/25 border-2 border-blue-600 z-30 pointer-events-none flex items-center justify-between px-2 text-[10px] font-bold text-blue-950 shadow-md backdrop-blur-xs"
+                            >
+                              <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
+                                {minH < 10 ? `0${minH}` : minH}:00
+                              </span>
+                              <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] font-mono shadow-2xs">
+                                {duration}h {duration === 1 ? 'hora' : 'horas'}
+                              </span>
+                              <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
+                                {selEnd >= 24 ? '23:59' : `${selEnd < 10 ? `0${selEnd}` : selEnd}:00`}
+                              </span>
+                            </div>
+                          );
+                        })()}
+
+                        {wsReservations.map((res) => {
+                          const resStart = new Date(res.startTime).getTime();
+                          const resEnd = new Date(res.endTime).getTime();
+                          const effectiveStart = Math.max(resStart, selStartOfDay.getTime());
+                          const effectiveEnd = Math.min(resEnd, selEndOfDay.getTime());
+                          if (effectiveEnd <= effectiveStart) return null;
+
+                          const peers = wsReservations.filter((p) => p.id !== res.id);
+                          const soft = getSoftInterval(res);
+                          const hard = getHardInterval(res);
+
+                          const overlapsPeerSoft = peers.some((p) => {
+                            const ps = getSoftInterval(p);
+                            if (!ps) return false;
+                            return isOverlapping(
+                              new Date(effectiveStart),
+                              new Date(effectiveEnd),
+                              ps.start,
+                              ps.end
+                            );
+                          });
+
+                          const nodes: React.ReactNode[] = [];
+
+                          if (res.isSharedUse && soft) {
+                            const hardEnd = hard
+                              ? Math.min(hard.end.getTime(), effectiveEnd)
+                              : effectiveStart;
+                            const hardStart = hard
+                              ? Math.max(hard.start.getTime(), effectiveStart)
+                              : effectiveStart;
+                            if (hard && hardStart < hardEnd && hardStart < soft.start.getTime()) {
+                              nodes.push(
+                                renderBlock(
+                                  res,
+                                  hardStart,
+                                  Math.min(hardEnd, soft.start.getTime()),
+                                  'full',
+                                  `${res.id}-hard`
+                                )
+                              );
+                            }
+                            const softStart = Math.max(soft.start.getTime(), effectiveStart);
+                            const softEnd = Math.min(soft.end.getTime(), effectiveEnd);
+                            if (softStart < softEnd) {
+                              nodes.push(
+                                renderBlock(res, softStart, softEnd, 'top', `${res.id}-soft`, {
+                                  sharedHalf: true,
+                                })
+                              );
+                            }
+                          } else if (overlapsPeerSoft) {
+                            nodes.push(
+                              renderBlock(
+                                res,
+                                effectiveStart,
+                                effectiveEnd,
+                                'bottom',
+                                `${res.id}-guest`
+                              )
+                            );
+                          } else {
+                            nodes.push(
+                              renderBlock(res, effectiveStart, effectiveEnd, 'full', res.id)
+                            );
+                          }
+
+                          return <React.Fragment key={res.id}>{nodes}</React.Fragment>;
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
