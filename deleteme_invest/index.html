@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SibaInvest</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=39" />
+  </head>
+  <body class="sidebar-collapsed">
+    <header class="app-header">
+      <div class="header-left">
+        <button
+          class="icon-button menu-toggle"
+          type="button"
+          aria-label="Alternar menu lateral"
+          aria-expanded="false"
+          aria-controls="sidebar"
+        >
+          <span aria-hidden="true">☰</span>
+        </button>
+        <a class="brand" href="index.html" aria-label="SibaInvest página inicial">
+          <img class="brand-logo" src="assets/logo.svg" alt="" aria-hidden="true" />
+          <span class="brand-text">SibaInvest</span>
+        </a>
+      </div>
+
+      <div class="header-actions" aria-label="Utilitários">
+        <button class="icon-button" type="button" id="themeToggle" aria-label="Alternar tema claro ou escuro">
+          <span aria-hidden="true">◐</span>
+        </button>
+        <div class="help-menu-wrapper">
+          <button
+            class="icon-button"
+            type="button"
+            id="helpToggle"
+            aria-label="Ajuda"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="helpMenu"
+          >
+            <span aria-hidden="true">?</span>
+          </button>
+          <div class="help-menu" id="helpMenu" role="menu" aria-label="Links de ajuda" hidden>
+            <a role="menuitem" href="politica-de-privacidade.html">Política de Privacidade</a>
+            <a role="menuitem" href="termos-e-condicoes.html">Termos e Condições</a>
+          </div>
+        </div>
+        <!-- Notificações temporariamente desativadas.
+        <button class="icon-button notification-button" type="button" aria-label="Notificações">
+          <span aria-hidden="true">♢</span>
+          <span class="notification-dot" aria-hidden="true"></span>
+        </button>
+        -->
+        <!-- Área de conta temporariamente desativada.
+        <button class="profile-button" type="button" aria-label="Entrar na plataforma">
+          <span class="avatar" aria-hidden="true">M</span>
+          <span>Entrar</span>
+        </button>
+        -->
+      </div>
+    </header>
+
+    <div class="app-shell">
+      <nav class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <ul class="nav-list single-nav">
+          <li>
+            <a class="nav-link active" href="index.html" aria-current="page">
+              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+              <span>Página Inicial</span>
+            </a>
+          </li>
+        </ul>
+
+        <section class="nav-section" aria-labelledby="invest-heading">
+          <h2 class="nav-heading" id="invest-heading">Investir</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link" href="acoes.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span>Ações</span></a></li>
+            <li><a class="nav-link" href="fiis.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span><span>FIIs</span></a></li>
+            <li><a class="nav-link" href="carteira-fii.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span>Carteira</span></a></li>
+            <li><a class="nav-link" href="raio-x-ia.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span><span>Raio-X IA</span></a></li>
+          </ul>
+        </section>
+
+        <section class="nav-section" aria-labelledby="tools-heading">
+          <h2 class="nav-heading" id="tools-heading">Ferramentas</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link" href="calculadora-juros-compostos.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14v4"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg></span><span>Calculadora de Juros</span></a></li>
+            <li><a class="nav-link" href="conversor-de-taxas.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg></span><span>Conversor de Taxas</span></a></li>
+            <li><a class="nav-link" href="plano-de-aposentadoria.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8.5 3 2 4.5V20h4v-2h3v2h4v-4c.7-.5 1.2-1.2 1.5-2H22v-4h-2c-.3-.8-.5-1.4-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg></span><span>Plano de Aposentadoria</span></a></li>
+            <li><a class="nav-link" href="investimento-renda-fixa.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span><span>Investimento Renda Fixa</span></a></li>
+          </ul>
+        </section>
+      </nav>
+
+      <main class="main-content">
+        <section class="content-section home-intro">
+          <h1>Invista com clareza</h1>
+          <p class="page-subtitle">Ferramentas e análises em linguagem simples para você decidir com base em números — de calculadoras a relatórios de ações e fundos imobiliários feitos por inteligência artificial. Ficou com dúvida em algum termo? Toque no botão <strong>IA</strong> no canto da tela e pergunte.</p>
+        </section>
+
+        <section class="content-section" aria-labelledby="featured-heading">
+          <h2 id="featured-heading">Ferramentas em Destaque</h2>
+          <div class="card-grid featured-grid">
+            <a class="tool-card featured-card" href="acoes.html">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+              <h3>Ações</h3>
+              <p>Assistente em 3 passos: encontre ações, calcule o preço justo e confira se a empresa é sólida — tudo na mesma tela.</p>
+            </a>
+            <a class="tool-card featured-card" href="fiis.html">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span>
+              <h3>FIIs</h3>
+              <p>Encontre fundos imobiliários, descubra se estão caros ou baratos e avalie a qualidade do fundo — passo a passo.</p>
+            </a>
+          </div>
+        </section>
+
+        <section class="content-section" aria-labelledby="other-tools-heading">
+          <h2 id="other-tools-heading">Outras Ferramentas</h2>
+          <div class="card-grid">
+            <a class="tool-card" href="calculadora-juros-compostos.html">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14v4"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg></span>
+              <h3>Calculadora de Juros</h3>
+              <p>Simule juros compostos, aportes mensais e evolução patrimonial ao longo do tempo.</p>
+            </a>
+            <a class="tool-card" href="conversor-de-taxas.html">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg></span>
+              <h3>Conversor de Taxas</h3>
+              <p>Converta taxas mensais, anuais e equivalentes para comparar investimentos.</p>
+            </a>
+            <a class="tool-card" href="plano-de-aposentadoria.html">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8.5 3 2 4.5V20h4v-2h3v2h4v-4c.7-.5 1.2-1.2 1.5-2H22v-4h-2c-.3-.8-.5-1.4-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg></span>
+              <h3>Plano de Aposentadoria</h3>
+              <p>Planeje metas de longo prazo com renda projetada, aportes e prazo desejado.</p>
+            </a>
+            <a class="tool-card" href="investimento-renda-fixa.html">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span>
+              <h3>Investimento Renda Fixa</h3>
+              <p>Compare títulos usando CDI, IPCA, IR, IOF, custódia e rentabilidade líquida.</p>
+            </a>
+            <a class="tool-card" href="raio-x-ia.html">
+              <span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span>
+              <h3>Raio-X com IA</h3>
+              <p>Escolha uma ação ou FII e receba um relatório completo feito por inteligência artificial, com nota e veredito.</p>
+            </a>
+          </div>
+        </section>
+
+        <section class="content-section" aria-labelledby="activity-heading">
+          <h2 id="activity-heading">Por onde começar</h2>
+          <div class="activity-panel">
+            <ul class="activity-list">
+              <li>
+                <span class="activity-icon" aria-hidden="true">1</span>
+                <div>
+                  <p>Nunca investiu? Comece simulando seu dinheiro crescer na <a href="calculadora-juros-compostos.html">Calculadora de Juros</a></p>
+                  <span class="activity-step-hint">Veja o efeito dos juros compostos ao longo do tempo.</span>
+                </div>
+              </li>
+              <li>
+                <span class="activity-icon" aria-hidden="true">2</span>
+                <div>
+                  <p>Quer investir em empresas? Use o assistente de <a href="acoes.html">Ações</a> em 3 passos</p>
+                  <span class="activity-step-hint">Encontre, avalie o preço justo e valide a escolha.</span>
+                </div>
+              </li>
+              <li>
+                <span class="activity-icon" aria-hidden="true">3</span>
+                <div>
+                  <p>Prefere receber renda mensal? Conheça os <a href="fiis.html">Fundos Imobiliários (FIIs)</a></p>
+                  <span class="activity-step-hint">Imóveis que pagam aluguel, sem precisar comprar um imóvel.</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <footer class="app-footer">2026 © SibaInvest</footer>
+      </main>
+    </div>
+
+    <script src="script.js?v=39"></script>
+  </body>
+</html>

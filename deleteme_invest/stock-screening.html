@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stock Screening | SibaInvest</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=39" />
+  </head>
+  <body class="sidebar-collapsed calculator-page screening-page">
+    <header class="app-header">
+      <div class="header-left">
+        <button class="icon-button menu-toggle" type="button" aria-label="Alternar menu lateral" aria-expanded="false" aria-controls="sidebar">
+          <span aria-hidden="true">☰</span>
+        </button>
+        <a class="brand" href="index.html" aria-label="SibaInvest página inicial">
+          <img class="brand-logo" src="assets/logo.svg" alt="" aria-hidden="true" />
+          <span class="brand-text">SibaInvest</span>
+        </a>
+      </div>
+      <div class="header-actions" aria-label="Utilitários">
+        <button class="icon-button" type="button" id="themeToggle" aria-label="Alternar tema claro ou escuro">
+          <span aria-hidden="true">◐</span>
+        </button>
+        <div class="help-menu-wrapper">
+          <button class="icon-button" type="button" id="helpToggle" aria-label="Ajuda" aria-haspopup="menu" aria-expanded="false" aria-controls="helpMenu">
+            <span aria-hidden="true">?</span>
+          </button>
+          <div class="help-menu" id="helpMenu" role="menu" aria-label="Links de ajuda" hidden>
+            <a role="menuitem" href="politica-de-privacidade.html">Política de Privacidade</a>
+            <a role="menuitem" href="termos-e-condicoes.html">Termos e Condições</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="app-shell">
+      <nav class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <ul class="nav-list single-nav">
+          <li>
+            <a class="nav-link" href="index.html">
+              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+              <span>Página Inicial</span>
+            </a>
+          </li>
+        </ul>
+
+        <section class="nav-section" aria-labelledby="invest-heading">
+          <h2 class="nav-heading" id="invest-heading">Investir</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link active" href="acoes.html" aria-current="page"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span>Ações</span></a></li>
+            <li><a class="nav-link" href="fiis.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span><span>FIIs</span></a></li>
+            <li><a class="nav-link" href="carteira-fii.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span>Carteira</span></a></li>
+            <li><a class="nav-link" href="raio-x-ia.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span><span>Raio-X IA</span></a></li>
+          </ul>
+        </section>
+
+        <section class="nav-section" aria-labelledby="tools-heading">
+          <h2 class="nav-heading" id="tools-heading">Ferramentas</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link" href="calculadora-juros-compostos.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14v4"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg></span><span>Calculadora de Juros</span></a></li>
+            <li><a class="nav-link" href="conversor-de-taxas.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg></span><span>Conversor de Taxas</span></a></li>
+            <li><a class="nav-link" href="plano-de-aposentadoria.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8.5 3 2 4.5V20h4v-2h3v2h4v-4c.7-.5 1.2-1.2 1.5-2H22v-4h-2c-.3-.8-.5-1.4-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg></span><span>Plano de Aposentadoria</span></a></li>
+            <li><a class="nav-link" href="investimento-renda-fixa.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span><span>Investimento Renda Fixa</span></a></li>
+          </ul>
+        </section>
+      </nav>
+
+      <main class="main-content calculator-main" id="screeningMain">
+        <details class="tutorial-card" open>
+          <summary>
+            <span class="tutorial-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+            <span class="tutorial-summary-text">Como usar e para que serve</span>
+            <span class="tutorial-chevron" aria-hidden="true">&#x2304;</span>
+          </summary>
+          <div class="tutorial-body">
+            <p><strong>Para que serve:</strong> filtrar as ~994 a&ccedil;&otilde;es do Fundamentus por indicadores e achar oportunidades pelos crit&eacute;rios de Bazin e Graham.</p>
+            <ol class="tutorial-steps">
+              <li>Use a busca, os filtros r&aacute;pidos (Bazin OK, Graham OK, ROE, liquidez) e ordene clicando nas colunas.</li>
+              <li>Clique no ticker para abrir a An&aacute;lise Avan&ccedil;ada da empresa.</li>
+            </ol>
+            <p><strong>O que as colunas significam:</strong></p>
+            <ul class="tutorial-steps">
+              <li><em>P/L</em> e <em>P/VP</em>: pre&ccedil;o sobre lucro e sobre patrim&ocirc;nio (quanto menor, mais barato). <em>DY</em>: dividend yield.</li>
+              <li><em>ROE / ROIC</em>: rentabilidade sobre patrim&ocirc;nio/capital &mdash; efici&ecirc;ncia da empresa.</li>
+              <li><em>Bazin</em> e <em>Graham</em>: marcam <em>OK</em> quando a a&ccedil;&atilde;o passa no crit&eacute;rio; <em>P. Graham</em> &eacute; o pre&ccedil;o justo de Graham.</li>
+            </ul>
+          </div>
+        </details>
+        <div class="screening-toolbar" id="screeningToolbar">
+          <span class="screening-toolbar-title">Stock Screening</span>
+          <input
+            class="screening-search"
+            id="screeningSearch"
+            type="search"
+            placeholder="Filtrar por ticker…"
+            autocomplete="off"
+            aria-label="Filtrar por ticker"
+          />
+          <select class="screening-select" id="screeningSort" aria-label="Ordenar por">
+            <option value="dy_desc">Div. Yield ↓</option>
+            <option value="pl_asc">P/L ↑</option>
+            <option value="pvp_asc">P/VP ↑</option>
+            <option value="roe_desc">ROE ↓</option>
+            <option value="roic_desc">ROIC ↓</option>
+            <option value="evebit_asc">EV/EBIT ↑</option>
+            <option value="bazin_desc">Preço Bazin ↓</option>
+            <option value="graham_desc">Preço Graham ↓</option>
+          </select>
+          <select class="screening-select" id="screeningFilter" aria-label="Filtro rápido">
+            <option value="all">Todas as ações</option>
+            <option value="bazin_ok">Bazin OK (DY ≥ 6%)</option>
+            <option value="graham_ok">Graham OK (cotação abaixo)</option>
+            <option value="pl_pos">P/L positivo</option>
+            <option value="roe_10">ROE ≥ 10%</option>
+            <option value="liq_min">Liquidez ≥ 1M/dia</option>
+          </select>
+          <button class="screening-refresh-btn" id="screeningRefresh" type="button">
+            ↻ Atualizar dados
+          </button>
+          <span class="screening-stat" id="screeningStat">Carregando…</span>
+        </div>
+
+        <div id="screeningContent">
+          <div class="screening-loading" id="screeningLoading">
+            <p>Buscando dados do Fundamentus…</p>
+            <p style="font-size:0.8rem;margin-top:4px">Isso pode levar alguns segundos na primeira vez.</p>
+          </div>
+        </div>
+
+        <footer class="app-footer">2026 © SibaInvest — Dados: Fundamentus</footer>
+      </main>
+    </div>
+
+    <script src="script.js?v=39"></script>
+  </body>
+</html>

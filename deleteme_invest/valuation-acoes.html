@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Valuation de Ações | SibaInvest</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=39" />
+  </head>
+  <body class="sidebar-collapsed calculator-page">
+    <header class="app-header">
+      <div class="header-left">
+        <button class="icon-button menu-toggle" type="button" aria-label="Alternar menu lateral" aria-expanded="false" aria-controls="sidebar">
+          <span aria-hidden="true">☰</span>
+        </button>
+        <a class="brand" href="index.html" aria-label="SibaInvest página inicial">
+          <img class="brand-logo" src="assets/logo.svg" alt="" aria-hidden="true" />
+          <span class="brand-text">SibaInvest</span>
+        </a>
+      </div>
+      <div class="header-actions" aria-label="Utilitários">
+        <button class="icon-button" type="button" id="themeToggle" aria-label="Alternar tema claro ou escuro">
+          <span aria-hidden="true">◐</span>
+        </button>
+        <div class="help-menu-wrapper">
+          <button class="icon-button" type="button" id="helpToggle" aria-label="Ajuda" aria-haspopup="menu" aria-expanded="false" aria-controls="helpMenu">
+            <span aria-hidden="true">?</span>
+          </button>
+          <div class="help-menu" id="helpMenu" role="menu" aria-label="Links de ajuda" hidden>
+            <a role="menuitem" href="politica-de-privacidade.html">Política de Privacidade</a>
+            <a role="menuitem" href="termos-e-condicoes.html">Termos e Condições</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="app-shell">
+      <nav class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <ul class="nav-list single-nav">
+          <li>
+            <a class="nav-link" href="index.html">
+              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+              <span>Página Inicial</span>
+            </a>
+          </li>
+        </ul>
+
+        <section class="nav-section" aria-labelledby="invest-heading">
+          <h2 class="nav-heading" id="invest-heading">Investir</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link active" href="acoes.html" aria-current="page"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span>Ações</span></a></li>
+            <li><a class="nav-link" href="fiis.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span><span>FIIs</span></a></li>
+            <li><a class="nav-link" href="carteira-fii.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span>Carteira</span></a></li>
+            <li><a class="nav-link" href="raio-x-ia.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span><span>Raio-X IA</span></a></li>
+          </ul>
+        </section>
+
+        <section class="nav-section" aria-labelledby="tools-heading">
+          <h2 class="nav-heading" id="tools-heading">Ferramentas</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link" href="calculadora-juros-compostos.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14v4"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg></span><span>Calculadora de Juros</span></a></li>
+            <li><a class="nav-link" href="conversor-de-taxas.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg></span><span>Conversor de Taxas</span></a></li>
+            <li><a class="nav-link" href="plano-de-aposentadoria.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8.5 3 2 4.5V20h4v-2h3v2h4v-4c.7-.5 1.2-1.2 1.5-2H22v-4h-2c-.3-.8-.5-1.4-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg></span><span>Plano de Aposentadoria</span></a></li>
+            <li><a class="nav-link" href="investimento-renda-fixa.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span><span>Investimento Renda Fixa</span></a></li>
+          </ul>
+        </section>
+      </nav>
+
+      <main class="main-content calculator-main">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <ol>
+            <li><a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></a></li>
+            <li><span>Ações</span></li>
+            <li aria-current="page">Valuation</li>
+          </ol>
+        </nav>
+
+        <h1>Valuation de Ações</h1>
+        <p class="page-subtitle">Calcule o preço justo de uma ação pelos 4 principais métodos: Bazin (renda), Graham (valor intrínseco), Peter Lynch/PEG (crescimento) e Fluxo de Caixa Descontado. Preencha os campos e compare com a cotação atual.</p>
+
+        
+        <details class="tutorial-card" open>
+          <summary>
+            <span class="tutorial-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+            <span class="tutorial-summary-text">Como usar e para que serve</span>
+            <span class="tutorial-chevron" aria-hidden="true">&#x2304;</span>
+          </summary>
+          <div class="tutorial-body">
+            <p><strong>Para que serve:</strong> estimar o <em>pre&ccedil;o justo</em> de uma a&ccedil;&atilde;o por 4 m&eacute;todos cl&aacute;ssicos e comparar com a cota&ccedil;&atilde;o atual.</p>
+            <ol class="tutorial-steps">
+              <li>Busque o ticker (auto-preenche LPA, VPA, DPA do Fundamentus) ou preencha manualmente.</li>
+              <li>Cada um dos 4 cart&otilde;es mostra o pre&ccedil;o justo, se est&aacute; barato/caro e o upside.</li>
+            </ol>
+            <p><strong>O que cada m&eacute;todo significa:</strong></p>
+            <ul class="tutorial-steps">
+              <li><em>Bazin</em>: pre&ccedil;o-teto pela renda &mdash; dividendo &divide; DY m&iacute;nimo exigido. Para boas pagadoras de dividendos.</li>
+              <li><em>Graham</em>: valor intr&iacute;nseco = &radic;(22,5 &times; LPA &times; VPA). Foco em lucro e patrim&ocirc;nio.</li>
+              <li><em>Peter Lynch / PEG</em>: relaciona o P/L ao crescimento do lucro. PEG abaixo de 1 sugere a&ccedil;&atilde;o barata para o quanto cresce.</li>
+              <li><em>Fluxo de Caixa Descontado (DCF)</em>: traz a valor presente o caixa futuro. O mais completo, por&eacute;m sens&iacute;vel &agrave;s premissas.</li>
+            </ul>
+          </div>
+        </details>
+<div class="ticker-lookup-card" id="tickerLookup">
+          <span class="ticker-lookup-icon" aria-hidden="true">⚡</span>
+          <div class="ticker-lookup-body">
+            <div class="ticker-lookup-title">Preencher pelo Fundamentus</div>
+            <div class="ticker-autocomplete">
+              <input
+                id="tickerSearchInput"
+                class="ticker-search-input"
+                type="text"
+                placeholder="Digite o ticker (ex: WEGE3)…"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="Buscar ação pelo Fundamentus"
+                aria-autocomplete="list"
+                aria-controls="tickerDropdown"
+              />
+              <div class="ticker-dropdown" id="tickerDropdown" role="listbox" hidden></div>
+            </div>
+            <span class="ticker-lookup-hint" id="tickerLookupHint">Carregando lista do Fundamentus…</span>
+          </div>
+        </div>
+
+        <form class="calculator-form" id="acoesForm">
+          <section class="form-section-card" aria-labelledby="acoesAssetHeading">
+            <h2 id="acoesAssetHeading">Dados do Ativo</h2>
+            <div class="form-grid">
+              <div class="input-card">
+                <label for="acoesTicker">Ticker / Nome</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">AC</span>
+                  <input id="acoesTicker" name="acoesTicker" type="text" value="WEGE3" autocomplete="off" />
+                </div>
+                <p class="helper-text">Ex: WEGE3, ITUB4. Apenas rótulo — não faz busca automática.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesCotacao">Cotação atual</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">R$</span>
+                  <input id="acoesCotacao" name="acoesCotacao" type="text" inputmode="decimal" value="R$ 52,00" />
+                </div>
+                <p class="helper-text">Preço de mercado atual da ação.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesLpa">LPA — Lucro por Ação (últimos 12m)</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">R$</span>
+                  <input id="acoesLpa" name="acoesLpa" type="text" inputmode="decimal" value="R$ 1,80" />
+                </div>
+                <p class="helper-text">Resultado líquido dos últimos 12 meses / nº de ações.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesVpa">VPA — Valor Patrimonial por Ação</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">R$</span>
+                  <input id="acoesVpa" name="acoesVpa" type="text" inputmode="decimal" value="R$ 6,50" />
+                </div>
+                <p class="helper-text">Patrimônio líquido / nº de ações (encontrado no balanço).</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesDpa">DPA — Dividendo por Ação (anual)</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">R$</span>
+                  <input id="acoesDpa" name="acoesDpa" type="text" inputmode="decimal" value="R$ 0,80" />
+                </div>
+                <p class="helper-text">Total de proventos pagos por ação nos últimos 12 meses.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesCrescLucro">Crescimento esperado do lucro</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">%</span>
+                  <input id="acoesCrescLucro" name="acoesCrescLucro" type="text" inputmode="decimal" value="15%" />
+                </div>
+                <p class="helper-text">% a.a. Histórico de crescimento ou projeção consenso (usado no PEG).</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section-card" aria-labelledby="acoesDcfHeading">
+            <h2 id="acoesDcfHeading">Premissas para DCF e Bazin</h2>
+            <div class="form-grid">
+              <div class="input-card">
+                <label for="acoesFcl">FCL por Ação — Fluxo de Caixa Livre</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">R$</span>
+                  <input id="acoesFcl" name="acoesFcl" type="text" inputmode="decimal" value="R$ 1,50" />
+                </div>
+                <p class="helper-text">FCO − CAPEX, dividido pelo nº de ações. Base do DCF.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesWacc">WACC — Taxa de desconto</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">%</span>
+                  <input id="acoesWacc" name="acoesWacc" type="text" inputmode="decimal" value="12%" />
+                </div>
+                <p class="helper-text">Custo médio ponderado de capital. Para ações BR, use 10–14%.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesCrescFcl">Crescimento FCL projetado</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">%</span>
+                  <input id="acoesCrescFcl" name="acoesCrescFcl" type="text" inputmode="decimal" value="12%" />
+                </div>
+                <p class="helper-text">% a.a. esperado de crescimento do FCL durante o período.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesCrescTerminal">Crescimento terminal (perpetuidade)</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">%</span>
+                  <input id="acoesCrescTerminal" name="acoesCrescTerminal" type="text" inputmode="decimal" value="3%" />
+                </div>
+                <p class="helper-text">% a.a. após o período de projeção. Geralmente ≈ IPCA de longo prazo.</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesPrazoDcf">Prazo de projeção DCF</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">AN</span>
+                  <input id="acoesPrazoDcf" name="acoesPrazoDcf" type="text" inputmode="numeric" value="10" />
+                </div>
+                <p class="helper-text">Anos de projeção explícita (geralmente 5 a 10 anos).</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesDyMinBazin">DY mínimo exigido — Bazin</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">%</span>
+                  <input id="acoesDyMinBazin" name="acoesDyMinBazin" type="text" inputmode="decimal" value="6%" />
+                </div>
+                <p class="helper-text">Dividend yield mínimo aceito (Bazin usava 6% a.a.).</p>
+              </div>
+
+              <div class="input-card">
+                <label for="acoesMargemSeg">Margem de segurança</label>
+                <div class="input-shell">
+                  <span class="field-icon" aria-hidden="true">%</span>
+                  <input id="acoesMargemSeg" name="acoesMargemSeg" type="text" inputmode="decimal" value="30%" />
+                </div>
+                <p class="helper-text">% de desconto sobre o valor justo para compra (Graham recomendava 33%).</p>
+              </div>
+            </div>
+          </section>
+
+          <button class="primary-action" type="submit">
+            <span aria-hidden="true">+</span>
+            <span>Adicionar à comparação</span>
+          </button>
+        </form>
+
+        <section class="acoes-result-region" id="acoesResult" role="region" aria-live="polite" aria-label="Valuation da ação">
+          <p style="color:var(--muted);font-size:.9rem">Preencha os dados — os valores são calculados automaticamente.</p>
+        </section>
+
+        <section class="acoes-comparison-region" id="acoesComparison" aria-live="polite" aria-label="Comparação de ações" hidden></section>
+
+        <footer class="app-footer">2026 © SibaInvest</footer>
+      </main>
+    </div>
+
+    <script src="script.js?v=39"></script>
+  </body>
+</html>

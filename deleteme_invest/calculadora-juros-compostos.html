@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calculadora de Juros Compostos | SibaInvest</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css?v=39" />
+  </head>
+  <body class="sidebar-collapsed calculator-page">
+    <header class="app-header">
+      <div class="header-left">
+        <button
+          class="icon-button menu-toggle"
+          type="button"
+          aria-label="Alternar menu lateral"
+          aria-expanded="false"
+          aria-controls="sidebar"
+        >
+          <span aria-hidden="true">☰</span>
+        </button>
+        <a class="brand" href="index.html" aria-label="SibaInvest página inicial">
+          <img class="brand-logo" src="assets/logo.svg" alt="" aria-hidden="true" />
+          <span class="brand-text">SibaInvest</span>
+        </a>
+      </div>
+
+      <div class="header-actions" aria-label="Utilitários">
+        <button class="icon-button" type="button" id="themeToggle" aria-label="Alternar tema claro ou escuro">
+          <span aria-hidden="true">◐</span>
+        </button>
+        <div class="help-menu-wrapper">
+          <button
+            class="icon-button"
+            type="button"
+            id="helpToggle"
+            aria-label="Ajuda"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="helpMenu"
+          >
+            <span aria-hidden="true">?</span>
+          </button>
+          <div class="help-menu" id="helpMenu" role="menu" aria-label="Links de ajuda" hidden>
+            <a role="menuitem" href="politica-de-privacidade.html">Política de Privacidade</a>
+            <a role="menuitem" href="termos-e-condicoes.html">Termos e Condições</a>
+          </div>
+        </div>
+        <!-- Notificações temporariamente desativadas.
+        <button class="icon-button notification-button" type="button" aria-label="Notificações">
+          <span aria-hidden="true">♢</span>
+          <span class="notification-dot" aria-hidden="true"></span>
+        </button>
+        -->
+        <!-- Área de conta temporariamente desativada.
+        <button class="profile-button" type="button" aria-label="Entrar na plataforma">
+          <span class="avatar" aria-hidden="true">M</span>
+          <span>Entrar</span>
+        </button>
+        -->
+      </div>
+    </header>
+
+    <div class="app-shell">
+      <nav class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <ul class="nav-list single-nav">
+          <li>
+            <a class="nav-link" href="index.html">
+              <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+              <span>Página Inicial</span>
+            </a>
+          </li>
+        </ul>
+
+        <section class="nav-section" aria-labelledby="invest-heading">
+          <h2 class="nav-heading" id="invest-heading">Investir</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link" href="acoes.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span>Ações</span></a></li>
+            <li><a class="nav-link" href="fiis.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span><span>FIIs</span></a></li>
+            <li><a class="nav-link" href="carteira-fii.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span><span>Carteira</span></a></li>
+            <li><a class="nav-link" href="raio-x-ia.html"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span><span>Raio-X IA</span></a></li>
+          </ul>
+        </section>
+
+        <section class="nav-section" aria-labelledby="tools-heading">
+          <h2 class="nav-heading" id="tools-heading">Ferramentas</h2>
+          <ul class="nav-list">
+            <li><a class="nav-link active" href="calculadora-juros-compostos.html" aria-current="page"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14v4"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg></span><span>Calculadora de Juros</span></a></li>
+            <li><a class="nav-link" href="conversor-de-taxas.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg></span><span>Conversor de Taxas</span></a></li>
+            <li><a class="nav-link" href="plano-de-aposentadoria.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8.5 3 2 4.5V20h4v-2h3v2h4v-4c.7-.5 1.2-1.2 1.5-2H22v-4h-2c-.3-.8-.5-1.4-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg></span><span>Plano de Aposentadoria</span></a></li>
+            <li><a class="nav-link" href="investimento-renda-fixa.html"><span aria-hidden="true" class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span><span>Investimento Renda Fixa</span></a></li>
+          </ul>
+        </section>
+      </nav>
+
+      <main class="main-content calculator-main">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <ol>
+            <li><a href="index.html" aria-label="Página Inicial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></a></li>
+            <li><a href="index.html">Ferramentas</a></li>
+            <li aria-current="page">Calculadora de Juros Compostos</li>
+          </ol>
+        </nav>
+
+        <h1>Calculadora de Juros Compostos</h1>
+        <details class="tutorial-card" open>
+          <summary>
+            <span class="tutorial-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+            <span class="tutorial-summary-text">Como usar e para que serve</span>
+            <span class="tutorial-chevron" aria-hidden="true">&#x2304;</span>
+          </summary>
+          <div class="tutorial-body">
+            <p><strong>Para que serve:</strong> projetar como seu dinheiro cresce com <em>juros compostos</em> e aportes mensais ao longo do tempo &mdash; o efeito bola de neve.</p>
+            <ol class="tutorial-steps">
+              <li>Informe o <em>investimento inicial</em>, o <em>aporte mensal</em>, o <em>prazo</em> e a <em>taxa</em> de rendimento.</li>
+              <li>Veja o total acumulado, a composi&ccedil;&atilde;o e o gr&aacute;fico de evolu&ccedil;&atilde;o.</li>
+            </ol>
+            <p><strong>O que os resultados significam:</strong></p>
+            <ul class="tutorial-steps">
+              <li><em>Total acumulado</em>: quanto voc&ecirc; ter&aacute; ao final do per&iacute;odo.</li>
+              <li><em>Capital investido</em>: a soma de tudo que voc&ecirc; aportou do pr&oacute;prio bolso.</li>
+              <li><em>Juros acumulados</em>: o quanto o dinheiro rendeu sozinho &mdash; quanto maior o prazo, mais essa parte domina.</li>
+              <li><em>Renda passiva estimada</em>: quanto esse patrim&ocirc;nio renderia por m&ecirc;s.</li>
+            </ul>
+          </div>
+        </details>
+
+
+        <form class="calculator-form" id="compoundForm">
+          <div class="form-grid">
+            <div class="input-card">
+              <label for="initialInvestment">Investimento inicial</label>
+              <div class="input-shell">
+                <span class="field-icon" aria-hidden="true">R$</span>
+                <input id="initialInvestment" name="initialInvestment" type="text" inputmode="decimal" value="R$ 5.000" aria-describedby="initialInvestmentHelp" />
+              </div>
+              <p class="helper-text" id="initialInvestmentHelp">Insira o valor a ser investido inicialmente.</p>
+            </div>
+
+            <div class="input-card">
+              <label for="monthlyContribution">Aportes mensais</label>
+              <div class="input-shell">
+                <span class="field-icon" aria-hidden="true">R$</span>
+                <input id="monthlyContribution" name="monthlyContribution" type="text" inputmode="decimal" value="R$ 200" aria-describedby="monthlyContributionHelp" />
+              </div>
+              <p class="helper-text" id="monthlyContributionHelp">Valor extra investido todo mês.</p>
+            </div>
+
+            <div class="input-card">
+              <label for="applicationPeriod">Período de aplicação</label>
+              <div class="input-shell attached-control">
+                <span class="field-icon" aria-hidden="true">◴</span>
+                <input id="applicationPeriod" name="applicationPeriod" type="number" min="1" value="13" aria-describedby="applicationPeriodHelp" />
+                <select id="periodUnit" name="periodUnit" aria-label="Unidade de tempo do período">
+                  <option value="months" selected>meses</option>
+                  <option value="years">anos</option>
+                </select>
+              </div>
+              <p class="helper-text" id="applicationPeriodHelp">Informe o período total da simulação.</p>
+            </div>
+
+            <div class="input-card">
+              <label for="yieldRate">Rendimento</label>
+              <div class="input-shell attached-control">
+                <span class="field-icon" aria-hidden="true">%</span>
+                <input id="yieldRate" name="yieldRate" type="text" inputmode="decimal" value="0,9%" aria-describedby="yieldRateHelp" />
+                <select id="yieldUnit" name="yieldUnit" aria-label="Unidade de tempo do rendimento">
+                  <option value="monthly" selected>mensal</option>
+                  <option value="annual">anual</option>
+                </select>
+              </div>
+              <p class="helper-text" id="yieldRateHelp" aria-live="polite">Que dá 11,351% ao ano.</p>
+            </div>
+
+            <div class="input-card">
+              <label for="passiveIncome">Expectativa de renda passiva</label>
+              <div class="input-shell">
+                <span class="field-icon" aria-hidden="true">R$</span>
+                <input id="passiveIncome" name="passiveIncome" type="text" inputmode="decimal" value="R$ 2.000" aria-describedby="passiveIncomeHelp" />
+              </div>
+              <p class="helper-text" id="passiveIncomeHelp">Valor que você deseja receber de renda passiva mensal (opcional).</p>
+            </div>
+          </div>
+
+          <button class="primary-action" type="submit">
+            <span aria-hidden="true">=</span>
+            <span>Calcular</span>
+          </button>
+        </form>
+
+        <section class="result-panel" id="compoundResult" role="region" aria-live="polite" aria-label="Resultado da calculadora">
+          <h3>Pronto para simular seus juros compostos?</h3>
+          <p>Insira os valores desejados, clique em Calcular e veja quanto seu dinheiro irá render!</p>
+        </section>
+
+        <footer class="app-footer">2026 © SibaInvest</footer>
+      </main>
+    </div>
+
+    <script src="script.js?v=39"></script>
+  </body>
+</html>

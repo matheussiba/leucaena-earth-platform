@@ -242,6 +242,7 @@ app.use((req, res, next) => {
   if (p === '/life' || p.startsWith('/life/')) return next();
   if (p === '/cmq' || p.startsWith('/cmq/')) return next();
   if (p === '/inventario' || p.startsWith('/inventario/')) return next();
+  if (p === '/invest' || p.startsWith('/invest/')) return next();
   if (req.path.startsWith('/api/')) return next();
   if (p.startsWith('/img/') || p.startsWith('/css/') || p.startsWith('/js/') || p.startsWith('/fonts/')) {
     return next();
@@ -824,6 +825,10 @@ app.use('/inventario', inventarioGuard, (req, res, next) => {
   if (req.method === 'GET') return sendInventarioIndex(res);
   return res.status(404).end();
 });
+
+// Internal SibaInvest at /invest (assets in deleteme_invest/). Not linked from
+// the public site. Optional Basic Auth via INVEST_PASSWORD. See invest-app.js.
+require('./invest-app').registerInvest(app);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
