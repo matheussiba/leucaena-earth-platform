@@ -1,18 +1,30 @@
 export type WorkstationStatus = 'available' | 'in_use' | 'maintenance';
 
 /** Labs that share this booking platform */
-export const LAB_IDS = ['CMQ', 'CePE-Geo'] as const;
+export const LAB_IDS = ['CMQ', 'Extra'] as const;
 export type LabId = (typeof LAB_IDS)[number];
 
 export function normalizeLab(lab?: string | null): LabId {
-  return lab === 'CePE-Geo' ? 'CePE-Geo' : 'CMQ';
+  return lab === 'Extra' ? 'Extra' : 'CMQ';
+}
+
+/** Display names like "CMQ - Matheus Barros" for clearer selection. */
+export function ensureLabPrefixedName(name: string, defaultLab: LabId = 'CMQ'): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  const match = trimmed.match(/^(CMQ|Extra)\s*-\s*(.+)$/i);
+  if (match) {
+    const lab = normalizeLab(match[1]);
+    return `${lab} - ${match[2].trim()}`;
+  }
+  return `${defaultLab} - ${trimmed}`;
 }
 
 export interface Workstation {
   id: string;
   name: string;
   bayNumber: number | string;
-  /** Lab group — CMQ (current machines) or CePE-Geo */
+  /** Lab group — CMQ or Extra (test / other) */
   lab: LabId;
   location: string;
   imageUrl?: string;

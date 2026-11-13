@@ -526,7 +526,7 @@ export default function App() {
               </a>
             </span>
             <span className="hidden sm:inline">
-              <span className="font-bold text-slate-800">CMQ · CePE-Geo</span>
+              <span className="font-bold text-slate-800">CMQ Workstations</span>
               <span className="mx-2">·</span>
               <span>Sugestões de melhoria: </span>
               <a

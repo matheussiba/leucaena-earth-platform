@@ -4,6 +4,7 @@ import {
   FairUseRules,
   LabMember,
   DeletedReservationEntry,
+  ensureLabPrefixedName,
 } from './types';
 import {
   INITIAL_WORKSTATIONS,
@@ -11,6 +12,7 @@ import {
   DEFAULT_RULES,
   defaultIpForBay,
   withDefaultLab,
+  withLabPrefixedMember,
 } from './data/initialData';
 import { applyFairUseFlags } from './utils/fairUseValidator';
 
@@ -32,6 +34,16 @@ function mergeSeedWorkstations(list: Workstation[]): Workstation[] {
   return missing.length ? [...list, ...missing] : list;
 }
 
+function mergeSeedMembers(list: LabMember[]): LabMember[] {
+  const byId = new Set(list.map((m) => m.id));
+  const byName = new Set(list.map((m) => m.name.trim().toLowerCase()));
+  const missing = INITIAL_MEMBERS.filter(
+    (m) => !byId.has(m.id) && !byName.has(m.name.trim().toLowerCase())
+  ).map((m) => ({ ...m }));
+  const prefixed = list.map(withLabPrefixedMember);
+  return missing.length ? [...prefixed, ...missing] : prefixed;
+}
+
 export type CmqState = {
   workstations: Workstation[];
   members: LabMember[];
@@ -48,7 +60,11 @@ function normalizeReservation(r: Reservation): Reservation {
     typeof raw === 'string' && raw.trim() && !Number.isNaN(new Date(raw).getTime())
       ? raw
       : null;
-  return { ...r, createdAt };
+  return {
+    ...r,
+    createdAt,
+    researcherName: ensureLabPrefixedName(r.researcherName || 'Usuário', 'CMQ'),
+  };
 }
 
 export function defaultState(): CmqState {
@@ -75,7 +91,7 @@ export async function loadState(): Promise<CmqState> {
       )
     ),
     members: Array.isArray(data.members) && data.members.length
-      ? data.members
+      ? mergeSeedMembers(data.members)
       : base.members,
     rules: (() => {
       const merged =

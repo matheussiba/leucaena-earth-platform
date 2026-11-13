@@ -43,7 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Workstations
               </span>
               <span className="text-[10px] sm:text-xs font-mono text-slate-500 block -mt-0.5 truncate">
-                CMQ · CePE-Geo · {inUseCount}/{totalWorkstations} em uso
+                CMQ · {inUseCount}/{totalWorkstations} em uso
               </span>
             </div>
           </div>

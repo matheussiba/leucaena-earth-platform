@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Workstation, Reservation, FairUseRules, LabMember, ResearcherRole } from '../types';
+import {
+  Workstation,
+  Reservation,
+  FairUseRules,
+  LabMember,
+  ResearcherRole,
+  ensureLabPrefixedName,
+  normalizeLab,
+} from '../types';
 import { validateReservation } from '../utils/fairUseValidator';
 import { normalizeSharedFields } from '../utils/sharedUse';
 import { getLastSelectedUser, setLastSelectedUser } from '../utils/sessionPrefs';
@@ -515,9 +523,11 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 
   const handleQuickAddMember = () => {
     if (!newMemberName.trim()) return;
+    const wsLab = normalizeLab(workstations.find((w) => w.id === selectedWsId)?.lab);
+    const fullName = ensureLabPrefixedName(newMemberName, wsLab);
     const newMember: LabMember = {
       id: `mem-${Date.now()}`,
-      name: newMemberName.trim(),
+      name: fullName,
       role: newMemberRole,
     };
     onAddMember(newMember);
@@ -730,6 +740,11 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                       {ws.lab || 'CMQ'} · Baia {formatBayNumber(ws.bayNumber)}
                     </div>
                     <div className="text-[10px] text-slate-500 truncate">{ws.name}</div>
+                    {ws.ip ? (
+                      <div className="text-[10px] font-mono text-slate-600 truncate" title="IP da máquina">
+                        IP {ws.ip}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}

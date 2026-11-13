@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LabMember, ResearcherRole } from '../types';
+import { LabMember, ResearcherRole, LAB_IDS, LabId, ensureLabPrefixedName, normalizeLab } from '../types';
 import { Users, X, Plus, Trash2, UserPlus, Check, Pencil } from 'lucide-react';
 
 interface MembersModalProps {
@@ -30,6 +30,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
   onDeleteMember,
 }) => {
   const [name, setName] = useState('');
+  const [lab, setLab] = useState<LabId>('CMQ');
   const [role, setRole] = useState<ResearcherRole>('Mestrado');
   const [addedSuccess, setAddedSuccess] = useState(false);
 
@@ -51,11 +52,12 @@ export const MembersModal: React.FC<MembersModalProps> = ({
 
     onAddMember({
       id: `mem-${Date.now()}`,
-      name: name.trim(),
+      name: ensureLabPrefixedName(name, lab),
       role,
     });
 
     setName('');
+    setLab('CMQ');
     setAddedSuccess(true);
     setTimeout(() => setAddedSuccess(false), 2000);
   };
@@ -75,7 +77,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
     if (!editName.trim()) return;
     onUpdateMember({
       id,
-      name: editName.trim(),
+      name: ensureLabPrefixedName(editName, 'CMQ'),
       role: editRole,
     });
     setEditingId(null);
@@ -112,7 +114,24 @@ export const MembersModal: React.FC<MembersModalProps> = ({
               <span>Cadastrar Novo Usuário</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                  Laboratório *
+                </label>
+                <select
+                  value={lab}
+                  onChange={(e) => setLab(normalizeLab(e.target.value))}
+                  className="w-full p-2 border border-slate-300 rounded bg-white text-xs focus:border-blue-500 focus:outline-none"
+                >
+                  {LAB_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-medium text-slate-600 mb-1">
                   Nome Completo *
@@ -125,6 +144,9 @@ export const MembersModal: React.FC<MembersModalProps> = ({
                   className="w-full p-2 border border-slate-300 rounded bg-white text-xs focus:border-blue-500 focus:outline-none"
                   required
                 />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Salvo como “{lab} - …”
+                </span>
               </div>
 
               <div>
