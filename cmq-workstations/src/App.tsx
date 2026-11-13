@@ -374,10 +374,46 @@ export default function App() {
         inUseCount={inUseCount}
       />
 
-      {/* Main Content — fill remaining viewport height on desktop */}
-      <main className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-3 sm:py-4 lg:py-4 flex flex-col gap-3 sm:gap-3.5">
-        {/* Compact Live Workstations Bar (Clean, without any "Trocar" text) */}
-        <div className="shrink-0 grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
+      {/* Main Content — no page scroll; only calendar hours area may scroll */}
+      <main className="flex-1 min-h-0 overflow-hidden w-full px-2.5 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3 lg:py-3.5 flex flex-col gap-2 sm:gap-3">
+        {/* Mobile: single-row badges — livre/ocupado no contorno */}
+        <div className="sm:hidden shrink-0 flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {liveWorkstations.map((ws) => {
+            const activeRes = getCurrentActiveReservation(ws.id, reservations);
+            const isBusy = !!activeRes;
+            return (
+              <WorkstationThumbnail
+                key={ws.id}
+                workstation={ws}
+                size="md"
+                showBadge
+                statusBorder={isBusy ? 'in_use' : 'available'}
+                onClick={() => {
+                  if (isBusy && activeRes) handleReservationClick(activeRes);
+                  else handleOpenQuickCheckIn(ws.id);
+                }}
+                title={
+                  isBusy && activeRes
+                    ? `${ws.lab} · B${formatBayNumber(ws.bayNumber)} · ${activeRes.researcherName.split(' ')[0]}`
+                    : `${ws.lab} · B${formatBayNumber(ws.bayNumber)} · Livre`
+                }
+              />
+            );
+          })}
+          <div className="flex items-center gap-2 pl-1 text-[9px] font-medium text-slate-500 shrink-0">
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm border-2 border-emerald-400" />
+              Livre
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm border-2 border-amber-500" />
+              Ocup.
+            </span>
+          </div>
+        </div>
+
+        {/* Tablet/desktop: single-row compact cards */}
+        <div className="hidden sm:flex shrink-0 flex-row gap-2 sm:gap-2.5 overflow-x-auto">
           {liveWorkstations.map((ws) => {
             const activeRes = getCurrentActiveReservation(ws.id, reservations);
             const isBusy = !!activeRes;
@@ -386,85 +422,35 @@ export default function App() {
             return (
               <div
                 key={ws.id}
-                className={`bg-white rounded-xl border p-2 sm:p-3 transition-all min-w-0 ${
+                className={`bg-white rounded-xl border px-2.5 py-2 transition-all min-w-0 flex-1 basis-0 ${
                   isBusy
-                    ? 'border-slate-300 ring-1 ring-emerald-200/60 shadow-2xs'
+                    ? 'border-amber-300/80 ring-1 ring-amber-100 shadow-2xs'
                     : 'border-slate-200 shadow-2xs hover:border-slate-300'
                 }`}
               >
-                {/* Mobile: compact stack */}
-                <div className="sm:hidden space-y-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <WorkstationThumbnail workstation={ws} size="md" />
-                    <div className="min-w-0 flex-1">
-                      {isBusy && activeRes ? (
-                        <div className="min-w-0">
-                          <div className="flex w-full items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0"></span>
-                            <span className="truncate min-w-0 flex-1">
-                              {activeRes.researcherName.split(' ')[0]}
-                            </span>
-                            {activeRes.isNonFairUse && (
-                              <span title="Excede o limite de Fair-Use" className="shrink-0">
-                                <AlertTriangle className="w-3 h-3 text-amber-500 fill-amber-100" />
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5 truncate">
-                            Restam {remaining?.formatted}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="inline-flex w-full items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          <span>Livre</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {ws.ip ? (
-                    <div
-                      className="text-[10px] font-mono text-slate-400 truncate"
-                      title="IP da máquina"
-                    >
-                      {ws.ip}
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Desktop / tablet: fuller card */}
-                <div className="hidden sm:flex items-center justify-between gap-2.5 sm:gap-3 min-w-0">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <WorkstationThumbnail workstation={ws} size="md" />
+                    <WorkstationThumbnail
+                      workstation={ws}
+                      size="md"
+                      statusBorder={isBusy ? 'in_use' : 'available'}
+                    />
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs font-bold text-slate-500">
-                          BAIA {formatBayNumber(ws.bayNumber)}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-[10px] font-bold text-slate-400 shrink-0">
+                          {ws.lab}
                         </span>
-                        <span className="text-slate-300">·</span>
+                        <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
+                          B{formatBayNumber(ws.bayNumber)}
+                        </span>
                         <span className="font-bold text-slate-900 text-xs truncate">
                           {ws.name}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-600 truncate mt-0.5 font-medium">
+                      <div className="text-[10px] text-slate-500 truncate mt-0.5">
                         {ws.gpu}
+                        {ws.ip ? ` · ${ws.ip}` : ''}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
-                        <span>RAM: {ws.ram}</span>
-                        <span>·</span>
-                        <span>
-                          HD: {ws.internalStorage}
-                          {ws.additionalStorage ? ` + ${ws.additionalStorage}` : ''}
-                        </span>
-                      </div>
-                      {ws.ip ? (
-                        <div
-                          className="text-[10px] font-mono font-semibold text-slate-700 mt-0.5 truncate"
-                          title="IP da máquina"
-                        >
-                          IP {ws.ip}
-                        </div>
-                      ) : null}
                     </div>
                   </div>
 
@@ -488,7 +474,7 @@ export default function App() {
                             setReservationToRelease(activeRes);
                             setIsReleaseModalOpen(true);
                           }}
-                          className="text-[10px] font-semibold text-rose-700 hover:underline mt-1"
+                          className="text-[10px] font-semibold text-rose-700 hover:underline mt-0.5"
                         >
                           Liberar
                         </button>
@@ -501,7 +487,7 @@ export default function App() {
                         </span>
                         <button
                           onClick={() => handleOpenQuickCheckIn(ws.id)}
-                          className="mt-1 block text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
+                          className="mt-0.5 block text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
                         >
                           Usar Agora →
                         </button>
@@ -527,11 +513,11 @@ export default function App() {
       </main>
 
       {/* Simplified Footer */}
-      <footer className="shrink-0 bg-white border-t border-slate-200 py-1.5 lg:py-2.5 text-xs text-slate-500">
-        <div className="w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-center sm:justify-between gap-2 whitespace-nowrap overflow-hidden">
+      <footer className="shrink-0 bg-white border-t border-slate-200 py-1 lg:py-1.5 text-[10px] sm:text-xs text-slate-500">
+        <div className="w-full px-2.5 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-center sm:justify-between gap-2 whitespace-nowrap overflow-hidden">
           <div className="truncate">
             <span className="sm:hidden">
-              Sugestões de melhoria:{' '}
+              Sugestões:{' '}
               <a
                 href="mailto:ms.barros@usp.br"
                 className="text-slate-700 font-medium hover:text-slate-900 hover:underline"
@@ -540,7 +526,7 @@ export default function App() {
               </a>
             </span>
             <span className="hidden sm:inline">
-              <span className="font-bold text-slate-800">CMQ Workstations</span>
+              <span className="font-bold text-slate-800">CMQ · CePE-Geo</span>
               <span className="mx-2">·</span>
               <span>Sugestões de melhoria: </span>
               <a

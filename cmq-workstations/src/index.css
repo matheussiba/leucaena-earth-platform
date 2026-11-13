@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+html,
+body,
+#root {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 /* Day timeline: emphasize date change when prev/next looks visually similar */
 @keyframes cmq-day-slide-next {
   from {
@@ -36,4 +45,12 @@
   .cmq-day-slide-prev {
     animation: none;
   }
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

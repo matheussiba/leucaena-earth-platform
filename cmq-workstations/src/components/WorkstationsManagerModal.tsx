@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Workstation } from '../types';
+import { Workstation, LAB_IDS, LabId, normalizeLab } from '../types';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { formatBayNumber } from '../utils/dateUtils';
 import { 
@@ -42,6 +42,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
   // Form states
   const [bayNumber, setBayNumber] = useState<string>('');
   const [name, setName] = useState<string>('');
+  const [lab, setLab] = useState<LabId>('CMQ');
   const [location, setLocation] = useState<string>('');
   const [imageUrl, setImageUrl] = useState<string>('');
   const [ip, setIp] = useState<string>('');
@@ -60,6 +61,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
     setIsCreatingNew(false);
     setBayNumber(String(ws.bayNumber));
     setName(ws.name);
+    setLab(normalizeLab(ws.lab));
     setLocation(ws.location || '');
     setImageUrl(ws.imageUrl || '');
     setIp(ws.ip || '');
@@ -79,6 +81,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
     setIsCreatingNew(true);
     setBayNumber(String(nextBay));
     setName(`Workstation Baia ${nextBay}`);
+    setLab('CMQ');
     setLocation(`Baia ${nextBay} - Laboratório CMQ`);
     setImageUrl('');
     setIp('');
@@ -111,6 +114,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
         ? editingWs.id
         : `ws-baia-${bayNumber}-${Date.now().toString().slice(-4)}`,
       bayNumber: isNaN(bayNumParsed) ? bayNumber : bayNumParsed,
+      lab: normalizeLab(lab),
       name: name.trim(),
       location: location.trim(),
       imageUrl: imageUrl.trim() || undefined,
@@ -185,9 +189,12 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                       size="md"
                     />
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-slate-500">
-                          BAIA {formatBayNumber(ws.bayNumber)}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1 py-0.5 rounded shrink-0">
+                          {normalizeLab(ws.lab)}
+                        </span>
+                        <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
+                          B{formatBayNumber(ws.bayNumber)}
                         </span>
                         <span className="font-bold text-slate-900 text-sm truncate">
                           {ws.name}
@@ -271,20 +278,43 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                 </button>
               </div>
 
-              {/* Bay Number, Name & IP */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Bay Number, Lab, Name & IP */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                     Número da Baia *
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     value={bayNumber}
                     onChange={(e) => setBayNumber(e.target.value)}
-                    placeholder="ex: 4, 7, 11"
+                    placeholder="ex: 4, 7, IGC"
                     className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-mono font-bold"
                     required
                   />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Laboratório *
+                  </label>
+                  <select
+                    value={lab}
+                    onChange={(e) => {
+                      const next = normalizeLab(e.target.value);
+                      setLab(next);
+                      if (!location.trim() || location.includes('Laboratório')) {
+                        setLocation(`Baia ${bayNumber || '?'} - Laboratório ${next}`);
+                      }
+                    }}
+                    className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-medium"
+                  >
+                    {LAB_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {id}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

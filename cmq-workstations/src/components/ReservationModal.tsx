@@ -727,7 +727,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                   <WorkstationThumbnail workstation={ws} size="sm" />
                   <div className="min-w-0">
                     <div className="font-bold text-slate-900 text-xs truncate">
-                      Baia {formatBayNumber(ws.bayNumber)}
+                      {ws.lab || 'CMQ'} · Baia {formatBayNumber(ws.bayNumber)}
                     </div>
                     <div className="text-[10px] text-slate-500 truncate">{ws.name}</div>
                   </div>

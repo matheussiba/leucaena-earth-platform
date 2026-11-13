@@ -1,4 +1,4 @@
-import { Workstation, Reservation, FairUseRules, LabMember } from '../types';
+import { Workstation, Reservation, FairUseRules, LabMember, normalizeLab } from '../types';
 
 export const DEFAULT_RULES: FairUseRules = {
   maxContinuousHoursWeekday: 12,
@@ -45,6 +45,7 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     id: 'ws-baia-04',
     name: 'Workstation Alpha',
     bayNumber: 4,
+    lab: 'CMQ',
     location: 'Baia 04 - Laboratório CMQ',
     imageUrl: '',
     ip: '143.107.215.230',
@@ -62,6 +63,7 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     id: 'ws-baia-07',
     name: 'Workstation Beta',
     bayNumber: 7,
+    lab: 'CMQ',
     location: 'Baia 07 - Laboratório CMQ',
     imageUrl: '',
     ip: '143.107.215.152',
@@ -79,6 +81,7 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     id: 'ws-dados-igc',
     name: 'Dados IGC',
     bayNumber: 'IGC',
+    lab: 'CMQ',
     location: 'Data Storage - Laboratório CMQ / IGC',
     imageUrl: '',
     ip: '143.107.215.175',
@@ -93,6 +96,10 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     isCustom: false,
   },
 ];
+
+export function withDefaultLab(ws: Workstation): Workstation {
+  return { ...ws, lab: normalizeLab(ws.lab) };
+}
 
 export const createSampleReservations = (): Reservation[] => {
   const now = new Date();

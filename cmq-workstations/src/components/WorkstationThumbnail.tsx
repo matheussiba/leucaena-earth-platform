@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Workstation } from '../types';
+import { Workstation, WorkstationStatus } from '../types';
 import { formatBayNumber } from '../utils/dateUtils';
 import { Monitor } from 'lucide-react';
 
@@ -7,12 +7,21 @@ interface WorkstationThumbnailProps {
   workstation: Workstation;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showBadge?: boolean;
+  /** Contour color for livre / ocupado */
+  statusBorder?: WorkstationStatus | 'available' | 'in_use';
+  className?: string;
+  onClick?: () => void;
+  title?: string;
 }
 
 export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
   workstation,
   size = 'md',
   showBadge = true,
+  statusBorder,
+  className = '',
+  onClick,
+  title,
 }) => {
   const [imgError, setImgError] = useState(false);
 
@@ -24,13 +33,33 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
   }[size];
 
   const bayFormatted = formatBayNumber(workstation.bayNumber);
+  const borderCls =
+    statusBorder === 'in_use'
+      ? 'border-2 border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.35)]'
+      : statusBorder === 'available'
+      ? 'border-2 border-emerald-400 shadow-[0_0_0_1px_rgba(52,211,153,0.35)]'
+      : 'border border-slate-200';
+
+  const Wrapper: React.ElementType = onClick ? 'button' : 'div';
+  const wrapperProps = onClick
+    ? {
+        type: 'button' as const,
+        onClick,
+        title:
+          title ||
+          `${workstation.name} · ${statusBorder === 'in_use' ? 'Ocupada' : 'Livre'}`,
+      }
+    : { title: title || `Workstation Baia ${workstation.bayNumber} - ${workstation.name}` };
 
   return (
-    <div className="relative shrink-0">
+    <Wrapper
+      {...wrapperProps}
+      className={`relative shrink-0 rounded-lg overflow-hidden shadow-2xs ${sizeClasses} ${borderCls} ${
+        onClick ? 'cursor-pointer active:scale-95 transition-transform' : ''
+      } ${className}`}
+    >
       {workstation.imageUrl && !imgError ? (
-        <div
-          className={`relative rounded-lg overflow-hidden border border-slate-200 shadow-2xs ${sizeClasses}`}
-        >
+        <>
           <img
             src={workstation.imageUrl}
             alt={`Baia ${workstation.bayNumber}`}
@@ -43,30 +72,25 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
               B{bayFormatted}
             </div>
           )}
-        </div>
+        </>
       ) : (
-        <div
-          className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 border border-slate-700/60 shadow-2xs flex flex-col items-center justify-center text-white ${sizeClasses}`}
-          title={`Workstation Baia ${workstation.bayNumber} - ${workstation.name}`}
-        >
+        <>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950" />
           <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:5px_5px]" />
-          
-          {/* Unified clean PC / Monitor symbol for all workstations */}
-          <div className="relative z-10 flex flex-col items-center">
+          <div className="relative z-10 flex flex-col items-center justify-center h-full text-white">
             <Monitor
               className={`${
                 size === 'sm' ? 'w-4 h-4' : size === 'xl' ? 'w-8 h-8' : 'w-5 h-5'
               } text-blue-400`}
             />
           </div>
-
           {showBadge && (
-            <div className="absolute bottom-0 right-0 left-0 bg-black/85 backdrop-blur-xs text-slate-200 font-mono font-bold text-center py-0.5 leading-none text-[8px] tracking-tight border-t border-white/10">
-              BAIA {bayFormatted}
+            <div className="absolute bottom-0 right-0 left-0 bg-slate-950/85 backdrop-blur-xs text-white text-[8px] font-mono font-bold text-center py-0.5 leading-none">
+              B{bayFormatted}
             </div>
           )}
-        </div>
+        </>
       )}
-    </div>
+    </Wrapper>
   );
 };

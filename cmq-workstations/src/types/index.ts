@@ -1,9 +1,19 @@
 export type WorkstationStatus = 'available' | 'in_use' | 'maintenance';
 
+/** Labs that share this booking platform */
+export const LAB_IDS = ['CMQ', 'CePE-Geo'] as const;
+export type LabId = (typeof LAB_IDS)[number];
+
+export function normalizeLab(lab?: string | null): LabId {
+  return lab === 'CePE-Geo' ? 'CePE-Geo' : 'CMQ';
+}
+
 export interface Workstation {
   id: string;
   name: string;
   bayNumber: number | string;
+  /** Lab group — CMQ (current machines) or CePE-Geo */
+  lab: LabId;
   location: string;
   imageUrl?: string;
   ip?: string;                  // IP de rede da máquina

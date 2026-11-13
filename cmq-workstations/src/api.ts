@@ -10,14 +10,17 @@ import {
   INITIAL_MEMBERS,
   DEFAULT_RULES,
   defaultIpForBay,
+  withDefaultLab,
 } from './data/initialData';
 import { applyFairUseFlags } from './utils/fairUseValidator';
 
 function withDefaultIps(list: Workstation[]): Workstation[] {
-  return list.map((w) => ({
-    ...w,
-    ip: (w.ip && String(w.ip).trim()) || defaultIpForBay(w) || undefined,
-  }));
+  return list.map((w) =>
+    withDefaultLab({
+      ...w,
+      ip: (w.ip && String(w.ip).trim()) || defaultIpForBay(w) || undefined,
+    })
+  );
 }
 
 /** Ensure seed workstations exist even when an older saved state is loaded. */

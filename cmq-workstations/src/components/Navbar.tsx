@@ -32,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200">
       <div className="w-full px-3 sm:px-5 lg:px-8 xl:px-10 2xl:px-12">
-        <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+        <div className="flex items-center justify-between h-12 sm:h-14 gap-2">
           {/* Zone 1: Brand wordmark */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white shrink-0 shadow-2xs">
@@ -40,10 +40,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div className="min-w-0">
               <span className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 truncate block">
-                CMQ Workstations
+                Workstations
               </span>
-              <span className="text-[10px] sm:text-xs font-mono text-slate-500 block -mt-0.5">
-                {inUseCount}/{totalWorkstations} em uso
+              <span className="text-[10px] sm:text-xs font-mono text-slate-500 block -mt-0.5 truncate">
+                CMQ · CePE-Geo · {inUseCount}/{totalWorkstations} em uso
               </span>
             </div>
           </div>
