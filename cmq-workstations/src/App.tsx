@@ -9,7 +9,7 @@ import {
 } from './types';
 import { getCurrentActiveReservation, getTimeRemaining, formatTime, formatBayNumber } from './utils/dateUtils';
 import { Navbar } from './components/Navbar';
-import { CalendarView } from './components/CalendarView';
+import { CalendarView, LabTag } from './components/CalendarView';
 import { WorkstationThumbnail } from './components/WorkstationThumbnail';
 import { ReservationModal } from './components/ReservationModal';
 import { RulesModal } from './components/RulesModal';
@@ -437,9 +437,7 @@ export default function App() {
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-mono text-[10px] font-bold text-slate-400 shrink-0">
-                          {ws.lab}
-                        </span>
+                        <LabTag lab={ws.lab} />
                         <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
                           B{formatBayNumber(ws.bayNumber)}
                         </span>

@@ -1,5 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Workstation, Reservation, CalendarViewMode, LAB_IDS, normalizeLab } from '../types';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import {
+  Workstation,
+  Reservation,
+  CalendarViewMode,
+  LAB_IDS,
+  LabId,
+  normalizeLab,
+} from '../types';
 import { formatTime, formatDateFull, isSameDay, formatBayNumber } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { isOverlapping } from '../utils/fairUseValidator';
@@ -7,12 +14,31 @@ import { getSoftInterval, getHardInterval } from '../utils/sharedUse';
 import { 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown,
   Calendar as CalendarIcon, 
   Plus, 
   AlertTriangle,
   Monitor,
   Share2
 } from 'lucide-react';
+
+export const LabTag: React.FC<{ lab?: string | null; className?: string }> = ({
+  lab,
+  className = '',
+}) => {
+  const id = normalizeLab(lab);
+  const styles =
+    id === 'Extra'
+      ? 'bg-violet-100 text-violet-900 border-violet-300 ring-1 ring-violet-200/80'
+      : 'bg-sky-100 text-sky-950 border-sky-300 ring-1 ring-sky-200/80';
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-md border text-[9px] sm:text-[10px] font-extrabold tracking-wide uppercase ${styles} ${className}`}
+    >
+      {id}
+    </span>
+  );
+};
 
 export const getWorkstationColorInfo = (bayNumber: number | string) => {
   const num = Number(bayNumber);
@@ -76,6 +102,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   /** Day cronograma slide: next → left, prev → right */
   const [daySlideDir, setDaySlideDir] = useState<'next' | 'prev' | null>(null);
   const [daySlideKey, setDaySlideKey] = useState(0);
+  /** Accordion open state per lab (default: open) */
+  const [labOpen, setLabOpen] = useState<Record<string, boolean>>({});
+
+  // Excel-like freeze: synced scroll between baia col / hours header / grid
+  const dayLeftRef = useRef<HTMLDivElement>(null);
+  const dayHeaderRef = useRef<HTMLDivElement>(null);
+  const dayMainRef = useRef<HTMLDivElement>(null);
+  const dayScrollSyncing = useRef(false);
 
   // Drag-to-schedule state for timeline
   const [dragState, setDragState] = useState<{
@@ -83,6 +117,35 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     startHour: number;
     currentHour: number;
   } | null>(null);
+
+  const isLabExpanded = useCallback(
+    (lab: string) => labOpen[lab] !== false,
+    [labOpen]
+  );
+
+  const toggleLab = useCallback((lab: string) => {
+    setLabOpen((prev) => ({ ...prev, [lab]: prev[lab] === false ? true : false }));
+  }, []);
+
+  const syncDayScroll = useCallback((source: 'left' | 'header' | 'main') => {
+    if (dayScrollSyncing.current) return;
+    const left = dayLeftRef.current;
+    const header = dayHeaderRef.current;
+    const main = dayMainRef.current;
+    if (!left || !header || !main) return;
+    dayScrollSyncing.current = true;
+    if (source === 'main') {
+      left.scrollTop = main.scrollTop;
+      header.scrollLeft = main.scrollLeft;
+    } else if (source === 'left') {
+      main.scrollTop = left.scrollTop;
+    } else if (source === 'header') {
+      main.scrollLeft = header.scrollLeft;
+    }
+    requestAnimationFrame(() => {
+      dayScrollSyncing.current = false;
+    });
+  }, []);
 
   // Global mouseup listener so dragging outside the element releases cleanly
   useEffect(() => {
@@ -138,8 +201,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       ? workstations.filter((w) => normalizeLab(w.lab) === selectedWsFilter.slice(4))
       : workstations.filter((w) => w.id === selectedWsFilter);
 
+  const workstationsByLab = useMemo(() => {
+    const groups: { lab: LabId; items: Workstation[] }[] = [];
+    for (const lab of LAB_IDS) {
+      const items = visibleWorkstations.filter((w) => normalizeLab(w.lab) === lab);
+      if (items.length) groups.push({ lab, items });
+    }
+    const known = new Set(LAB_IDS as readonly string[]);
+    const extras = visibleWorkstations.filter((w) => !known.has(normalizeLab(w.lab)));
+    if (extras.length) {
+      groups.push({ lab: normalizeLab(extras[0].lab), items: extras });
+    }
+    return groups;
+  }, [visibleWorkstations]);
+
   // 1. DAY VIEW
   const hoursArray = Array.from({ length: 24 }, (_, i) => i);
+  const ROW_H = 'h-[72px] sm:h-[88px] lg:h-[110px]';
+  const ACCORDION_H = 'h-8';
   const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
   const currentLinePercent = (currentHourDecimal / 24) * 100;
 
@@ -343,9 +422,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] shadow-2xs ${info.badge}`}
                 >
                   <Monitor className={`w-3 h-3 ${info.icon}`} />
-                  <span>
-                    {normalizeLab(w.lab)} · B{formatBayNumber(w.bayNumber)}
-                  </span>
+                  <LabTag lab={w.lab} />
+                  <span>B{formatBayNumber(w.bayNumber)}</span>
                 </span>
               );
             })}
@@ -377,312 +455,361 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       </div>
 
       {/* --------------------------------------------------------------------- */}
-      {/* 1. DIA VIEW: 24h Interactive Timeline with Click & Drag to Schedule  */}
+      {/* 1. DIA VIEW — Excel freeze: Baia col + hours header fixed; synced scroll */}
       {/* --------------------------------------------------------------------- */}
-      {viewMode === 'day' && (
-        <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
-          <div className="flex-1 min-h-0 flex">
-            {/* Baia column — fixed, no page/timeline scroll */}
-            <div className="w-[4.5rem] sm:w-24 shrink-0 flex flex-col border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)]">
-              <div className="shrink-0 px-1.5 py-1.5 border-b border-slate-200 bg-slate-50 text-[10px] sm:text-xs font-semibold text-slate-600 text-center">
-                Baia
-              </div>
-              <div className="flex-1 min-h-0 flex flex-col divide-y divide-slate-100 overflow-hidden">
-                {visibleWorkstations.map((ws) => (
+      {viewMode === 'day' && (() => {
+        const dayIsPast = isCalendarDayPast(selectedDate);
+        const blockBorder = dayIsPast ? 'border-dashed' : 'border-solid';
+        const selStartOfDay = new Date(selectedDate);
+        selStartOfDay.setHours(0, 0, 0, 0);
+        const selEndOfDay = new Date(selectedDate);
+        selEndOfDay.setHours(24, 0, 0, 0);
+        const dayOrigin = selStartOfDay.getTime();
+
+        const renderTimelineRow = (ws: Workstation) => {
+          const wsReservations = dayReservations.filter((r) => r.workstationId === ws.id);
+
+          const renderBlock = (
+            res: Reservation,
+            segStart: number,
+            segEnd: number,
+            lane: 'full' | 'top' | 'bottom',
+            segKey: string,
+            opts?: { sharedHalf?: boolean }
+          ) => {
+            if (segEnd <= segStart) return null;
+            const leftPercent = ((segStart - dayOrigin) / (1000 * 60 * 60) / 24) * 100;
+            const widthPercent = ((segEnd - segStart) / (1000 * 60 * 60) / 24) * 100;
+            const baseStyle = getBaseStyle(res);
+            const threshold = res.nonFairUseThreshold
+              ? new Date(res.nonFairUseThreshold)
+              : null;
+            const hasSplitExcess =
+              res.isNonFairUse &&
+              threshold &&
+              threshold.getTime() > segStart &&
+              threshold.getTime() < segEnd;
+            const splitPercent = hasSplitExcess
+              ? ((threshold!.getTime() - segStart) / (segEnd - segStart)) * 100
+              : 100;
+            const isEntirelyExcess =
+              res.isNonFairUse &&
+              !baseStyle.isLive &&
+              (!threshold || threshold.getTime() <= segStart);
+            const vertical =
+              lane === 'full'
+                ? 'top-1.5 bottom-1.5'
+                : lane === 'top'
+                ? 'top-1.5 bottom-1/2'
+                : 'top-1/2 bottom-1.5';
+
+            return (
+              <div
+                key={segKey}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReservationClick(res);
+                }}
+                style={{
+                  left: `${Math.max(0, leftPercent)}%`,
+                  width: `${Math.min(100 - leftPercent, Math.max(widthPercent, 1.8))}%`,
+                }}
+                className={`absolute ${vertical} rounded-md z-10 cursor-pointer overflow-hidden border transition-all text-left flex shadow-2xs ${blockBorder} ${
+                  isEntirelyExcess
+                    ? 'border-slate-400 bg-slate-100 text-slate-800'
+                    : baseStyle.bg
+                }`}
+                title={
+                  opts?.sharedHalf
+                    ? 'Uso compartilhado (50%) — outro usuário pode usar neste trecho'
+                    : undefined
+                }
+              >
+                <div
+                  style={{ width: `${hasSplitExcess ? splitPercent : 100}%` }}
+                  className="p-1 flex flex-col justify-between min-w-0 h-full overflow-hidden"
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-bold text-[11px] truncate flex items-center gap-1">
+                      {baseStyle.isLive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0"></span>
+                      )}
+                      {opts?.sharedHalf && (
+                        <Share2 className="w-3 h-3 text-indigo-600 shrink-0" />
+                      )}
+                      <span className="truncate">{res.researcherName}</span>
+                    </span>
+                    {isEntirelyExcess && (
+                      <span title="Excede Fair-Use">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 fill-amber-100 shrink-0" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[9px] opacity-85 font-mono truncate">
+                    {formatTime(new Date(segStart).toISOString())} -{' '}
+                    {formatTime(
+                      hasSplitExcess && threshold
+                        ? threshold.toISOString()
+                        : new Date(segEnd).toISOString()
+                    )}
+                  </div>
+                </div>
+                {hasSplitExcess && (
                   <div
-                    key={ws.id}
-                    className="flex flex-1 min-h-[72px] sm:min-h-[92px] lg:min-h-[120px] xl:min-h-[140px] px-1.5 py-1.5 flex-col items-center justify-center gap-0.5 bg-white"
+                    style={{ width: `${100 - splitPercent}%` }}
+                    className={`border-l-2 border-l-amber-500 border-amber-300 bg-amber-50/80 p-1 flex flex-col justify-between items-center text-amber-950 h-full relative overflow-hidden ${
+                      dayIsPast ? 'border-dashed' : 'border-solid'
+                    }`}
+                    title={`Limite de fair-use ultrapassado a partir das ${formatTime(threshold!.toISOString())}.`}
                   >
-                    <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
-                    <div className="font-mono text-[8px] sm:text-[9px] font-bold text-slate-400 leading-none">
-                      {normalizeLab(ws.lab)}
-                    </div>
-                    <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
-                      B{formatBayNumber(ws.bayNumber)}
-                    </div>
-                    <div className="w-full text-[9px] sm:text-[10px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
-                      {ws.name}
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 fill-amber-100 shrink-0" />
+                    <div className="text-[9px] font-mono text-amber-800 font-semibold truncate text-right w-full">
+                      fim {formatTime(new Date(segEnd).toISOString())}
                     </div>
                   </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <div key={ws.id} className={`${ROW_H} relative group border-b border-slate-100`}>
+              <div className="absolute inset-0 flex cursor-crosshair min-w-0">
+                {hoursArray.map((hour) => (
+                  <div
+                    key={hour}
+                    onMouseDown={(e) => {
+                      if (e.button === 0) {
+                        setDragState({
+                          wsId: ws.id,
+                          startHour: hour,
+                          currentHour: hour,
+                        });
+                      }
+                    }}
+                    onMouseEnter={() => {
+                      if (dragState && dragState.wsId === ws.id) {
+                        setDragState((prev) =>
+                          prev ? { ...prev, currentHour: hour } : null
+                        );
+                      }
+                    }}
+                    className="flex-1 min-w-[2.25rem] xl:min-w-0 border-r border-slate-100 hover:bg-blue-50/50 transition-colors"
+                    title={`Clique e arraste a partir das ${hour}:00`}
+                  />
                 ))}
               </div>
-            </div>
 
-            {/* Hours timeline — only scroll surface (x/y if needed) */}
-            <div className="flex-1 min-w-0 min-h-0 overflow-auto">
+              {isToday && (
+                <div
+                  className="absolute top-0 bottom-0 w-0.5 bg-rose-500 z-20 pointer-events-none"
+                  style={{ left: `${currentLinePercent}%` }}
+                >
+                  <div className="absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                </div>
+              )}
+
+              {dragState && dragState.wsId === ws.id && (() => {
+                const minH = Math.min(dragState.startHour, dragState.currentHour);
+                const maxH = Math.max(dragState.startHour, dragState.currentHour);
+                const selEnd = maxH + 1;
+                const leftPct = (minH / 24) * 100;
+                const widthPct = ((selEnd - minH) / 24) * 100;
+                const duration = selEnd - minH;
+                return (
+                  <div
+                    style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                    className="absolute top-1.5 bottom-1.5 rounded-lg bg-blue-500/25 border-2 border-blue-600 z-30 pointer-events-none flex items-center justify-between px-2 text-[10px] font-bold text-blue-950 shadow-md backdrop-blur-xs"
+                  >
+                    <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
+                      {minH < 10 ? `0${minH}` : minH}:00
+                    </span>
+                    <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] font-mono shadow-2xs">
+                      {duration}h {duration === 1 ? 'hora' : 'horas'}
+                    </span>
+                    <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
+                      {selEnd >= 24 ? '23:59' : `${selEnd < 10 ? `0${selEnd}` : selEnd}:00`}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {wsReservations.map((res) => {
+                const resStart = new Date(res.startTime).getTime();
+                const resEnd = new Date(res.endTime).getTime();
+                const effectiveStart = Math.max(resStart, selStartOfDay.getTime());
+                const effectiveEnd = Math.min(resEnd, selEndOfDay.getTime());
+                if (effectiveEnd <= effectiveStart) return null;
+
+                const peers = wsReservations.filter((p) => p.id !== res.id);
+                const soft = getSoftInterval(res);
+                const hard = getHardInterval(res);
+                const overlapsPeerSoft = peers.some((p) => {
+                  const ps = getSoftInterval(p);
+                  if (!ps) return false;
+                  return isOverlapping(
+                    new Date(effectiveStart),
+                    new Date(effectiveEnd),
+                    ps.start,
+                    ps.end
+                  );
+                });
+
+                const nodes: React.ReactNode[] = [];
+                if (res.isSharedUse && soft) {
+                  const hardEnd = hard
+                    ? Math.min(hard.end.getTime(), effectiveEnd)
+                    : effectiveStart;
+                  const hardStart = hard
+                    ? Math.max(hard.start.getTime(), effectiveStart)
+                    : effectiveStart;
+                  if (hard && hardStart < hardEnd && hardStart < soft.start.getTime()) {
+                    nodes.push(
+                      renderBlock(
+                        res,
+                        hardStart,
+                        Math.min(hardEnd, soft.start.getTime()),
+                        'full',
+                        `${res.id}-hard`
+                      )
+                    );
+                  }
+                  const softStart = Math.max(soft.start.getTime(), effectiveStart);
+                  const softEnd = Math.min(soft.end.getTime(), effectiveEnd);
+                  if (softStart < softEnd) {
+                    nodes.push(
+                      renderBlock(res, softStart, softEnd, 'top', `${res.id}-soft`, {
+                        sharedHalf: true,
+                      })
+                    );
+                  }
+                } else if (overlapsPeerSoft) {
+                  nodes.push(
+                    renderBlock(res, effectiveStart, effectiveEnd, 'bottom', `${res.id}-guest`)
+                  );
+                } else {
+                  nodes.push(renderBlock(res, effectiveStart, effectiveEnd, 'full', res.id));
+                }
+                return <React.Fragment key={res.id}>{nodes}</React.Fragment>;
+              })}
+            </div>
+          );
+        };
+
+        return (
+          <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
+            {/* Header row: corner + horizontally scrollable hours */}
+            <div className="shrink-0 flex border-b border-slate-200 z-40 bg-slate-50">
+              <div className="w-[4.5rem] sm:w-24 shrink-0 px-1.5 py-1.5 border-r border-slate-200 bg-slate-50 text-[10px] sm:text-xs font-semibold text-slate-600 text-center shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)]">
+                Baia
+              </div>
               <div
-                key={daySlideKey}
-                className={`h-full min-h-full min-w-[960px] xl:min-w-0 flex flex-col will-change-transform ${
-                  daySlideDir === 'next'
-                    ? 'cmq-day-slide-next'
-                    : daySlideDir === 'prev'
-                    ? 'cmq-day-slide-prev'
-                    : ''
-                }`}
+                ref={dayHeaderRef}
+                onScroll={() => syncDayScroll('header')}
+                className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden"
               >
-                <div className="shrink-0 flex border-b border-slate-200 bg-slate-50/50">
+                <div
+                  key={`hdr-${daySlideKey}`}
+                  className={`flex min-w-[960px] xl:min-w-full will-change-transform ${
+                    daySlideDir === 'next'
+                      ? 'cmq-day-slide-next'
+                      : daySlideDir === 'prev'
+                      ? 'cmq-day-slide-prev'
+                      : ''
+                  }`}
+                >
                   {hoursArray.map((hour) => (
                     <div
                       key={hour}
-                      className="flex-1 min-w-[2.25rem] xl:min-w-0 text-center py-2 border-r border-slate-100 text-[10px] sm:text-[11px] font-mono tabular-nums text-slate-500 last:border-r-0"
+                      className="flex-1 min-w-[2.25rem] xl:min-w-0 text-center py-1.5 border-r border-slate-100 text-[10px] sm:text-[11px] font-mono tabular-nums text-slate-500 last:border-r-0"
                     >
                       {String(hour).padStart(2, '0')}
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
 
-                <div className="flex-1 min-h-0 flex flex-col divide-y divide-slate-100">
-                  {visibleWorkstations.map((ws) => {
-                    const wsReservations = dayReservations.filter((r) => r.workstationId === ws.id);
-                    const dayIsPast = isCalendarDayPast(selectedDate);
-                    const blockBorder = dayIsPast ? 'border-dashed' : 'border-solid';
-
-                    const selStartOfDay = new Date(selectedDate);
-                    selStartOfDay.setHours(0, 0, 0, 0);
-                    const selEndOfDay = new Date(selectedDate);
-                    selEndOfDay.setHours(24, 0, 0, 0);
-                    const dayOrigin = selStartOfDay.getTime();
-
-                    const renderBlock = (
-                      res: Reservation,
-                      segStart: number,
-                      segEnd: number,
-                      lane: 'full' | 'top' | 'bottom',
-                      segKey: string,
-                      opts?: { sharedHalf?: boolean }
-                    ) => {
-                      if (segEnd <= segStart) return null;
-                      const leftPercent = ((segStart - dayOrigin) / (1000 * 60 * 60) / 24) * 100;
-                      const widthPercent = ((segEnd - segStart) / (1000 * 60 * 60) / 24) * 100;
-                      const baseStyle = getBaseStyle(res);
-                      const threshold = res.nonFairUseThreshold
-                        ? new Date(res.nonFairUseThreshold)
-                        : null;
-                      const hasSplitExcess =
-                        res.isNonFairUse &&
-                        threshold &&
-                        threshold.getTime() > segStart &&
-                        threshold.getTime() < segEnd;
-                      const splitPercent = hasSplitExcess
-                        ? ((threshold!.getTime() - segStart) / (segEnd - segStart)) * 100
-                        : 100;
-                      const isEntirelyExcess =
-                        res.isNonFairUse &&
-                        !baseStyle.isLive &&
-                        (!threshold || threshold.getTime() <= segStart);
-
-                      const vertical =
-                        lane === 'full'
-                          ? 'top-1.5 bottom-1.5'
-                          : lane === 'top'
-                          ? 'top-1.5 bottom-1/2'
-                          : 'top-1/2 bottom-1.5';
-
-                      return (
-                        <div
-                          key={segKey}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onReservationClick(res);
-                          }}
-                          style={{
-                            left: `${Math.max(0, leftPercent)}%`,
-                            width: `${Math.min(100 - leftPercent, Math.max(widthPercent, 1.8))}%`,
-                          }}
-                          className={`absolute ${vertical} rounded-md z-10 cursor-pointer overflow-hidden border transition-all text-left flex shadow-2xs ${blockBorder} ${
-                            isEntirelyExcess
-                              ? 'border-slate-400 bg-slate-100 text-slate-800'
-                              : baseStyle.bg
-                          }`}
-                          title={
-                            opts?.sharedHalf
-                              ? 'Uso compartilhado (50%) — outro usuário pode usar neste trecho'
-                              : undefined
-                          }
-                        >
-                          <div
-                            style={{ width: `${hasSplitExcess ? splitPercent : 100}%` }}
-                            className="p-1 flex flex-col justify-between min-w-0 h-full overflow-hidden"
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-bold text-[11px] truncate flex items-center gap-1">
-                                {baseStyle.isLive && (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0"></span>
-                                )}
-                                {opts?.sharedHalf && (
-                                  <Share2 className="w-3 h-3 text-indigo-600 shrink-0" />
-                                )}
-                                <span className="truncate">{res.researcherName}</span>
-                              </span>
-                              {isEntirelyExcess && (
-                                <span title="Excede Fair-Use">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 fill-amber-100 shrink-0" />
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[9px] opacity-85 font-mono truncate">
-                              {formatTime(new Date(segStart).toISOString())} -{' '}
-                              {formatTime(
-                                hasSplitExcess && threshold
-                                  ? threshold.toISOString()
-                                  : new Date(segEnd).toISOString()
-                              )}
-                            </div>
-                          </div>
-                          {hasSplitExcess && (
-                            <div
-                              style={{ width: `${100 - splitPercent}%` }}
-                              className={`border-l-2 border-l-amber-500 border-amber-300 bg-amber-50/80 p-1 flex flex-col justify-between items-center text-amber-950 h-full relative overflow-hidden ${
-                                dayIsPast ? 'border-dashed' : 'border-solid'
-                              }`}
-                              title={`Limite de fair-use ultrapassado a partir das ${formatTime(threshold!.toISOString())}.`}
-                            >
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 fill-amber-100 shrink-0" />
-                              <div className="text-[9px] font-mono text-amber-800 font-semibold truncate text-right w-full">
-                                fim {formatTime(new Date(segEnd).toISOString())}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    };
-
-                    return (
-                      <div
-                        key={ws.id}
-                        className="flex flex-1 min-h-[72px] sm:min-h-[92px] lg:min-h-[120px] xl:min-h-[140px] relative group"
+            {/* Body: frozen baia col (Y only) + main grid (X+Y), synced */}
+            <div className="flex-1 min-h-0 flex overflow-hidden">
+              <div
+                ref={dayLeftRef}
+                onScroll={() => syncDayScroll('left')}
+                className="w-[4.5rem] sm:w-24 shrink-0 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)] no-scrollbar"
+              >
+                {workstationsByLab.map(({ lab, items }) => {
+                  const open = isLabExpanded(lab);
+                  return (
+                    <div key={`left-${lab}`}>
+                      <button
+                        type="button"
+                        onClick={() => toggleLab(lab)}
+                        className={`${ACCORDION_H} w-full px-1 flex items-center justify-center gap-0.5 border-b border-slate-200 bg-slate-50/90 hover:bg-slate-100 sticky top-0 z-10`}
+                        title={open ? `Recolher ${lab}` : `Expandir ${lab}`}
                       >
-                        <div className="absolute inset-0 flex cursor-crosshair min-w-0">
-                          {hoursArray.map((hour) => (
-                            <div
-                              key={hour}
-                              onMouseDown={(e) => {
-                                if (e.button === 0) {
-                                  setDragState({
-                                    wsId: ws.id,
-                                    startHour: hour,
-                                    currentHour: hour,
-                                  });
-                                }
-                              }}
-                              onMouseEnter={() => {
-                                if (dragState && dragState.wsId === ws.id) {
-                                  setDragState((prev) =>
-                                    prev ? { ...prev, currentHour: hour } : null
-                                  );
-                                }
-                              }}
-                              className="flex-1 min-w-[2.25rem] xl:min-w-0 border-r border-slate-100 hover:bg-blue-50/50 transition-colors"
-                              title={`Clique e arraste a partir das ${hour}:00`}
-                            />
-                          ))}
-                        </div>
-
-                        {isToday && (
+                        <LabTag lab={lab} />
+                        <ChevronDown
+                          className={`w-3 h-3 text-slate-500 transition-transform ${
+                            open ? '' : '-rotate-90'
+                          }`}
+                        />
+                      </button>
+                      {open &&
+                        items.map((ws) => (
                           <div
-                            className="absolute top-0 bottom-0 w-0.5 bg-rose-500 z-20 pointer-events-none"
-                            style={{ left: `${currentLinePercent}%` }}
+                            key={ws.id}
+                            className={`${ROW_H} px-1 py-1 flex flex-col items-center justify-center gap-0.5 border-b border-slate-100 bg-white`}
                           >
-                            <div className="absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                          </div>
-                        )}
-
-                        {dragState && dragState.wsId === ws.id && (() => {
-                          const minH = Math.min(dragState.startHour, dragState.currentHour);
-                          const maxH = Math.max(dragState.startHour, dragState.currentHour);
-                          const selEnd = maxH + 1;
-                          const leftPct = (minH / 24) * 100;
-                          const widthPct = ((selEnd - minH) / 24) * 100;
-                          const duration = selEnd - minH;
-
-                          return (
-                            <div
-                              style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-                              className="absolute top-1.5 bottom-1.5 rounded-lg bg-blue-500/25 border-2 border-blue-600 z-30 pointer-events-none flex items-center justify-between px-2 text-[10px] font-bold text-blue-950 shadow-md backdrop-blur-xs"
-                            >
-                              <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
-                                {minH < 10 ? `0${minH}` : minH}:00
-                              </span>
-                              <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] font-mono shadow-2xs">
-                                {duration}h {duration === 1 ? 'hora' : 'horas'}
-                              </span>
-                              <span className="font-mono bg-white/95 px-1.5 py-0.5 rounded shadow-2xs">
-                                {selEnd >= 24 ? '23:59' : `${selEnd < 10 ? `0${selEnd}` : selEnd}:00`}
-                              </span>
+                            <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
+                            <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
+                              B{formatBayNumber(ws.bayNumber)}
                             </div>
-                          );
-                        })()}
+                            <div className="w-full text-[8px] sm:text-[9px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
+                              {ws.name}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  );
+                })}
+              </div>
 
-                        {wsReservations.map((res) => {
-                          const resStart = new Date(res.startTime).getTime();
-                          const resEnd = new Date(res.endTime).getTime();
-                          const effectiveStart = Math.max(resStart, selStartOfDay.getTime());
-                          const effectiveEnd = Math.min(resEnd, selEndOfDay.getTime());
-                          if (effectiveEnd <= effectiveStart) return null;
-
-                          const peers = wsReservations.filter((p) => p.id !== res.id);
-                          const soft = getSoftInterval(res);
-                          const hard = getHardInterval(res);
-
-                          const overlapsPeerSoft = peers.some((p) => {
-                            const ps = getSoftInterval(p);
-                            if (!ps) return false;
-                            return isOverlapping(
-                              new Date(effectiveStart),
-                              new Date(effectiveEnd),
-                              ps.start,
-                              ps.end
-                            );
-                          });
-
-                          const nodes: React.ReactNode[] = [];
-
-                          if (res.isSharedUse && soft) {
-                            const hardEnd = hard
-                              ? Math.min(hard.end.getTime(), effectiveEnd)
-                              : effectiveStart;
-                            const hardStart = hard
-                              ? Math.max(hard.start.getTime(), effectiveStart)
-                              : effectiveStart;
-                            if (hard && hardStart < hardEnd && hardStart < soft.start.getTime()) {
-                              nodes.push(
-                                renderBlock(
-                                  res,
-                                  hardStart,
-                                  Math.min(hardEnd, soft.start.getTime()),
-                                  'full',
-                                  `${res.id}-hard`
-                                )
-                              );
-                            }
-                            const softStart = Math.max(soft.start.getTime(), effectiveStart);
-                            const softEnd = Math.min(soft.end.getTime(), effectiveEnd);
-                            if (softStart < softEnd) {
-                              nodes.push(
-                                renderBlock(res, softStart, softEnd, 'top', `${res.id}-soft`, {
-                                  sharedHalf: true,
-                                })
-                              );
-                            }
-                          } else if (overlapsPeerSoft) {
-                            nodes.push(
-                              renderBlock(
-                                res,
-                                effectiveStart,
-                                effectiveEnd,
-                                'bottom',
-                                `${res.id}-guest`
-                              )
-                            );
-                          } else {
-                            nodes.push(
-                              renderBlock(res, effectiveStart, effectiveEnd, 'full', res.id)
-                            );
-                          }
-
-                          return <React.Fragment key={res.id}>{nodes}</React.Fragment>;
-                        })}
+              <div
+                ref={dayMainRef}
+                onScroll={() => syncDayScroll('main')}
+                className="flex-1 min-w-0 min-h-0 overflow-auto"
+              >
+                <div
+                  key={`body-${daySlideKey}`}
+                  className={`min-w-[960px] xl:min-w-full will-change-transform ${
+                    daySlideDir === 'next'
+                      ? 'cmq-day-slide-next'
+                      : daySlideDir === 'prev'
+                      ? 'cmq-day-slide-prev'
+                      : ''
+                  }`}
+                >
+                  {workstationsByLab.map(({ lab, items }) => {
+                    const open = isLabExpanded(lab);
+                    return (
+                      <div key={`right-${lab}`}>
+                        <button
+                          type="button"
+                          onClick={() => toggleLab(lab)}
+                          className={`${ACCORDION_H} w-full px-2 flex items-center gap-2 border-b border-slate-200 bg-slate-50/90 hover:bg-slate-100 text-left sticky top-0 z-10`}
+                        >
+                          <LabTag lab={lab} />
+                          <span className="text-[10px] font-semibold text-slate-600">
+                            {items.length} {items.length === 1 ? 'máquina' : 'máquinas'}
+                          </span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-slate-500 ml-auto transition-transform ${
+                              open ? '' : '-rotate-90'
+                            }`}
+                          />
+                        </button>
+                        {open && items.map((ws) => renderTimelineRow(ws))}
                       </div>
                     );
                   })}
@@ -690,8 +817,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* --------------------------------------------------------------------- */}
       {/* 2. SEMANA VIEW: 7-Day Grid */}
