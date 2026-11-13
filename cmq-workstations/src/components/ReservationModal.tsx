@@ -236,6 +236,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
       const remembered = getLastSelectedUser();
       const match = remembered
         ? sortedMembers.find((m) => m.name === remembered) ||
+          sortedMembers.find((m) => m.name === ensureLabPrefixedName(remembered, 'CMQ')) ||
+          sortedMembers.find((m) => m.name.endsWith(` - ${remembered}`)) ||
           members.find((m) => m.name === remembered)
         : undefined;
       setSelectedMemberName(match?.name || sortedMembers[0]?.name || members[0]?.name);
