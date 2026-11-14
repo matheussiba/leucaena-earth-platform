@@ -4,11 +4,13 @@ export type WorkstationStatus = 'available' | 'in_use' | 'maintenance';
 export type LabId = string;
 
 export const DEFAULT_LAB = 'CMQ';
+/** Fallback when a lab is deleted or a machine has no lab; only shown if it has machines. */
+export const UNALLOCATED_LAB = 'Não alocado';
 export const DEFAULT_LABS: LabId[] = [DEFAULT_LAB];
 
 export function normalizeLab(lab?: string | null): LabId {
   const t = (lab || '').trim();
-  return t || DEFAULT_LAB;
+  return t || UNALLOCATED_LAB;
 }
 
 /** Palette for lab tags — cycles for any new lab name. */
@@ -25,6 +27,9 @@ const LAB_TAG_STYLES = [
 
 export function labTagClass(lab?: string | null): string {
   const id = normalizeLab(lab);
+  if (id === UNALLOCATED_LAB) {
+    return 'bg-slate-100 text-slate-700 border-slate-300 ring-1 ring-slate-200/80';
+  }
   if (id === DEFAULT_LAB) return LAB_TAG_STYLES[0];
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
@@ -45,27 +50,48 @@ export function ensureLabPrefixedName(name: string, defaultLab: LabId = DEFAULT_
   return `${normalizeLab(defaultLab)} - ${trimmed}`;
 }
 
-/** Merge registered labs with labs found on workstations; CMQ always first. */
+/**
+ * Registered labs + labs still on machines.
+ * "Não alocado" appears only when at least one machine is there.
+ * CMQ stays first among real labs.
+ */
 export function collectLabs(
   registered: LabId[] | undefined,
   workstations: { lab?: string | null }[]
 ): LabId[] {
   const set = new Set<string>();
-  set.add(DEFAULT_LAB);
   for (const l of registered || []) {
-    const n = normalizeLab(l);
-    if (n) set.add(n);
+    const n = (l || '').trim();
+    if (n && n !== UNALLOCATED_LAB) set.add(n);
   }
+  let hasUnallocated = false;
   for (const w of workstations || []) {
-    set.add(normalizeLab(w.lab));
+    const n = normalizeLab(w.lab);
+    if (n === UNALLOCATED_LAB) hasUnallocated = true;
+    else set.add(n);
   }
-  const rest = [...set].filter((l) => l !== DEFAULT_LAB).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  return [DEFAULT_LAB, ...rest];
+  if (set.size === 0 && !hasUnallocated) set.add(DEFAULT_LAB);
+  const ordered = [...set].sort((a, b) => {
+    if (a === DEFAULT_LAB) return -1;
+    if (b === DEFAULT_LAB) return 1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+  if (hasUnallocated) ordered.push(UNALLOCATED_LAB);
+  return ordered;
+}
+
+/** Audit trail for labs, machines and member registry changes. */
+export interface ActivityLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  details: string;
 }
 
 export interface Workstation {
   id: string;
   name: string;
+  /** Bay number or machine code (e.g. 04, GIGC). Optional when not in a bay. */
   bayNumber: number | string;
   /** Lab group — e.g. CMQ; new labs can be registered in the app */
   lab: LabId;

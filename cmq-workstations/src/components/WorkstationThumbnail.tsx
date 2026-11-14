@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Workstation, WorkstationStatus } from '../types';
-import { formatBayNumber } from '../utils/dateUtils';
+import { formatBayLabel } from '../utils/dateUtils';
 import { Monitor } from 'lucide-react';
 
 interface WorkstationThumbnailProps {
@@ -32,7 +32,7 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
     xl: 'w-24 h-24 text-sm',
   }[size];
 
-  const bayFormatted = formatBayNumber(workstation.bayNumber);
+  const bayFormatted = formatBayLabel(workstation.bayNumber);
   const borderCls =
     statusBorder === 'in_use'
       ? 'border-2 border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.35)]'
@@ -49,7 +49,7 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
           title ||
           `${workstation.name} · ${statusBorder === 'in_use' ? 'Ocupada' : 'Livre'}`,
       }
-    : { title: title || `Workstation Baia ${workstation.bayNumber} - ${workstation.name}` };
+    : { title: title || `${workstation.name} · ${bayFormatted}` };
 
   return (
     <Wrapper
@@ -62,14 +62,14 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
         <>
           <img
             src={workstation.imageUrl}
-            alt={`Baia ${workstation.bayNumber}`}
+            alt={workstation.name}
             referrerPolicy="no-referrer"
             onError={() => setImgError(true)}
             className="w-full h-full object-cover"
           />
           {showBadge && (
             <div className="absolute bottom-0 right-0 left-0 bg-slate-950/85 backdrop-blur-xs text-white text-[8px] font-mono font-bold text-center py-0.5 leading-none">
-              B{bayFormatted}
+              {bayFormatted}
             </div>
           )}
         </>
@@ -86,7 +86,7 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
           </div>
           {showBadge && (
             <div className="absolute bottom-0 right-0 left-0 bg-slate-950/85 backdrop-blur-xs text-white text-[8px] font-mono font-bold text-center py-0.5 leading-none">
-              B{bayFormatted}
+              {bayFormatted}
             </div>
           )}
         </>

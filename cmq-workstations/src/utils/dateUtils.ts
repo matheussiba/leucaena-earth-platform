@@ -119,8 +119,24 @@ export function calculateDurationHours(startIso: string, endIso: string): number
   return Math.max(0, (end - start) / (1000 * 60 * 60));
 }
 
-export function formatBayNumber(bay: number | string): string {
-  const num = typeof bay === 'number' ? bay : Number(bay);
-  if (isNaN(num)) return String(bay);
-  return num < 10 ? `0${num}` : `${num}`;
+/** Raw bay/code for storage display (padded if numeric). Empty if none. */
+export function formatBayNumber(bay: number | string | null | undefined): string {
+  const s = String(bay ?? '').trim();
+  if (!s) return '';
+  if (/^\d+$/.test(s)) {
+    const num = parseInt(s, 10);
+    return num < 10 ? `0${num}` : `${num}`;
+  }
+  return s;
+}
+
+/** UI label: B04 for numeric bays, code as-is (GIGC…), or — if empty. */
+export function formatBayLabel(bay: number | string | null | undefined): string {
+  const s = String(bay ?? '').trim();
+  if (!s) return '—';
+  if (/^\d+$/.test(s)) {
+    const num = parseInt(s, 10);
+    return `B${num < 10 ? `0${num}` : num}`;
+  }
+  return s;
 }

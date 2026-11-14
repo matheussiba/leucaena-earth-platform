@@ -9,7 +9,7 @@ import {
   collectLabs,
   DEFAULT_LABS,
 } from '../types';
-import { formatTime, formatDateFull, isSameDay, formatBayNumber } from '../utils/dateUtils';
+import { formatTime, formatDateFull, isSameDay, formatBayLabel } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { isOverlapping } from '../utils/fairUseValidator';
 import { getSoftInterval, getHardInterval } from '../utils/sharedUse';
@@ -389,7 +389,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             ))}
             {workstations.map((w) => (
               <option key={w.id} value={w.id}>
-                {normalizeLab(w.lab)} · B{formatBayNumber(w.bayNumber)}
+                {normalizeLab(w.lab)} · {formatBayLabel(w.bayNumber)}
               </option>
             ))}
           </select>
@@ -449,7 +449,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 >
                   <Monitor className={`w-3 h-3 ${info.icon}`} />
                   <LabTag lab={w.lab} />
-                  <span>B{formatBayNumber(w.bayNumber)}</span>
+                  <span>{formatBayLabel(w.bayNumber)}</span>
                 </span>
               );
             })}
@@ -793,7 +793,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             >
                               <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
                               <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
-                                B{formatBayNumber(ws.bayNumber)}
+                                {formatBayLabel(ws.bayNumber)}
                               </div>
                               <div className="w-full text-[8px] sm:text-[9px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
                                 {ws.name}
@@ -951,7 +951,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                               {ws && wsColor && (
                                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] shadow-2xs ${wsColor.badge}`}>
                                   <Monitor className={`w-3 h-3 ${wsColor.icon}`} />
-                                  <span>B{formatBayNumber(ws.bayNumber)}</span>
+                                  <span>{formatBayLabel(ws.bayNumber)}</span>
                                 </span>
                               )}
                             </div>
@@ -1085,7 +1085,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                               <Monitor className={`w-2.5 h-2.5 shrink-0 ${wsColor?.icon || 'text-slate-600'}`} />
                             )}
                             <span className="truncate">
-                              B{formatBayNumber(ws?.bayNumber || '')}: {r.researcherName.split(' ')[0]}
+                              {formatBayLabel(ws?.bayNumber || '')}: {r.researcherName.split(' ')[0]}
                             </span>
                           </span>
                           {r.isNonFairUse && (

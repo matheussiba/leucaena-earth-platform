@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Reservation, Workstation } from '../types';
-import { calculateDurationHours, formatDateShort, formatTime, formatBayNumber, isSameDay } from '../utils/dateUtils';
+import { calculateDurationHours, formatDateShort, formatTime, formatBayLabel, isSameDay } from '../utils/dateUtils';
 import { reservationsHardConflict } from '../utils/sharedUse';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { Clock, X, AlertTriangle, CheckCircle2, Pencil } from 'lucide-react';
@@ -117,7 +117,7 @@ export const ExtendModal: React.FC<ExtendModalProps> = ({
             <div className="text-slate-700">
               {isEdit ? 'Ajustar o término na ' : 'Prorrogar tempo na '}
               <strong>
-                Baia {formatBayNumber(workstation.bayNumber)} ({workstation.name})
+                {formatBayLabel(workstation.bayNumber)} ({workstation.name})
               </strong>
             </div>
           </div>

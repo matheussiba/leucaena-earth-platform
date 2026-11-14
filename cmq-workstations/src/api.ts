@@ -4,11 +4,13 @@ import {
   FairUseRules,
   LabMember,
   DeletedReservationEntry,
+  ActivityLogEntry,
   LabId,
   ensureLabPrefixedName,
   collectLabs,
   DEFAULT_LABS,
   DEFAULT_LAB,
+  UNALLOCATED_LAB,
 } from './types';
 import {
   INITIAL_WORKSTATIONS,
@@ -57,8 +59,9 @@ export type CmqState = {
   members: LabMember[];
   reservations: Reservation[];
   deletionLog: DeletedReservationEntry[];
+  activityLog: ActivityLogEntry[];
   rules: FairUseRules;
-  /** Registered labs (CMQ always present); new labs appear in filters/accordions automatically */
+  /** Registered labs; "Não alocado" is virtual and only shown when it has machines */
   labs: LabId[];
 };
 
@@ -83,9 +86,19 @@ export function defaultState(): CmqState {
     members: INITIAL_MEMBERS.map((m) => ({ ...m })),
     reservations: [],
     deletionLog: [],
+    activityLog: [],
     rules: { ...DEFAULT_RULES },
     labs: [...DEFAULT_LABS],
   };
+}
+
+function normalizeRegisteredLabs(raw: unknown, workstations: Workstation[]): LabId[] {
+  const list = Array.isArray(raw)
+    ? raw
+        .map((l: string) => String(l || '').trim())
+        .filter((n) => n && n !== UNALLOCATED_LAB)
+    : [...DEFAULT_LABS];
+  return collectLabs(list.length ? list : DEFAULT_LABS, workstations);
 }
 
 export async function loadState(): Promise<CmqState> {
@@ -100,15 +113,12 @@ export async function loadState(): Promise<CmqState> {
         : base.workstations
     )
   );
-  const registeredLabs = Array.isArray(data.labs)
-    ? data.labs.map((l: string) => String(l || '').trim()).filter(Boolean)
-    : base.labs;
   return {
     workstations,
     members: Array.isArray(data.members) && data.members.length
       ? mergeSeedMembers(data.members)
       : base.members,
-    labs: collectLabs(registeredLabs, workstations),
+    labs: normalizeRegisteredLabs(data.labs, workstations),
     rules: (() => {
       const merged =
         data.rules && typeof data.rules === 'object'
@@ -137,6 +147,19 @@ export async function loadState(): Promise<CmqState> {
           ...entry,
           reservation: normalizeReservation(entry.reservation),
         }))
+      : [],
+    activityLog: Array.isArray(data.activityLog)
+      ? data.activityLog
+          .filter(
+            (e: ActivityLogEntry) =>
+              e && typeof e.id === 'string' && typeof e.timestamp === 'string'
+          )
+          .map((e: ActivityLogEntry) => ({
+            id: e.id,
+            timestamp: e.timestamp,
+            action: String(e.action || ''),
+            details: String(e.details || ''),
+          }))
       : [],
   };
 }

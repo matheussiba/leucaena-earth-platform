@@ -6,12 +6,15 @@ import {
   FairUseRules,
   LabMember,
   DeletedReservationEntry,
+  ActivityLogEntry,
   LabId,
   collectLabs,
   normalizeLab,
   DEFAULT_LABS,
+  DEFAULT_LAB,
+  UNALLOCATED_LAB,
 } from './types';
-import { getCurrentActiveReservation, getTimeRemaining, formatTime, formatBayNumber } from './utils/dateUtils';
+import { getCurrentActiveReservation, getTimeRemaining, formatTime, formatBayLabel } from './utils/dateUtils';
 import { Navbar } from './components/Navbar';
 import { CalendarView, LabTag } from './components/CalendarView';
 import { WorkstationThumbnail } from './components/WorkstationThumbnail';
@@ -19,6 +22,7 @@ import { ReservationModal } from './components/ReservationModal';
 import { RulesModal } from './components/RulesModal';
 import { MembersModal } from './components/MembersModal';
 import { WorkstationsManagerModal } from './components/WorkstationsManagerModal';
+import { LabsModal } from './components/LabsModal';
 import { StatsModal } from './components/StatsModal';
 import { CheckOutConfirmModal } from './components/CheckOutConfirmModal';
 import { ExtendModal } from './components/ExtendModal';
@@ -27,12 +31,24 @@ import { Check, AlertTriangle, Zap } from 'lucide-react';
 import { applyFairUseFlags } from './utils/fairUseValidator';
 import { defaultState, loadState, saveState } from './api';
 
+const ACTIVITY_LOG_MAX = 400;
+
+function makeActivity(action: string, details: string): ActivityLogEntry {
+  return {
+    id: `act-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp: new Date().toISOString(),
+    action,
+    details,
+  };
+}
+
 export default function App() {
   const seed = defaultState();
   const [workstations, setWorkstations] = useState<Workstation[]>(seed.workstations);
   const [members, setMembers] = useState<LabMember[]>(seed.members);
   const [reservations, setReservations] = useState<Reservation[]>(seed.reservations);
   const [deletionLog, setDeletionLog] = useState<DeletedReservationEntry[]>(seed.deletionLog);
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(seed.activityLog);
   const [rules, setRules] = useState<FairUseRules>(seed.rules);
   const [labs, setLabs] = useState<LabId[]>(seed.labs);
   const [hydrated, setHydrated] = useState(false);
@@ -49,7 +65,12 @@ export default function App() {
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
   const [isWorkstationsModalOpen, setIsWorkstationsModalOpen] = useState(false);
+  const [isLabsModalOpen, setIsLabsModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+
+  const pushActivity = (action: string, details: string) => {
+    setActivityLog((prev) => [makeActivity(action, details), ...prev].slice(0, ACTIVITY_LOG_MAX));
+  };
 
   const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
   const [reservationToRelease, setReservationToRelease] = useState<Reservation | null>(null);
@@ -84,6 +105,7 @@ export default function App() {
         setMembers(state.members);
         setReservations(state.reservations);
         setDeletionLog(state.deletionLog);
+        setActivityLog(state.activityLog || []);
         setRules(state.rules);
         setLabs(state.labs?.length ? state.labs : DEFAULT_LABS);
         setHydrated(true);
@@ -103,6 +125,7 @@ export default function App() {
         members,
         reservations,
         deletionLog,
+        activityLog,
         rules,
         labs: collectLabs(labs, workstations),
       }).catch(() => {
@@ -110,17 +133,58 @@ export default function App() {
       });
     }, 400);
     return () => window.clearTimeout(t);
-  }, [workstations, members, reservations, deletionLog, rules, labs, hydrated]);
+  }, [workstations, members, reservations, deletionLog, activityLog, rules, labs, hydrated]);
 
   const registeredLabs = useMemo(
     () => collectLabs(labs, workstations),
     [labs, workstations]
   );
 
+  const labMachineCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const w of workstations) {
+      const lab = normalizeLab(w.lab);
+      counts[lab] = (counts[lab] || 0) + 1;
+    }
+    return counts;
+  }, [workstations]);
+
   const handleAddLab = (labName: LabId) => {
-    const next = normalizeLab(labName);
+    const next = (labName || '').trim();
+    if (!next || next.toLowerCase() === UNALLOCATED_LAB.toLowerCase()) return;
     setLabs((prev) => collectLabs([...prev, next], workstations));
+    pushActivity('lab_created', `Laboratório “${next}” criado`);
     showToast(`Laboratório “${next}” adicionado.`);
+  };
+
+  const handleDeleteLab = (labName: LabId) => {
+    const target = (labName || '').trim();
+    if (!target || target === UNALLOCATED_LAB) return;
+    const managed = registeredLabs.filter((l) => l !== UNALLOCATED_LAB);
+    if (managed.length <= 1) {
+      showToast('Não é possível excluir o único laboratório.');
+      return;
+    }
+    const moved = workstations.filter((w) => normalizeLab(w.lab) === target).length;
+    setWorkstations((prev) =>
+      prev.map((w) =>
+        normalizeLab(w.lab) === target ? { ...w, lab: UNALLOCATED_LAB } : w
+      )
+    );
+    setLabs((prev) => {
+      const next = prev.filter((l) => l !== target && l !== UNALLOCATED_LAB);
+      return next.length ? next : [...DEFAULT_LABS];
+    });
+    pushActivity(
+      'lab_deleted',
+      `Laboratório “${target}” excluído` +
+        (moved > 0 ? ` · ${moved} máquina(s) → “${UNALLOCATED_LAB}”` : '')
+    );
+    showToast(
+      moved > 0
+        ? `“${target}” excluído. ${moved} máquina(s) em “${UNALLOCATED_LAB}”.`
+        : `Laboratório “${target}” excluído.`
+    );
   };
 
   // Compute live workstations with dynamic occupancy status
@@ -342,6 +406,7 @@ export default function App() {
   };
 
   const handleSaveWorkstation = (ws: Workstation) => {
+    const isNew = !workstations.some((w) => w.id === ws.id);
     setWorkstations((prev) => {
       const idx = prev.findIndex((w) => w.id === ws.id);
       if (idx >= 0) {
@@ -351,17 +416,33 @@ export default function App() {
       }
       return [...prev, ws];
     });
-    setLabs((prev) => collectLabs([...prev, normalizeLab(ws.lab)], [...workstations, ws]));
-    showToast(`Baia ${ws.bayNumber} (${ws.name}) salva com sucesso!`);
+    const lab = normalizeLab(ws.lab);
+    if (lab !== UNALLOCATED_LAB) {
+      setLabs((prev) => collectLabs([...prev, lab], [...workstations, ws]));
+    }
+    const code = formatBayLabel(ws.bayNumber);
+    pushActivity(
+      isNew ? 'workstation_created' : 'workstation_updated',
+      `${isNew ? 'Máquina criada' : 'Máquina atualizada'}: ${ws.name} · ${code} · lab ${lab}`
+    );
+    showToast(`${ws.name} salva com sucesso!`);
   };
 
   const handleDeleteWorkstation = (id: string) => {
+    const ws = workstations.find((w) => w.id === id);
     setWorkstations((prev) => prev.filter((w) => w.id !== id));
+    if (ws) {
+      pushActivity(
+        'workstation_deleted',
+        `Máquina removida: ${ws.name} · ${formatBayLabel(ws.bayNumber)} · lab ${normalizeLab(ws.lab)}`
+      );
+    }
     showToast('Workstation removida.');
   };
 
   const handleAddMember = (member: LabMember) => {
     setMembers((prev) => [...prev, member]);
+    pushActivity('member_created', `Usuário cadastrado: ${member.name} (${member.role})`);
     showToast(`Usuário ${member.name} cadastrado!`);
   };
 
@@ -369,11 +450,16 @@ export default function App() {
     setMembers((prev) =>
       prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
     );
+    pushActivity('member_updated', `Usuário atualizado: ${updatedMember.name} (${updatedMember.role})`);
     showToast(`Usuário ${updatedMember.name} atualizado!`);
   };
 
   const handleDeleteMember = (id: string) => {
+    const member = members.find((m) => m.id === id);
     setMembers((prev) => prev.filter((m) => m.id !== id));
+    if (member) {
+      pushActivity('member_deleted', `Usuário removido: ${member.name}`);
+    }
     showToast('Usuário removido.');
   };
 
@@ -394,6 +480,7 @@ export default function App() {
         onOpenRules={() => setIsRulesModalOpen(true)}
         onOpenMembers={() => setIsMembersModalOpen(true)}
         onOpenWorkstations={() => setIsWorkstationsModalOpen(true)}
+        onOpenLabs={() => setIsLabsModalOpen(true)}
         onOpenStats={() => setIsStatsModalOpen(true)}
         totalWorkstations={liveWorkstations.length}
         inUseCount={inUseCount}
@@ -419,8 +506,8 @@ export default function App() {
                 }}
                 title={
                   isBusy && activeRes
-                    ? `${ws.lab} · B${formatBayNumber(ws.bayNumber)} · ${activeRes.researcherName.split(' ')[0]}`
-                    : `${ws.lab} · B${formatBayNumber(ws.bayNumber)} · Livre`
+                    ? `${ws.lab} · ${formatBayLabel(ws.bayNumber)} · ${activeRes.researcherName.split(' ')[0]}`
+                    : `${ws.lab} · ${formatBayLabel(ws.bayNumber)} · Livre`
                 }
               />
             );
@@ -464,7 +551,7 @@ export default function App() {
                       <div className="flex items-center gap-1.5 min-w-0">
                         <LabTag lab={ws.lab} />
                         <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
-                          B{formatBayNumber(ws.bayNumber)}
+                          {formatBayLabel(ws.bayNumber)}
                         </span>
                         <span className="font-bold text-slate-900 text-xs truncate">
                           {ws.name}
@@ -635,12 +722,22 @@ export default function App() {
         onAddLab={handleAddLab}
       />
 
+      <LabsModal
+        isOpen={isLabsModalOpen}
+        onClose={() => setIsLabsModalOpen(false)}
+        labs={registeredLabs}
+        machineCounts={labMachineCounts}
+        onAddLab={handleAddLab}
+        onDeleteLab={handleDeleteLab}
+      />
+
       <StatsModal
         isOpen={isStatsModalOpen}
         onClose={() => setIsStatsModalOpen(false)}
         workstations={liveWorkstations}
         reservations={reservations}
         deletionLog={deletionLog}
+        activityLog={activityLog}
       />
 
       <CheckOutConfirmModal

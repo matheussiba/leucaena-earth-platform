@@ -1,6 +1,6 @@
 import React from 'react';
 import { Reservation, Workstation } from '../types';
-import { formatTime, calculateDurationHours, formatBayNumber } from '../utils/dateUtils';
+import { formatTime, calculateDurationHours, formatBayLabel } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { LogOut, X, AlertCircle } from 'lucide-react';
 
@@ -56,7 +56,7 @@ export const CheckOutConfirmModal: React.FC<CheckOutConfirmModalProps> = ({
             <div className="text-slate-700">
               Liberar antecipadamente a{' '}
               <strong>
-                Baia {formatBayNumber(workstation.bayNumber)} ({workstation.name})
+                {formatBayLabel(workstation.bayNumber)} ({workstation.name})
               </strong>
               .
             </div>

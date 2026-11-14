@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Reservation, Workstation } from '../types';
-import { formatTime, formatDateFull, calculateDurationHours, formatBayNumber } from '../utils/dateUtils';
+import { formatTime, formatDateFull, calculateDurationHours, formatBayLabel } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { X, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 
@@ -88,7 +88,7 @@ export const ReservationDetailsModal: React.FC<ReservationDetailsModalProps> = (
             <WorkstationThumbnail workstation={workstation} size="sm" />
             <div>
               <div className="text-[10px] font-mono font-bold text-slate-500 uppercase">
-                BAIA {formatBayNumber(workstation.bayNumber)}
+                {formatBayLabel(workstation.bayNumber)}
               </div>
               <h3 className="font-bold text-slate-900 text-sm">
                 {workstation.name}

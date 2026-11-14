@@ -6,7 +6,8 @@ import {
   BarChart3, 
   Users, 
   Zap,
-  Server
+  Server,
+  Building2
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -15,6 +16,7 @@ interface NavbarProps {
   onOpenRules: () => void;
   onOpenMembers: () => void;
   onOpenWorkstations: () => void;
+  onOpenLabs: () => void;
   onOpenStats: () => void;
   totalWorkstations: number;
   inUseCount: number;
@@ -25,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenRules,
   onOpenMembers,
   onOpenWorkstations,
+  onOpenLabs,
   onOpenStats,
   totalWorkstations,
   inUseCount,
@@ -65,6 +68,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="p-1.5 sm:p-2 text-slate-700 hover:text-blue-700 hover:bg-white rounded-md transition-colors flex items-center gap-1"
               >
                 <Monitor className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+
+              {/* Button: Laboratórios */}
+              <button
+                onClick={onOpenLabs}
+                title="Gerenciar Laboratórios"
+                className="p-1.5 sm:p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-md transition-colors"
+              >
+                <Building2 className="w-3.5 h-3.5" />
               </button>
 
               {/* Button: Membros do Laboratório */}

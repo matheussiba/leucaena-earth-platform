@@ -7,6 +7,7 @@ import {
   normalizeLab,
   DEFAULT_LAB,
   DEFAULT_LABS,
+  UNALLOCATED_LAB,
 } from '../types';
 import { Users, X, Plus, Trash2, UserPlus, Check, Pencil } from 'lucide-react';
 
@@ -43,7 +44,9 @@ export const MembersModal: React.FC<MembersModalProps> = ({
   const [lab, setLab] = useState<LabId>(DEFAULT_LAB);
   const [role, setRole] = useState<ResearcherRole>('Mestrado');
   const [addedSuccess, setAddedSuccess] = useState(false);
-  const labOptions = labs?.length ? labs : DEFAULT_LABS;
+  const labOptions = (labs?.length ? labs : DEFAULT_LABS).filter(
+    (l) => l !== UNALLOCATED_LAB
+  );
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);

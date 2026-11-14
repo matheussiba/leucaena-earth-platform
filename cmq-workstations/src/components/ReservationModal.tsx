@@ -20,7 +20,7 @@ import {
   expandRecurrence,
 } from '../utils/recurrence';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
-import { formatBayNumber } from '../utils/dateUtils';
+import { formatBayLabel } from '../utils/dateUtils';
 import { 
   X, 
   Calendar, 
@@ -745,7 +745,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                       >
                         {ws.lab || 'CMQ'}
                       </span>
-                      <span>Baia {formatBayNumber(ws.bayNumber)}</span>
+                      <span>{formatBayLabel(ws.bayNumber)}</span>
                     </div>
                     <div className="text-[10px] text-slate-500 truncate">{ws.name}</div>
                     {ws.ip ? (

@@ -5,10 +5,11 @@ import {
   normalizeLab,
   DEFAULT_LAB,
   DEFAULT_LABS,
+  UNALLOCATED_LAB,
   labTagClass,
 } from '../types';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
-import { formatBayNumber } from '../utils/dateUtils';
+import { formatBayLabel } from '../utils/dateUtils';
 import { 
   Server, 
   X, 
@@ -17,8 +18,6 @@ import {
   Trash2, 
   Camera, 
   Upload, 
-  Image as ImageIcon,
-  Check,
   Building2
 } from 'lucide-react';
 
@@ -31,6 +30,13 @@ interface WorkstationsManagerModalProps {
   onDeleteWorkstation: (id: string) => void;
   onAddLab: (lab: LabId) => void;
   initialEditWsId?: string;
+}
+
+function parseBayCode(raw: string): number | string {
+  const t = raw.trim();
+  if (!t) return '';
+  if (/^\d+$/.test(t)) return parseInt(t, 10);
+  return t;
 }
 
 export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> = ({
@@ -67,14 +73,15 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
   const [newLabName, setNewLabName] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const labOptions = labs.length ? labs : DEFAULT_LABS;
+  const managedLabs = (labs.length ? labs : DEFAULT_LABS).filter((l) => l !== UNALLOCATED_LAB);
+  const labOptions = [...managedLabs, UNALLOCATED_LAB];
 
   if (!isOpen) return null;
 
   const startEdit = (ws: Workstation) => {
     setEditingWs(ws);
     setIsCreatingNew(false);
-    setBayNumber(String(ws.bayNumber));
+    setBayNumber(ws.bayNumber === '' || ws.bayNumber == null ? '' : String(ws.bayNumber));
     setName(ws.name);
     setLab(normalizeLab(ws.lab));
     setLocation(ws.location || '');
@@ -88,16 +95,12 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
   };
 
   const startCreate = () => {
-    const nextBay =
-      workstations.length > 0
-        ? Math.max(...workstations.map((w) => Number(w.bayNumber) || 0)) + 1
-        : 1;
     setEditingWs(null);
     setIsCreatingNew(true);
-    setBayNumber(String(nextBay));
-    setName(`Workstation Baia ${nextBay}`);
+    setBayNumber('');
+    setName('');
     setLab(DEFAULT_LAB);
-    setLocation(`Baia ${nextBay} - Laboratório ${DEFAULT_LAB}`);
+    setLocation('');
     setShowAddLab(false);
     setNewLabName('');
     setImageUrl('');
@@ -123,15 +126,16 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bayNumber.trim() || !name.trim()) return;
+    if (!name.trim()) return;
 
-    const bayNumParsed = parseInt(bayNumber, 10);
+    const bayParsed = parseBayCode(bayNumber);
+    const labNorm = normalizeLab(lab);
     const updatedWs: Workstation = {
       id: editingWs
         ? editingWs.id
-        : `ws-baia-${bayNumber}-${Date.now().toString().slice(-4)}`,
-      bayNumber: isNaN(bayNumParsed) ? bayNumber : bayNumParsed,
-      lab: normalizeLab(lab),
+        : `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      bayNumber: bayParsed,
+      lab: labNorm,
       name: name.trim(),
       location: location.trim(),
       imageUrl: imageUrl.trim() || undefined,
@@ -186,7 +190,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                 className="px-2.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md flex items-center gap-1 shadow-2xs transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Adicionar Baia</span>
+                <span>Adicionar Máquina</span>
               </button>
             </div>
 
@@ -213,7 +217,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                           {normalizeLab(ws.lab)}
                         </span>
                         <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
-                          B{formatBayNumber(ws.bayNumber)}
+                          {formatBayLabel(ws.bayNumber)}
                         </span>
                         <span className="font-bold text-slate-900 text-sm truncate">
                           {ws.name}
@@ -254,7 +258,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm(`Excluir ${ws.name} (Baia ${ws.bayNumber})?`)) {
+                          if (confirm(`Excluir ${ws.name}?`)) {
                             onDeleteWorkstation(ws.id);
                           }
                         }}
@@ -281,8 +285,8 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                   <Edit2 className="w-4 h-4 text-blue-600" />
                   <span>
                     {isCreatingNew
-                      ? 'Cadastrar Nova Baia'
-                      : `Editar Baia ${editingWs?.bayNumber} (${editingWs?.name})`}
+                      ? 'Cadastrar Nova Máquina'
+                      : `Editar ${editingWs?.name}`}
                   </span>
                 </div>
                 <button
@@ -297,19 +301,18 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                 </button>
               </div>
 
-              {/* Bay Number, Lab, Name & IP */}
+              {/* Bay/Code, Lab, Name & IP */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Número da Baia *
+                    Baia / Código
                   </label>
                   <input
                     type="text"
                     value={bayNumber}
                     onChange={(e) => setBayNumber(e.target.value)}
-                    placeholder="ex: 4, 7, IGC"
+                    placeholder="ex: 4, GIGC (opcional)"
                     className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-mono font-bold"
-                    required
                   />
                 </div>
 
@@ -339,8 +342,9 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                       <button
                         type="button"
                         onClick={() => {
-                          const next = normalizeLab(newLabName);
-                          if (!next || next === DEFAULT_LAB) return;
+                          const raw = (newLabName || '').trim();
+                          if (!raw || raw.toLowerCase() === UNALLOCATED_LAB.toLowerCase()) return;
+                          const next = normalizeLab(raw);
                           if (labOptions.some((l) => l.toLowerCase() === next.toLowerCase())) {
                             setLab(next);
                             setShowAddLab(false);
@@ -349,9 +353,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                           }
                           onAddLab(next);
                           setLab(next);
-                          if (!location.trim() || location.includes('Laboratório')) {
-                            setLocation(`Baia ${bayNumber || '?'} - Laboratório ${next}`);
-                          }
                           setShowAddLab(false);
                           setNewLabName('');
                         }}
@@ -363,13 +364,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                   ) : (
                     <select
                       value={lab}
-                      onChange={(e) => {
-                        const next = normalizeLab(e.target.value);
-                        setLab(next);
-                        if (!location.trim() || location.includes('Laboratório')) {
-                          setLocation(`Baia ${bayNumber || '?'} - Laboratório ${next}`);
-                        }
-                      }}
+                      onChange={(e) => setLab(normalizeLab(e.target.value))}
                       className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-medium"
                     >
                       {labOptions.map((id) => (
@@ -415,11 +410,10 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
               <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2.5">
                 <label className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
                   <Camera className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Fotinha / Imagem da Baia</span>
+                  <span>Fotinha / Imagem da Máquina</span>
                 </label>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  {/* Photo Preview */}
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-300 bg-slate-100 flex items-center justify-center shrink-0">
                     {imageUrl ? (
                       <img
@@ -434,7 +428,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                     )}
                   </div>
 
-                  {/* Upload and presets */}
                   <div className="flex-1 space-y-2 w-full">
                     <div className="flex flex-wrap items-center gap-2">
                       <button
@@ -467,7 +460,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                 </div>
               </div>
 
-              {/* Hardware Specs: GPU, CPU, RAM, HD Interno, HD Adicional */}
+              {/* Hardware Specs */}
               <div className="space-y-3 pt-1">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
@@ -556,7 +549,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                 </div>
               </div>
 
-              {/* Form Action buttons */}
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                 <button
                   type="button"
@@ -572,14 +564,13 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                   type="submit"
                   className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors shadow-2xs"
                 >
-                  {isCreatingNew ? 'Salvar Nova Baia' : 'Salvar Alterações'}
+                  {isCreatingNew ? 'Salvar Nova Máquina' : 'Salvar Alterações'}
                 </button>
               </div>
             </form>
           )}
         </div>
 
-        {/* Footer */}
         <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-end">
           <button
             onClick={onClose}

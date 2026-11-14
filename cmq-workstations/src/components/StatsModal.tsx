@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Workstation, Reservation, DeletedReservationEntry } from '../types';
-import { calculateDurationHours, formatBayNumber } from '../utils/dateUtils';
+import { Workstation, Reservation, DeletedReservationEntry, ActivityLogEntry } from '../types';
+import { calculateDurationHours, formatBayLabel } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { BarChart3, X, Clock, Users, TrendingUp, AlertTriangle, Timer } from 'lucide-react';
 
@@ -22,6 +22,7 @@ interface StatsModalProps {
   workstations: Workstation[];
   reservations: Reservation[];
   deletionLog: DeletedReservationEntry[];
+  activityLog?: ActivityLogEntry[];
 }
 
 type PeriodFilter = 'day' | 'week' | 'month' | 'year' | 'ytd' | 'max';
@@ -44,6 +45,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
   workstations,
   reservations,
   deletionLog,
+  activityLog = [],
 }) => {
   const [period, setPeriod] = useState<PeriodFilter>('week');
   const logClickRef = useRef({ count: 0, timer: 0 as number | ReturnType<typeof setTimeout> });
@@ -213,7 +215,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
       const h = hoursByWs[ws.id] || 0;
       const pct = totalHours > 0 ? (h / totalHours) * 100 : 0;
       lines.push(
-        `Baia ${formatBayNumber(ws.bayNumber)} | ${ws.name} | IP ${ws.ip || '-'} | ${h.toFixed(2)}h (${pct.toFixed(1)}%)`
+        `${formatBayLabel(ws.bayNumber)} | ${ws.name} | IP ${ws.ip || '-'} | ${h.toFixed(2)}h (${pct.toFixed(1)}%)`
       );
     });
 
@@ -233,7 +235,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
 
     const formatReservationLine = (r: Reservation, idx: number, extra?: string) => {
       const ws = wsById[r.workstationId];
-      const bay = ws ? `Baia ${formatBayNumber(ws.bayNumber)}` : r.workstationId;
+      const bay = ws ? formatBayLabel(ws.bayNumber) : r.workstationId;
       const hours = calculateDurationHours(r.startTime, r.endTime);
       return [
         `#${idx + 1}`,
@@ -274,6 +276,20 @@ export const StatsModal: React.FC<StatsModalProps> = ({
             idx,
             `excluida_em=${formatIsoLocal(entry.deletedAt)}`
           )
+        );
+      });
+    }
+
+    const sortedActivity = [...activityLog].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    lines.push('', `=== REGISTROS DO SISTEMA (${sortedActivity.length}) ===`);
+    if (sortedActivity.length === 0) {
+      lines.push('(nenhum registro de lab/máquina/usuário ainda)');
+    } else {
+      sortedActivity.forEach((entry, idx) => {
+        lines.push(
+          `#${idx + 1} | ${formatIsoLocal(entry.timestamp)} | ${entry.action} | ${entry.details}`
         );
       });
     }
@@ -465,7 +481,7 @@ export const StatsModal: React.FC<StatsModalProps> = ({
                       <div className="flex items-center gap-2">
                         <WorkstationThumbnail workstation={ws} size="sm" />
                         <span className="font-semibold text-slate-800">
-                          Baia {formatBayNumber(ws.bayNumber)} ({ws.name})
+                          {formatBayLabel(ws.bayNumber)} ({ws.name})
                         </span>
                       </div>
                       <span className="font-mono font-bold text-slate-700">
