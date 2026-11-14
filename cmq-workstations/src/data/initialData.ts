@@ -27,8 +27,6 @@ export const INITIAL_MEMBERS: LabMember[] = [
   { id: 'mem-8', name: 'CMQ - Monique', role: 'TT' },
   { id: 'mem-9', name: 'CMQ - Pedro Emidio', role: 'TT' },
   { id: 'mem-10', name: 'CMQ - Rodrigo Costa', role: 'Pós-Doc' },
-  { id: 'mem-extra-1', name: 'Extra - Ana Teste', role: 'Mestrado' },
-  { id: 'mem-extra-2', name: 'Extra - Bruno Teste', role: 'Doutorado' },
 ];
 
 export const DEFAULT_BAY_IPS: Record<string, string> = {
@@ -104,76 +102,19 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     notes: 'Servidor de armazenamento de dados (2× 28 TB).',
     isCustom: false,
   },
-  // Extra lab — temporary machines for layout / multi-lab testing
-  {
-    id: 'ws-extra-01',
-    name: 'Extra One',
-    bayNumber: 'E1',
-    lab: 'Extra',
-    location: 'Baia E1 - Laboratório Extra',
-    imageUrl: '',
-    ip: '10.0.0.11',
-    gpu: '1x NVIDIA RTX 16GB',
-    cpu: 'Intel Core i7',
-    ram: '64 GB RAM',
-    internalStorage: '2 TB',
-    os: 'Ubuntu 22.04 LTS',
-    status: 'available',
-    notes: 'Máquina de teste (lab Extra).',
-    isCustom: true,
-  },
-  {
-    id: 'ws-extra-02',
-    name: 'Extra Two',
-    bayNumber: 'E2',
-    lab: 'Extra',
-    location: 'Baia E2 - Laboratório Extra',
-    imageUrl: '',
-    ip: '10.0.0.12',
-    gpu: '1x NVIDIA RTX 16GB',
-    cpu: 'Intel Core i7',
-    ram: '64 GB RAM',
-    internalStorage: '2 TB',
-    os: 'Ubuntu 22.04 LTS',
-    status: 'available',
-    notes: 'Máquina de teste (lab Extra).',
-    isCustom: true,
-  },
-  {
-    id: 'ws-extra-03',
-    name: 'Extra Three',
-    bayNumber: 'E3',
-    lab: 'Extra',
-    location: 'Baia E3 - Laboratório Extra',
-    imageUrl: '',
-    ip: '10.0.0.13',
-    gpu: '1x NVIDIA RTX 24GB',
-    cpu: 'AMD Ryzen 9',
-    ram: '128 GB RAM',
-    internalStorage: '4 TB',
-    os: 'Ubuntu 24.04 LTS',
-    status: 'available',
-    notes: 'Máquina de teste (lab Extra).',
-    isCustom: true,
-  },
-  {
-    id: 'ws-extra-04',
-    name: 'Extra Four',
-    bayNumber: 'E4',
-    lab: 'Extra',
-    location: 'Baia E4 - Laboratório Extra',
-    imageUrl: '',
-    ip: '10.0.0.14',
-    gpu: '2x NVIDIA RTX 16GB',
-    cpu: 'AMD Ryzen 9',
-    ram: '128 GB RAM',
-    internalStorage: '4 TB',
-    os: 'Ubuntu 24.04 LTS',
-    status: 'available',
-    notes: 'Máquina de teste (lab Extra).',
-    isCustom: true,
-  },
 ];
+
+/** Temporary Extra test machines — strip from persisted state. */
+export function isRetiredTestWorkstation(ws: Pick<Workstation, 'id' | 'lab'>): boolean {
+  const id = String(ws.id || '');
+  if (id.startsWith('ws-extra-')) return true;
+  return normalizeLab(ws.lab) === 'Extra' && id.includes('extra');
+}
+
+export function isRetiredTestMember(m: Pick<LabMember, 'id' | 'name'>): boolean {
+  if (String(m.id || '').startsWith('mem-extra-')) return true;
+  return /^Extra\s*-/i.test(m.name || '');
+}
 
 export function withDefaultLab(ws: Workstation): Workstation {
   return { ...ws, lab: normalizeLab(ws.lab) };

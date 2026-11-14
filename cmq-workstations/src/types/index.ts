@@ -1,30 +1,73 @@
 export type WorkstationStatus = 'available' | 'in_use' | 'maintenance';
 
-/** Labs that share this booking platform */
-export const LAB_IDS = ['CMQ', 'Extra'] as const;
-export type LabId = (typeof LAB_IDS)[number];
+/** Free-form lab id (e.g. CMQ, CePE-Geo). Always at least CMQ exists. */
+export type LabId = string;
+
+export const DEFAULT_LAB = 'CMQ';
+export const DEFAULT_LABS: LabId[] = [DEFAULT_LAB];
 
 export function normalizeLab(lab?: string | null): LabId {
-  return lab === 'Extra' ? 'Extra' : 'CMQ';
+  const t = (lab || '').trim();
+  return t || DEFAULT_LAB;
+}
+
+/** Palette for lab tags — cycles for any new lab name. */
+const LAB_TAG_STYLES = [
+  'bg-sky-100 text-sky-950 border-sky-300 ring-1 ring-sky-200/80',
+  'bg-violet-100 text-violet-900 border-violet-300 ring-1 ring-violet-200/80',
+  'bg-emerald-100 text-emerald-900 border-emerald-300 ring-1 ring-emerald-200/80',
+  'bg-amber-100 text-amber-950 border-amber-300 ring-1 ring-amber-200/80',
+  'bg-rose-100 text-rose-900 border-rose-300 ring-1 ring-rose-200/80',
+  'bg-indigo-100 text-indigo-900 border-indigo-300 ring-1 ring-indigo-200/80',
+  'bg-teal-100 text-teal-900 border-teal-300 ring-1 ring-teal-200/80',
+  'bg-orange-100 text-orange-950 border-orange-300 ring-1 ring-orange-200/80',
+];
+
+export function labTagClass(lab?: string | null): string {
+  const id = normalizeLab(lab);
+  if (id === DEFAULT_LAB) return LAB_TAG_STYLES[0];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  const idx = Math.abs(hash) % LAB_TAG_STYLES.length;
+  // Avoid colliding with CMQ's sky style when possible
+  return LAB_TAG_STYLES[idx === 0 ? 1 : idx];
 }
 
 /** Display names like "CMQ - Matheus Barros" for clearer selection. */
-export function ensureLabPrefixedName(name: string, defaultLab: LabId = 'CMQ'): string {
+export function ensureLabPrefixedName(name: string, defaultLab: LabId = DEFAULT_LAB): string {
   const trimmed = name.trim();
   if (!trimmed) return trimmed;
-  const match = trimmed.match(/^(CMQ|Extra)\s*-\s*(.+)$/i);
+  const match = trimmed.match(/^(.+?)\s*-\s*(.+)$/);
   if (match) {
     const lab = normalizeLab(match[1]);
     return `${lab} - ${match[2].trim()}`;
   }
-  return `${defaultLab} - ${trimmed}`;
+  return `${normalizeLab(defaultLab)} - ${trimmed}`;
+}
+
+/** Merge registered labs with labs found on workstations; CMQ always first. */
+export function collectLabs(
+  registered: LabId[] | undefined,
+  workstations: { lab?: string | null }[]
+): LabId[] {
+  const set = new Set<string>();
+  set.add(DEFAULT_LAB);
+  for (const l of registered || []) {
+    const n = normalizeLab(l);
+    if (n) set.add(n);
+  }
+  for (const w of workstations || []) {
+    set.add(normalizeLab(w.lab));
+  }
+  const rest = [...set].filter((l) => l !== DEFAULT_LAB).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  return [DEFAULT_LAB, ...rest];
 }
 
 export interface Workstation {
   id: string;
   name: string;
   bayNumber: number | string;
-  /** Lab group — CMQ or Extra (test / other) */
+  /** Lab group — e.g. CMQ; new labs can be registered in the app */
   lab: LabId;
   location: string;
   imageUrl?: string;

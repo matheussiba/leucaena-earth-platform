@@ -1,11 +1,20 @@
 import React, { useState, useMemo } from 'react';
-import { LabMember, ResearcherRole, LAB_IDS, LabId, ensureLabPrefixedName, normalizeLab } from '../types';
+import {
+  LabMember,
+  ResearcherRole,
+  LabId,
+  ensureLabPrefixedName,
+  normalizeLab,
+  DEFAULT_LAB,
+  DEFAULT_LABS,
+} from '../types';
 import { Users, X, Plus, Trash2, UserPlus, Check, Pencil } from 'lucide-react';
 
 interface MembersModalProps {
   isOpen: boolean;
   onClose: () => void;
   members: LabMember[];
+  labs?: LabId[];
   onAddMember: (member: LabMember) => void;
   onUpdateMember: (member: LabMember) => void;
   onDeleteMember: (id: string) => void;
@@ -25,14 +34,16 @@ export const MembersModal: React.FC<MembersModalProps> = ({
   isOpen,
   onClose,
   members,
+  labs,
   onAddMember,
   onUpdateMember,
   onDeleteMember,
 }) => {
   const [name, setName] = useState('');
-  const [lab, setLab] = useState<LabId>('CMQ');
+  const [lab, setLab] = useState<LabId>(DEFAULT_LAB);
   const [role, setRole] = useState<ResearcherRole>('Mestrado');
   const [addedSuccess, setAddedSuccess] = useState(false);
+  const labOptions = labs?.length ? labs : DEFAULT_LABS;
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -57,7 +68,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
     });
 
     setName('');
-    setLab('CMQ');
+    setLab(DEFAULT_LAB);
     setAddedSuccess(true);
     setTimeout(() => setAddedSuccess(false), 2000);
   };
@@ -77,7 +88,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
     if (!editName.trim()) return;
     onUpdateMember({
       id,
-      name: ensureLabPrefixedName(editName, 'CMQ'),
+      name: ensureLabPrefixedName(editName, DEFAULT_LAB),
       role: editRole,
     });
     setEditingId(null);
@@ -124,7 +135,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
                   onChange={(e) => setLab(normalizeLab(e.target.value))}
                   className="w-full p-2 border border-slate-300 rounded bg-white text-xs focus:border-blue-500 focus:outline-none"
                 >
-                  {LAB_IDS.map((id) => (
+                  {labOptions.map((id) => (
                     <option key={id} value={id}>
                       {id}
                     </option>

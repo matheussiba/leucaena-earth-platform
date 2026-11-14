@@ -6,6 +6,10 @@ import {
   FairUseRules,
   LabMember,
   DeletedReservationEntry,
+  LabId,
+  collectLabs,
+  normalizeLab,
+  DEFAULT_LABS,
 } from './types';
 import { getCurrentActiveReservation, getTimeRemaining, formatTime, formatBayNumber } from './utils/dateUtils';
 import { Navbar } from './components/Navbar';
@@ -30,6 +34,7 @@ export default function App() {
   const [reservations, setReservations] = useState<Reservation[]>(seed.reservations);
   const [deletionLog, setDeletionLog] = useState<DeletedReservationEntry[]>(seed.deletionLog);
   const [rules, setRules] = useState<FairUseRules>(seed.rules);
+  const [labs, setLabs] = useState<LabId[]>(seed.labs);
   const [hydrated, setHydrated] = useState(false);
 
   // 2. Modals state
@@ -80,6 +85,7 @@ export default function App() {
         setReservations(state.reservations);
         setDeletionLog(state.deletionLog);
         setRules(state.rules);
+        setLabs(state.labs?.length ? state.labs : DEFAULT_LABS);
         setHydrated(true);
       })
       .catch(() => {
@@ -92,12 +98,30 @@ export default function App() {
   useEffect(() => {
     if (!hydrated) return;
     const t = window.setTimeout(() => {
-      saveState({ workstations, members, reservations, deletionLog, rules }).catch(() => {
+      saveState({
+        workstations,
+        members,
+        reservations,
+        deletionLog,
+        rules,
+        labs: collectLabs(labs, workstations),
+      }).catch(() => {
         showToast('Falha ao salvar no servidor. Tente de novo.');
       });
     }, 400);
     return () => window.clearTimeout(t);
-  }, [workstations, members, reservations, deletionLog, rules, hydrated]);
+  }, [workstations, members, reservations, deletionLog, rules, labs, hydrated]);
+
+  const registeredLabs = useMemo(
+    () => collectLabs(labs, workstations),
+    [labs, workstations]
+  );
+
+  const handleAddLab = (labName: LabId) => {
+    const next = normalizeLab(labName);
+    setLabs((prev) => collectLabs([...prev, next], workstations));
+    showToast(`Laboratório “${next}” adicionado.`);
+  };
 
   // Compute live workstations with dynamic occupancy status
   const liveWorkstations = useMemo(() => {
@@ -327,6 +351,7 @@ export default function App() {
       }
       return [...prev, ws];
     });
+    setLabs((prev) => collectLabs([...prev, normalizeLab(ws.lab)], [...workstations, ws]));
     showToast(`Baia ${ws.bayNumber} (${ws.name}) salva com sucesso!`);
   };
 
@@ -503,6 +528,7 @@ export default function App() {
           <CalendarView
             workstations={liveWorkstations}
             reservations={reservations}
+            labs={registeredLabs}
             onSlotClick={handleTimelineSlotClick}
             onReservationClick={handleReservationClick}
             onQuickCheckIn={handleOpenQuickCheckIn}
@@ -593,6 +619,7 @@ export default function App() {
         isOpen={isMembersModalOpen}
         onClose={() => setIsMembersModalOpen(false)}
         members={members}
+        labs={registeredLabs}
         onAddMember={handleAddMember}
         onUpdateMember={handleUpdateMember}
         onDeleteMember={handleDeleteMember}
@@ -602,8 +629,10 @@ export default function App() {
         isOpen={isWorkstationsModalOpen}
         onClose={() => setIsWorkstationsModalOpen(false)}
         workstations={liveWorkstations}
+        labs={registeredLabs}
         onSaveWorkstation={handleSaveWorkstation}
         onDeleteWorkstation={handleDeleteWorkstation}
+        onAddLab={handleAddLab}
       />
 
       <StatsModal

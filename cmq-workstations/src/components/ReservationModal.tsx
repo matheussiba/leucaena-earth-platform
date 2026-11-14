@@ -7,6 +7,7 @@ import {
   ResearcherRole,
   ensureLabPrefixedName,
   normalizeLab,
+  labTagClass,
 } from '../types';
 import { validateReservation } from '../utils/fairUseValidator';
 import { normalizeSharedFields } from '../utils/sharedUse';
@@ -740,11 +741,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                   <div className="min-w-0">
                     <div className="font-bold text-slate-900 text-xs truncate flex items-center gap-1">
                       <span
-                        className={`inline-flex px-1 py-0.5 rounded border text-[9px] font-extrabold uppercase shrink-0 ${
-                          (ws.lab || 'CMQ') === 'Extra'
-                            ? 'bg-violet-100 text-violet-900 border-violet-300'
-                            : 'bg-sky-100 text-sky-950 border-sky-300'
-                        }`}
+                        className={`inline-flex px-1 py-0.5 rounded border text-[9px] font-extrabold uppercase shrink-0 ${labTagClass(ws.lab)}`}
                       >
                         {ws.lab || 'CMQ'}
                       </span>

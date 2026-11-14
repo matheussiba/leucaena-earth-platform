@@ -3,9 +3,11 @@ import {
   Workstation,
   Reservation,
   CalendarViewMode,
-  LAB_IDS,
   LabId,
   normalizeLab,
+  labTagClass,
+  collectLabs,
+  DEFAULT_LABS,
 } from '../types';
 import { formatTime, formatDateFull, isSameDay, formatBayNumber } from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
@@ -27,13 +29,9 @@ export const LabTag: React.FC<{ lab?: string | null; className?: string }> = ({
   className = '',
 }) => {
   const id = normalizeLab(lab);
-  const styles =
-    id === 'Extra'
-      ? 'bg-violet-100 text-violet-900 border-violet-300 ring-1 ring-violet-200/80'
-      : 'bg-sky-100 text-sky-950 border-sky-300 ring-1 ring-sky-200/80';
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded-md border text-[9px] sm:text-[10px] font-extrabold tracking-wide uppercase ${styles} ${className}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-md border text-[9px] sm:text-[10px] font-extrabold tracking-wide uppercase ${labTagClass(id)} ${className}`}
     >
       {id}
     </span>
@@ -85,6 +83,7 @@ export const getWorkstationColorInfo = (bayNumber: number | string) => {
 interface CalendarViewProps {
   workstations: Workstation[];
   reservations: Reservation[];
+  labs?: LabId[];
   onSlotClick: (workstationId: string, date: Date, startHour: number, endHour?: number) => void;
   onReservationClick: (reservation: Reservation) => void;
   onQuickCheckIn?: (workstationId: string) => void;
@@ -93,6 +92,7 @@ interface CalendarViewProps {
 export const CalendarView: React.FC<CalendarViewProps> = ({
   workstations,
   reservations,
+  labs: labsProp,
   onSlotClick,
   onReservationClick,
 }) => {
@@ -201,19 +201,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       ? workstations.filter((w) => normalizeLab(w.lab) === selectedWsFilter.slice(4))
       : workstations.filter((w) => w.id === selectedWsFilter);
 
+  const labOrder = useMemo(
+    () => collectLabs(labsProp || DEFAULT_LABS, workstations),
+    [labsProp, workstations]
+  );
+
   const workstationsByLab = useMemo(() => {
     const groups: { lab: LabId; items: Workstation[] }[] = [];
-    for (const lab of LAB_IDS) {
+    for (const lab of labOrder) {
       const items = visibleWorkstations.filter((w) => normalizeLab(w.lab) === lab);
       if (items.length) groups.push({ lab, items });
     }
-    const known = new Set(LAB_IDS as readonly string[]);
-    const extras = visibleWorkstations.filter((w) => !known.has(normalizeLab(w.lab)));
-    if (extras.length) {
-      groups.push({ lab: normalizeLab(extras[0].lab), items: extras });
-    }
     return groups;
-  }, [visibleWorkstations]);
+  }, [visibleWorkstations, labOrder]);
 
   // Faster vertical wheel scroll in day cronograma (left + main stay synced)
   useEffect(() => {
@@ -382,7 +382,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             className="text-xs p-1 sm:p-1.5 border border-slate-200 rounded-lg bg-white text-slate-700 font-medium focus:outline-none max-w-[140px] sm:max-w-none truncate"
           >
             <option value="all">Todos os labs</option>
-            {LAB_IDS.map((lab) => (
+            {labOrder.map((lab) => (
               <option key={lab} value={`lab:${lab}`}>
                 {lab}
               </option>

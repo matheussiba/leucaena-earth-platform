@@ -1,5 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { Workstation, LAB_IDS, LabId, normalizeLab } from '../types';
+import {
+  Workstation,
+  LabId,
+  normalizeLab,
+  DEFAULT_LAB,
+  DEFAULT_LABS,
+  labTagClass,
+} from '../types';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { formatBayNumber } from '../utils/dateUtils';
 import { 
@@ -11,15 +18,18 @@ import {
   Camera, 
   Upload, 
   Image as ImageIcon,
-  Check
+  Check,
+  Building2
 } from 'lucide-react';
 
 interface WorkstationsManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
   workstations: Workstation[];
+  labs: LabId[];
   onSaveWorkstation: (ws: Workstation) => void;
   onDeleteWorkstation: (id: string) => void;
+  onAddLab: (lab: LabId) => void;
   initialEditWsId?: string;
 }
 
@@ -27,8 +37,10 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
   isOpen,
   onClose,
   workstations,
+  labs,
   onSaveWorkstation,
   onDeleteWorkstation,
+  onAddLab,
   initialEditWsId,
 }) => {
   const [editingWs, setEditingWs] = useState<Workstation | null>(() => {
@@ -42,7 +54,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
   // Form states
   const [bayNumber, setBayNumber] = useState<string>('');
   const [name, setName] = useState<string>('');
-  const [lab, setLab] = useState<LabId>('CMQ');
+  const [lab, setLab] = useState<LabId>(DEFAULT_LAB);
   const [location, setLocation] = useState<string>('');
   const [imageUrl, setImageUrl] = useState<string>('');
   const [ip, setIp] = useState<string>('');
@@ -51,8 +63,11 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
   const [ram, setRam] = useState<string>('');
   const [internalStorage, setInternalStorage] = useState<string>('');
   const [additionalStorage, setAdditionalStorage] = useState<string>('');
+  const [showAddLab, setShowAddLab] = useState(false);
+  const [newLabName, setNewLabName] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const labOptions = labs.length ? labs : DEFAULT_LABS;
 
   if (!isOpen) return null;
 
@@ -81,8 +96,10 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
     setIsCreatingNew(true);
     setBayNumber(String(nextBay));
     setName(`Workstation Baia ${nextBay}`);
-    setLab('CMQ');
-    setLocation(`Baia ${nextBay} - Laboratório CMQ`);
+    setLab(DEFAULT_LAB);
+    setLocation(`Baia ${nextBay} - Laboratório ${DEFAULT_LAB}`);
+    setShowAddLab(false);
+    setNewLabName('');
     setImageUrl('');
     setIp('');
     setGpu('1x NVIDIA RTX 4090 24GB');
@@ -190,7 +207,9 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1 py-0.5 rounded shrink-0">
+                        <span
+                          className={`font-mono text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded border shrink-0 ${labTagClass(ws.lab)}`}
+                        >
                           {normalizeLab(ws.lab)}
                         </span>
                         <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
@@ -295,26 +314,71 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Laboratório *
-                  </label>
-                  <select
-                    value={lab}
-                    onChange={(e) => {
-                      const next = normalizeLab(e.target.value);
-                      setLab(next);
-                      if (!location.trim() || location.includes('Laboratório')) {
-                        setLocation(`Baia ${bayNumber || '?'} - Laboratório ${next}`);
-                      }
-                    }}
-                    className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-medium"
-                  >
-                    {LAB_IDS.map((id) => (
-                      <option key={id} value={id}>
-                        {id}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1 gap-1">
+                    <label className="block text-[11px] font-semibold text-slate-700">
+                      Laboratório *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddLab((v) => !v)}
+                      className="text-[10px] text-blue-600 hover:text-blue-800 font-medium flex items-center gap-0.5"
+                    >
+                      <Building2 className="w-3 h-3" />
+                      {showAddLab ? 'Fechar' : 'Novo lab'}
+                    </button>
+                  </div>
+                  {showAddLab ? (
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={newLabName}
+                        onChange={(e) => setNewLabName(e.target.value)}
+                        placeholder="ex: CePE-Geo"
+                        className="flex-1 min-w-0 p-2 border border-slate-300 rounded bg-white text-xs font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = normalizeLab(newLabName);
+                          if (!next || next === DEFAULT_LAB) return;
+                          if (labOptions.some((l) => l.toLowerCase() === next.toLowerCase())) {
+                            setLab(next);
+                            setShowAddLab(false);
+                            setNewLabName('');
+                            return;
+                          }
+                          onAddLab(next);
+                          setLab(next);
+                          if (!location.trim() || location.includes('Laboratório')) {
+                            setLocation(`Baia ${bayNumber || '?'} - Laboratório ${next}`);
+                          }
+                          setShowAddLab(false);
+                          setNewLabName('');
+                        }}
+                        className="px-2 py-1 bg-slate-900 text-white text-[10px] font-semibold rounded shrink-0"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={lab}
+                      onChange={(e) => {
+                        const next = normalizeLab(e.target.value);
+                        setLab(next);
+                        if (!location.trim() || location.includes('Laboratório')) {
+                          setLocation(`Baia ${bayNumber || '?'} - Laboratório ${next}`);
+                        }
+                      }}
+                      className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-medium"
+                    >
+                      {labOptions.map((id) => (
+                        <option key={id} value={id}>
+                          {id}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
