@@ -215,10 +215,36 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     return groups;
   }, [visibleWorkstations]);
 
+  // Faster vertical wheel scroll in day cronograma (left + main stay synced)
+  useEffect(() => {
+    if (viewMode !== 'day') return;
+    const main = dayMainRef.current;
+    const left = dayLeftRef.current;
+    if (!main || !left) return;
+
+    const SPEED = 2.35;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      const next = main.scrollTop + e.deltaY * SPEED;
+      main.scrollTop = next;
+      left.scrollTop = next;
+    };
+
+    main.addEventListener('wheel', onWheel, { passive: false });
+    left.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      main.removeEventListener('wheel', onWheel);
+      left.removeEventListener('wheel', onWheel);
+    };
+  }, [viewMode, daySlideKey, workstationsByLab, labOpen]);
+
   // 1. DAY VIEW
   const hoursArray = Array.from({ length: 24 }, (_, i) => i);
-  const ROW_H = 'h-[72px] sm:h-[88px] lg:h-[110px]';
-  const ACCORDION_H = 'h-8';
+  // Mobile/notebook keep solid mins; large screens flex-fill leftover vertical space
+  const ROW_H =
+    'min-h-[72px] sm:min-h-[88px] lg:min-h-[110px] flex-1 basis-0';
+  const ACCORDION_H = 'h-8 shrink-0';
   const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
   const currentLinePercent = (currentHourDecimal / 24) * 100;
 
@@ -738,51 +764,56 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 onScroll={() => syncDayScroll('left')}
                 className="w-[4.5rem] sm:w-24 shrink-0 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)] no-scrollbar"
               >
-                {workstationsByLab.map(({ lab, items }) => {
-                  const open = isLabExpanded(lab);
-                  return (
-                    <div key={`left-${lab}`}>
-                      <button
-                        type="button"
-                        onClick={() => toggleLab(lab)}
-                        className={`${ACCORDION_H} w-full px-1 flex items-center justify-center gap-0.5 border-b border-slate-200 bg-slate-50/90 hover:bg-slate-100 sticky top-0 z-10`}
-                        title={open ? `Recolher ${lab}` : `Expandir ${lab}`}
+                <div className="min-h-full flex flex-col">
+                  {workstationsByLab.map(({ lab, items }) => {
+                    const open = isLabExpanded(lab);
+                    return (
+                      <div
+                        key={`left-${lab}`}
+                        className={`flex flex-col ${open ? 'flex-1 min-h-0' : 'shrink-0'}`}
                       >
-                        <LabTag lab={lab} />
-                        <ChevronDown
-                          className={`w-3 h-3 text-slate-500 transition-transform ${
-                            open ? '' : '-rotate-90'
-                          }`}
-                        />
-                      </button>
-                      {open &&
-                        items.map((ws) => (
-                          <div
-                            key={ws.id}
-                            className={`${ROW_H} px-1 py-1 flex flex-col items-center justify-center gap-0.5 border-b border-slate-100 bg-white`}
-                          >
-                            <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
-                            <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
-                              B{formatBayNumber(ws.bayNumber)}
+                        <button
+                          type="button"
+                          onClick={() => toggleLab(lab)}
+                          className={`${ACCORDION_H} w-full px-1 flex items-center justify-center gap-0.5 border-b border-slate-200 bg-slate-50/90 hover:bg-slate-100 sticky top-0 z-10`}
+                          title={open ? `Recolher ${lab}` : `Expandir ${lab}`}
+                        >
+                          <LabTag lab={lab} />
+                          <ChevronDown
+                            className={`w-3 h-3 text-slate-500 transition-transform ${
+                              open ? '' : '-rotate-90'
+                            }`}
+                          />
+                        </button>
+                        {open &&
+                          items.map((ws) => (
+                            <div
+                              key={ws.id}
+                              className={`${ROW_H} px-1 py-1 flex flex-col items-center justify-center gap-0.5 border-b border-slate-100 bg-white`}
+                            >
+                              <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
+                              <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
+                                B{formatBayNumber(ws.bayNumber)}
+                              </div>
+                              <div className="w-full text-[8px] sm:text-[9px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
+                                {ws.name}
+                              </div>
                             </div>
-                            <div className="w-full text-[8px] sm:text-[9px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
-                              {ws.name}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  );
-                })}
+                          ))}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div
                 ref={dayMainRef}
                 onScroll={() => syncDayScroll('main')}
-                className="flex-1 min-w-0 min-h-0 overflow-auto"
+                className="flex-1 min-w-0 min-h-0 overflow-auto cmq-day-scroll-fast"
               >
                 <div
                   key={`body-${daySlideKey}`}
-                  className={`min-w-[960px] xl:min-w-full will-change-transform ${
+                  className={`min-h-full min-w-[960px] xl:min-w-full flex flex-col will-change-transform ${
                     daySlideDir === 'next'
                       ? 'cmq-day-slide-next'
                       : daySlideDir === 'prev'
@@ -793,7 +824,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   {workstationsByLab.map(({ lab, items }) => {
                     const open = isLabExpanded(lab);
                     return (
-                      <div key={`right-${lab}`}>
+                      <div
+                        key={`right-${lab}`}
+                        className={`flex flex-col ${open ? 'flex-1 min-h-0' : 'shrink-0'}`}
+                      >
                         <button
                           type="button"
                           onClick={() => toggleLab(lab)}

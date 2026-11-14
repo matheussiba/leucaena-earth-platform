@@ -54,3 +54,16 @@ body,
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Day cronograma: slightly larger scrollbar hit area on desktop */
+.cmq-day-scroll-fast {
+  scrollbar-gutter: stable;
+}
+.cmq-day-scroll-fast::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.cmq-day-scroll-fast::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.7);
+  border-radius: 999px;
+}
