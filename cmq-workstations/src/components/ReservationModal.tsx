@@ -8,6 +8,10 @@ import {
   ensureLabPrefixedName,
   normalizeLab,
   labTagClass,
+  LabId,
+  DEFAULT_LAB,
+  DEFAULT_LABS,
+  UNALLOCATED_LAB,
 } from '../types';
 import { validateReservation } from '../utils/fairUseValidator';
 import { normalizeSharedFields } from '../utils/sharedUse';
@@ -56,6 +60,7 @@ interface ReservationModalProps {
   workstations: Workstation[];
   reservations: Reservation[];
   members: LabMember[];
+  labs?: LabId[];
   rules: FairUseRules;
   initialWorkstationId?: string;
   initialDate?: Date;
@@ -94,6 +99,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
   workstations,
   reservations,
   members,
+  labs: labsProp,
   rules,
   initialWorkstationId,
   initialDate,
@@ -121,7 +127,13 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
   );
   const [showAddNewMember, setShowAddNewMember] = useState<boolean>(false);
   const [newMemberName, setNewMemberName] = useState<string>('');
+  const [newMemberLab, setNewMemberLab] = useState<LabId>(DEFAULT_LAB);
   const [newMemberRole, setNewMemberRole] = useState<ResearcherRole>('Mestrado');
+  const labOptions = useMemo(
+    () =>
+      (labsProp?.length ? labsProp : DEFAULT_LABS).filter((l) => l !== UNALLOCATED_LAB),
+    [labsProp]
+  );
 
   // Instant Checkin presets
   const [instantDurationMinutes, setInstantDurationMinutes] = useState<number>(120);
@@ -526,8 +538,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 
   const handleQuickAddMember = () => {
     if (!newMemberName.trim()) return;
-    const wsLab = normalizeLab(workstations.find((w) => w.id === selectedWsId)?.lab);
-    const fullName = ensureLabPrefixedName(newMemberName, wsLab);
+    const fullName = ensureLabPrefixedName(newMemberName, normalizeLab(newMemberLab));
     const newMember: LabMember = {
       id: `mem-${Date.now()}`,
       name: fullName,
@@ -537,6 +548,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     setSelectedMemberName(newMember.name);
     setLastSelectedUser(newMember.name);
     setNewMemberName('');
+    setNewMemberLab(DEFAULT_LAB);
     setShowAddNewMember(false);
   };
 
@@ -777,7 +789,19 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
 
             {showAddNewMember ? (
               <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <select
+                    value={newMemberLab}
+                    onChange={(e) => setNewMemberLab(normalizeLab(e.target.value))}
+                    className="p-1.5 text-xs border border-slate-300 rounded bg-white"
+                    title="Laboratório"
+                  >
+                    {labOptions.map((id) => (
+                      <option key={id} value={id}>
+                        {id}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     type="text"
                     placeholder="Nome do usuário"
@@ -797,6 +821,9 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                     ))}
                   </select>
                 </div>
+                <p className="text-[10px] text-slate-400">
+                  Salvo como “{newMemberLab} - …”
+                </p>
                 <div className="flex justify-end gap-1.5">
                   <button
                     type="button"

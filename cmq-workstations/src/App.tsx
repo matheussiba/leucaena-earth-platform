@@ -584,6 +584,7 @@ export default function App() {
         workstations={liveWorkstations}
         reservations={reservations}
         members={members}
+        labs={registeredLabs}
         rules={rules}
         initialWorkstationId={modalWorkstationId}
         initialDate={modalDate}
