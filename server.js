@@ -651,8 +651,11 @@ app.use('/life', cpGuard, (req, res, next) => {
 // ---------------------------------------------------------------------------
 const CMQ_DIR = path.join(__dirname, 'deleteme_cmq');
 const CMQ_PASSWORD = process.env.CMQ_PASSWORD || '';
+/** Shared secret for machine agents posting disk usage (Task Scheduler → POST /cmq/api/storage). */
+const CMQ_STORAGE_TOKEN = process.env.CMQ_STORAGE_TOKEN || '';
 const CMQ_HOSTS = (process.env.CMQ_HOSTS || '')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const CMQ_STORAGE_HISTORY_DAYS = 90;
 
 function cmqGuard(req, res, next) {
   res.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
@@ -705,7 +708,10 @@ app.get('/cmq/api/state', cmqGuard, (_req, res) => {
       members: cmqReadKey('members', []),
       reservations: cmqReadKey('reservations', []),
       deletionLog: cmqReadKey('deletionLog', []),
+      activityLog: cmqReadKey('activityLog', []),
+      labs: cmqReadKey('labs', ['CMQ']),
       rules: cmqReadKey('rules', null),
+      storageLatest: cmqReadKey('storageLatest', {}),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -719,8 +725,120 @@ app.put('/cmq/api/state', cmqGuard, (req, res) => {
     if (Array.isArray(body.members)) cmqWriteKey('members', body.members);
     if (Array.isArray(body.reservations)) cmqWriteKey('reservations', body.reservations);
     if (Array.isArray(body.deletionLog)) cmqWriteKey('deletionLog', body.deletionLog);
+    if (Array.isArray(body.activityLog)) cmqWriteKey('activityLog', body.activityLog);
+    if (Array.isArray(body.labs)) cmqWriteKey('labs', body.labs);
     if (body.rules && typeof body.rules === 'object') cmqWriteKey('rules', body.rules);
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Disk monitoring from lab PCs (C:/D:).
+ * Auth: X-CMQ-Storage-Token or Authorization: Bearer <CMQ_STORAGE_TOKEN>
+ * (no Basic Auth — agents use only this token).
+ */
+function cmqStorageAuth(req, res, next) {
+  if (!CMQ_STORAGE_TOKEN) {
+    return res.status(503).json({ error: 'CMQ_STORAGE_TOKEN not configured on server' });
+  }
+  const headerToken = String(req.headers['x-cmq-storage-token'] || '').trim();
+  const auth = String(req.headers.authorization || '');
+  const bearer = auth.toLowerCase().startsWith('bearer ')
+    ? auth.slice(7).trim()
+    : '';
+  if (headerToken === CMQ_STORAGE_TOKEN || bearer === CMQ_STORAGE_TOKEN) return next();
+  return res.status(401).json({ error: 'invalid storage token' });
+}
+
+function normalizeStorageReport(body) {
+  const disksIn = Array.isArray(body.disks) ? body.disks : [];
+  const disks = disksIn
+    .map((d) => {
+      const mount = String(d.mount || d.letter || d.drive || '').trim().toUpperCase();
+      const totalBytes = Number(d.totalBytes ?? d.total);
+      const freeBytes = Number(d.freeBytes ?? d.free);
+      if (!mount || !Number.isFinite(totalBytes) || !Number.isFinite(freeBytes)) return null;
+      return {
+        mount: mount.endsWith(':') ? mount : `${mount}:`,
+        totalBytes: Math.max(0, Math.round(totalBytes)),
+        freeBytes: Math.max(0, Math.round(freeBytes)),
+      };
+    })
+    .filter(Boolean);
+  if (!disks.length) return null;
+  const collectedAt =
+    typeof body.collectedAt === 'string' && !Number.isNaN(Date.parse(body.collectedAt))
+      ? body.collectedAt
+      : new Date().toISOString();
+  return {
+    workstationId: body.workstationId ? String(body.workstationId).trim() : '',
+    bay: body.bay != null ? String(body.bay).trim() : '',
+    hostname: body.hostname ? String(body.hostname).trim() : '',
+    ip: body.ip ? String(body.ip).trim() : '',
+    disks,
+    collectedAt,
+  };
+}
+
+function resolveStorageKey(report, workstations) {
+  if (report.workstationId) {
+    const byId = workstations.find((w) => w && w.id === report.workstationId);
+    if (byId) return byId.id;
+  }
+  if (report.ip) {
+    const byIp = workstations.find(
+      (w) => w && String(w.ip || '').trim() === report.ip
+    );
+    if (byIp) return byIp.id;
+  }
+  if (report.bay) {
+    const bayNorm = String(report.bay).trim().replace(/^0+/, '') || '0';
+    const byBay = workstations.find((w) => {
+      const b = String(w.bayNumber ?? '').trim();
+      return b === report.bay || b.replace(/^0+/, '') === bayNorm;
+    });
+    if (byBay) return byBay.id;
+  }
+  return report.workstationId || report.hostname || report.ip || report.bay || null;
+}
+
+app.post('/cmq/api/storage', cmqStorageAuth, (req, res) => {
+  try {
+    const report = normalizeStorageReport(req.body || {});
+    if (!report) return res.status(400).json({ error: 'invalid payload: disks required' });
+    const workstations = cmqReadKey('workstations', []);
+    const key = resolveStorageKey(report, Array.isArray(workstations) ? workstations : []);
+    if (!key) return res.status(400).json({ error: 'could not resolve workstation (send workstationId, ip or bay)' });
+
+    const latest = cmqReadKey('storageLatest', {}) || {};
+    latest[key] = { ...report, workstationId: key };
+    cmqWriteKey('storageLatest', latest);
+
+    const prevHistory = cmqReadKey('storageHistory', []);
+    const history = Array.isArray(prevHistory) ? prevHistory.slice() : [];
+    history.push({ ...report, workstationId: key });
+    const cutoff = Date.now() - CMQ_STORAGE_HISTORY_DAYS * 24 * 60 * 60 * 1000;
+    const trimmed = history.filter((h) => {
+      const t = Date.parse(h.collectedAt || '');
+      return Number.isFinite(t) && t >= cutoff;
+    });
+    cmqWriteKey('storageHistory', trimmed);
+
+    res.json({ ok: true, workstationId: key, disks: report.disks.length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/cmq/api/storage', cmqGuard, (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      latest: cmqReadKey('storageLatest', {}),
+      history: cmqReadKey('storageHistory', []),
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

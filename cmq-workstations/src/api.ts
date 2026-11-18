@@ -5,6 +5,7 @@ import {
   LabMember,
   DeletedReservationEntry,
   ActivityLogEntry,
+  StorageLatestMap,
   LabId,
   ensureLabPrefixedName,
   collectLabs,
@@ -63,6 +64,8 @@ export type CmqState = {
   rules: FairUseRules;
   /** Registered labs; "Não alocado" is virtual and only shown when it has machines */
   labs: LabId[];
+  /** Latest disk report per workstation id (from /cmq/api/storage agents) */
+  storageLatest: StorageLatestMap;
 };
 
 const API = '/cmq/api/state';
@@ -89,6 +92,7 @@ export function defaultState(): CmqState {
     activityLog: [],
     rules: { ...DEFAULT_RULES },
     labs: [...DEFAULT_LABS],
+    storageLatest: {},
   };
 }
 
@@ -161,7 +165,23 @@ export async function loadState(): Promise<CmqState> {
             details: String(e.details || ''),
           }))
       : [],
+    storageLatest:
+      data.storageLatest && typeof data.storageLatest === 'object' && !Array.isArray(data.storageLatest)
+        ? (data.storageLatest as StorageLatestMap)
+        : {},
   };
+}
+
+/** Format free space for compact UI (e.g. "C: 120 GB livres"). */
+export function formatStorageFreeLabel(report?: { disks?: Array<{ mount: string; freeBytes: number }> } | null): string {
+  if (!report?.disks?.length) return '';
+  return report.disks
+    .map((d) => {
+      const gb = d.freeBytes / (1024 ** 3);
+      const label = gb >= 100 ? `${Math.round(gb)} GB` : `${gb.toFixed(1)} GB`;
+      return `${d.mount} ${label}`;
+    })
+    .join(' · ');
 }
 
 export async function saveState(state: CmqState): Promise<void> {

@@ -88,6 +88,24 @@ export interface ActivityLogEntry {
   details: string;
 }
 
+/** Latest disk snapshot posted by a lab PC agent. */
+export interface StorageDiskInfo {
+  mount: string;
+  totalBytes: number;
+  freeBytes: number;
+}
+
+export interface StorageReport {
+  workstationId: string;
+  bay?: string;
+  hostname?: string;
+  ip?: string;
+  disks: StorageDiskInfo[];
+  collectedAt: string;
+}
+
+export type StorageLatestMap = Record<string, StorageReport>;
+
 export interface Workstation {
   id: string;
   name: string;

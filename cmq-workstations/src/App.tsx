@@ -29,7 +29,8 @@ import { ExtendModal } from './components/ExtendModal';
 import { ReservationDetailsModal } from './components/ReservationDetailsModal';
 import { Check, AlertTriangle, Zap } from 'lucide-react';
 import { applyFairUseFlags } from './utils/fairUseValidator';
-import { defaultState, loadState, saveState } from './api';
+import { defaultState, loadState, saveState, formatStorageFreeLabel } from './api';
+import type { StorageLatestMap } from './types';
 
 const ACTIVITY_LOG_MAX = 400;
 
@@ -51,6 +52,7 @@ export default function App() {
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(seed.activityLog);
   const [rules, setRules] = useState<FairUseRules>(seed.rules);
   const [labs, setLabs] = useState<LabId[]>(seed.labs);
+  const [storageLatest, setStorageLatest] = useState<StorageLatestMap>(seed.storageLatest || {});
   const [hydrated, setHydrated] = useState(false);
 
   // 2. Modals state
@@ -67,6 +69,7 @@ export default function App() {
   const [isWorkstationsModalOpen, setIsWorkstationsModalOpen] = useState(false);
   const [isLabsModalOpen, setIsLabsModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
 
   const pushActivity = (action: string, details: string) => {
     setActivityLog((prev) => [makeActivity(action, details), ...prev].slice(0, ACTIVITY_LOG_MAX));
@@ -95,6 +98,15 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  useEffect(() => {
+    if (!calendarExpanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCalendarExpanded(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [calendarExpanded]);
+
   // Load shared state from the platform DB (survives deploys on DATA_PATH).
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +120,7 @@ export default function App() {
         setActivityLog(state.activityLog || []);
         setRules(state.rules);
         setLabs(state.labs?.length ? state.labs : DEFAULT_LABS);
+        setStorageLatest(state.storageLatest || {});
         setHydrated(true);
       })
       .catch(() => {
@@ -473,23 +486,35 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar */}
-      <Navbar
-        onOpenNewReservation={() => handleOpenNewReservation()}
-        onOpenQuickCheckIn={() => handleOpenQuickCheckIn()}
-        onOpenRules={() => setIsRulesModalOpen(true)}
-        onOpenMembers={() => setIsMembersModalOpen(true)}
-        onOpenWorkstations={() => setIsWorkstationsModalOpen(true)}
-        onOpenLabs={() => setIsLabsModalOpen(true)}
-        onOpenStats={() => setIsStatsModalOpen(true)}
-        totalWorkstations={liveWorkstations.length}
-        inUseCount={inUseCount}
-      />
+      {/* Top Navbar — hidden in calendar focus mode */}
+      {!calendarExpanded && (
+        <Navbar
+          onOpenNewReservation={() => handleOpenNewReservation()}
+          onOpenQuickCheckIn={() => handleOpenQuickCheckIn()}
+          onOpenRules={() => setIsRulesModalOpen(true)}
+          onOpenMembers={() => setIsMembersModalOpen(true)}
+          onOpenWorkstations={() => setIsWorkstationsModalOpen(true)}
+          onOpenLabs={() => setIsLabsModalOpen(true)}
+          onOpenStats={() => setIsStatsModalOpen(true)}
+          totalWorkstations={liveWorkstations.length}
+          inUseCount={inUseCount}
+        />
+      )}
 
       {/* Main Content — no page scroll; only calendar hours area may scroll */}
-      <main className="flex-1 min-h-0 overflow-hidden w-full px-2.5 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3 lg:py-3.5 flex flex-col gap-2 sm:gap-3">
+      <main
+        className={`flex-1 min-h-0 overflow-hidden w-full flex flex-col ${
+          calendarExpanded
+            ? 'px-1.5 sm:px-2.5 py-1.5 sm:py-2 gap-1.5'
+            : 'px-2.5 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3 lg:py-3.5 gap-2 sm:gap-3'
+        }`}
+      >
         {/* Mobile: single-row badges — livre/ocupado no contorno */}
-        <div className="sm:hidden shrink-0 flex items-center gap-2 overflow-x-auto no-scrollbar">
+        <div
+          className={`${
+            calendarExpanded ? 'hidden' : 'sm:hidden'
+          } shrink-0 flex items-center gap-2 overflow-x-auto no-scrollbar`}
+        >
           {liveWorkstations.map((ws) => {
             const activeRes = getCurrentActiveReservation(ws.id, reservations);
             const isBusy = !!activeRes;
@@ -524,8 +549,14 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tablet/desktop: single-row compact cards */}
-        <div className="hidden sm:flex shrink-0 flex-row gap-2 sm:gap-2.5 overflow-x-auto">
+        {/* Tablet/desktop cards — hidden in focus mode and on short viewports */}
+        <div
+          className={`${
+            calendarExpanded
+              ? 'hidden'
+              : 'hidden sm:flex [@media(max-height:720px)]:hidden'
+          } shrink-0 flex-row gap-2 sm:gap-2.5 overflow-x-auto`}
+        >
           {liveWorkstations.map((ws) => {
             const activeRes = getCurrentActiveReservation(ws.id, reservations);
             const isBusy = !!activeRes;
@@ -561,6 +592,11 @@ export default function App() {
                         {ws.gpu}
                         {ws.ip ? ` · ${ws.ip}` : ''}
                       </div>
+                      {formatStorageFreeLabel(storageLatest[ws.id]) && (
+                        <div className="text-[10px] font-mono text-slate-600 truncate mt-0.5" title="Espaço livre (último reporte)">
+                          Disco {formatStorageFreeLabel(storageLatest[ws.id])} livres
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -616,6 +652,8 @@ export default function App() {
             workstations={liveWorkstations}
             reservations={reservations}
             labs={registeredLabs}
+            expanded={calendarExpanded}
+            onToggleExpanded={() => setCalendarExpanded((v) => !v)}
             onSlotClick={handleTimelineSlotClick}
             onReservationClick={handleReservationClick}
             onQuickCheckIn={handleOpenQuickCheckIn}
@@ -623,8 +661,12 @@ export default function App() {
         </div>
       </main>
 
-      {/* Simplified Footer */}
-      <footer className="shrink-0 bg-white border-t border-slate-200 py-1 lg:py-1.5 text-[10px] sm:text-xs text-slate-500">
+      {/* Simplified Footer — hidden in focus mode */}
+      <footer
+        className={`${
+          calendarExpanded ? 'hidden' : 'shrink-0'
+        } bg-white border-t border-slate-200 py-1 lg:py-1.5 text-[10px] sm:text-xs text-slate-500`}
+      >
         <div className="w-full px-2.5 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-center sm:justify-between gap-2 whitespace-nowrap overflow-hidden">
           <div className="truncate">
             <span className="sm:hidden">
