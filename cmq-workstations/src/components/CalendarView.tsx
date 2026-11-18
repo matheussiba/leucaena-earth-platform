@@ -94,9 +94,8 @@ interface CalendarViewProps {
   onSlotClick: (workstationId: string, date: Date, startHour: number, endHour?: number) => void;
   onReservationClick: (reservation: Reservation) => void;
   onQuickCheckIn?: (workstationId: string) => void;
-  /** Click bay photo → machine specs / IP */
+  /** Click bay photo -> read-only machine info */
   onWorkstationInfo?: (workstation: Workstation) => void;
-  onReleaseReservation?: (reservation: Reservation) => void;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
@@ -105,9 +104,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   labs: labsProp,
   onSlotClick,
   onReservationClick,
-  onQuickCheckIn,
   onWorkstationInfo,
-  onReleaseReservation,
 }) => {
   const [viewMode, setViewMode] = useState<CalendarViewMode>('day');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -256,7 +253,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const hoursArray = Array.from({ length: 24 }, (_, i) => i);
   // Mobile/notebook keep solid mins; large screens flex-fill leftover vertical space
   const ROW_H =
-    'min-h-[96px] sm:min-h-[112px] lg:min-h-[128px] flex-1 basis-0';
+    'min-h-[84px] sm:min-h-[100px] lg:min-h-[118px] flex-1 basis-0';
   const ACCORDION_H = 'h-8 shrink-0';
   const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
   const currentLinePercent = (currentHourDecimal / 24) * 100;
@@ -765,60 +762,31 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                   showBadge={false}
                                   statusBorder={isBusy ? 'in_use' : 'available'}
                                   onClick={() => onWorkstationInfo?.(ws)}
-                                  title={`${normalizeLab(ws.lab)} · ${ws.name} — ver config / IP`}
+                                  title={`${ws.name} — ver informações`}
                                 />
                                 <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
                                   {formatBayLabel(ws.bayNumber)}
                                 </div>
-                                <div className="w-full text-[8px] sm:text-[9px] font-semibold text-slate-800 text-center leading-tight line-clamp-1 px-0.5">
-                                  {ws.name}
-                                </div>
-                                {isBusy && activeRes ? (
+                                {isBusy ? (
                                   <div className="w-full flex flex-col items-center gap-0.5 px-0.5">
-                                    <div className="inline-flex max-w-full items-center gap-0.5 px-1 py-0.5 rounded text-[8px] sm:text-[9px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
-                                      <span className="w-1 h-1 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                                      <span className="truncate">
-                                        {activeRes.researcherName.split(' ')[0]}
-                                      </span>
-                                      {activeRes.isNonFairUse && (
-                                        <AlertTriangle className="w-2.5 h-2.5 text-amber-500 fill-amber-100 shrink-0" />
+                                    <div className="inline-flex max-w-full items-center gap-0.5 px-1 py-0.5 rounded text-[8px] sm:text-[9px] font-bold bg-amber-50 border border-amber-300 text-amber-950">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                                      <span>~Em uso~</span>
+                                      {activeRes?.isNonFairUse && (
+                                        <AlertTriangle className="w-2.5 h-2.5 text-amber-600 fill-amber-100 shrink-0" />
                                       )}
                                     </div>
-                                    <div className="font-mono text-[8px] sm:text-[9px] font-bold text-slate-700 leading-none tabular-nums">
-                                      {remaining?.formatted}
-                                    </div>
-                                    {onReleaseReservation && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onReleaseReservation(activeRes);
-                                        }}
-                                        className="text-[8px] font-semibold text-rose-700 hover:underline leading-none"
-                                      >
-                                        Liberar
-                                      </button>
+                                    {remaining && (
+                                      <div className="font-mono text-[8px] sm:text-[9px] font-bold text-slate-700 leading-none tabular-nums">
+                                        {remaining.formatted}
+                                      </div>
                                     )}
                                   </div>
                                 ) : (
-                                  <div className="flex flex-col items-center gap-0.5">
-                                    <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[8px] font-bold">
-                                      <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                                      Livre
-                                    </span>
-                                    {onQuickCheckIn && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onQuickCheckIn(ws.id);
-                                        }}
-                                        className="text-[8px] font-semibold text-emerald-700 hover:underline leading-none"
-                                      >
-                                        Usar →
-                                      </button>
-                                    )}
-                                  </div>
+                                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[8px] font-bold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    Livre
+                                  </span>
                                 )}
                               </div>
                             );

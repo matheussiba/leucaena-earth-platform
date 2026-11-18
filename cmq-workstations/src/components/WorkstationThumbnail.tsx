@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Workstation, WorkstationStatus, normalizeLab } from '../types';
+import { Workstation, WorkstationStatus } from '../types';
 import { formatBayLabel } from '../utils/dateUtils';
 import { Monitor } from 'lucide-react';
 
@@ -33,11 +33,11 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
   }[size];
 
   const bayFormatted = formatBayLabel(workstation.bayNumber);
-  const borderCls =
+  const glowCls =
     statusBorder === 'in_use'
-      ? 'border-2 border-amber-500 shadow-[0_0_0_1px_rgba(245,158,11,0.35)]'
+      ? 'cmq-thumb-glow-busy'
       : statusBorder === 'available'
-      ? 'border-2 border-emerald-400 shadow-[0_0_0_1px_rgba(52,211,153,0.35)]'
+      ? 'cmq-thumb-glow-free'
       : 'border border-slate-200';
 
   const Wrapper: React.ElementType = onClick ? 'button' : 'div';
@@ -47,14 +47,14 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
         onClick,
         title:
           title ||
-          `${workstation.name} · ${statusBorder === 'in_use' ? 'Ocupada' : 'Livre'}`,
+          `${workstation.name} · ${statusBorder === 'in_use' ? 'Em uso' : 'Livre'}`,
       }
     : { title: title || `${workstation.name} · ${bayFormatted}` };
 
   return (
     <Wrapper
       {...wrapperProps}
-      className={`relative shrink-0 rounded-lg overflow-hidden shadow-2xs ${sizeClasses} ${borderCls} ${
+      className={`relative shrink-0 rounded-lg overflow-hidden ${sizeClasses} ${glowCls} ${
         onClick ? 'cursor-pointer active:scale-95 transition-transform' : ''
       } ${className}`}
     >
@@ -62,7 +62,7 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
         <>
           <img
             src={workstation.imageUrl}
-            alt={`${normalizeLab(workstation.lab)} - ${workstation.name}`}
+            alt={workstation.name}
             referrerPolicy="no-referrer"
             onError={() => setImgError(true)}
             className="w-full h-full object-cover"

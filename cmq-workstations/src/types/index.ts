@@ -47,7 +47,7 @@ const LAB_TAG_STYLES = [
 ];
 
 const LAB_TAG_CMQ =
-  'bg-orange-100 text-orange-950 border-orange-400 ring-1 ring-orange-200/80';
+  'bg-cyan-100 text-cyan-950 border-cyan-400 ring-1 ring-cyan-200/80';
 const LAB_TAG_CEPE =
   'bg-violet-100 text-violet-950 border-violet-400 ring-1 ring-violet-200/80';
 

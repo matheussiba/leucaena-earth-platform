@@ -151,7 +151,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
 
   return (
     <div
-      onClick={(e) => {
+      onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto"

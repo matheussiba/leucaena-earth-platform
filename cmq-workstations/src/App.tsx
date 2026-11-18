@@ -21,6 +21,7 @@ import { ReservationModal } from './components/ReservationModal';
 import { RulesModal } from './components/RulesModal';
 import { MembersModal } from './components/MembersModal';
 import { WorkstationsManagerModal } from './components/WorkstationsManagerModal';
+import { WorkstationInfoModal } from './components/WorkstationInfoModal';
 import { LabsModal } from './components/LabsModal';
 import { StatsModal } from './components/StatsModal';
 import { CheckOutConfirmModal } from './components/CheckOutConfirmModal';
@@ -68,7 +69,7 @@ export default function App() {
   const [isWorkstationsModalOpen, setIsWorkstationsModalOpen] = useState(false);
   const [isLabsModalOpen, setIsLabsModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const [workstationEditId, setWorkstationEditId] = useState<string | undefined>(undefined);
+  const [infoWorkstationId, setInfoWorkstationId] = useState<string | null>(null);
 
   const pushActivity = (action: string, details: string) => {
     setActivityLog((prev) => [makeActivity(action, details), ...prev].slice(0, ACTIVITY_LOG_MAX));
@@ -503,10 +504,7 @@ export default function App() {
         onOpenQuickCheckIn={() => handleOpenQuickCheckIn()}
         onOpenRules={() => setIsRulesModalOpen(true)}
         onOpenMembers={() => setIsMembersModalOpen(true)}
-        onOpenWorkstations={() => {
-          setWorkstationEditId(undefined);
-          setIsWorkstationsModalOpen(true);
-        }}
+        onOpenWorkstations={() => setIsWorkstationsModalOpen(true)}
         onOpenLabs={() => setIsLabsModalOpen(true)}
         onOpenStats={() => setIsStatsModalOpen(true)}
         totalWorkstations={liveWorkstations.length}
@@ -523,14 +521,7 @@ export default function App() {
             onSlotClick={handleTimelineSlotClick}
             onReservationClick={handleReservationClick}
             onQuickCheckIn={handleOpenQuickCheckIn}
-            onWorkstationInfo={(ws) => {
-              setWorkstationEditId(ws.id);
-              setIsWorkstationsModalOpen(true);
-            }}
-            onReleaseReservation={(res) => {
-              setReservationToRelease(res);
-              setIsReleaseModalOpen(true);
-            }}
+            onWorkstationInfo={(ws) => setInfoWorkstationId(ws.id)}
           />
         </div>
       </main>
@@ -623,22 +614,26 @@ export default function App() {
         onDeleteMember={handleDeleteMember}
       />
 
-      {isWorkstationsModalOpen && (
-        <WorkstationsManagerModal
-          key={workstationEditId || 'manager'}
-          isOpen
-          onClose={() => {
-            setIsWorkstationsModalOpen(false);
-            setWorkstationEditId(undefined);
-          }}
-          workstations={liveWorkstations}
-          labs={registeredLabs}
-          onSaveWorkstation={handleSaveWorkstation}
-          onDeleteWorkstation={handleDeleteWorkstation}
-          onAddLab={handleAddLab}
-          initialEditWsId={workstationEditId}
-        />
-      )}
+      <WorkstationsManagerModal
+        isOpen={isWorkstationsModalOpen}
+        onClose={() => setIsWorkstationsModalOpen(false)}
+        workstations={liveWorkstations}
+        labs={registeredLabs}
+        onSaveWorkstation={handleSaveWorkstation}
+        onDeleteWorkstation={handleDeleteWorkstation}
+        onAddLab={handleAddLab}
+      />
+
+      <WorkstationInfoModal
+        isOpen={!!infoWorkstationId}
+        onClose={() => setInfoWorkstationId(null)}
+        workstation={
+          infoWorkstationId
+            ? liveWorkstations.find((w) => w.id === infoWorkstationId) || null
+            : null
+        }
+        storage={infoWorkstationId ? storageLatest[infoWorkstationId] : null}
+      />
 
       <LabsModal
         isOpen={isLabsModalOpen}
