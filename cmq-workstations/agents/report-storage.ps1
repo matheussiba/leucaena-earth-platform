@@ -1,25 +1,15 @@
-<#
-.SYNOPSIS
-  Reports C: and D: free/total space to the lab workstations platform.
-
-.NOTES
-  TEST MODE: values below are hardcoded so you do NOT need admin / env vars.
-  On Render → Environment, add the SAME token:
-    Key:   LAB_STORAGE_TOKEN
-    Value: lab-teste-cmq-2026
-
-  Run (no admin needed for the env vars):
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\lab\report-storage.ps1
-#>
-
-$ErrorActionPreference = 'Stop'
-
-# ─── CONFIG EXPLICITA (teste) — edite aqui se precisar ───
+# =============================================================================
+# CONFIG DE TESTE (edite aqui) — nao precisa de variavel de ambiente / admin
+# =============================================================================
 $ApiUrl        = 'https://leucaena.earth/ws/api/storage'
 $Token         = 'lab-teste-cmq-2026'
-$WorkstationId = 'cmq-baia-07'   # << troque se for outra baia (ex: cmq-baia-04)
+$WorkstationId = 'cmq-baia-07'
 $Bay           = ''
-# ─────────────────────────────────────────────────────────
+# No Render: Environment -> LAB_STORAGE_TOKEN = lab-teste-cmq-2026 (mesmo valor)
+# Rodar: powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\lab\report-storage.ps1
+# =============================================================================
+
+$ErrorActionPreference = 'Stop'
 
 function Get-DiskInfo([string]$Letter) {
   $drive = Get-PSDrive -Name $Letter -ErrorAction SilentlyContinue
