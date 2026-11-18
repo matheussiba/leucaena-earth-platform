@@ -87,10 +87,17 @@ function mergeSeedMembers(list: LabMember[]): LabMember[] {
   const cleaned = list.filter((m) => !isRetiredTestMember(m));
   const byId = new Set(cleaned.map((m) => m.id));
   const byName = new Set(cleaned.map((m) => m.name.trim().toLowerCase()));
+  const seedById = new Map(INITIAL_MEMBERS.map((m) => [m.id, m]));
   const missing = INITIAL_MEMBERS.filter(
     (m) => !byId.has(m.id) && !byName.has(m.name.trim().toLowerCase())
   ).map((m) => ({ ...m }));
-  const prefixed = cleaned.map(withLabPrefixedMember);
+  // Re-apply CePE-Geo seed roles (incl. empty) when ids match, so roster fixes land on existing installs
+  const prefixed = cleaned.map((m) => {
+    const next = withLabPrefixedMember(m);
+    if (!String(m.id || '').startsWith('mem-cepe-')) return next;
+    const seed = seedById.get(m.id);
+    return seed ? { ...next, role: seed.role } : next;
+  });
   return missing.length ? [...prefixed, ...missing] : prefixed;
 }
 

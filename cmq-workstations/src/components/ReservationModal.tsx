@@ -84,6 +84,7 @@ const WEEKDAY_OPTIONS: { value: number; label: string; short: string }[] = [
 ];
 
 const ROLES: ResearcherRole[] = [
+  '',
   'TT',
   'Iniciação Científica',
   'Mestrado',
@@ -128,7 +129,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
   const [showAddNewMember, setShowAddNewMember] = useState<boolean>(false);
   const [newMemberName, setNewMemberName] = useState<string>('');
   const [newMemberLab, setNewMemberLab] = useState<LabId>(DEFAULT_LAB);
-  const [newMemberRole, setNewMemberRole] = useState<ResearcherRole>('Mestrado');
+  const [newMemberRole, setNewMemberRole] = useState<ResearcherRole>('');
   const labOptions = useMemo(
     () =>
       (labsProp?.length ? labsProp : DEFAULT_LABS).filter((l) => l !== UNALLOCATED_LAB),
@@ -569,7 +570,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
     setLastSelectedUser(selectedMemberName.trim());
 
     const currentMember = members.find((m) => m.name === selectedMemberName);
-    const role = currentMember ? currentMember.role : 'Mestrado';
+    const role = currentMember ? currentMember.role : '';
     const seriesId =
       !isEditing && modalType === 'scheduled' && occurrencePlan.windows.length > 1
         ? `series-${Date.now()}`
@@ -815,8 +816,8 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
                     className="p-1.5 text-xs border border-slate-300 rounded bg-white"
                   >
                     {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
+                      <option key={r || 'empty'} value={r}>
+                        {r || '— (sem cargo)'}
                       </option>
                     ))}
                   </select>
@@ -853,7 +854,7 @@ export const ReservationModal: React.FC<ReservationModalProps> = ({
               >
                 {sortedMembers.map((m) => (
                   <option key={m.id} value={m.name}>
-                    {m.name} ({m.role})
+                    {m.role ? `${m.name} (${m.role})` : m.name}
                   </option>
                 ))}
               </select>

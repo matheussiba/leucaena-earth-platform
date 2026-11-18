@@ -22,6 +22,7 @@ interface MembersModalProps {
 }
 
 const ROLES: ResearcherRole[] = [
+  '',
   'TT',
   'Iniciação Científica',
   'Mestrado',
@@ -42,7 +43,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [lab, setLab] = useState<LabId>(DEFAULT_LAB);
-  const [role, setRole] = useState<ResearcherRole>('Mestrado');
+  const [role, setRole] = useState<ResearcherRole>('');
   const [addedSuccess, setAddedSuccess] = useState(false);
   const labOptions = (labs?.length ? labs : DEFAULT_LABS).filter(
     (l) => l !== UNALLOCATED_LAB
@@ -51,7 +52,7 @@ export const MembersModal: React.FC<MembersModalProps> = ({
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editRole, setEditRole] = useState<ResearcherRole>('Mestrado');
+  const [editRole, setEditRole] = useState<ResearcherRole>('');
 
   // Sorted members in alphabetical order
   const sortedMembers = useMemo(() => {
@@ -173,8 +174,8 @@ export const MembersModal: React.FC<MembersModalProps> = ({
                   className="w-full p-2 border border-slate-300 rounded bg-white text-xs focus:border-blue-500 focus:outline-none"
                 >
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
+                    <option key={r || 'empty'} value={r}>
+                      {r || '— (sem cargo)'}
                     </option>
                   ))}
                 </select>
@@ -235,8 +236,8 @@ export const MembersModal: React.FC<MembersModalProps> = ({
                             className="p-1.5 text-xs border border-blue-400 rounded bg-white focus:outline-none"
                           >
                             {ROLES.map((r) => (
-                              <option key={r} value={r}>
-                                {r}
+                              <option key={r || 'empty'} value={r}>
+                                {r || '— (sem cargo)'}
                               </option>
                             ))}
                           </select>
@@ -276,7 +277,9 @@ export const MembersModal: React.FC<MembersModalProps> = ({
                         </div>
                         <div className="min-w-0">
                           <div className="font-semibold text-slate-900 truncate">{mem.name}</div>
-                          <div className="text-[11px] text-slate-500 truncate">{mem.role}</div>
+                          {mem.role ? (
+                            <div className="text-[11px] text-slate-500 truncate">{mem.role}</div>
+                          ) : null}
                         </div>
                       </div>
 

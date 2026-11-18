@@ -155,6 +155,7 @@ export interface Workstation {
 }
 
 export type ResearcherRole =
+  | ''
   | 'TT'
   | 'Iniciação Científica'
   | 'Mestrado'
@@ -166,6 +167,7 @@ export type ResearcherRole =
 export interface LabMember {
   id: string;
   name: string;
+  /** Empty string when cargo is unknown */
   role: ResearcherRole;
 }
 
