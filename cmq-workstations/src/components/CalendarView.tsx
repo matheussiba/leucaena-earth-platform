@@ -779,7 +779,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                   <div className="w-full flex flex-col items-center gap-0.5 px-0.5">
                                     <div className="inline-flex max-w-full items-center gap-0.5 px-1 py-0.5 rounded text-[8px] sm:text-[9px] font-bold bg-amber-50 border border-amber-300 text-amber-950">
                                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                                      <span>~Em uso~</span>
+                                      <span>Em uso</span>
                                       {activeRes?.isNonFairUse && (
                                         <AlertTriangle className="w-2.5 h-2.5 text-amber-600 fill-amber-100 shrink-0" />
                                       )}
