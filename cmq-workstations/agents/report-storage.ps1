@@ -1,33 +1,25 @@
 <#
 .SYNOPSIS
-  Reports C: and D: free/total space to the lab workstations platform (daily via Task Scheduler).
+  Reports C: and D: free/total space to the lab workstations platform.
 
-.DESCRIPTION
-  No Python required — uses built-in PowerShell on Windows lab PCs.
+.NOTES
+  TEST MODE: values below are hardcoded so you do NOT need admin / env vars.
+  On Render → Environment, add the SAME token:
+    Key:   LAB_STORAGE_TOKEN
+    Value: lab-teste-cmq-2026
 
-  Workstation id format (lowercase):
-    <laboratorio>-baia-<codigo>
-    Examples: cmq-baia-04, cmq-baia-07, cmq-baia-igc, cepe-geo-baia-01
-
-  Schedule (run once as admin on each PC):
-
-    schtasks /Create /TN "Lab Storage Report" /SC DAILY /ST 08:00 ^
-      /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\lab\report-storage.ps1" ^
-      /RU SYSTEM
-
-.ENVIRONMENT
-  LAB_STORAGE_URL      - e.g. https://leucaena.earth/ws/api/storage
-  LAB_STORAGE_TOKEN    - same value as server env LAB_STORAGE_TOKEN
-  LAB_WORKSTATION_ID   - e.g. cmq-baia-04 (preferred)
-  LAB_BAY              - optional fallback, e.g. 4 or IGC
+  Run (no admin needed for the env vars):
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\lab\report-storage.ps1
 #>
 
 $ErrorActionPreference = 'Stop'
 
-$ApiUrl = if ($env:LAB_STORAGE_URL) { $env:LAB_STORAGE_URL } else { 'https://YOUR-HOST/ws/api/storage' }
-$Token = if ($env:LAB_STORAGE_TOKEN) { $env:LAB_STORAGE_TOKEN } else { 'CHANGE_ME' }
-$WorkstationId = if ($env:LAB_WORKSTATION_ID) { $env:LAB_WORKSTATION_ID } else { '' }
-$Bay = if ($env:LAB_BAY) { $env:LAB_BAY } else { '' }
+# ─── CONFIG EXPLICITA (teste) — edite aqui se precisar ───
+$ApiUrl        = 'https://leucaena.earth/ws/api/storage'
+$Token         = 'lab-teste-cmq-2026'
+$WorkstationId = 'cmq-baia-07'   # << troque se for outra baia (ex: cmq-baia-04)
+$Bay           = ''
+# ─────────────────────────────────────────────────────────
 
 function Get-DiskInfo([string]$Letter) {
   $drive = Get-PSDrive -Name $Letter -ErrorAction SilentlyContinue
@@ -73,6 +65,8 @@ $headers = @{
   'Content-Type'        = 'application/json'
   'X-Lab-Storage-Token' = $Token
 }
+
+Write-Output ("Enviando para {0} como {1} ..." -f $ApiUrl, $WorkstationId)
 
 try {
   $resp = Invoke-RestMethod -Method Post -Uri $ApiUrl -Headers $headers -Body $body -TimeoutSec 30
