@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Workstation, normalizeLab, labTagClass } from '../types';
 import { formatBayLabel } from '../utils/dateUtils';
-import { formatStorageFreeLabel } from '../api';
+import { formatStorageFreeLabel, formatStorageTotalLabel } from '../api';
 import type { StorageReport } from '../types';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { Copy, Check, X, Server } from 'lucide-react';
@@ -69,7 +69,8 @@ export const WorkstationInfoModal: React.FC<WorkstationInfoModalProps> = ({
   if (!isOpen || !workstation) return null;
 
   const lab = normalizeLab(workstation.lab);
-  const storageLine = formatStorageFreeLabel(storage);
+  const storageFree = formatStorageFreeLabel(storage);
+  const storageTotal = formatStorageTotalLabel(storage);
 
   return (
     <div
@@ -123,8 +124,17 @@ export const WorkstationInfoModal: React.FC<WorkstationInfoModalProps> = ({
             <CopyRow label="Sistema" value={workstation.os} />
             <CopyRow label="Localização" value={workstation.location} />
             <CopyRow label="Notas" value={workstation.notes} />
-            {storageLine && (
-              <CopyRow label="Disco livre (último reporte)" value={`${storageLine} livres`} />
+            {storageTotal && (
+              <CopyRow label="Disco total (último reporte)" value={storageTotal} />
+            )}
+            {storageFree && (
+              <CopyRow label="Disco livre (último reporte)" value={`${storageFree} livres`} />
+            )}
+            {storage?.collectedAt && (
+              <CopyRow
+                label="Storage coletado em"
+                value={new Date(storage.collectedAt).toLocaleString('pt-BR')}
+              />
             )}
           </div>
 

@@ -17,6 +17,8 @@ import {
   getCurrentActiveReservation,
   getTimeRemaining,
 } from '../utils/dateUtils';
+import { formatStorageCellLabel } from '../api';
+import type { StorageLatestMap } from '../types';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { isOverlapping } from '../utils/fairUseValidator';
 import { getSoftInterval, getHardInterval } from '../utils/sharedUse';
@@ -91,6 +93,8 @@ interface CalendarViewProps {
   workstations: Workstation[];
   reservations: Reservation[];
   labs?: LabId[];
+  /** Latest disk reports from lab PC agents (keyed by workstation id) */
+  storageLatest?: StorageLatestMap;
   onSlotClick: (workstationId: string, date: Date, startHour: number, endHour?: number) => void;
   onReservationClick: (reservation: Reservation) => void;
   onQuickCheckIn?: (workstationId: string) => void;
@@ -102,6 +106,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   workstations,
   reservations,
   labs: labsProp,
+  storageLatest = {},
   onSlotClick,
   onReservationClick,
   onWorkstationInfo,
@@ -253,7 +258,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const hoursArray = Array.from({ length: 24 }, (_, i) => i);
   // Mobile/notebook keep solid mins; large screens flex-fill leftover vertical space
   const ROW_H =
-    'min-h-[84px] sm:min-h-[100px] lg:min-h-[118px] flex-1 basis-0';
+    'min-h-[96px] sm:min-h-[112px] lg:min-h-[128px] flex-1 basis-0';
   const ACCORDION_H = 'h-8 shrink-0';
   const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
   const currentLinePercent = (currentHourDecimal / 24) * 100;
@@ -721,7 +726,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <div
                 ref={dayLeftRef}
                 onScroll={() => syncDayScroll('left')}
-                className="w-[5.75rem] sm:w-[7.25rem] shrink-0 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)] no-scrollbar"
+                className="w-[6.5rem] sm:w-[8rem] shrink-0 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)] no-scrollbar"
               >
                 <div className="min-h-full flex flex-col">
                   {workstationsByLab.map(({ lab, items }) => {
@@ -751,6 +756,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             const remaining = activeRes
                               ? getTimeRemaining(activeRes.endTime)
                               : null;
+                            const storageLabel = formatStorageCellLabel(
+                              storageLatest[ws.id]
+                            );
                             return (
                               <div
                                 key={ws.id}
@@ -762,7 +770,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                   showBadge={false}
                                   statusBorder={isBusy ? 'in_use' : 'available'}
                                   onClick={() => onWorkstationInfo?.(ws)}
-                                  title={`${ws.name} — ver informações`}
+                                  title={`${ws.name} - ver info`}
                                 />
                                 <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
                                   {formatBayLabel(ws.bayNumber)}
@@ -788,6 +796,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                     Livre
                                   </span>
                                 )}
+                                {storageLabel ? (
+                                  <div
+                                    className="w-full px-0.5 font-mono text-[7px] sm:text-[8px] font-semibold text-slate-500 text-center leading-tight tabular-nums"
+                                    title="Disco livre / total"
+                                  >
+                                    {storageLabel}
+                                  </div>
+                                ) : null}
                               </div>
                             );
                           })}

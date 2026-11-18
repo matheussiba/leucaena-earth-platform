@@ -518,6 +518,7 @@ export default function App() {
             workstations={liveWorkstations}
             reservations={reservations}
             labs={registeredLabs}
+            storageLatest={storageLatest}
             onSlotClick={handleTimelineSlotClick}
             onReservationClick={handleReservationClick}
             onQuickCheckIn={handleOpenQuickCheckIn}

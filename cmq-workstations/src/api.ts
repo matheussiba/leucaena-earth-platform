@@ -215,14 +215,46 @@ export async function loadState(): Promise<CmqState> {
   };
 }
 
+function formatBytesShort(bytes: number): string {
+  const tb = bytes / 1024 ** 4;
+  if (tb >= 1) return `${tb >= 10 ? Math.round(tb) : tb.toFixed(1)} TB`;
+  const gb = bytes / 1024 ** 3;
+  return gb >= 100 ? `${Math.round(gb)} GB` : `${gb.toFixed(1)} GB`;
+}
+
 /** Format free space for compact UI (e.g. "C: 120 GB livres"). */
 export function formatStorageFreeLabel(report?: { disks?: Array<{ mount: string; freeBytes: number }> } | null): string {
   if (!report?.disks?.length) return '';
   return report.disks
+    .map((d) => `${d.mount} ${formatBytesShort(d.freeBytes)}`)
+    .join(' · ');
+}
+
+/** Format total capacity (e.g. "C: 476 GB · D: 1.8 TB"). */
+export function formatStorageTotalLabel(report?: {
+  disks?: Array<{ mount: string; totalBytes: number }>;
+} | null): string {
+  if (!report?.disks?.length) return '';
+  return report.disks
+    .map((d) => `${d.mount} ${formatBytesShort(d.totalBytes)}`)
+    .join(' · ');
+}
+
+/** Bay-cell compact line: free/total per disk (e.g. "C 80/476 GB"). */
+export function formatStorageCellLabel(report?: {
+  disks?: Array<{ mount: string; freeBytes: number; totalBytes: number }>;
+} | null): string {
+  if (!report?.disks?.length) return '';
+  return report.disks
     .map((d) => {
-      const gb = d.freeBytes / (1024 ** 3);
-      const label = gb >= 100 ? `${Math.round(gb)} GB` : `${gb.toFixed(1)} GB`;
-      return `${d.mount} ${label}`;
+      const letter = d.mount.replace(':', '');
+      const useTb = d.totalBytes >= 1024 ** 4;
+      const div = useTb ? 1024 ** 4 : 1024 ** 3;
+      const unit = useTb ? 'TB' : 'GB';
+      const free = d.freeBytes / div;
+      const total = d.totalBytes / div;
+      const fmt = (n: number) => (n >= 100 ? `${Math.round(n)}` : n.toFixed(1));
+      return `${letter} ${fmt(free)}/${fmt(total)} ${unit}`;
     })
     .join(' · ');
 }
