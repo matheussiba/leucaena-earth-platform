@@ -36,29 +36,31 @@ export function makeWorkstationId(lab: string, bay: number | string): string {
   return `${labSlug}-baia-${bayFinal}`;
 }
 
-/** Palette for lab tags — cycles for any new lab name. */
+/** Palette for lab tags — cycles for any new lab name (CMQ/CePE-Geo fixed below). */
 const LAB_TAG_STYLES = [
   'bg-sky-100 text-sky-950 border-sky-300 ring-1 ring-sky-200/80',
-  'bg-violet-100 text-violet-900 border-violet-300 ring-1 ring-violet-200/80',
   'bg-emerald-100 text-emerald-900 border-emerald-300 ring-1 ring-emerald-200/80',
-  'bg-amber-100 text-amber-950 border-amber-300 ring-1 ring-amber-200/80',
   'bg-rose-100 text-rose-900 border-rose-300 ring-1 ring-rose-200/80',
   'bg-indigo-100 text-indigo-900 border-indigo-300 ring-1 ring-indigo-200/80',
   'bg-teal-100 text-teal-900 border-teal-300 ring-1 ring-teal-200/80',
-  'bg-orange-100 text-orange-950 border-orange-300 ring-1 ring-orange-200/80',
+  'bg-amber-100 text-amber-950 border-amber-300 ring-1 ring-amber-200/80',
 ];
+
+const LAB_TAG_CMQ =
+  'bg-orange-100 text-orange-950 border-orange-400 ring-1 ring-orange-200/80';
+const LAB_TAG_CEPE =
+  'bg-violet-100 text-violet-950 border-violet-400 ring-1 ring-violet-200/80';
 
 export function labTagClass(lab?: string | null): string {
   const id = normalizeLab(lab);
   if (id === UNALLOCATED_LAB) {
     return 'bg-slate-100 text-slate-700 border-slate-300 ring-1 ring-slate-200/80';
   }
-  if (id === DEFAULT_LAB) return LAB_TAG_STYLES[0];
+  if (id === DEFAULT_LAB) return LAB_TAG_CMQ;
+  if (id === CEPE_GEO_LAB || id.toLowerCase() === 'cepe-geo') return LAB_TAG_CEPE;
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  const idx = Math.abs(hash) % LAB_TAG_STYLES.length;
-  // Avoid colliding with CMQ's sky style when possible
-  return LAB_TAG_STYLES[idx === 0 ? 1 : idx];
+  return LAB_TAG_STYLES[Math.abs(hash) % LAB_TAG_STYLES.length];
 }
 
 /** Display names like "CMQ - Matheus Barros" for clearer selection. */

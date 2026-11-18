@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Workstation, WorkstationStatus } from '../types';
+import { Workstation, WorkstationStatus, normalizeLab } from '../types';
 import { formatBayLabel } from '../utils/dateUtils';
 import { Monitor } from 'lucide-react';
 
@@ -62,7 +62,7 @@ export const WorkstationThumbnail: React.FC<WorkstationThumbnailProps> = ({
         <>
           <img
             src={workstation.imageUrl}
-            alt={workstation.name}
+            alt={`${normalizeLab(workstation.lab)} - ${workstation.name}`}
             referrerPolicy="no-referrer"
             onError={() => setImgError(true)}
             className="w-full h-full object-cover"

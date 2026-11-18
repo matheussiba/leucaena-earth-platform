@@ -9,7 +9,14 @@ import {
   collectLabs,
   DEFAULT_LABS,
 } from '../types';
-import { formatTime, formatDateFull, isSameDay, formatBayLabel } from '../utils/dateUtils';
+import {
+  formatTime,
+  formatDateFull,
+  isSameDay,
+  formatBayLabel,
+  getCurrentActiveReservation,
+  getTimeRemaining,
+} from '../utils/dateUtils';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { isOverlapping } from '../utils/fairUseValidator';
 import { getSoftInterval, getHardInterval } from '../utils/sharedUse';
@@ -22,8 +29,6 @@ import {
   AlertTriangle,
   Monitor,
   Share2,
-  Maximize2,
-  Minimize2
 } from 'lucide-react';
 
 export const LabTag: React.FC<{ lab?: string | null; className?: string }> = ({
@@ -86,22 +91,23 @@ interface CalendarViewProps {
   workstations: Workstation[];
   reservations: Reservation[];
   labs?: LabId[];
-  /** Focus mode: calendar fills the viewport; chrome outside is hidden by App. */
-  expanded?: boolean;
-  onToggleExpanded?: () => void;
   onSlotClick: (workstationId: string, date: Date, startHour: number, endHour?: number) => void;
   onReservationClick: (reservation: Reservation) => void;
   onQuickCheckIn?: (workstationId: string) => void;
+  /** Click bay photo → machine specs / IP */
+  onWorkstationInfo?: (workstation: Workstation) => void;
+  onReleaseReservation?: (reservation: Reservation) => void;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
   workstations,
   reservations,
   labs: labsProp,
-  expanded = false,
-  onToggleExpanded,
   onSlotClick,
   onReservationClick,
+  onQuickCheckIn,
+  onWorkstationInfo,
+  onReleaseReservation,
 }) => {
   const [viewMode, setViewMode] = useState<CalendarViewMode>('day');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -250,7 +256,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const hoursArray = Array.from({ length: 24 }, (_, i) => i);
   // Mobile/notebook keep solid mins; large screens flex-fill leftover vertical space
   const ROW_H =
-    'min-h-[72px] sm:min-h-[88px] lg:min-h-[110px] flex-1 basis-0';
+    'min-h-[96px] sm:min-h-[112px] lg:min-h-[128px] flex-1 basis-0';
   const ACCORDION_H = 'h-8 shrink-0';
   const currentHourDecimal = now.getHours() + now.getMinutes() / 60;
   const currentLinePercent = (currentHourDecimal / 24) * 100;
@@ -378,11 +384,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               {viewMode === 'month' &&
                 selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </span>
-            {expanded && (
-              <span className="hidden md:inline-flex text-[10px] font-semibold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
-                Foco
-              </span>
-            )}
           </div>
         </div>
 
@@ -438,76 +439,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               Mês
             </button>
           </div>
-
-          {onToggleExpanded && (
-            <button
-              type="button"
-              onClick={onToggleExpanded}
-              title={expanded ? 'Sair do foco (Esc)' : 'Ampliar cronograma'}
-              aria-pressed={expanded}
-              className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
-                expanded
-                  ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
-                  : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              {expanded ? (
-                <Minimize2 className="w-3.5 h-3.5" />
-              ) : (
-                <Maximize2 className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
         </div>
       </div>
-
-      {/* Legend — hidden in focus mode and on short viewports to free cronograma space */}
-      {!expanded && (
-        <div className="shrink-0 bg-white rounded-lg border border-slate-200 px-2 sm:px-3 py-0.5 sm:py-1.5 flex flex-wrap items-center justify-between gap-1 sm:gap-2 text-xs shadow-2xs [@media(max-height:720px)]:hidden">
-          {viewMode === 'day' && (
-            <span className="hidden lg:flex font-mono text-[10px] sm:text-[11px] text-blue-700 font-bold items-center gap-1.5 leading-tight">
-              Clique e arraste no cronograma para marcar o intervalo
-            </span>
-          )}
-
-          {viewMode === 'week' && (
-            <div className="flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="font-semibold text-slate-500">Cores das Baias:</span>
-              {visibleWorkstations.map((w) => {
-                const info = getWorkstationColorInfo(w.bayNumber);
-                return (
-                  <span
-                    key={w.id}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] shadow-2xs ${info.badge}`}
-                  >
-                    <Monitor className={`w-3 h-3 ${info.icon}`} />
-                    <LabTag lab={w.lab} />
-                    <span>{formatBayLabel(w.bayNumber)}</span>
-                  </span>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3.5 ml-auto text-[10px] sm:text-[11px] font-medium leading-tight">
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-blue-50 border border-blue-300"></span>
-              <span className="text-slate-800">Agendamento</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-emerald-100 border border-emerald-400 flex items-center justify-center">
-                <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-600"></span>
-              </span>
-              <span className="text-slate-800">Em Uso Agora</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <AlertTriangle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500 fill-amber-100 shrink-0" />
-              <span className="text-slate-800 font-semibold sm:hidden">Excedente</span>
-              <span className="text-slate-800 font-semibold hidden sm:inline">Excedente Fair-Use</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* --------------------------------------------------------------------- */}
       {/* 1. DIA VIEW — Excel freeze: Baia col + hours header fixed; synced scroll */}
@@ -756,7 +689,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
             {/* Header row: corner + horizontally scrollable hours */}
             <div className="shrink-0 flex border-b border-slate-200 z-40 bg-slate-50">
-              <div className="w-[4.5rem] sm:w-24 shrink-0 px-1.5 py-1.5 border-r border-slate-200 bg-slate-50 text-[10px] sm:text-xs font-semibold text-slate-600 text-center shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)]">
+              <div className="w-[5.75rem] sm:w-[7.25rem] shrink-0 px-1.5 py-1.5 border-r border-slate-200 bg-slate-50 text-[10px] sm:text-xs font-semibold text-slate-600 text-center shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)]">
                 Baia
               </div>
               <div
@@ -791,7 +724,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <div
                 ref={dayLeftRef}
                 onScroll={() => syncDayScroll('left')}
-                className="w-[4.5rem] sm:w-24 shrink-0 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)] no-scrollbar"
+                className="w-[5.75rem] sm:w-[7.25rem] shrink-0 overflow-y-auto overflow-x-hidden border-r border-slate-200 bg-white z-30 shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)] no-scrollbar"
               >
                 <div className="min-h-full flex flex-col">
                   {workstationsByLab.map(({ lab, items }) => {
@@ -815,20 +748,81 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           />
                         </button>
                         {open &&
-                          items.map((ws) => (
-                            <div
-                              key={ws.id}
-                              className={`${ROW_H} px-1 py-1 flex flex-col items-center justify-center gap-0.5 border-b border-slate-100 bg-white`}
-                            >
-                              <WorkstationThumbnail workstation={ws} size="sm" showBadge={false} />
-                              <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
-                                {formatBayLabel(ws.bayNumber)}
+                          items.map((ws) => {
+                            const activeRes = getCurrentActiveReservation(ws.id, reservations);
+                            const isBusy = !!activeRes;
+                            const remaining = activeRes
+                              ? getTimeRemaining(activeRes.endTime)
+                              : null;
+                            return (
+                              <div
+                                key={ws.id}
+                                className={`${ROW_H} px-1 py-1 flex flex-col items-center justify-center gap-0.5 border-b border-slate-100 bg-white`}
+                              >
+                                <WorkstationThumbnail
+                                  workstation={ws}
+                                  size="sm"
+                                  showBadge={false}
+                                  statusBorder={isBusy ? 'in_use' : 'available'}
+                                  onClick={() => onWorkstationInfo?.(ws)}
+                                  title={`${normalizeLab(ws.lab)} · ${ws.name} — ver config / IP`}
+                                />
+                                <div className="font-mono text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
+                                  {formatBayLabel(ws.bayNumber)}
+                                </div>
+                                <div className="w-full text-[8px] sm:text-[9px] font-semibold text-slate-800 text-center leading-tight line-clamp-1 px-0.5">
+                                  {ws.name}
+                                </div>
+                                {isBusy && activeRes ? (
+                                  <div className="w-full flex flex-col items-center gap-0.5 px-0.5">
+                                    <div className="inline-flex max-w-full items-center gap-0.5 px-1 py-0.5 rounded text-[8px] sm:text-[9px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
+                                      <span className="w-1 h-1 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                                      <span className="truncate">
+                                        {activeRes.researcherName.split(' ')[0]}
+                                      </span>
+                                      {activeRes.isNonFairUse && (
+                                        <AlertTriangle className="w-2.5 h-2.5 text-amber-500 fill-amber-100 shrink-0" />
+                                      )}
+                                    </div>
+                                    <div className="font-mono text-[8px] sm:text-[9px] font-bold text-slate-700 leading-none tabular-nums">
+                                      {remaining?.formatted}
+                                    </div>
+                                    {onReleaseReservation && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onReleaseReservation(activeRes);
+                                        }}
+                                        className="text-[8px] font-semibold text-rose-700 hover:underline leading-none"
+                                      >
+                                        Liberar
+                                      </button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[8px] font-bold">
+                                      <span className="w-1 h-1 rounded-full bg-emerald-500" />
+                                      Livre
+                                    </span>
+                                    {onQuickCheckIn && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onQuickCheckIn(ws.id);
+                                        }}
+                                        className="text-[8px] font-semibold text-emerald-700 hover:underline leading-none"
+                                      >
+                                        Usar →
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <div className="w-full text-[8px] sm:text-[9px] font-semibold text-slate-800 text-center leading-tight line-clamp-2 px-0.5">
-                                {ws.name}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                       </div>
                     );
                   })}

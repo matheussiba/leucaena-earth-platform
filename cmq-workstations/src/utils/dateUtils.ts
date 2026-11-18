@@ -40,6 +40,7 @@ export function isSameDay(d1: Date, d2: Date): boolean {
 
 export function getTimeRemaining(endIso: string): {
   totalMs: number;
+  days: number;
   hours: number;
   minutes: number;
   seconds: number;
@@ -53,6 +54,7 @@ export function getTimeRemaining(endIso: string): {
   if (totalMs <= 0) {
     return {
       totalMs: 0,
+      days: 0,
       hours: 0,
       minutes: 0,
       seconds: 0,
@@ -61,20 +63,24 @@ export function getTimeRemaining(endIso: string): {
     };
   }
 
-  const hours = Math.floor(totalMs / (1000 * 60 * 60));
+  const days = Math.floor(totalMs / (1000 * 60 * 60 * 24));
+  const hoursTotal = Math.floor(totalMs / (1000 * 60 * 60));
+  const hours = hoursTotal % 24;
   const minutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((totalMs % (1000 * 60)) / 1000);
 
   let formatted = '';
-  if (hours > 0) {
-    formatted = `${hours}h ${minutes}m`;
+  if (days > 0) {
+    formatted = hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  } else if (hoursTotal > 0) {
+    formatted = `${hoursTotal}h ${minutes}m`;
   } else if (minutes > 0) {
     formatted = `${minutes}m ${seconds}s`;
   } else {
     formatted = `${seconds}s`;
   }
 
-  return { totalMs, hours, minutes, seconds, formatted, isExpired: false };
+  return { totalMs, days, hours: hoursTotal, minutes, seconds, formatted, isExpired: false };
 }
 
 export function getCurrentActiveReservation(

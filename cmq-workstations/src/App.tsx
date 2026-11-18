@@ -14,10 +14,9 @@ import {
   DEFAULT_LAB,
   UNALLOCATED_LAB,
 } from './types';
-import { getCurrentActiveReservation, getTimeRemaining, formatTime, formatBayLabel } from './utils/dateUtils';
+import { getCurrentActiveReservation, formatTime, formatBayLabel } from './utils/dateUtils';
 import { Navbar } from './components/Navbar';
-import { CalendarView, LabTag } from './components/CalendarView';
-import { WorkstationThumbnail } from './components/WorkstationThumbnail';
+import { CalendarView } from './components/CalendarView';
 import { ReservationModal } from './components/ReservationModal';
 import { RulesModal } from './components/RulesModal';
 import { MembersModal } from './components/MembersModal';
@@ -27,9 +26,9 @@ import { StatsModal } from './components/StatsModal';
 import { CheckOutConfirmModal } from './components/CheckOutConfirmModal';
 import { ExtendModal } from './components/ExtendModal';
 import { ReservationDetailsModal } from './components/ReservationDetailsModal';
-import { Check, AlertTriangle, Zap, ExternalLink } from 'lucide-react';
+import { Check, Zap, ExternalLink } from 'lucide-react';
 import { applyFairUseFlags } from './utils/fairUseValidator';
-import { defaultState, loadState, saveState, formatStorageFreeLabel, isLegacyCmqMount } from './api';
+import { defaultState, loadState, saveState, isLegacyCmqMount } from './api';
 import type { StorageLatestMap } from './types';
 
 const ACTIVITY_LOG_MAX = 400;
@@ -69,7 +68,7 @@ export default function App() {
   const [isWorkstationsModalOpen, setIsWorkstationsModalOpen] = useState(false);
   const [isLabsModalOpen, setIsLabsModalOpen] = useState(false);
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
-  const [calendarExpanded, setCalendarExpanded] = useState(false);
+  const [workstationEditId, setWorkstationEditId] = useState<string | undefined>(undefined);
 
   const pushActivity = (action: string, details: string) => {
     setActivityLog((prev) => [makeActivity(action, details), ...prev].slice(0, ACTIVITY_LOG_MAX));
@@ -97,15 +96,6 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
-
-  useEffect(() => {
-    if (!calendarExpanded) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCalendarExpanded(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [calendarExpanded]);
 
   // Load shared state from the platform DB (survives deploys on DATA_PATH).
   useEffect(() => {
@@ -487,8 +477,8 @@ export default function App() {
       )}
 
       {/* Migration notice — only on legacy /cmq mount */}
-      {!calendarExpanded && isLegacyCmqMount() && (
-        <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-3 sm:px-5 py-2 text-xs text-amber-950">
+      {isLegacyCmqMount() && (
+        <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-3 sm:px-5 py-1.5 text-xs text-amber-950">
           <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
             <p className="leading-snug">
               <span className="font-bold">Aviso:</span> este endereço{' '}
@@ -508,187 +498,44 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar — hidden in calendar focus mode */}
-      {!calendarExpanded && (
-        <Navbar
-          onOpenNewReservation={() => handleOpenNewReservation()}
-          onOpenQuickCheckIn={() => handleOpenQuickCheckIn()}
-          onOpenRules={() => setIsRulesModalOpen(true)}
-          onOpenMembers={() => setIsMembersModalOpen(true)}
-          onOpenWorkstations={() => setIsWorkstationsModalOpen(true)}
-          onOpenLabs={() => setIsLabsModalOpen(true)}
-          onOpenStats={() => setIsStatsModalOpen(true)}
-          totalWorkstations={liveWorkstations.length}
-          inUseCount={inUseCount}
-        />
-      )}
+      <Navbar
+        onOpenNewReservation={() => handleOpenNewReservation()}
+        onOpenQuickCheckIn={() => handleOpenQuickCheckIn()}
+        onOpenRules={() => setIsRulesModalOpen(true)}
+        onOpenMembers={() => setIsMembersModalOpen(true)}
+        onOpenWorkstations={() => {
+          setWorkstationEditId(undefined);
+          setIsWorkstationsModalOpen(true);
+        }}
+        onOpenLabs={() => setIsLabsModalOpen(true)}
+        onOpenStats={() => setIsStatsModalOpen(true)}
+        totalWorkstations={liveWorkstations.length}
+        inUseCount={inUseCount}
+      />
 
-      {/* Main Content — no page scroll; only calendar hours area may scroll */}
-      <main
-        className={`flex-1 min-h-0 overflow-hidden w-full flex flex-col ${
-          calendarExpanded
-            ? 'px-1.5 sm:px-2.5 py-1.5 sm:py-2 gap-1.5'
-            : 'px-2.5 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 py-2 sm:py-3 lg:py-3.5 gap-2 sm:gap-3'
-        }`}
-      >
-        {/* Mobile: single-row badges — livre/ocupado no contorno */}
-        <div
-          className={`${
-            calendarExpanded ? 'hidden' : 'sm:hidden'
-          } shrink-0 flex items-center gap-2 overflow-x-auto no-scrollbar`}
-        >
-          {liveWorkstations.map((ws) => {
-            const activeRes = getCurrentActiveReservation(ws.id, reservations);
-            const isBusy = !!activeRes;
-            return (
-              <WorkstationThumbnail
-                key={ws.id}
-                workstation={ws}
-                size="md"
-                showBadge
-                statusBorder={isBusy ? 'in_use' : 'available'}
-                onClick={() => {
-                  if (isBusy && activeRes) handleReservationClick(activeRes);
-                  else handleOpenQuickCheckIn(ws.id);
-                }}
-                title={
-                  isBusy && activeRes
-                    ? `${ws.lab} · ${formatBayLabel(ws.bayNumber)} · ${activeRes.researcherName.split(' ')[0]}`
-                    : `${ws.lab} · ${formatBayLabel(ws.bayNumber)} · Livre`
-                }
-              />
-            );
-          })}
-          <div className="flex items-center gap-2 pl-1 text-[9px] font-medium text-slate-500 shrink-0">
-            <span className="inline-flex items-center gap-1">
-              <span className="w-2 h-2 rounded-sm border-2 border-emerald-400" />
-              Livre
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="w-2 h-2 rounded-sm border-2 border-amber-500" />
-              Ocup.
-            </span>
-          </div>
-        </div>
-
-        {/* Tablet/desktop cards — hidden in focus mode and on short viewports */}
-        <div
-          className={`${
-            calendarExpanded
-              ? 'hidden'
-              : 'hidden sm:flex [@media(max-height:720px)]:hidden'
-          } shrink-0 flex-row gap-2 sm:gap-2.5 overflow-x-auto`}
-        >
-          {liveWorkstations.map((ws) => {
-            const activeRes = getCurrentActiveReservation(ws.id, reservations);
-            const isBusy = !!activeRes;
-            const remaining = activeRes ? getTimeRemaining(activeRes.endTime) : null;
-
-            return (
-              <div
-                key={ws.id}
-                className={`bg-white rounded-xl border px-2.5 py-2 transition-all min-w-0 flex-1 basis-0 ${
-                  isBusy
-                    ? 'border-amber-300/80 ring-1 ring-amber-100 shadow-2xs'
-                    : 'border-slate-200 shadow-2xs hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <WorkstationThumbnail
-                      workstation={ws}
-                      size="md"
-                      statusBorder={isBusy ? 'in_use' : 'available'}
-                    />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <LabTag lab={ws.lab} />
-                        <span className="font-mono text-xs font-bold text-slate-500 shrink-0">
-                          {formatBayLabel(ws.bayNumber)}
-                        </span>
-                        <span className="font-bold text-slate-900 text-xs truncate">
-                          {ws.name}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                        {ws.gpu}
-                        {ws.ip ? ` · ${ws.ip}` : ''}
-                      </div>
-                      {formatStorageFreeLabel(storageLatest[ws.id]) && (
-                        <div className="text-[10px] font-mono text-slate-600 truncate mt-0.5" title="Espaço livre (último reporte)">
-                          Disco {formatStorageFreeLabel(storageLatest[ws.id])} livres
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    {isBusy && activeRes ? (
-                      <div>
-                        <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-900">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                          <span>{activeRes.researcherName.split(' ')[0]}</span>
-                          {activeRes.isNonFairUse && (
-                            <span title="Excede o limite de Fair-Use">
-                              <AlertTriangle className="w-3 h-3 text-amber-500 fill-amber-100 shrink-0 ml-0.5" />
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] font-mono text-slate-700 font-semibold mt-0.5">
-                          {remaining?.formatted}
-                        </div>
-                        <button
-                          onClick={() => {
-                            setReservationToRelease(activeRes);
-                            setIsReleaseModalOpen(true);
-                          }}
-                          className="text-[10px] font-semibold text-rose-700 hover:underline mt-0.5"
-                        >
-                          Liberar
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          <span>Livre</span>
-                        </span>
-                        <button
-                          onClick={() => handleOpenQuickCheckIn(ws.id)}
-                          className="mt-0.5 block text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
-                        >
-                          Usar Agora →
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Primary View: Unified Calendário (Dia | Semana | Mês) */}
+      {/* Calendar fills remaining viewport — bay status lives in the left column */}
+      <main className="flex-1 min-h-0 overflow-hidden w-full px-1.5 sm:px-2.5 py-1.5 sm:py-2 flex flex-col">
         <div className="flex-1 min-h-0 flex flex-col">
           <CalendarView
             workstations={liveWorkstations}
             reservations={reservations}
             labs={registeredLabs}
-            expanded={calendarExpanded}
-            onToggleExpanded={() => setCalendarExpanded((v) => !v)}
             onSlotClick={handleTimelineSlotClick}
             onReservationClick={handleReservationClick}
             onQuickCheckIn={handleOpenQuickCheckIn}
+            onWorkstationInfo={(ws) => {
+              setWorkstationEditId(ws.id);
+              setIsWorkstationsModalOpen(true);
+            }}
+            onReleaseReservation={(res) => {
+              setReservationToRelease(res);
+              setIsReleaseModalOpen(true);
+            }}
           />
         </div>
       </main>
 
-      {/* Simplified Footer — hidden in focus mode */}
-      <footer
-        className={`${
-          calendarExpanded ? 'hidden' : 'shrink-0'
-        } bg-white border-t border-slate-200 py-1 lg:py-1.5 text-[10px] sm:text-xs text-slate-500`}
-      >
+      <footer className="shrink-0 bg-white border-t border-slate-200 py-1 lg:py-1.5 text-[10px] sm:text-xs text-slate-500">
         <div className="w-full px-2.5 sm:px-5 lg:px-8 xl:px-10 2xl:px-12 flex items-center justify-center sm:justify-between gap-2 whitespace-nowrap overflow-hidden">
           <div className="truncate">
             <span className="sm:hidden">
@@ -776,15 +623,22 @@ export default function App() {
         onDeleteMember={handleDeleteMember}
       />
 
-      <WorkstationsManagerModal
-        isOpen={isWorkstationsModalOpen}
-        onClose={() => setIsWorkstationsModalOpen(false)}
-        workstations={liveWorkstations}
-        labs={registeredLabs}
-        onSaveWorkstation={handleSaveWorkstation}
-        onDeleteWorkstation={handleDeleteWorkstation}
-        onAddLab={handleAddLab}
-      />
+      {isWorkstationsModalOpen && (
+        <WorkstationsManagerModal
+          key={workstationEditId || 'manager'}
+          isOpen
+          onClose={() => {
+            setIsWorkstationsModalOpen(false);
+            setWorkstationEditId(undefined);
+          }}
+          workstations={liveWorkstations}
+          labs={registeredLabs}
+          onSaveWorkstation={handleSaveWorkstation}
+          onDeleteWorkstation={handleDeleteWorkstation}
+          onAddLab={handleAddLab}
+          initialEditWsId={workstationEditId}
+        />
+      )}
 
       <LabsModal
         isOpen={isLabsModalOpen}
