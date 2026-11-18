@@ -27,9 +27,9 @@ import { StatsModal } from './components/StatsModal';
 import { CheckOutConfirmModal } from './components/CheckOutConfirmModal';
 import { ExtendModal } from './components/ExtendModal';
 import { ReservationDetailsModal } from './components/ReservationDetailsModal';
-import { Check, AlertTriangle, Zap } from 'lucide-react';
+import { Check, AlertTriangle, Zap, ExternalLink } from 'lucide-react';
 import { applyFairUseFlags } from './utils/fairUseValidator';
-import { defaultState, loadState, saveState, formatStorageFreeLabel } from './api';
+import { defaultState, loadState, saveState, formatStorageFreeLabel, isLegacyCmqMount } from './api';
 import type { StorageLatestMap } from './types';
 
 const ACTIVITY_LOG_MAX = 400;
@@ -483,6 +483,28 @@ export default function App() {
         <div className="fixed top-16 right-4 sm:right-6 z-50 bg-slate-900 text-white px-3.5 py-2 rounded-lg shadow-xl border border-slate-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-200">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Migration notice — only on legacy /cmq mount */}
+      {!calendarExpanded && isLegacyCmqMount() && (
+        <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-3 sm:px-5 py-2 text-xs text-amber-950">
+          <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
+            <p className="leading-snug">
+              <span className="font-bold">Aviso:</span> este endereço{' '}
+              <span className="font-mono font-semibold">/cmq</span> será desativado em cerca de{' '}
+              <span className="font-semibold">2 semanas</span> (por volta de 2 de dezembro de 2026).
+              Use o novo caminho{' '}
+              <span className="font-mono font-semibold">/ws</span> — mesmos dados e funções.
+            </p>
+            <a
+              href="/ws/"
+              className="inline-flex items-center gap-1 shrink-0 self-start sm:self-auto px-2.5 py-1 rounded-md bg-amber-900 text-amber-50 font-semibold hover:bg-amber-800 transition-colors"
+            >
+              Ir para /ws
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
       )}
 

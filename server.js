@@ -241,6 +241,7 @@ app.use((req, res, next) => {
   if (p === '/landing' || p === '/landing.html') return next();
   if (p === '/life' || p.startsWith('/life/')) return next();
   if (p === '/cmq' || p.startsWith('/cmq/')) return next();
+  if (p === '/ws' || p.startsWith('/ws/')) return next();
   if (p === '/inventario' || p.startsWith('/inventario/')) return next();
   if (p === '/invest' || p.startsWith('/invest/')) return next();
   if (req.path.startsWith('/api/')) return next();
@@ -645,17 +646,20 @@ app.use('/life', cpGuard, (req, res, next) => {
 }, express.static(CP_DIR));
 
 // ---------------------------------------------------------------------------
-// Internal CMQ workstations scheduler at /cmq (built assets in deleteme_cmq/).
-// Optional Basic Auth via CMQ_PASSWORD. State lives in cmq_store inside the
-// same SQLite DB on DATA_PATH, so deploys do not wipe reservations.
+// Lab workstations scheduler: /cmq (legacy) + /ws (canonical mirror).
+// Same built assets (deleteme_cmq/) and same cmq_store SQLite state.
+// Optional Basic Auth via CMQ_PASSWORD (alias WS_PASSWORD).
 // ---------------------------------------------------------------------------
 const CMQ_DIR = path.join(__dirname, 'deleteme_cmq');
-const CMQ_PASSWORD = process.env.CMQ_PASSWORD || '';
-/** Shared secret for machine agents posting disk usage (Task Scheduler → POST /cmq/api/storage). */
-const CMQ_STORAGE_TOKEN = process.env.CMQ_STORAGE_TOKEN || '';
+const CMQ_PASSWORD = process.env.WS_PASSWORD || process.env.CMQ_PASSWORD || '';
+/** Shared secret for machine agents (LAB_STORAGE_TOKEN preferred; CMQ_STORAGE_TOKEN still accepted). */
+const LAB_STORAGE_TOKEN =
+  process.env.LAB_STORAGE_TOKEN || process.env.CMQ_STORAGE_TOKEN || '';
 const CMQ_HOSTS = (process.env.CMQ_HOSTS || '')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-const CMQ_STORAGE_HISTORY_DAYS = 90;
+const WS_HOSTS = (process.env.WS_HOSTS || '')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const LAB_STORAGE_HISTORY_DAYS = 90;
 
 function cmqGuard(req, res, next) {
   res.set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex');
@@ -669,12 +673,26 @@ function cmqGuard(req, res, next) {
       if (pass === CMQ_PASSWORD) return next();
     } catch (_) { /* ignore */ }
   }
-  res.set('WWW-Authenticate', 'Basic realm="CMQ", charset="UTF-8"');
+  const realm = (req.path || '').startsWith('/ws') ? 'WS' : 'CMQ';
+  res.set('WWW-Authenticate', `Basic realm="${realm}", charset="UTF-8"`);
   return res.status(401).send('Authentication required.');
 }
 function sendCmqIndex(res) {
   res.set('Cache-Control', 'no-store');
   return res.sendFile(path.join(CMQ_DIR, 'index.html'));
+}
+/** Same SPA under /ws with asset URLs rewritten from /cmq/ → /ws/. */
+function sendWsIndex(res) {
+  try {
+    const html = fs
+      .readFileSync(path.join(CMQ_DIR, 'index.html'), 'utf8')
+      .split('/cmq/')
+      .join('/ws/');
+    res.set('Cache-Control', 'no-store');
+    return res.type('html').send(html);
+  } catch (e) {
+    return res.status(500).send('WS index unavailable');
+  }
 }
 function cmqReadKey(key, fallback) {
   try {
@@ -694,13 +712,14 @@ function cmqWriteKey(key, value) {
 
 app.use((req, res, next) => {
   const host = (req.hostname || '').toLowerCase();
-  if (CMQ_HOSTS.includes(host) && req.method === 'GET' && req.path === '/') {
-    return cmqGuard(req, res, () => sendCmqIndex(res));
+  if (req.method === 'GET' && req.path === '/') {
+    if (WS_HOSTS.includes(host)) return cmqGuard(req, res, () => sendWsIndex(res));
+    if (CMQ_HOSTS.includes(host)) return cmqGuard(req, res, () => sendCmqIndex(res));
   }
   next();
 });
 
-app.get('/cmq/api/state', cmqGuard, (_req, res) => {
+function handleCmqStateGet(_req, res) {
   try {
     res.set('Cache-Control', 'no-store');
     res.json({
@@ -716,9 +735,9 @@ app.get('/cmq/api/state', cmqGuard, (_req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}
 
-app.put('/cmq/api/state', cmqGuard, (req, res) => {
+function handleCmqStatePut(req, res) {
   try {
     const body = req.body || {};
     if (Array.isArray(body.workstations)) cmqWriteKey('workstations', body.workstations);
@@ -732,23 +751,24 @@ app.put('/cmq/api/state', cmqGuard, (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}
 
 /**
  * Disk monitoring from lab PCs (C:/D:).
- * Auth: X-CMQ-Storage-Token or Authorization: Bearer <CMQ_STORAGE_TOKEN>
- * (no Basic Auth — agents use only this token).
+ * Auth: X-Lab-Storage-Token (or legacy X-CMQ-Storage-Token) / Bearer LAB_STORAGE_TOKEN
  */
-function cmqStorageAuth(req, res, next) {
-  if (!CMQ_STORAGE_TOKEN) {
-    return res.status(503).json({ error: 'CMQ_STORAGE_TOKEN not configured on server' });
+function labStorageAuth(req, res, next) {
+  if (!LAB_STORAGE_TOKEN) {
+    return res.status(503).json({ error: 'LAB_STORAGE_TOKEN not configured on server' });
   }
-  const headerToken = String(req.headers['x-cmq-storage-token'] || '').trim();
+  const headerToken = String(
+    req.headers['x-lab-storage-token'] || req.headers['x-cmq-storage-token'] || ''
+  ).trim();
   const auth = String(req.headers.authorization || '');
   const bearer = auth.toLowerCase().startsWith('bearer ')
     ? auth.slice(7).trim()
     : '';
-  if (headerToken === CMQ_STORAGE_TOKEN || bearer === CMQ_STORAGE_TOKEN) return next();
+  if (headerToken === LAB_STORAGE_TOKEN || bearer === LAB_STORAGE_TOKEN) return next();
   return res.status(401).json({ error: 'invalid storage token' });
 }
 
@@ -786,6 +806,10 @@ function resolveStorageKey(report, workstations) {
   if (report.workstationId) {
     const byId = workstations.find((w) => w && w.id === report.workstationId);
     if (byId) return byId.id;
+    // Accept exact id even if not yet in catalog (first report before UI edit)
+    if (/^[a-z0-9]+(?:-[a-z0-9]+)*-baia-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(report.workstationId)) {
+      return report.workstationId;
+    }
   }
   if (report.ip) {
     const byIp = workstations.find(
@@ -804,7 +828,7 @@ function resolveStorageKey(report, workstations) {
   return report.workstationId || report.hostname || report.ip || report.bay || null;
 }
 
-app.post('/cmq/api/storage', cmqStorageAuth, (req, res) => {
+function handleLabStoragePost(req, res) {
   try {
     const report = normalizeStorageReport(req.body || {});
     if (!report) return res.status(400).json({ error: 'invalid payload: disks required' });
@@ -819,7 +843,7 @@ app.post('/cmq/api/storage', cmqStorageAuth, (req, res) => {
     const prevHistory = cmqReadKey('storageHistory', []);
     const history = Array.isArray(prevHistory) ? prevHistory.slice() : [];
     history.push({ ...report, workstationId: key });
-    const cutoff = Date.now() - CMQ_STORAGE_HISTORY_DAYS * 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - LAB_STORAGE_HISTORY_DAYS * 24 * 60 * 60 * 1000;
     const trimmed = history.filter((h) => {
       const t = Date.parse(h.collectedAt || '');
       return Number.isFinite(t) && t >= cutoff;
@@ -830,9 +854,9 @@ app.post('/cmq/api/storage', cmqStorageAuth, (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}
 
-app.get('/cmq/api/storage', cmqGuard, (_req, res) => {
+function handleLabStorageGet(_req, res) {
   try {
     res.set('Cache-Control', 'no-store');
     res.json({
@@ -842,17 +866,25 @@ app.get('/cmq/api/storage', cmqGuard, (_req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
+}
 
-app.get(['/cmq', '/cmq/'], cmqGuard, (_req, res) => sendCmqIndex(res));
-app.use('/cmq', cmqGuard, (req, res, next) => {
-  res.set('Cache-Control', 'no-store');
-  next();
-}, express.static(CMQ_DIR), (req, res) => {
-  // SPA fallback for client-side routes under /cmq/*
-  if (req.method === 'GET') return sendCmqIndex(res);
-  return res.status(404).end();
-});
+function mountLabApp(prefix, sendIndex) {
+  app.get(`${prefix}/api/state`, cmqGuard, handleCmqStateGet);
+  app.put(`${prefix}/api/state`, cmqGuard, handleCmqStatePut);
+  app.post(`${prefix}/api/storage`, labStorageAuth, handleLabStoragePost);
+  app.get(`${prefix}/api/storage`, cmqGuard, handleLabStorageGet);
+  app.get([prefix, `${prefix}/`], cmqGuard, (_req, res) => sendIndex(res));
+  app.use(prefix, cmqGuard, (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  }, express.static(CMQ_DIR), (req, res) => {
+    if (req.method === 'GET') return sendIndex(res);
+    return res.status(404).end();
+  });
+}
+
+mountLabApp('/cmq', sendCmqIndex);
+mountLabApp('/ws', sendWsIndex);
 
 // Internal Inventário Florestal at /inventario (built assets in deleteme_inventario/).
 // Optional Basic Auth via INVENTARIO_PASSWORD. State lives in inventario_store

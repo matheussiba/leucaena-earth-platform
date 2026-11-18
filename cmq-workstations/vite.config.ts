@@ -19,6 +19,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/cmq/api': 'http://localhost:3000',
+      '/ws/api': 'http://localhost:3000',
     },
   },
 });

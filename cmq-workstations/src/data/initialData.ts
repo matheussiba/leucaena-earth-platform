@@ -5,6 +5,7 @@ import {
   LabMember,
   normalizeLab,
   ensureLabPrefixedName,
+  CEPE_GEO_LAB,
 } from '../types';
 
 export const DEFAULT_RULES: FairUseRules = {
@@ -29,11 +30,22 @@ export const INITIAL_MEMBERS: LabMember[] = [
   { id: 'mem-10', name: 'CMQ - Rodrigo Costa', role: 'Pós-Doc' },
 ];
 
+/** Legacy id → canonical `lab-baia-code` id */
+export const WORKSTATION_ID_ALIASES: Record<string, string> = {
+  'ws-baia-04': 'cmq-baia-04',
+  'ws-baia-07': 'cmq-baia-07',
+  'ws-dados-igc': 'cmq-baia-igc',
+};
+
 export const DEFAULT_BAY_IPS: Record<string, string> = {
   '4': '143.107.215.230',
   '04': '143.107.215.230',
   '7': '143.107.215.152',
   '07': '143.107.215.152',
+  'cmq-baia-04': '143.107.215.230',
+  'cmq-baia-07': '143.107.215.152',
+  'cmq-baia-igc': '143.107.215.175',
+  // legacy keys
   'ws-baia-04': '143.107.215.230',
   'ws-baia-07': '143.107.215.152',
   'ws-dados-igc': '143.107.215.175',
@@ -49,7 +61,7 @@ export function defaultIpForBay(ws: Pick<Workstation, 'id' | 'bayNumber'>): stri
 
 export const INITIAL_WORKSTATIONS: Workstation[] = [
   {
-    id: 'ws-baia-04',
+    id: 'cmq-baia-04',
     name: 'Workstation Alpha',
     bayNumber: 4,
     lab: 'CMQ',
@@ -60,14 +72,13 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     cpu: 'Intel Core i9',
     ram: '128 GB RAM',
     internalStorage: '5 TB',
-    additionalStorage: undefined,
     os: 'Ubuntu 24.04 LTS',
     status: 'in_use',
     notes: 'Prioritária para pesquisa e computação.',
     isCustom: false,
   },
   {
-    id: 'ws-baia-07',
+    id: 'cmq-baia-07',
     name: 'Workstation Beta',
     bayNumber: 7,
     lab: 'CMQ',
@@ -78,14 +89,13 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     cpu: 'Intel Core i9',
     ram: '128 GB RAM',
     internalStorage: '5 TB',
-    additionalStorage: undefined,
     os: 'Ubuntu 22.04 LTS',
     status: 'in_use',
     notes: 'Prioritária para pesquisa e computação.',
     isCustom: false,
   },
   {
-    id: 'ws-dados-igc',
+    id: 'cmq-baia-igc',
     name: 'Dados IGC',
     bayNumber: 'IGC',
     lab: 'CMQ',
@@ -95,12 +105,87 @@ export const INITIAL_WORKSTATIONS: Workstation[] = [
     gpu: 'Sem GPU dedicada',
     cpu: '—',
     ram: '32 GB RAM',
-    internalStorage: '28 TB',
-    additionalStorage: '28 TB',
+    internalStorage: '28 TB + 28 TB',
     os: undefined,
     status: 'available',
-    notes: 'Servidor de armazenamento de dados (2× 28 TB).',
+    notes: 'Servidor de armazenamento de dados.',
     isCustom: false,
+  },
+  // CePE-Geo — placeholders (edit real specs in the site)
+  {
+    id: 'cepe-geo-baia-01',
+    name: 'CePE-Geo Baia 01',
+    bayNumber: 1,
+    lab: CEPE_GEO_LAB,
+    location: 'Baia 01 - Laboratório CePE-Geo',
+    imageUrl: '',
+    gpu: 'A definir',
+    cpu: 'A definir',
+    ram: 'A definir',
+    internalStorage: 'A definir',
+    status: 'available',
+    notes: 'Placeholder — editar no site.',
+    isCustom: true,
+  },
+  {
+    id: 'cepe-geo-baia-02',
+    name: 'CePE-Geo Baia 02',
+    bayNumber: 2,
+    lab: CEPE_GEO_LAB,
+    location: 'Baia 02 - Laboratório CePE-Geo',
+    imageUrl: '',
+    gpu: 'A definir',
+    cpu: 'A definir',
+    ram: 'A definir',
+    internalStorage: 'A definir',
+    status: 'available',
+    notes: 'Placeholder — editar no site.',
+    isCustom: true,
+  },
+  {
+    id: 'cepe-geo-baia-03',
+    name: 'CePE-Geo Baia 03',
+    bayNumber: 3,
+    lab: CEPE_GEO_LAB,
+    location: 'Baia 03 - Laboratório CePE-Geo',
+    imageUrl: '',
+    gpu: 'A definir',
+    cpu: 'A definir',
+    ram: 'A definir',
+    internalStorage: 'A definir',
+    status: 'available',
+    notes: 'Placeholder — editar no site.',
+    isCustom: true,
+  },
+  {
+    id: 'cepe-geo-baia-04',
+    name: 'CePE-Geo Baia 04',
+    bayNumber: 4,
+    lab: CEPE_GEO_LAB,
+    location: 'Baia 04 - Laboratório CePE-Geo',
+    imageUrl: '',
+    gpu: 'A definir',
+    cpu: 'A definir',
+    ram: 'A definir',
+    internalStorage: 'A definir',
+    status: 'available',
+    notes: 'Placeholder — editar no site.',
+    isCustom: true,
+  },
+  {
+    id: 'cepe-geo-baia-05',
+    name: 'CePE-Geo Baia 05',
+    bayNumber: 5,
+    lab: CEPE_GEO_LAB,
+    location: 'Baia 05 - Laboratório CePE-Geo',
+    imageUrl: '',
+    gpu: 'A definir',
+    cpu: 'A definir',
+    ram: 'A definir',
+    internalStorage: 'A definir',
+    status: 'available',
+    notes: 'Placeholder — editar no site.',
+    isCustom: true,
   },
 ];
 
@@ -140,100 +225,5 @@ export const createSampleReservations = (): Reservation[] => {
     return d.toISOString();
   };
 
-  const currentHour = now.getHours();
-
-  // 1. Matheus Barros on Baia 04:
-  // Normal usage! Total 4 hours (e.g. started 1h ago, ending in 3h).
-  // 100% within the 12h fair-use limit!
-  const mbStartHour = Math.max(0, currentHour - 1);
-  const mbEndHour = Math.min(23, mbStartHour + 4);
-
-  // 2. Jomil Costa on Baia 07:
-  // Realistic simulation of EXCEEDING Fair-Use!
-  // Started at 06:00, booked for 18h continuous until 24:00 (limit is 12h).
-  // The threshold occurs at 18:00 (06:00 + 12h).
-  // From 06:00 to 18:00 is normal usage; from 18:00 to 24:00 is the visual excess portion.
-  const jcStartHour = 6;
-  const jcThresholdHour = 18;
-  const jcEndHour = 24;
-
-  return [
-    // Baia 04: Matheus Barros (NORMAL)
-    {
-      id: 'res-live-baia4-matheus',
-      workstationId: 'ws-baia-04',
-      researcherName: 'Matheus Barros',
-      researcherRole: 'Doutorado',
-      startTime: getISOForToday(mbStartHour, 0),
-      endTime: getISOForToday(mbEndHour, 0),
-      type: 'instant_checkin',
-      status: 'active',
-      checkedInAt: getISOForToday(mbStartHour, 0),
-      isNonFairUse: false, // Normal, within fair use!
-      notes: 'Execução de experimentos e visualização de dados.',
-      createdAt: null,
-    },
-
-    // Baia 04: Gabriel Ferraz (Scheduled tonight)
-    {
-      id: 'res-today-baia4-evening',
-      workstationId: 'ws-baia-04',
-      researcherName: 'Gabriel Ferraz',
-      researcherRole: 'Mestrado',
-      startTime: getISOForToday(Math.min(20, mbEndHour + 1), 0),
-      endTime: getISOForToday(Math.min(23, mbEndHour + 4), 0),
-      type: 'scheduled',
-      status: 'active',
-      notes: 'Análise de métricas de acurácia.',
-      createdAt: null,
-    },
-
-    // Baia 07: Jomil Costa (18h continuous run - EXCEEDS Fair-Use after 12h threshold)
-    {
-      id: 'res-live-baia7-jomil',
-      workstationId: 'ws-baia-07',
-      researcherName: 'Jomil Costa',
-      researcherRole: 'Pós-Doc',
-      startTime: getISOForToday(jcStartHour, 0),
-      endTime: getISOForToday(jcEndHour === 24 ? 23 : jcEndHour, jcEndHour === 24 ? 59 : 0),
-      type: 'scheduled',
-      status: 'active',
-      checkedInAt: getISOForToday(jcStartHour, 0),
-      isNonFairUse: true,
-      nonFairUseThreshold: getISOForToday(jcThresholdHour, 0),
-      nonFairUseReasons: [
-        `Duração de 18h contínuas ultrapassa o limite diário de 12h do laboratório. O trecho a partir das ${jcThresholdHour}:00 é excedente.`,
-      ],
-      notes: 'Pipeline de simulação pesada. A partir das 18h posso pausar e ceder caso outro colega precise no WhatsApp.',
-      createdAt: null,
-    },
-
-    // Baia 07: Francisca Pereira (Tomorrow morning)
-    {
-      id: 'res-tomorrow-baia7-francisca',
-      workstationId: 'ws-baia-07',
-      researcherName: 'Francisca Pereira',
-      researcherRole: 'Pós-Doc',
-      startTime: getISOForDayOffset(1, 8, 30),
-      endTime: getISOForDayOffset(1, 12, 30),
-      type: 'scheduled',
-      status: 'active',
-      notes: 'Simulação numérica de dinâmica de fluidos.',
-      createdAt: null,
-    },
-
-    // Baia 07: Matheus Ferreira (Day after tomorrow)
-    {
-      id: 'res-dayafter-baia7-matheus-prof',
-      workstationId: 'ws-baia-07',
-      researcherName: 'Matheus Ferreira',
-      researcherRole: 'Professor',
-      startTime: getISOForDayOffset(2, 9, 0),
-      endTime: getISOForDayOffset(2, 14, 0),
-      type: 'scheduled',
-      status: 'active',
-      notes: 'Processamento de dados de bancada.',
-      createdAt: null,
-    },
-  ];
+  return [];
 };

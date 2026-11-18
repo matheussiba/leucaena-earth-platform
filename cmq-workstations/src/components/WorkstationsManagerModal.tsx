@@ -3,6 +3,7 @@ import {
   Workstation,
   LabId,
   normalizeLab,
+  makeWorkstationId,
   DEFAULT_LAB,
   DEFAULT_LABS,
   UNALLOCATED_LAB,
@@ -68,7 +69,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
   const [cpu, setCpu] = useState<string>('');
   const [ram, setRam] = useState<string>('');
   const [internalStorage, setInternalStorage] = useState<string>('');
-  const [additionalStorage, setAdditionalStorage] = useState<string>('');
   const [showAddLab, setShowAddLab] = useState(false);
   const [newLabName, setNewLabName] = useState('');
 
@@ -91,7 +91,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
     setCpu(ws.cpu);
     setRam(ws.ram);
     setInternalStorage(ws.internalStorage || '');
-    setAdditionalStorage(ws.additionalStorage || '');
   };
 
   const startCreate = () => {
@@ -109,7 +108,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
     setCpu('AMD Ryzen 9 7950X');
     setRam('64 GB DDR5');
     setInternalStorage('2 TB NVMe SSD');
-    setAdditionalStorage('');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,9 +129,7 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
     const bayParsed = parseBayCode(bayNumber);
     const labNorm = normalizeLab(lab);
     const updatedWs: Workstation = {
-      id: editingWs
-        ? editingWs.id
-        : `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: editingWs ? editingWs.id : makeWorkstationId(labNorm, bayParsed),
       bayNumber: bayParsed,
       lab: labNorm,
       name: name.trim(),
@@ -144,7 +140,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
       cpu: cpu.trim(),
       ram: ram.trim(),
       internalStorage: internalStorage.trim(),
-      additionalStorage: additionalStorage.trim() || undefined,
       status: editingWs ? editingWs.status : 'available',
       isCustom: true,
     };
@@ -235,12 +230,6 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                         <span>RAM: {ws.ram}</span>
                         <span>·</span>
                         <span>HD: {ws.internalStorage}</span>
-                        {ws.additionalStorage && (
-                          <>
-                            <span>·</span>
-                            <span>Ext: {ws.additionalStorage}</span>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -506,33 +495,21 @@ export const WorkstationsManagerModal: React.FC<WorkstationsManagerModalProps> =
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      HD Interno (Principal) *
-                    </label>
-                    <input
-                      type="text"
-                      value={internalStorage}
-                      onChange={(e) => setInternalStorage(e.target.value)}
-                      placeholder="ex: 4 TB NVMe Gen4"
-                      className="w-full p-2 border border-slate-300 rounded bg-white text-xs"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      HD Adicional (se existir)
-                    </label>
-                    <input
-                      type="text"
-                      value={additionalStorage}
-                      onChange={(e) => setAdditionalStorage(e.target.value)}
-                      placeholder="ex: 16 TB HDD RAID (opcional)"
-                      className="w-full p-2 border border-slate-300 rounded bg-white text-xs"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    HD / Storage *
+                  </label>
+                  <input
+                    type="text"
+                    value={internalStorage}
+                    onChange={(e) => setInternalStorage(e.target.value)}
+                    placeholder="ex: 5 TB + 16 TB + 28 TB"
+                    className="w-full p-2 border border-slate-300 rounded bg-white text-xs"
+                    required
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Um campo só — se houver vários discos, liste juntos (ex.: 5TB + 16TB + 28TB).
+                  </p>
                 </div>
 
                 <div>

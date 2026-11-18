@@ -4,13 +4,36 @@ export type WorkstationStatus = 'available' | 'in_use' | 'maintenance';
 export type LabId = string;
 
 export const DEFAULT_LAB = 'CMQ';
+export const CEPE_GEO_LAB = 'CePE-Geo';
 /** Fallback when a lab is deleted or a machine has no lab; only shown if it has machines. */
 export const UNALLOCATED_LAB = 'Não alocado';
-export const DEFAULT_LABS: LabId[] = [DEFAULT_LAB];
+export const DEFAULT_LABS: LabId[] = [DEFAULT_LAB, CEPE_GEO_LAB];
 
 export function normalizeLab(lab?: string | null): LabId {
   const t = (lab || '').trim();
   return t || UNALLOCATED_LAB;
+}
+
+/** `laboratorio-baia-codigo` — e.g. cmq-baia-04, cepe-geo-baia-01 */
+export function makeWorkstationId(lab: string, bay: number | string): string {
+  const labSlug = normalizeLab(lab)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'lab';
+  const bayRaw = String(bay ?? '').trim().toLowerCase();
+  const baySlug =
+    bayRaw
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'sembai';
+  // Prefer zero-padded numeric bays (4 → 04) for stable agent IDs
+  const bayFinal = /^\d+$/.test(bayRaw)
+    ? String(parseInt(bayRaw, 10)).padStart(2, '0')
+    : baySlug;
+  return `${labSlug}-baia-${bayFinal}`;
 }
 
 /** Palette for lab tags — cycles for any new lab name. */
@@ -119,8 +142,10 @@ export interface Workstation {
   gpu: string;
   cpu: string;
   ram: string;
-  internalStorage: string;      // HD Interno
-  additionalStorage?: string;   // HD Adicional (se existir)
+  /** All disks in one field, e.g. "5 TB + 16 TB + 28 TB" */
+  internalStorage: string;
+  /** @deprecated Prefer listing all disks in internalStorage */
+  additionalStorage?: string;
   os?: string;
   status: WorkstationStatus;
   notes?: string;

@@ -1,33 +1,37 @@
 <#
 .SYNOPSIS
-  Reports C: and D: free/total space to the CMQ platform (daily via Task Scheduler).
+  Reports C: and D: free/total space to the lab workstations platform (daily via Task Scheduler).
 
 .DESCRIPTION
   No Python required — uses built-in PowerShell on Windows lab PCs.
-  Set env vars (or edit the defaults below), then schedule daily:
 
-    schtasks /Create /TN "CMQ Storage Report" /SC DAILY /ST 08:00 ^
-      /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\cmq\report-storage.ps1" ^
+  Workstation id format (lowercase):
+    <laboratorio>-baia-<codigo>
+    Examples: cmq-baia-04, cmq-baia-07, cmq-baia-igc, cepe-geo-baia-01
+
+  Schedule (run once as admin on each PC):
+
+    schtasks /Create /TN "Lab Storage Report" /SC DAILY /ST 08:00 ^
+      /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\lab\report-storage.ps1" ^
       /RU SYSTEM
 
 .ENVIRONMENT
-  CMQ_STORAGE_URL   - e.g. https://cmq.leucaena.earth/cmq/api/storage
-  CMQ_STORAGE_TOKEN - same value as server env CMQ_STORAGE_TOKEN
-  CMQ_WORKSTATION_ID - optional, e.g. ws-baia-04 (preferred match)
-  CMQ_BAY           - optional fallback, e.g. 4 or IGC
+  LAB_STORAGE_URL      - e.g. https://leucaena.earth/ws/api/storage
+  LAB_STORAGE_TOKEN    - same value as server env LAB_STORAGE_TOKEN
+  LAB_WORKSTATION_ID   - e.g. cmq-baia-04 (preferred)
+  LAB_BAY              - optional fallback, e.g. 4 or IGC
 #>
 
 $ErrorActionPreference = 'Stop'
 
-$ApiUrl = if ($env:CMQ_STORAGE_URL) { $env:CMQ_STORAGE_URL } else { 'https://YOUR-HOST/cmq/api/storage' }
-$Token = if ($env:CMQ_STORAGE_TOKEN) { $env:CMQ_STORAGE_TOKEN } else { 'CHANGE_ME' }
-$WorkstationId = if ($env:CMQ_WORKSTATION_ID) { $env:CMQ_WORKSTATION_ID } else { '' }
-$Bay = if ($env:CMQ_BAY) { $env:CMQ_BAY } else { '' }
+$ApiUrl = if ($env:LAB_STORAGE_URL) { $env:LAB_STORAGE_URL } else { 'https://YOUR-HOST/ws/api/storage' }
+$Token = if ($env:LAB_STORAGE_TOKEN) { $env:LAB_STORAGE_TOKEN } else { 'CHANGE_ME' }
+$WorkstationId = if ($env:LAB_WORKSTATION_ID) { $env:LAB_WORKSTATION_ID } else { '' }
+$Bay = if ($env:LAB_BAY) { $env:LAB_BAY } else { '' }
 
 function Get-DiskInfo([string]$Letter) {
   $drive = Get-PSDrive -Name $Letter -ErrorAction SilentlyContinue
   if (-not $drive) { return $null }
-  # Used + Free ≈ total for fixed drives
   $free = [int64]$drive.Free
   $used = [int64]$drive.Used
   $total = $free + $used
@@ -50,7 +54,6 @@ if ($disks.Count -eq 0) {
   exit 1
 }
 
-# Best-effort local IPv4 (non-loopback)
 $ip = (
   Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
   Where-Object { $_.IPAddress -notlike '127.*' -and $_.PrefixOrigin -ne 'WellKnown' } |
@@ -67,8 +70,8 @@ $body = @{
 } | ConvertTo-Json -Depth 5
 
 $headers = @{
-  'Content-Type'         = 'application/json'
-  'X-CMQ-Storage-Token'  = $Token
+  'Content-Type'        = 'application/json'
+  'X-Lab-Storage-Token' = $Token
 }
 
 try {
