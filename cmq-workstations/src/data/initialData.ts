@@ -28,6 +28,28 @@ export const INITIAL_MEMBERS: LabMember[] = [
   { id: 'mem-8', name: 'CMQ - Monique', role: 'TT' },
   { id: 'mem-9', name: 'CMQ - Pedro Emidio', role: 'TT' },
   { id: 'mem-10', name: 'CMQ - Rodrigo Costa', role: 'Pós-Doc' },
+  // CePE-Geo
+  { id: 'mem-cepe-01', name: 'CePE-Geo - Angélica Resende', role: 'Pós-Doc' },
+  { id: 'mem-cepe-02', name: 'CePE-Geo - Bianca Jacobe', role: 'Mestrado' },
+  { id: 'mem-cepe-03', name: 'CePE-Geo - Delano', role: 'Pós-Doc' },
+  { id: 'mem-cepe-04', name: 'CePE-Geo - Eduardo', role: 'Iniciação Científica' },
+  { id: 'mem-cepe-05', name: 'CePE-Geo - Herbert Lincon', role: 'Mestrado' },
+  { id: 'mem-cepe-06', name: 'CePE-Geo - Ítalo Campanharo', role: 'Doutorado' },
+  { id: 'mem-cepe-07', name: 'CePE-Geo - Jose Matheus', role: 'Mestrado' },
+  { id: 'mem-cepe-08', name: 'CePE-Geo - Luana Ariel', role: 'Mestrado' },
+  { id: 'mem-cepe-09', name: 'CePE-Geo - Matheus Fuza', role: 'Mestrado' },
+  { id: 'mem-cepe-10', name: 'CePE-Geo - Vinicius Costa', role: 'Doutorado' },
+  { id: 'mem-cepe-11', name: 'CePE-Geo - Arnaldo', role: 'Doutorado' },
+  { id: 'mem-cepe-12', name: 'CePE-Geo - Franciel Rex', role: 'Mestrado' },
+  { id: 'mem-cepe-13', name: 'CePE-Geo - Giovanna', role: 'Mestrado' },
+  { id: 'mem-cepe-14', name: 'CePE-Geo - Isa Nery', role: 'Mestrado' },
+  { id: 'mem-cepe-15', name: 'CePE-Geo - Julia Okada', role: 'Mestrado' },
+  { id: 'mem-cepe-16', name: 'CePE-Geo - Leo Mrly', role: 'Mestrado' },
+  { id: 'mem-cepe-17', name: 'CePE-Geo - Liliane Moreira', role: 'Mestrado' },
+  { id: 'mem-cepe-18', name: 'CePE-Geo - Maria Barbosa', role: 'Mestrado' },
+  { id: 'mem-cepe-19', name: 'CePE-Geo - Mel Kern', role: 'Pós-Doc' },
+  { id: 'mem-cepe-20', name: 'CePE-Geo - Thiago', role: 'Mestrado' },
+  { id: 'mem-cepe-21', name: 'CePE-Geo - Vitor Albano', role: 'Mestrado' },
 ];
 
 /** Legacy id → canonical `lab-baia-code` id */
