@@ -18,6 +18,7 @@ const {
   getTileDetail,
   exportRegistryCsv,
   summary,
+  releaseStaleClaims,
   STATUS,
 } = require('../als-registry');
 
@@ -132,6 +133,30 @@ async function main() {
 
   const cReclaim = claimTiles({ tile_ids: [tileC], hostname: 'PC3' });
   assert(cReclaim.claimed.length === 1, 'expired lease can be reclaimed');
+  assert(cReclaim.claimed[0].iniciado_utc, 'claim returns iniciado_utc');
+  assert(cReclaim.claimed[0].lease_until, 'claim returns lease_until');
+
+  // Same-host refresh keeps original iniciado_utc
+  const started = cReclaim.claimed[0].iniciado_utc;
+  const cRefresh = claimTiles({ tile_ids: [tileC], hostname: 'PC3', lease_seconds: 3600 });
+  assert(cRefresh.claimed[0].refreshed === true, 'same host refresh flagged');
+  assert(cRefresh.claimed[0].iniciado_utc === started, 'refresh preserves iniciado_utc');
+
+  // Stale >1d claim is auto-released to pending
+  const tileD = 'SF-22-V-B-III-3-SE-A-IV';
+  upsertTiles({ tiles: [{ tile_id: tileD, bloco: 'ES' }] });
+  const oldStart = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  const futureLease = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  getDB().run(
+    `UPDATE als_tiles SET lidar_proc = 3, lidar_hostname = 'PC_STUCK',
+     lidar_iniciado_utc = ?, lidar_lease_until = ? WHERE tile_id = ?`,
+    [oldStart, futureLease, tileD]
+  );
+  persist();
+  const released = releaseStaleClaims({ track: 'lidar' });
+  assert(released.count >= 1 && released.released.some((r) => r.tile_id === tileD), 'release stale >1d');
+  const rowD = queryOne('SELECT lidar_proc FROM als_tiles WHERE tile_id = ?', [tileD]);
+  assert(rowD.lidar_proc === 0, 'stale claim becomes pending');
 
   // List pending
   const listed = listTiles({ status: 0, limit: 100 });

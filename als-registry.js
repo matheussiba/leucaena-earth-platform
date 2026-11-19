@@ -23,10 +23,15 @@ const STATUS = {
 };
 
 const TRACKS = new Set(['lidar', 'rgbnir']);
+/** Soft lease for multi-PC coordination (client may request up to MAX_CLAIM_AGE). */
 const DEFAULT_LEASE_SECONDS = 7200;
+/** Hard cap: a tile may stay status=3 for at most 1 day from iniciado_utc. */
+const MAX_CLAIM_AGE_SECONDS = 24 * 60 * 60;
+const MAX_CLAIM_AGE_MS = MAX_CLAIM_AGE_SECONDS * 1000;
 const MAX_CLAIM_BATCH = 200;
 const MAX_REPORT_BATCH = 200;
 const MAX_UPSERT_BATCH = 2000;
+const STALE_SWEEP_MS = 15 * 60 * 1000;
 
 const REGISTRY_CSV_COLS = [
   'tile_id', 'laz_nome', 'laz_path', 'bloco', 'layer_artic',
@@ -83,6 +88,105 @@ function leaseExpired(leaseUntil, now = Date.now()) {
   if (!leaseUntil) return true;
   const t = Date.parse(leaseUntil);
   return !Number.isFinite(t) || t <= now;
+}
+
+function parseUtcMs(iso) {
+  if (!iso) return NaN;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : NaN;
+}
+
+/** True when status=3 should be treated as free (lease gone OR >1d since claim start). */
+function isStaleClaim({ iniciadoUtc, leaseUntil }, now = Date.now()) {
+  const started = parseUtcMs(iniciadoUtc);
+  if (Number.isFinite(started) && now - started >= MAX_CLAIM_AGE_MS) return true;
+  if (leaseExpired(leaseUntil, now)) {
+    // No iniciado → treat expired lease as stale; with iniciado, also stale if past max age
+    // or lease expired (script crashed mid-run).
+    return true;
+  }
+  return false;
+}
+
+function capLeaseUntil(iniciadoUtc, leaseSeconds, now = Date.now()) {
+  const started = parseUtcMs(iniciadoUtc);
+  const startMs = Number.isFinite(started) ? started : now;
+  const soft = now + leaseSeconds * 1000;
+  const hard = startMs + MAX_CLAIM_AGE_MS;
+  return new Date(Math.min(soft, hard)).toISOString();
+}
+
+/**
+ * Reset lidar/rgbnir status 3 → 0 when lease expired or claim older than 1 day.
+ * Keeps history via als_tile_attempts. Safe to call often (idempotent).
+ */
+function releaseStaleClaims(opts = {}) {
+  const trackFilter = opts.track ? normalizeTrack(opts.track) : null;
+  if (opts.track && !trackFilter) return { error: 'track must be lidar or rgbnir', status: 400 };
+
+  const tracks = trackFilter ? [trackFilter] : ['lidar', 'rgbnir'];
+  const now = Date.now();
+  const nowStr = new Date(now).toISOString();
+  const released = [];
+  const database = getDB();
+
+  database.run('BEGIN');
+  try {
+    for (const track of tracks) {
+      const c = trackCols(track);
+      const rows = queryAll(
+        `SELECT tile_id, ${c.proc} AS proc, ${c.hostname} AS hostname,
+                ${c.iniciado} AS iniciado, ${c.lease} AS lease
+         FROM als_tiles WHERE ${c.proc} = ?`,
+        [STATUS.CLAIMED]
+      );
+      for (const row of rows) {
+        if (!isStaleClaim({ iniciadoUtc: row.iniciado, leaseUntil: row.lease }, now)) continue;
+
+        database.run(
+          `UPDATE als_tiles SET
+            ${c.proc} = ?,
+            ${c.hostname} = NULL,
+            ${c.usuario} = NULL,
+            ${c.lease} = NULL,
+            ${c.erro} = ?,
+            ${c.finalizado} = ?,
+            updated_at = ?
+           WHERE tile_id = ?`,
+          [
+            STATUS.PENDING,
+            'stale_claim_released (>1d processing or lease expired)',
+            nowStr,
+            nowStr,
+            row.tile_id,
+          ]
+        );
+        insertAttempt(database, {
+          tileId: row.tile_id,
+          track,
+          statusCode: STATUS.PENDING,
+          hostname: row.hostname || null,
+          erro: 'stale_claim_released',
+          iniciadoUtc: row.iniciado || null,
+          finalizadoUtc: nowStr,
+          createdAt: nowStr,
+        });
+        released.push({
+          tile_id: row.tile_id,
+          track,
+          previous_hostname: row.hostname || null,
+          iniciado_utc: row.iniciado || null,
+          lease_until: row.lease || null,
+        });
+      }
+    }
+    database.run('COMMIT');
+  } catch (e) {
+    try { database.run('ROLLBACK'); } catch (_) { /* ignore */ }
+    throw e;
+  }
+  if (released.length) persist();
+  return { released, count: released.length };
 }
 
 function csvEscape(v) {
@@ -158,6 +262,10 @@ function insertAttempt(database, {
 /**
  * Claim tiles for processing. Creates missing stubs so PCs can register
  * tile_ids discovered from local articulacao without a separate seed.
+ *
+ * Always stores/returns iniciado_utc + lease_until. Same-host refresh keeps
+ * the original iniciado_utc and cannot extend past iniciado+1 day.
+ * Stale claims (lease expired or >1d) are freed first.
  */
 function claimTiles(opts) {
   const track = normalizeTrack(opts.track || 'lidar');
@@ -171,7 +279,7 @@ function claimTiles(opts) {
   const allowRetry = Boolean(opts.allow_retry ?? opts.allowRetry);
   let leaseSeconds = Number(opts.lease_seconds ?? opts.leaseSeconds ?? DEFAULT_LEASE_SECONDS);
   if (!Number.isFinite(leaseSeconds) || leaseSeconds < 60) leaseSeconds = DEFAULT_LEASE_SECONDS;
-  if (leaseSeconds > 86400) leaseSeconds = 86400;
+  if (leaseSeconds > MAX_CLAIM_AGE_SECONDS) leaseSeconds = MAX_CLAIM_AGE_SECONDS;
 
   const rawIds = Array.isArray(opts.tile_ids) ? opts.tile_ids : [];
   if (!rawIds.length) return { error: 'tile_ids array is required', status: 400 };
@@ -179,11 +287,11 @@ function claimTiles(opts) {
     return { error: `tile_ids max ${MAX_CLAIM_BATCH}`, status: 400 };
   }
 
+  const stale = releaseStaleClaims({ track });
   const tileIds = [...new Set(rawIds.map(normalizeTileId).filter(Boolean))];
   const c = trackCols(track);
   const now = Date.now();
   const nowStr = new Date(now).toISOString();
-  const leaseUntil = new Date(now + leaseSeconds * 1000).toISOString();
   const claimed = [];
   const skipped = [];
 
@@ -196,6 +304,7 @@ function claimTiles(opts) {
       const code = Number(row[c.proc] ?? 0);
       const holder = row[c.hostname] || '';
       const lease = row[c.lease];
+      const prevIniciado = row[c.iniciado] || null;
 
       if (code === STATUS.OK) {
         skipped.push({ tile_id: tileId, reason: 'already_done' });
@@ -209,16 +318,33 @@ function claimTiles(opts) {
         skipped.push({ tile_id: tileId, reason: 'failed_use_allow_retry' });
         continue;
       }
-      if (code === STATUS.CLAIMED && !leaseExpired(lease, now)) {
+      if (code === STATUS.CLAIMED && !isStaleClaim({ iniciadoUtc: prevIniciado, leaseUntil: lease }, now)) {
         if (holder && holder !== hostname) {
-          skipped.push({ tile_id: tileId, reason: 'claimed_by_other', hostname: holder, lease_until: lease });
+          skipped.push({
+            tile_id: tileId,
+            reason: 'claimed_by_other',
+            hostname: holder,
+            iniciado_utc: prevIniciado,
+            lease_until: lease,
+          });
           continue;
         }
-        // Same host refresh — re-claim / extend lease
-      } else if (code === STATUS.CLAIMED && leaseExpired(lease, now)) {
-        // reclaim allowed
+        // Same host refresh — keep original iniciado_utc, extend lease (capped at +1d)
+      } else if (code === STATUS.CLAIMED && isStaleClaim({ iniciadoUtc: prevIniciado, leaseUntil: lease }, now)) {
+        // reclaim allowed after stale
       } else if (code !== STATUS.PENDING && code !== STATUS.FAIL && code !== STATUS.CLAIMED) {
         skipped.push({ tile_id: tileId, reason: `status_${code}` });
+        continue;
+      }
+
+      const isRefresh = code === STATUS.CLAIMED && holder === hostname
+        && !isStaleClaim({ iniciadoUtc: prevIniciado, leaseUntil: lease }, now);
+      const iniciadoUtc = isRefresh && prevIniciado ? prevIniciado : nowStr;
+      const leaseUntil = capLeaseUntil(iniciadoUtc, leaseSeconds, now);
+
+      // Cannot claim if hard max age already reached (iniciado was preserved somehow)
+      if (parseUtcMs(iniciadoUtc) + MAX_CLAIM_AGE_MS <= now) {
+        skipped.push({ tile_id: tileId, reason: 'claim_max_age', iniciado_utc: iniciadoUtc });
         continue;
       }
 
@@ -234,7 +360,7 @@ function claimTiles(opts) {
           ${c.lease} = ?,
           updated_at = ?
          WHERE tile_id = ?`,
-        [STATUS.CLAIMED, hostname, usuario, pipeline, nowStr, leaseUntil, nowStr, tileId]
+        [STATUS.CLAIMED, hostname, usuario, pipeline, iniciadoUtc, leaseUntil, nowStr, tileId]
       );
 
       insertAttempt(database, {
@@ -244,7 +370,7 @@ function claimTiles(opts) {
         hostname,
         usuario,
         pipeline,
-        iniciadoUtc: nowStr,
+        iniciadoUtc,
         createdAt: nowStr,
       });
 
@@ -252,7 +378,11 @@ function claimTiles(opts) {
         tile_id: tileId,
         status_code: STATUS.CLAIMED,
         hostname,
+        iniciado_utc: iniciadoUtc,
         lease_until: leaseUntil,
+        lease_seconds: leaseSeconds,
+        max_claim_age_seconds: MAX_CLAIM_AGE_SECONDS,
+        refreshed: isRefresh,
         track,
       });
     }
@@ -262,7 +392,12 @@ function claimTiles(opts) {
     throw e;
   }
   persist();
-  return { claimed, skipped, track };
+  return {
+    claimed,
+    skipped,
+    track,
+    stale_released: stale.count || 0,
+  };
 }
 
 function reportResults(opts) {
@@ -497,6 +632,7 @@ function upsertTiles(opts) {
 
 function listTiles(query = {}) {
   const track = normalizeTrack(query.track || 'lidar') || 'lidar';
+  releaseStaleClaims({ track });
   const c = trackCols(track);
   const where = [];
   const params = [];
@@ -539,6 +675,7 @@ function listTiles(query = {}) {
 }
 
 function getTileDetail(tileIdRaw) {
+  releaseStaleClaims();
   const tileId = normalizeTileId(tileIdRaw);
   if (!tileId) return { error: 'tile_id required', status: 400 };
   const row = queryOne('SELECT * FROM als_tiles WHERE tile_id = ?', [tileId]);
@@ -570,6 +707,7 @@ function exportRegistryCsv(trackRaw = 'lidar') {
 
 function summary(trackRaw = 'lidar') {
   const track = normalizeTrack(trackRaw) || 'lidar';
+  const stale = releaseStaleClaims({ track });
   const c = trackCols(track);
   const byStatus = queryAll(
     `SELECT ${c.proc} AS status_code, COUNT(*) AS n FROM als_tiles GROUP BY ${c.proc}`
@@ -595,6 +733,8 @@ function summary(trackRaw = 'lidar') {
     by_status: counts,
     by_bloco: byBloco,
     by_hostname: byHost,
+    stale_released: stale.count || 0,
+    max_claim_age_seconds: MAX_CLAIM_AGE_SECONDS,
   };
 }
 
@@ -692,10 +832,34 @@ function mountAlsRoutes(app, { rateLimitFn } = {}) {
     const track = (req.query && req.query.track) || 'lidar';
     return res.json(summary(track));
   }));
+
+  app.post('/api/v1/als/tiles/release-stale', auth, writeLimiter, wrap((req, res) => {
+    const body = req.body || {};
+    const out = releaseStaleClaims({ track: body.track || (req.query && req.query.track) });
+    if (out.error) return res.status(out.status || 400).json({ error: out.error });
+    return res.json(out);
+  }));
+
+  // Periodic sweeper: free status=3 stuck >1d or with expired lease
+  if (!global.__alsStaleSweepStarted) {
+    global.__alsStaleSweepStarted = true;
+    const tick = () => {
+      try {
+        const out = releaseStaleClaims();
+        if (out.count) console.log(`[als] released ${out.count} stale claim(s)`);
+      } catch (e) {
+        console.error('[als] stale claim sweep error:', e.message);
+      }
+    };
+    setTimeout(tick, 5_000);
+    setInterval(tick, STALE_SWEEP_MS);
+  }
 }
 
 module.exports = {
   STATUS,
+  MAX_CLAIM_AGE_SECONDS,
+  DEFAULT_LEASE_SECONDS,
   mountAlsRoutes,
   claimTiles,
   reportResults,
@@ -704,6 +868,8 @@ module.exports = {
   getTileDetail,
   exportRegistryCsv,
   summary,
+  releaseStaleClaims,
+  isStaleClaim,
   statusLabel,
   createAlsMachineAuth,
 };

@@ -477,9 +477,10 @@ The server exposes RESTful endpoints organized by domain:
 
 ### ALS / GeoTrees tile registry (lab PCs)
 Authenticated machine API (`ALS_MACHINE_TOKEN` via `X-ALS-Token` or Bearer). Shared source of truth for multi-PC ALS processing — see [`docs/als-registry.md`](docs/als-registry.md) and OpenAPI [`docs/als-registry-openapi.yaml`](docs/als-registry-openapi.yaml).
-- `POST /api/v1/als/tiles/claim` — claim tiles (`status 3`, lease)
+- `POST /api/v1/als/tiles/claim` — claim tiles (`status 3`, returns `iniciado_utc` + `lease_until`)
 - `POST /api/v1/als/tiles/report` — flush results (every ~5 tiles + end of run)
 - `POST /api/v1/als/tiles/upsert` — bootstrap / sync tile metadata
+- `POST /api/v1/als/tiles/release-stale` — free stuck `status 3` (lease expired or >1 day)
 - `GET /api/v1/als/tiles` — list/filter queue (`?status=0&bloco=EF`)
 - `GET /api/v1/als/tiles/:tile_id` — detail + attempt history
 - `GET /api/v1/als/export/registry.csv` — CSV compatible with local GeoTrees registry

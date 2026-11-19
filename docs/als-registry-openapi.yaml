@@ -47,7 +47,11 @@ paths:
                 hostname: { type: string, example: LAB-PC-01 }
                 usuario: { type: string }
                 pipeline: { type: string, enum: [lastools, opensource] }
-                lease_seconds: { type: integer, default: 7200 }
+                lease_seconds:
+                  type: integer
+                  default: 7200
+                  maximum: 86400
+                  description: Soft lease. Hard max claim age is always 86400s from iniciado_utc.
                 allow_retry: { type: boolean, default: false }
                 track: { type: string, enum: [lidar, rgbnir], default: lidar }
       responses:
@@ -219,6 +223,40 @@ paths:
       responses:
         "200":
           description: Summary JSON
+
+  /api/v1/als/tiles/release-stale:
+    post:
+      tags: [als]
+      summary: Release stuck claims (lease expired or processing > 1 day)
+      description: |
+        Sets `status_code` 3 → 0 when `lease_until` is past or `iniciado_utc`
+        is older than 24h. Also runs automatically every ~15 minutes.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                track: { type: string, enum: [lidar, rgbnir] }
+      responses:
+        "200":
+          description: Released tiles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  released:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tile_id: { type: string }
+                        track: { type: string }
+                        previous_hostname: { type: string }
+                        iniciado_utc: { type: string }
+                        lease_until: { type: string }
 
 components:
   securitySchemes:

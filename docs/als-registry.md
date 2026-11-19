@@ -20,6 +20,22 @@ OpenAPI: [`als-registry-openapi.yaml`](./als-registry-openapi.yaml)
 
 Tracks **`lidar`** and **`rgbnir`** are independent columns on the same tile.
 
+## Claims, timestamps, and stale locks
+
+Every claim stores and returns:
+
+- `iniciado_utc` — when the lock started (preserved on same-host refresh)
+- `lease_until` — soft expiry (default 2h, max 24h)
+- Hard rule: **max 1 day** from `iniciado_utc`. After that the tile returns to `0` even if someone keeps refreshing.
+
+Stale release happens:
+
+1. Automatically every ~15 min on the server
+2. On `claim` / `list` / `summary` / `GET tile`
+3. Manually via `POST /api/v1/als/tiles/release-stale`
+
+Crashed batches that leave `status=3` free up after lease expiry (default 2h) or at latest after 1 day.
+
 ## Create a machine token
 
 1. Generate a long random secret (e.g. `openssl rand -hex 32`).
@@ -49,7 +65,7 @@ curl -sS -X POST "$ALS_URL/api/v1/als/tiles/upsert" \
   -H "X-ALS-Token: $ALS_TOKEN" -H "Content-Type: application/json" \
   -d '{"tiles":[{"tile_id":"SF-22-V-B-III-3-SE-A-I","bloco":"EF","laz_nome":"tile.laz"}]}'
 
-# Claim
+# Claim (response includes iniciado_utc + lease_until)
 curl -sS -X POST "$ALS_URL/api/v1/als/tiles/claim" \
   -H "X-ALS-Token: $ALS_TOKEN" -H "Content-Type: application/json" \
   -d '{
@@ -59,6 +75,11 @@ curl -sS -X POST "$ALS_URL/api/v1/als/tiles/claim" \
     "pipeline":"lastools",
     "lease_seconds":7200
   }'
+
+# Free stuck "processing" tiles (lease expired or >1 day)
+curl -sS -X POST "$ALS_URL/api/v1/als/tiles/release-stale" \
+  -H "X-ALS-Token: $ALS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"track":"lidar"}'
 
 # Report (batch of up to 5+)
 curl -sS -X POST "$ALS_URL/api/v1/als/tiles/report" \
