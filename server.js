@@ -1016,6 +1016,10 @@ const resetLimiter = rateLimit('reset', 5, 15 * 60 * 1000);
 const messageLimiter = rateLimit('message', 10, 15 * 60 * 1000);
 const checkEmailLimiter = rateLimit('checkEmail', 15, 15 * 60 * 1000);
 
+// ALS / GeoTrees shared tile registry (lab PCs → leucaena.earth as source of truth)
+const { mountAlsRoutes } = require('./als-registry');
+mountAlsRoutes(app, { rateLimitFn: rateLimit });
+
 const MSG_SUBJECT_MAX = 200;
 const MSG_BODY_MAX = 2000;
 const MSG_COOLDOWN_MS = 10000;

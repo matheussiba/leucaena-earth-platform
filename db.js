@@ -678,6 +678,80 @@ async function initDB() {
     }
   } catch (e) { console.error('Numpoints migration error:', e.message); }
 
+  // ── ALS / GeoTrees tile processing registry (shared across lab PCs) ──
+  // Source of truth for lidar_proc / rgbnir_proc. GPKG in leucaena-earth-utils
+  // is a visual mirror only — never write concurrent claims there.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS als_tiles (
+      tile_id TEXT PRIMARY KEY,
+      laz_nome TEXT,
+      laz_path TEXT,
+      bloco TEXT,
+      layer_artic TEXT,
+      nomenc_2k TEXT,
+      nomenc_5k TEXT,
+      nomenc_10k TEXT,
+      periodvoo TEXT,
+      epsg_artic INTEGER,
+      epsg_proc INTEGER,
+      lidar_proc INTEGER NOT NULL DEFAULT 0,
+      lidar_hostname TEXT,
+      lidar_usuario TEXT,
+      lidar_pasta_saida TEXT,
+      lidar_minutos REAL,
+      lidar_tamanho_mb REAL,
+      lidar_erro TEXT,
+      lidar_iniciado_utc TEXT,
+      lidar_finalizado_utc TEXT,
+      lidar_rodada_id TEXT,
+      lidar_pipeline TEXT,
+      lidar_out_dir TEXT,
+      lidar_lease_until TEXT,
+      rgbnir_proc INTEGER NOT NULL DEFAULT 0,
+      rgbnir_hostname TEXT,
+      rgbnir_usuario TEXT,
+      rgbnir_pasta_saida TEXT,
+      rgbnir_minutos REAL,
+      rgbnir_tamanho_mb REAL,
+      rgbnir_erro TEXT,
+      rgbnir_iniciado_utc TEXT,
+      rgbnir_finalizado_utc TEXT,
+      rgbnir_rodada_id TEXT,
+      rgbnir_pipeline TEXT,
+      rgbnir_out_dir TEXT,
+      rgbnir_lease_until TEXT,
+      updated_at TEXT NOT NULL
+    )
+  `);
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_als_tiles_lidar_proc ON als_tiles(lidar_proc)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_als_tiles_rgbnir_proc ON als_tiles(rgbnir_proc)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_als_tiles_bloco ON als_tiles(bloco)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_als_tiles_lidar_host ON als_tiles(lidar_hostname)'); } catch (e) { /* ignore */ }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS als_tile_attempts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tile_id TEXT NOT NULL,
+      track TEXT NOT NULL DEFAULT 'lidar',
+      status_code INTEGER NOT NULL,
+      hostname TEXT,
+      usuario TEXT,
+      pipeline TEXT,
+      minutos REAL,
+      tamanho_mb REAL,
+      erro TEXT,
+      iniciado_utc TEXT,
+      finalizado_utc TEXT,
+      rodada_id TEXT,
+      out_dir TEXT,
+      pasta_saida TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (tile_id) REFERENCES als_tiles(tile_id)
+    )
+  `);
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_als_attempts_tile ON als_tile_attempts(tile_id, created_at DESC)'); } catch (e) { /* ignore */ }
+  try { db.run('CREATE INDEX IF NOT EXISTS idx_als_attempts_track ON als_tile_attempts(track, status_code)'); } catch (e) { /* ignore */ }
+
   persist();
   return db;
 }

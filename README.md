@@ -399,6 +399,8 @@ The platform uses **SQLite** (via sql.js compiled to WebAssembly) with automatic
 | `message_reads` | Per-user read tracking for messages |
 | `activity_logs` | Timestamped audit trail of all actions |
 | `site_stats` | View counter and global metrics |
+| `als_tiles` | Shared ALS/RGBNIR tile processing registry (`lidar_proc` / `rgbnir_proc` + lease) |
+| `als_tile_attempts` | Per-attempt history (claims, successes, failures) |
 
 ### State model (geographic expansion)
 
@@ -473,6 +475,16 @@ The server exposes RESTful endpoints organized by domain:
 - `GET /api/ranking` — user ranking by contribution
 - `POST /api/stats/view` — register page view
 
+### ALS / GeoTrees tile registry (lab PCs)
+Authenticated machine API (`ALS_MACHINE_TOKEN` via `X-ALS-Token` or Bearer). Shared source of truth for multi-PC ALS processing — see [`docs/als-registry.md`](docs/als-registry.md) and OpenAPI [`docs/als-registry-openapi.yaml`](docs/als-registry-openapi.yaml).
+- `POST /api/v1/als/tiles/claim` — claim tiles (`status 3`, lease)
+- `POST /api/v1/als/tiles/report` — flush results (every ~5 tiles + end of run)
+- `POST /api/v1/als/tiles/upsert` — bootstrap / sync tile metadata
+- `GET /api/v1/als/tiles` — list/filter queue (`?status=0&bloco=EF`)
+- `GET /api/v1/als/tiles/:tile_id` — detail + attempt history
+- `GET /api/v1/als/export/registry.csv` — CSV compatible with local GeoTrees registry
+- `GET /api/v1/als/summary` — counts by status / bloco / hostname
+
 Real-time events are broadcast via Socket.IO for live map updates across all connected clients (see Architecture section).
 
 ---
@@ -482,6 +494,7 @@ Real-time events are broadcast via Socket.IO for live map updates across all con
 | Script | Usage | Description |
 |--------|-------|-------------|
 | `seed-data/seed.js` | `npm run seed` | Initial seed: imports grid cells and points from GeoJSON files |
+| `scripts/test-als-registry.js` | `npm run test:als` | ALS claim/report/lease unit tests (temp SQLite) |
 | `scripts/seed_brazil_grid.js` | `node scripts/seed_brazil_grid.js <geojson>` | Import new grid cells from a national GeoJSON, filling `grid_cell_states` |
 | `scripts/delete_grid_cells_from_geojson.js` | `node scripts/delete_grid_cells_from_geojson.js <geojson>` | Remove grid cells matching features in a GeoJSON |
 | `create-admin.js` | `node create-admin.js <user> <pass> [email]` | Create the first superadmin account |

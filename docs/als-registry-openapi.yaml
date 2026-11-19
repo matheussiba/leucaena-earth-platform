@@ -1,0 +1,231 @@
+openapi: 3.0.3
+info:
+  title: leucaena.earth ALS Tile Registry API
+  version: 1.0.0
+  description: |
+    Shared processing registry for ALS (GeoTrees) tiles across lab PCs.
+    Source of truth is the site database — not the articulacao GPKG.
+
+    Status codes (`lidar_proc` / `rgbnir_proc`):
+    - `0` not processed
+    - `1` success (terminal)
+    - `2` failure (retryable with `allow_retry`)
+    - `3` in progress / claim
+    - `4` not applicable / skipped
+
+    Tracks `lidar` and `rgbnir` are independent. Default track is `lidar`.
+servers:
+  - url: https://leucaena.earth
+  - url: http://localhost:3000
+security:
+  - AlsTokenHeader: []
+  - BearerAuth: []
+tags:
+  - name: als
+paths:
+  /api/v1/als/tiles/claim:
+    post:
+      tags: [als]
+      summary: Claim tiles for processing
+      description: |
+        Claims only status `0` (or `2` when `allow_retry=true`).
+        Status `1` is never claimed. Active claim (`3`) from another host
+        with valid lease is rejected; expired lease may be reclaimed.
+        Missing tile_ids are auto-created as stubs then claimed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tile_ids, hostname]
+              properties:
+                tile_ids:
+                  type: array
+                  items: { type: string }
+                  example: ["SF-22-V-B-III-3-SE-A-I"]
+                hostname: { type: string, example: LAB-PC-01 }
+                usuario: { type: string }
+                pipeline: { type: string, enum: [lastools, opensource] }
+                lease_seconds: { type: integer, default: 7200 }
+                allow_retry: { type: boolean, default: false }
+                track: { type: string, enum: [lidar, rgbnir], default: lidar }
+      responses:
+        "200":
+          description: Claim result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  claimed:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tile_id: { type: string }
+                        status_code: { type: integer }
+                        hostname: { type: string }
+                        lease_until: { type: string, format: date-time }
+                        track: { type: string }
+                  skipped:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tile_id: { type: string }
+                        reason: { type: string }
+                  track: { type: string }
+        "401": { description: Invalid or missing token }
+        "503": { description: ALS_MACHINE_TOKEN not configured }
+
+  /api/v1/als/tiles/report:
+    post:
+      tags: [als]
+      summary: Report tile results (batch flush)
+      description: |
+        Used every ~5 finished tiles and at end of a run.
+        `status_code` 1 or 2 clears the claim lease.
+        Reporting `1` twice is a no-op.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [results]
+              properties:
+                track: { type: string, enum: [lidar, rgbnir], default: lidar }
+                results:
+                  type: array
+                  items:
+                    type: object
+                    required: [tile_id, status_code]
+                    properties:
+                      tile_id: { type: string }
+                      status_code: { type: integer, enum: [1, 2, 3, 4] }
+                      minutos: { type: number }
+                      tamanho_mb: { type: number }
+                      erro: { type: string }
+                      hostname: { type: string }
+                      usuario: { type: string }
+                      pasta_saida: { type: string }
+                      out_dir: { type: string }
+                      rodada_id: { type: string }
+                      pipeline: { type: string }
+                      iniciado_utc: { type: string }
+                      finalizado_utc: { type: string }
+                      bloco: { type: string }
+                      laz_nome: { type: string }
+                      laz_path: { type: string }
+      responses:
+        "200":
+          description: Report applied
+        "401": { description: Invalid token }
+
+  /api/v1/als/tiles/upsert:
+    post:
+      tags: [als]
+      summary: Upsert tile metadata (bootstrap / sync catalog)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tiles]
+              properties:
+                tiles:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      tile_id: { type: string }
+                      bloco: { type: string }
+                      laz_nome: { type: string }
+                      laz_path: { type: string }
+                      nomenc_2k: { type: string }
+                      nomenc_5k: { type: string }
+                      nomenc_10k: { type: string }
+                      layer_artic: { type: string }
+                      periodvoo: { type: string }
+                      epsg_artic: { type: integer }
+                      epsg_proc: { type: integer }
+      responses:
+        "200":
+          description: Upsert count
+
+  /api/v1/als/tiles:
+    get:
+      tags: [als]
+      summary: List tiles (build PC queue)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: integer }
+          description: Filter by status code for the selected track
+        - in: query
+          name: bloco
+          schema: { type: string }
+        - in: query
+          name: hostname
+          schema: { type: string }
+        - in: query
+          name: track
+          schema: { type: string, enum: [lidar, rgbnir], default: lidar }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 500, maximum: 5000 }
+      responses:
+        "200":
+          description: Tile list
+
+  /api/v1/als/tiles/{tile_id}:
+    get:
+      tags: [als]
+      summary: Tile detail + attempt history
+      parameters:
+        - in: path
+          name: tile_id
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Detail }
+        "404": { description: Not found }
+
+  /api/v1/als/export/registry.csv:
+    get:
+      tags: [als]
+      summary: Export CSV compatible with geotrees_als_registry.csv
+      parameters:
+        - in: query
+          name: track
+          schema: { type: string, enum: [lidar, rgbnir], default: lidar }
+      responses:
+        "200":
+          description: CSV body
+          content:
+            text/csv:
+              schema: { type: string }
+
+  /api/v1/als/summary:
+    get:
+      tags: [als]
+      summary: Counts by status, bloco, hostname
+      parameters:
+        - in: query
+          name: track
+          schema: { type: string, enum: [lidar, rgbnir], default: lidar }
+      responses:
+        "200":
+          description: Summary JSON
+
+components:
+  securitySchemes:
+    AlsTokenHeader:
+      type: apiKey
+      in: header
+      name: X-ALS-Token
+    BearerAuth:
+      type: http
+      scheme: bearer

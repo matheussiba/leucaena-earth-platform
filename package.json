@@ -7,6 +7,7 @@
     "seed": "node seed-data/seed.js",
     "start": "node server.js",
     "dev": "node server.js",
+    "test:als": "node scripts/test-als-registry.js",
     "build:inventario": "npm --prefix inventario-florestal run build",
     "build:cmq": "npm --prefix cmq-workstations run build"
   },
