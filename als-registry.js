@@ -438,7 +438,10 @@ function reportResults(opts) {
         }
       }
 
-      if (![STATUS.OK, STATUS.FAIL, STATUS.SKIPPED, STATUS.CLAIMED].includes(statusCode)) {
+      // 0 = reset to pending (never downgrades terminal OK)
+      // 1 = success (requires pasta_saida)
+      // 2 = fail | 3 = claim refresh | 4 = skipped
+      if (![STATUS.PENDING, STATUS.OK, STATUS.FAIL, STATUS.SKIPPED, STATUS.CLAIMED].includes(statusCode)) {
         skipped.push({ tile_id: tileId, reason: 'invalid_status_code' });
         continue;
       }
@@ -452,7 +455,7 @@ function reportResults(opts) {
         skipped.push({ tile_id: tileId, reason: 'already_ok_noop' });
         continue;
       }
-      // Do not downgrade terminal success
+      // Do not downgrade terminal success (protects sync host and finished tiles)
       if (current === STATUS.OK && statusCode !== STATUS.OK) {
         skipped.push({ tile_id: tileId, reason: 'already_ok' });
         continue;
@@ -462,12 +465,26 @@ function reportResults(opts) {
       const usuario = item.usuario != null ? String(item.usuario).trim() : row[c.usuario];
       const pipeline = item.pipeline != null ? String(item.pipeline).trim() : row[c.pipeline];
       const pasta = item.pasta_saida != null ? String(item.pasta_saida) : (item.pastaSaida != null ? String(item.pastaSaida) : row[c.pasta]);
+      // Success is terminal and must point at finished products — never mark 1 without a path.
+      if (statusCode === STATUS.OK) {
+        const pastaOk = pasta != null && String(pasta).trim().length > 0;
+        if (!pastaOk) {
+          skipped.push({ tile_id: tileId, reason: 'success_requires_pasta_saida' });
+          continue;
+        }
+      }
       const outDir = item.out_dir != null ? String(item.out_dir) : (item.outDir != null ? String(item.outDir) : row[c.outDir]);
       const minutos = item.minutos != null ? Number(item.minutos) : row[c.minutos];
       const tamanho = item.tamanho_mb != null ? Number(item.tamanho_mb) : (item.tamanhoMb != null ? Number(item.tamanhoMb) : row[c.tamanho]);
-      const erro = item.erro != null ? String(item.erro) : (statusCode === STATUS.OK ? null : row[c.erro]);
-      const iniciado = item.iniciado_utc || item.iniciadoUtc || row[c.iniciado] || null;
-      const finalizado = item.finalizado_utc || item.finalizadoUtc || ((statusCode === STATUS.OK || statusCode === STATUS.FAIL || statusCode === STATUS.SKIPPED) ? nowStr : null);
+      const erro = item.erro != null
+        ? String(item.erro)
+        : (statusCode === STATUS.OK || statusCode === STATUS.PENDING ? null : row[c.erro]);
+      const iniciado = statusCode === STATUS.PENDING
+        ? null
+        : (item.iniciado_utc || item.iniciadoUtc || row[c.iniciado] || null);
+      const finalizado = statusCode === STATUS.PENDING
+        ? null
+        : (item.finalizado_utc || item.finalizadoUtc || ((statusCode === STATUS.OK || statusCode === STATUS.FAIL || statusCode === STATUS.SKIPPED) ? nowStr : null));
       const rodada = item.rodada_id || item.rodadaId || row[c.rodada] || null;
 
       // Optional metadata fill
@@ -484,7 +501,7 @@ function reportResults(opts) {
         epsg_proc: item.epsg_proc ?? item.epsgProc,
       };
 
-      const leaseClear = (statusCode === STATUS.OK || statusCode === STATUS.FAIL || statusCode === STATUS.SKIPPED)
+      const leaseClear = (statusCode === STATUS.OK || statusCode === STATUS.FAIL || statusCode === STATUS.SKIPPED || statusCode === STATUS.PENDING)
         ? null
         : row[c.lease];
 

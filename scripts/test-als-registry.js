@@ -103,11 +103,36 @@ async function main() {
   const cDone = claimTiles({ tile_ids: [tileA], hostname: 'PC2' });
   assert(cDone.skipped[0] && cDone.skipped[0].reason === 'already_done', 'cannot claim done');
 
+  // Success without pasta_saida is rejected
+  const rNoPasta = reportResults({
+    results: [{ tile_id: tileB, status_code: 1, hostname: 'PC1' }],
+  });
+  assert(rNoPasta.skipped[0] && rNoPasta.skipped[0].reason === 'success_requires_pasta_saida', 'OK needs pasta_saida');
+
   // Report failure for B
   const rFail = reportResults({
     results: [{ tile_id: tileB, status_code: 2, erro: 'lasinfo failed', hostname: 'PC1' }],
   });
   assert(rFail.updated[0].status_code === 2, 'report FAIL for B');
+
+  // Reset FAIL -> 0 (pending) without touching OK tiles
+  const rReset = reportResults({
+    results: [{ tile_id: tileB, status_code: 0, hostname: '', pasta_saida: '', erro: 'reset_for_reprocess' }],
+  });
+  assert(rReset.updated[0].status_code === 0, 'reset FAIL to pending');
+  const rowB = queryOne('SELECT lidar_proc FROM als_tiles WHERE tile_id = ?', [tileB]);
+  assert(rowB.lidar_proc === 0, 'B is pending after reset');
+
+  // Cannot reset terminal OK
+  const rResetOk = reportResults({
+    results: [{ tile_id: tileA, status_code: 0 }],
+  });
+  assert(rResetOk.skipped[0] && rResetOk.skipped[0].reason === 'already_ok', 'cannot reset OK tile');
+
+  // Re-fail B for allow_retry path below
+  reportResults({
+    results: [{ tile_id: tileB, status_code: 2, erro: 'lasinfo failed', hostname: 'PC1' }],
+  });
 
   // Retry claim needs allow_retry
   const cRetryNo = claimTiles({ tile_ids: [tileB], hostname: 'PC2' });

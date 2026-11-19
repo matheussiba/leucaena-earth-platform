@@ -12,13 +12,23 @@ OpenAPI: [`als-registry-openapi.yaml`](./als-registry-openapi.yaml)
 
 | Code | Meaning |
 |------|---------|
-| `0` | not processed |
-| `1` | success (terminal) |
+| `0` | not processed / reset to pending |
+| `1` | success (**terminal** — never downgraded) |
 | `2` | failure (retry with `allow_retry`) |
 | `3` | in progress / claim |
 | `4` | skipped / N/A |
 
 Tracks **`lidar`** and **`rgbnir`** are independent columns on the same tile.
+
+### Rigid success rule
+
+`status_code=1` is accepted **only** when `pasta_saida` is non-empty. The R batch must
+promote products into `processed/<utm>/<tile>/` (with `_INFO_summary_processing.csv`
+and no `_ERROR.txt`) **before** reporting `1`. Partial / staging folders must not be
+reported as success.
+
+Reporting `0` resets `2`/`3`/`4` back to pending for reprocessing. It **never** clears
+a tile that already has `1` (protects the O:\\ALS_IGC sync and any finished PC run).
 
 ## Claims, timestamps, and stale locks
 
@@ -48,11 +58,25 @@ var is unset → `503`.
 
 ## Client flush policy (batch R)
 
-- **Claim** when starting a tile → immediate `POST .../claim`
-- **Report** every 5 finished tiles (ok or fail) → `POST .../report`
-- **Report** again at end of the run (flush remaining)
+- **Claim** when starting a tile → immediate `POST .../claim` (→ `3`)
+- **Report `1`** only after products are promoted and verified → flush immediately
+- **Report `2`/`4`** → flush immediately (free the queue)
+- End of run → flush any remaining buffer
 
-Wiring the R batch lives in `leucaena-earth-utils` (out of scope here).
+Wiring the R batch lives in `leucaena-earth-utils`.
+
+### Reset failed / stuck tiles (keep sync OK)
+
+```bash
+# List non-zero that are NOT success (inspect first)
+curl -sS "$ALS_URL/api/v1/als/tiles?status=2&limit=500" -H "X-ALS-Token: $ALS_TOKEN"
+curl -sS "$ALS_URL/api/v1/als/tiles?status=3&limit=500" -H "X-ALS-Token: $ALS_TOKEN"
+
+# Reset one failed/stuck tile to 0 (will be skipped if already status 1)
+curl -sS -X POST "$ALS_URL/api/v1/als/tiles/report" \
+  -H "X-ALS-Token: $ALS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"track":"lidar","results":[{"tile_id":"SF-22-Z-B-VI-3-NO-E-IV","status_code":0,"hostname":"","pasta_saida":"","erro":"reset_old_script"}]}'
+```
 
 ## curl examples
 
