@@ -798,8 +798,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                 )}
                                 {storageLabel ? (
                                   <div
-                                    className="w-full px-0.5 font-mono text-[7px] sm:text-[8px] font-semibold text-slate-500 text-center leading-tight tabular-nums"
-                                    title="Disco utilizado / total (%)"
+                                    className="w-full px-0.5 font-mono text-[7px] sm:text-[8px] font-semibold text-slate-500 text-center leading-tight tabular-nums line-clamp-3"
+                                    title="Disco utilizado / total (%) — C/D/E"
                                   >
                                     {storageLabel}
                                   </div>

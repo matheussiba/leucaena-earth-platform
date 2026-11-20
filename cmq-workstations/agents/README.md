@@ -1,6 +1,6 @@
 # Lab storage agent (Windows)
 
-Script PowerShell que envia o espaço livre/total de `C:` e `D:` para o site (`/ws/api/storage`).
+Script PowerShell que envia o espaço livre/total de `C:`, `D:` e `E:` para o site (`/ws/api/storage`).
 
 ## No servidor (site / Render)
 
@@ -28,7 +28,7 @@ Script PowerShell que envia o espaço livre/total de `C:` e `D:` para o site (`/
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\lab\report-storage.ps1
 ```
 
-Saída esperada: `OK workstationId=cmq-baia-07 disks=1` (ou `2` se houver D:).
+Saída esperada: `OK workstationId=cmq-baia-07 disks=3` (ou menos se alguma letra não existir).
 
 4. Agende diário (como Admin):
 
