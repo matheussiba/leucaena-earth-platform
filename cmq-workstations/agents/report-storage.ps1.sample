@@ -1,14 +1,15 @@
 # =============================================================================
-# CONFIG DE TESTE (edite aqui) — nao precisa de variavel de ambiente / admin
+# Copie este arquivo para report-storage.ps1 e preencha os valores.
+#   copy report-storage.ps1.sample report-storage.ps1
+# report-storage.ps1 fica no .gitignore (token / id da maquina).
 # =============================================================================
 $ApiUrl        = 'https://leucaena.earth/ws/api/storage'
-$Token         = 'lab-teste-cmq-2026'
-$WorkstationId = 'cmq-baia-07'
+$Token         = 'CHANGE_ME'          # mesmo valor de LAB_STORAGE_TOKEN no Render
+$WorkstationId = 'cmq-baia-07'        # ex: cmq-baia-04, cmq-baia-igc, cepe-geo-baia-01
 $Bay           = ''
-# Discos reportados (C, D e E — ignora letra se nao existir)
+# Discos reportados (ignora letra se nao existir)
 $DriveLetters  = @('C', 'D', 'E')
-# No Render: Environment -> LAB_STORAGE_TOKEN = lab-teste-cmq-2026 (mesmo valor)
-# Rodar: powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\lab\report-storage.ps1
+# Rodar: powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\report-storage.ps1
 # =============================================================================
 
 $ErrorActionPreference = 'Stop'

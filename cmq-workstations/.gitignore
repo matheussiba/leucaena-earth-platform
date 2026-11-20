@@ -2,3 +2,6 @@ node_modules/
 dist/
 .env
 *.local
+
+# Local agent with real token / workstation id (use .sample instead)
+agents/report-storage.ps1
