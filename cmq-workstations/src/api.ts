@@ -247,7 +247,7 @@ export function formatStorageTotalLabel(report?: {
     .join(' · ');
 }
 
-/** Bay-cell compact line: free/total per disk (e.g. "C 80/476 GB"). */
+/** Bay-cell compact line: used/total + % (e.g. "C 356/476 GB (75%)"). */
 export function formatStorageCellLabel(report?: {
   disks?: Array<{ mount: string; freeBytes: number; totalBytes: number }>;
 } | null): string {
@@ -258,10 +258,28 @@ export function formatStorageCellLabel(report?: {
       const useTb = d.totalBytes >= 1024 ** 4;
       const div = useTb ? 1024 ** 4 : 1024 ** 3;
       const unit = useTb ? 'TB' : 'GB';
-      const free = d.freeBytes / div;
+      const usedBytes = Math.max(0, d.totalBytes - d.freeBytes);
+      const used = usedBytes / div;
       const total = d.totalBytes / div;
+      const pct =
+        d.totalBytes > 0 ? Math.round((usedBytes / d.totalBytes) * 100) : 0;
       const fmt = (n: number) => (n >= 100 ? `${Math.round(n)}` : n.toFixed(1));
-      return `${letter} ${fmt(free)}/${fmt(total)} ${unit}`;
+      return `${letter} ${fmt(used)}/${fmt(total)} ${unit} (${pct}%)`;
+    })
+    .join(' · ');
+}
+
+/** Used space per disk (e.g. "C: 356 GB (75%) · D: 1.2 TB (60%)"). */
+export function formatStorageUsedLabel(report?: {
+  disks?: Array<{ mount: string; freeBytes: number; totalBytes: number }>;
+} | null): string {
+  if (!report?.disks?.length) return '';
+  return report.disks
+    .map((d) => {
+      const usedBytes = Math.max(0, d.totalBytes - d.freeBytes);
+      const pct =
+        d.totalBytes > 0 ? Math.round((usedBytes / d.totalBytes) * 100) : 0;
+      return `${d.mount} ${formatBytesShort(usedBytes)} (${pct}%)`;
     })
     .join(' · ');
 }

@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Workstation, normalizeLab, labTagClass } from '../types';
 import { formatBayLabel } from '../utils/dateUtils';
-import { formatStorageFreeLabel, formatStorageTotalLabel } from '../api';
+import {
+  formatStorageFreeLabel,
+  formatStorageTotalLabel,
+  formatStorageUsedLabel,
+} from '../api';
 import type { StorageReport } from '../types';
 import { WorkstationThumbnail } from './WorkstationThumbnail';
 import { Copy, Check, X, Server } from 'lucide-react';
@@ -71,6 +75,7 @@ export const WorkstationInfoModal: React.FC<WorkstationInfoModalProps> = ({
   const lab = normalizeLab(workstation.lab);
   const storageFree = formatStorageFreeLabel(storage);
   const storageTotal = formatStorageTotalLabel(storage);
+  const storageUsed = formatStorageUsedLabel(storage);
 
   return (
     <div
@@ -124,6 +129,9 @@ export const WorkstationInfoModal: React.FC<WorkstationInfoModalProps> = ({
             <CopyRow label="Sistema" value={workstation.os} />
             <CopyRow label="Localização" value={workstation.location} />
             <CopyRow label="Notas" value={workstation.notes} />
+            {storageUsed && (
+              <CopyRow label="Disco utilizado (último reporte)" value={storageUsed} />
+            )}
             {storageTotal && (
               <CopyRow label="Disco total (último reporte)" value={storageTotal} />
             )}
